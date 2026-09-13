@@ -169,10 +169,12 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
   const calls = sessions.flatMap((s) => s.calls);
   const byTool = new Map;
   for (const call of calls) {
-    const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0 };
+    const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0, refused: 0 };
     row.count += 1;
     if (call.failed)
       row.failed += 1;
+    if (call.refused)
+      row.refused += 1;
     byTool.set(call.tool, row);
   }
   const usedServers = new Set(calls.map((c) => c.tool.split("__")[0] ?? ""));
@@ -206,15 +208,21 @@ function tokenSummary(tokens) {
 var WINDOWS = [
   { label: "Last 7 days", days: 7 },
   { label: "Last 30 days", days: 30 },
+  { label: "Last year", days: 365 },
   { label: "All time" }
 ];
-function within(run, window, now) {
+function within(ended, window, now) {
   if (window.days === undefined)
     return true;
-  const ended = Date.parse(run.ended);
-  if (Number.isNaN(ended))
+  if (ended === undefined)
     return false;
-  return now.getTime() - ended <= window.days * 86400000;
+  const at = Date.parse(ended);
+  if (Number.isNaN(at))
+    return false;
+  return now.getTime() - at <= window.days * 86400000;
+}
+function sessionEndedAt(runs) {
+  return runs.length === 0 ? undefined : runs[runs.length - 1]?.ended;
 }
 function endings(runs) {
   const counts = new Map;
@@ -229,6 +237,22 @@ function gaveUpShare(runs) {
 }
 
 // src/domain/metrics-report.ts
+function n(value) {
+  return value.toLocaleString("en-US");
+}
+function distributionRow(label, d) {
+  return `| ${label} | ${n(d.p50)} | ${n(d.p90)} | ${n(d.p99)} | ${n(d.max)} | ${n(d.total)} |`;
+}
+function tallyTable(rows, of, what, unit) {
+  if (rows.length === 0)
+    return [`No ${what} recorded.`];
+  const out = [`| ${what} | ${unit} | share |`, "| --- | ---: | ---: |"];
+  for (const row of rows) {
+    const share = of === 0 ? 0 : Math.round(row.count / of * 1000) / 10;
+    out.push(`| \`${row.name}\` | ${n(row.count)} | ${share}% |`);
+  }
+  return out;
+}
 function runSection(runs, now) {
   const out = ["## Runs", ""];
   if (runs.length === 0) {
@@ -238,7 +262,7 @@ function runSection(runs, now) {
   out.push("| window | runs | gave up | median seconds | longest |");
   out.push("| --- | ---: | ---: | ---: | ---: |");
   for (const window of WINDOWS) {
-    const inside = runs.filter((run) => within(run, window, now));
+    const inside = runs.filter((run) => within(run.ended, window, now));
     if (inside.length === 0) {
       out.push(`| ${window.label} | 0 | \u2014 | \u2014 | \u2014 |`);
       continue;
@@ -259,91 +283,69 @@ function runSection(runs, now) {
   out.push("");
   return out;
 }
-function n(value) {
-  return value.toLocaleString("en-US");
-}
-function distributionRow(label, d) {
-  return `| ${label} | ${n(d.p50)} | ${n(d.p90)} | ${n(d.p99)} | ${n(d.max)} | ${n(d.total)} |`;
-}
-function tallyTable(rows, of, what, unit) {
-  if (rows.length === 0)
-    return [`No ${what} recorded.`];
-  const out = [`| ${what} | ${unit} | share |`, "| --- | ---: | ---: |"];
-  for (const row of rows) {
-    const share = of === 0 ? 0 : Math.round(row.count / of * 1000) / 10;
-    out.push(`| \`${row.name}\` | ${n(row.count)} | ${share}% |`);
+function windowSection(label, metrics) {
+  const out = [`## ${label}`, ""];
+  if (metrics.sessions === 0) {
+    out.push("No session ran in this window.", "");
+    return out;
   }
-  return out;
-}
-function renderReport(metrics, now) {
-  const out = [];
-  out.push("# Agent metrics");
+  out.push(`${n(metrics.sessions)} sessions.`);
   out.push("");
-  out.push(`Read from ${n(metrics.sessions)} stored sessions on this branch. Nothing here is recorded ` + "specially: every number is something the agents already wrote down while working.");
-  out.push("");
-  out.push(`Generated ${now.toISOString().slice(0, 10)}.`);
-  out.push("");
-  out.push(...runSection(metrics.runs, now));
   if (metrics.tokens) {
     const t = metrics.tokens;
-    out.push("## Tokens");
-    out.push("");
-    out.push(`${n(t.total)} tokens over ${n(t.runs)} runs that reported them. **${Math.round(t.promptShare * 1000) / 10}% of ` + "that is prompt** \u2014 what the agents were made to read, not what they wrote. Anything " + "spent on making runs cheaper belongs on that side.");
-    out.push("");
-    out.push("No money here, deliberately: of the four providers only one reports a cost, and a " + "price table goes quietly stale and then prints confident wrong numbers. Multiply by a " + "rate you know.");
-    out.push("");
-    out.push("| | p50 | p90 | p99 | max | total |");
-    out.push("| --- | ---: | ---: | ---: | ---: | ---: |");
-    out.push(distributionRow("tokens per run", t.perRun));
+    out.push(`**${n(t.total)} tokens** over ${n(t.runs)} runs that reported them, ` + `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** \u2014 what the agents were ` + "made to read, not what they wrote. Anything spent on making runs cheaper belongs " + "on that side. No money here, deliberately: of the four providers only one reports " + "a cost, and a price table goes quietly stale and then prints confident wrong " + "numbers.");
     out.push("");
   }
-  out.push("## Sessions");
-  out.push("");
   out.push("| | p50 | p90 | p99 | max | total |");
   out.push("| --- | ---: | ---: | ---: | ---: | ---: |");
+  if (metrics.tokens)
+    out.push(distributionRow("tokens per run", metrics.tokens.perRun));
   out.push(distributionRow("messages per session", metrics.messages));
   out.push("");
   out.push(...tallyTable(metrics.byAgent, metrics.sessions, "agent", "sessions"));
   out.push("");
-  out.push("## Tools");
-  out.push("");
-  if (metrics.byTool.length === 0) {
-    out.push("No tool calls recorded.");
-  } else {
-    out.push("Failure is counted by the result reading as an error, which is a string match and " + "so an estimate. A high rate is worth looking at either way: it is either a tool that " + "breaks or a tool the prompt points at wrongly.");
+  if (metrics.byTool.length > 0) {
+    out.push("**Refused** is the machinery saying no \u2014 a denylist, an allowlist, a hook. A guard " + "working is not a tool breaking, and a reader cannot act on the two the same way, so " + "they are counted apart. **Failed** is everything else that came back as an error, " + "by string match, so it is an estimate.");
     out.push("");
-    out.push("| tool | calls | failed | rate |");
-    out.push("| --- | ---: | ---: | ---: |");
+    out.push("| tool | calls | failed | refused | failure rate |");
+    out.push("| --- | ---: | ---: | ---: | ---: |");
     for (const row of metrics.byTool) {
       const rate = row.count === 0 ? 0 : Math.round(row.failed / row.count * 1000) / 10;
-      out.push(`| \`${row.name}\` | ${n(row.count)} | ${n(row.failed)} | ${rate}% |`);
+      out.push(`| \`${row.name}\` | ${n(row.count)} | ${n(row.failed)} | ${n(row.refused)} | ${rate}% |`);
     }
+    out.push("");
   }
-  out.push("");
-  out.push("### Servers never used");
-  out.push("");
-  out.push(metrics.neverUsedServers.length === 0 ? "Every declared server has been called at least once." : "Every tool a server offers is described in the prompt of every run. These have " + `never been called:
-
-` + metrics.neverUsedServers.map((t) => `- \`${t}\``).join(`
-`));
-  out.push("");
-  out.push("## Shell activity");
-  out.push("");
-  out.push("What the agents do when they reach for a shell. `search` without a matching `open` is " + "the shape that produced this project's most expensive runs; `edit` against `verify` is " + "the shape that turned out not to occur at all.");
+  out.push("What the agents do when they reach for a shell. `search` without a matching `open` is " + "the shape that produced this project's most expensive runs; `edit` against `verify` " + "is the shape that turned out not to occur at all.");
   out.push("");
   out.push(...tallyTable(metrics.byAct, metrics.byAct.reduce((s, a) => s + a.count, 0), "act", "calls"));
   out.push("");
-  out.push(`Hooks refused ${n(metrics.refusals)} calls.`);
-  out.push("");
-  out.push("## Skills");
-  out.push("");
   out.push(...tallyTable(metrics.bySkill, metrics.bySkill.reduce((s, k) => s + k.count, 0), "skill", "loads"));
   out.push("");
-  out.push("### Never loaded");
+  return out;
+}
+function renderReport(all, forWindow, now) {
+  const out = [];
+  out.push("# Agent metrics");
   out.push("");
-  out.push(metrics.neverLoaded.length === 0 ? "Every skill has been loaded at least once." : "Each of these is described in the prompt of every run and has never been loaded. That " + `is either a skill nobody needs or one the prompt fails to point at:
+  out.push("Read from the sessions stored on this branch. Nothing here is recorded specially: " + "every number is something the agents already wrote down while working.");
+  out.push("");
+  out.push(`Generated ${now.toISOString().slice(0, 10)}.`);
+  out.push("");
+  out.push(...runSection(all.runs, now));
+  for (const window of WINDOWS)
+    out.push(...windowSection(window.label, forWindow(window)));
+  out.push("## Never used");
+  out.push("");
+  out.push("Over all time, because something used once a year is still used. Each of these sits " + "in the prompt of every run and returns nothing.");
+  out.push("");
+  out.push(all.neverUsedServers.length === 0 ? "Every declared server has been called at least once." : `Servers never called:
 
-` + metrics.neverLoaded.map((s) => `- \`${s}\``).join(`
+` + all.neverUsedServers.map((t) => `- \`${t}\``).join(`
+`));
+  out.push("");
+  out.push(all.neverLoaded.length === 0 ? "Every skill has been loaded at least once." : `Skills never loaded:
+
+` + all.neverLoaded.map((s) => `- \`${s}\``).join(`
 `));
   out.push("");
   return out.join(`
@@ -387,11 +389,13 @@ function agentOf(path) {
   const match = /(?:^|-)(orchestrator|engineer|reviewer)$/.exec(stem);
   return match?.[1] ?? "unknown";
 }
-function looksFailed(content) {
-  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
-}
 function looksRefused(content) {
-  return /blocked by hook|shell_guard:|Tool blocked/.test(content);
+  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content);
+}
+function looksFailed(content) {
+  if (looksRefused(content))
+    return false;
+  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
 }
 function sessionFrom(path, raw) {
   let parsed;
@@ -522,7 +526,8 @@ function main() {
   }
   const { tools, skills } = declared();
   const now = new Date;
-  const report = renderReport(metricsOf(sessions, tools, skills, tokens), now);
+  const forWindow = (window) => metricsOf(sessions.filter((s) => within(sessionEndedAt(s.runs), window, now)), tools, skills, tokens);
+  const report = renderReport(metricsOf(sessions, tools, skills, tokens), forWindow, now);
   const runs = sessions.flatMap((s) => s.runs);
   log(`${sessions.length} sessions, ${runs.length} recorded runs, ${tokens.length} reporting tokens`);
   if (values.stdout) {
