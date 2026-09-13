@@ -230,7 +230,8 @@ function buildCommentBody(args) {
   })) {
     lines.push(`@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
   }
-  lines.push("---", `_run by [${args.agent}](${args.runUrl})_`);
+  const metrics = args.repo ? ` \xB7 [metrics](https://github.com/${args.repo}/blob/atoma-data/metrics/report.md)` : "";
+  lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
   if (args.stopRequested === "true") {
     lines.push(`\u23F8\uFE0F _Stopped on request. **The session is saved.** Comment \`/resume\` to continue ` + `from here, or \`/${args.agent}\` with an instruction on the following lines._`);
   } else if (args.limitReached === "true") {
@@ -296,6 +297,7 @@ function main() {
     limitReached: values["limit-reached"],
     stopRequested: values["stop-requested"],
     runUrl: values["run-url"],
+    repo: process.env.GITHUB_REPOSITORY ?? "",
     output: checked.text,
     escapedMentions: checked.escaped,
     changed: values.changed === "true",
