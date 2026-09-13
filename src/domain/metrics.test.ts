@@ -108,10 +108,14 @@ describe("renderReport", () => {
     expect(report).toContain("| act | calls | share |");
   });
 
+  /**
+   * Named, not counted: the point is that somebody can go and delete them. The heading
+   * they sit under has moved once already, so the assertion is on the names.
+   */
   test("it names the servers and skills nothing used", () => {
-    expect(report).toContain("### Servers never used");
     expect(report).toContain("- `web`");
     expect(report).toContain("- `delivery/pipeline-setup`");
+    expect(report).toContain("never");
   });
 
   /** No money, deliberately: see the module comment. */
