@@ -1,6 +1,6 @@
 # Agent metrics
 
-Read from 357 stored sessions on this branch. Nothing here is recorded specially: every number is something the agents already wrote down while working.
+Read from 358 stored sessions on this branch. Nothing here is recorded specially: every number is something the agents already wrote down while working.
 
 Generated 2026-09-13.
 
@@ -8,37 +8,37 @@ Generated 2026-09-13.
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 2 | 0% | 61 | 61 |
-| Last 30 days | 2 | 0% | 61 | 61 |
-| All time | 2 | 0% | 61 | 61 |
+| Last 7 days | 3 | 0% | 37 | 61 |
+| Last 30 days | 3 | 0% | 37 | 61 |
+| All time | 3 | 0% | 37 | 61 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 2 |
+| `completed` | 3 |
 
 ## Tokens
 
-116,170,334 tokens over 410 runs that reported them. **98.9% of that is prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side.
+116,224,046 tokens over 411 runs that reported them. **98.9% of that is prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side.
 
 No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers. Multiply by a rate you know.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,564 | 284,011 | 5,198,798 | 39,737,697 | 116,170,334 |
+| tokens per run | 24,564 | 270,394 | 5,198,798 | 39,737,697 | 116,224,046 |
 
 ## Sessions
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| messages per session | 10 | 90 | 433 | 1,011 | 12,811 |
+| messages per session | 10 | 90 | 433 | 1,011 | 12,821 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 236 | 66.1% |
-| `engineer` | 84 | 23.5% |
-| `orchestrator` | 37 | 10.4% |
+| `reviewer` | 236 | 65.9% |
+| `engineer` | 85 | 23.7% |
+| `orchestrator` | 37 | 10.3% |
 
 ## Tools
 
@@ -54,8 +54,8 @@ Failure is counted by the result reading as an error, which is a string match an
 | `github__check_merge_readiness` | 221 | 1 | 0.5% |
 | `filesystem__write_file` | 194 | 4 | 2.1% |
 | `github__get_issue` | 179 | 22 | 12.3% |
+| `atoma_builtin__load_skill` | 172 | 77 | 44.8% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0% |
-| `atoma_builtin__load_skill` | 169 | 75 | 44.4% |
 | `github__submit_pr_review` | 107 | 29 | 27.1% |
 | `github__commit_and_push` | 84 | 52 | 61.9% |
 | `github__search_code` | 84 | 31 | 36.9% |
@@ -141,14 +141,15 @@ Hooks refused 175 calls.
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `review/quick-quality-gate` | 34 | 36.2% |
-| `project/conventions` | 22 | 23.4% |
-| `delivery/implementation-handoff` | 18 | 19.1% |
-| `delivery/issue-decomposition` | 8 | 8.5% |
-| `engineering/tdd` | 5 | 5.3% |
-| `engineering/debugging` | 3 | 3.2% |
+| `review/quick-quality-gate` | 34 | 35.4% |
+| `project/conventions` | 22 | 22.9% |
+| `delivery/implementation-handoff` | 18 | 18.8% |
+| `delivery/issue-decomposition` | 8 | 8.3% |
+| `engineering/tdd` | 6 | 6.3% |
+| `engineering/debugging` | 3 | 3.1% |
 | `engineering/environment` | 2 | 2.1% |
 | `research/web-search` | 2 | 2.1% |
+| `engineering/nonexistent` | 1 | 1% |
 
 ### Never loaded
 
