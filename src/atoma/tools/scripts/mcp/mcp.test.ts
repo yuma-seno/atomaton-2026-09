@@ -229,9 +229,15 @@ describe("mcp/github.ts", () => {
           FAKE_GH_RESPONSES: JSON.stringify([{ match: ["pr", "review"], stdout: "" }]),
         },
       );
-      const sent = readFileSync(log, "utf8");
+      // The argv as issued, rather than the log as text: what matters is the string gh
+      // was handed, and reading it back through JSON is how every other test here does it.
+      const calls = readFileSync(log, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as string[]);
+      const body = calls.find((argv) => argv.includes("--body"))?.at(-1) ?? "";
       // Backticked, so GitHub sends no notification and the name still reads.
-      expect(sent).toContain("\`@torvalds\`");
+      expect(body).toBe("Looks right. `@torvalds` should see this.");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
