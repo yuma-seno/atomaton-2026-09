@@ -63,6 +63,17 @@ export interface IssueLinks {
  * because the pull request targeted `atoma/issue-280`, while the parent's did because its pull
  * request targeted `main`.
  */
+/**
+ * Every keyword GitHub acts on, and only those.
+ *
+ * Checked against the documentation rather than remembered: close/closes/closed,
+ * fix/fixes/fixed, resolve/resolves/resolved, and nothing else. Case and an optional
+ * colon are handled where this is used, since GitHub accepts `CLOSES: #10` too.
+ *
+ * One definition because three callers read it, and a keyword missing from one of them
+ * is a hole nobody sees: the reader would report no link, and the guard would allow what
+ * it exists to stop.
+ */
 const CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
 
 /**
@@ -93,6 +104,93 @@ export function closedIssueNumber(body: string): number | undefined {
   const match = new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#(\\d+)\\b`, "i").exec(body);
   return match ? Number(match[1]) : undefined;
 }
+
+/**
+ * Every closing reference in a piece of text, in the order they appear.
+ *
+ * Asked of text an agent wrote, before it becomes something GitHub will act on. The two
+ * readers above take a body that already exists and ask what it links to; this asks
+ * whether a body should be allowed to exist as written, so it has to catch forms those
+ * two deliberately do not.
+ *
+ * ## Why this one matches more than the others
+ *
+ * GitHub documents two reference syntaxes after a keyword:
+ *
+ * ```text
+ *   Closes #10                          same repository
+ *   Fixes octo-org/octo-repo#100        another repository
+ * ```
+ *
+ * `claimsToClose` and `closedIssueNumber` read only the first, correctly: they answer
+ * questions about issues in *this* repository, and a cross-repository reference is not
+ * one. A guard cannot share that blind spot. A closing keyword aimed at another
+ * repository is the more dangerous of the two, because nothing in this repository shows
+ * it happened — measured here, the form has never been written, which is exactly the
+ * kind of thing that is true until it is not.
+ *
+ * ## What is skipped
+ *
+ * Code spans and fenced blocks, because GitHub does not act on a keyword inside one and
+ * neither should a rule about it. Documentation explaining `Closes #N` is not an attempt
+ * to close anything, and refusing it would make the rule unwritable in its own docs.
+ */
+export function closingReferences(text: string): string[] {
+  const pattern = new RegExp(
+    `\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+((?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\\d+)\\b`,
+    "gi",
+  );
+  const found: string[] = [];
+  for (const segment of outsideCode(text)) {
+    for (const match of segment.matchAll(pattern)) {
+      const whole = match[0].trim();
+      if (!found.includes(whole)) found.push(whole);
+    }
+  }
+  return found;
+}
+
+/**
+ * Why a piece of agent-written text cannot be sent as it stands, or nothing.
+ *
+ * A refusal rather than an escape, which is the opposite of what `mention.ts` does to a
+ * mention it cannot vouch for. The difference is what is left behind: an escaped mention
+ * reads as a name somebody wanted to reach, while an escaped \`Closes #1\` is litter in a
+ * pull request a person has to read past. Refusing gets the body rewritten, so the human
+ * receives the corrected version and nothing else.
+ *
+ * It names the route that does work. Measured three times in this project on three
+ * different guards: a refusal that says what to do instead is followed, and one that
+ * only states a rule is not.
+ */
+export function closingKeywordRefusal(found: readonly string[], what: string): string | undefined {
+  if (found.length === 0) return undefined;
+  const quoted = found.map((f) => `"${f}"`).join(", ");
+  return (
+    `This ${what} contains ${quoted}, which GitHub acts on: merging would close ` +
+    "whatever issue that names, without going through the path that cleans up labels and " +
+    "tells a parent its child is done. Remove it and try again. To close an issue, call " +
+    "github__close_issue; to link this work to the issue it belongs to, do nothing -- " +
+    "that link is added for you."
+  );
+}
+
+/** A fenced code block, or an inline code span. The same rule `mention.ts` uses. */
+const CODE = /```[\s\S]*?```|`[^`\n]*`/g;
+
+/** The parts of `text` that are not inside code. */
+function outsideCode(text: string): string[] {
+  const out: string[] = [];
+  let last = 0;
+  for (const match of text.matchAll(CODE)) {
+    const at = match.index ?? 0;
+    out.push(text.slice(last, at));
+    last = at + match[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+}
+
 
 /** Combine link lists from several sources, first mention of a number winning. */
 export function dedupeByNumber<T extends { number: number }>(...lists: T[][]): T[] {

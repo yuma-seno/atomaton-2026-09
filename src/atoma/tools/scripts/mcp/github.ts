@@ -28,6 +28,7 @@ import { report } from "../../../../lib/mcp-report.ts";
 import { knownParticipants } from "../../../../lib/participants.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../../../domain/mention.ts";
 import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG, PARENT_TAG } from "../../../../lib/tags.ts";
+import { closingKeywordRefusal, closingReferences } from "../../../../domain/issue-links.ts";
 import type { GhIssueAuthor } from "../../../../lib/types.ts";
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, z, type McpToolResult } from "../../../../lib/mcp-tool.ts";
 import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../../domain/tool-output.ts";
@@ -547,6 +548,20 @@ async function closeIssueAndDispatch(a: z.infer<typeof NUMBER_ARG_SCHEMA>): Prom
  * The notice goes in the body rather than being logged, because the body is where
  * somebody will see it. A run log is read when something has already gone wrong.
  */
+/**
+ * Refuse text GitHub would act on, before it becomes something GitHub has acted on.
+ *
+ * Two places only, and they are the two the documentation names: a pull request's
+ * description, and a commit message. A keyword in an issue body, a pull request comment
+ * or a review does nothing -- checked against GitHub's own documentation rather than
+ * assumed, because a guard on a path that cannot fire is a rule somebody has to read and
+ * obey for no reason.
+ */
+function refuseClosingKeywords(text: string, what: string): void {
+  const refusal = closingKeywordRefusal(closingReferences(text), what);
+  if (refusal !== undefined) mcpFail(refusal);
+}
+
 function withCheckedMentions(body: string): string {
   const checked = escapeUnknownMentions(
     body,
@@ -560,19 +575,17 @@ function withCheckedMentions(body: string): string {
 
 function injectParentIssue(body: string): string {
   const parent = (process.env.ISSUE_NUMBER ?? "").trim();
+  refuseClosingKeywords(body, "pull request body");
   body = notifyTagPrefix(body, "PR") + withCheckedMentions(body);
   if (!parent) return body;
   if (PARENT_ISSUE_TAG.has(body)) {
     mcpFail("PR body already contains a parent-issue tag; refusing to add another");
   }
-  // Inject parent-issue metadata always, but only add "Closes #N" if the body
-  // doesn't already reference it -- agents sometimes write their own closing
-  // keyword, and a duplicate "Closes #N" line makes downstream parsing match
-  // twice, corrupting $GITHUB_OUTPUT.
-  let closesLine = "";
-  if (!new RegExp(`\\bcloses\\s+#${parent}\\b`, "i").test(body)) {
-    closesLine = `Closes #${parent}\n`;
-  }
+  // Unconditionally, now that `refuseClosingKeywords` above guarantees the agent wrote
+  // none of its own. This used to check first, because a second "Closes #N" made
+  // downstream parsing match twice and corrupted $GITHUB_OUTPUT -- a duplicate that can
+  // no longer arrive, since a body carrying one never reaches this line.
+  const closesLine = `Closes #${parent}\n`;
   const originAgent = (process.env.AGENT ?? "").trim();
   const originLine = originAgent ? `${ORIGIN_AGENT_TAG.write(originAgent)}\n` : "";
   return `${PARENT_ISSUE_TAG.write(Number(parent))}\n${originLine}${closesLine}${body}`;
@@ -721,6 +734,10 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
 
 function commitAndPush(a: z.infer<typeof COMMIT_AND_PUSH_SCHEMA>): string {
   const message = a.message;
+  // Before anything is written. A commit message is the other place GitHub acts on a
+  // closing keyword, and the harder of the two to notice afterwards: it is not in the
+  // pull request's diff, and nobody opens the commit list to check.
+  refuseClosingKeywords(message, "commit message");
   // Before the commit, so a failure to name a branch does not leave a commit
   // stranded on the base branch.
   const branch = branchForCommit(REPO);
