@@ -2818,6 +2818,31 @@
     ]
   },
   {
+    "path": "sessions/issue-646/engineer.json",
+    "agent": "engineer",
+    "messages": 10,
+    "calls": 3,
+    "failed": 2,
+    "refused": 0,
+    "skills": [
+      "engineering/tdd",
+      "engineering/nonexistent"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 3
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-13T15:15:41Z",
+        "ended_because": "completed",
+        "messages": 10,
+        "seconds": 26,
+        "started": "2026-09-13T15:15:15Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-65-orchestrator.json",
     "agent": "orchestrator",
     "messages": 8,
