@@ -1,43 +1,43 @@
 # Agent metrics
 
-Read from 356 stored sessions on this branch. Nothing here is recorded specially: every number is something the agents already wrote down while working.
+Read from 357 stored sessions on this branch. Nothing here is recorded specially: every number is something the agents already wrote down while working.
 
-Generated 2026-09-12.
+Generated 2026-09-13.
 
 ## Runs
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 1 | 0% | 61 | 61 |
-| Last 30 days | 1 | 0% | 61 | 61 |
-| All time | 1 | 0% | 61 | 61 |
+| Last 7 days | 2 | 0% | 61 | 61 |
+| Last 30 days | 2 | 0% | 61 | 61 |
+| All time | 2 | 0% | 61 | 61 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 1 |
+| `completed` | 2 |
 
 ## Tokens
 
-116,143,227 tokens over 409 runs that reported them. **98.9% of that is prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side.
+116,170,334 tokens over 410 runs that reported them. **98.9% of that is prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side.
 
 No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers. Multiply by a rate you know.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,454 | 284,011 | 5,198,798 | 39,737,697 | 116,143,227 |
+| tokens per run | 24,564 | 284,011 | 5,198,798 | 39,737,697 | 116,170,334 |
 
 ## Sessions
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| messages per session | 10 | 90 | 433 | 1,011 | 12,805 |
+| messages per session | 10 | 90 | 433 | 1,011 | 12,811 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 236 | 66.3% |
-| `engineer` | 83 | 23.3% |
+| `reviewer` | 236 | 66.1% |
+| `engineer` | 84 | 23.5% |
 | `orchestrator` | 37 | 10.4% |
 
 ## Tools
@@ -73,7 +73,7 @@ Failure is counted by the result reading as an error, which is a string match an
 | `github__merge_pr` | 32 | 1 | 3.1% |
 | `github__close_issue` | 31 | 13 | 41.9% |
 | `github__list_issues` | 31 | 3 | 9.7% |
-| `search__search_issues` | 30 | 4 | 13.3% |
+| `search__search_issues` | 31 | 4 | 12.9% |
 | `filesystem_readonly__read_text_file` | 29 | 29 | 100% |
 | `github__list_prs` | 29 | 0 | 0% |
 | `web__fetch` | 29 | 1 | 3.4% |
