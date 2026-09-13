@@ -381,3 +381,29 @@ describe("salvaging a run that ended before it reported", () => {
     expect(body).not.toContain("ended before it wrote a report");
   });
 });
+
+/**
+ * The footer is the one line of every comment somebody actually reads twice, and the
+ * report it links to is written on a branch nobody browses by accident.
+ */
+describe("the metrics link in the footer", () => {
+  const base = {
+    agent: "engineer",
+    runUrl: "https://example.com/run",
+    output: "done",
+    usageLines: [] as string[],
+  };
+
+  test("it points at the report on atoma-data", () => {
+    expect(buildCommentBody({ ...base, repo: "acme/widgets" })).toContain(
+      "[metrics](https://github.com/acme/widgets/blob/atoma-data/metrics/report.md)",
+    );
+  });
+
+  /** A broken link in every comment is worse than no link in any of them. */
+  test("an unknown repository means no link rather than a guessed one", () => {
+    const body = buildCommentBody(base);
+    expect(body).toContain("_run by [engineer](https://example.com/run)_");
+    expect(body).not.toContain("metrics");
+  });
+});

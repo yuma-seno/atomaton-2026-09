@@ -201,6 +201,8 @@ export function buildCommentBody(args: {
   limitReached?: string;
   stopRequested?: string;
   runUrl: string;
+  /** `owner/name`, for linking to the metrics report. Absent when unknown. */
+  repo?: string;
   output: string;
   usageLines: string[];
   isSubIssue?: boolean;
@@ -258,7 +260,17 @@ export function buildCommentBody(args: {
     );
   }
 
-  lines.push("---", `_run by [${args.agent}](${args.runUrl})_`);
+  // The report, one click from the run that is reporting. It is written after this
+  // comment is posted, so the link is to the branch tip rather than to a commit --
+  // which is what somebody following it wants anyway: the current state, including
+  // this run. A permalink would show the metrics as they were a moment before.
+  //
+  // Omitted rather than guessed when the repository is unknown, because a broken link
+  // in every comment is worse than no link at all.
+  const metrics = args.repo
+    ? ` · [metrics](https://github.com/${args.repo}/blob/atoma-data/metrics/report.md)`
+    : "";
+  lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
   if (args.stopRequested === "true") {
     // Says the session survived, because that is the whole difference between this
     // and cancelling the job, and the person who stopped it cannot tell from here
@@ -384,6 +396,9 @@ function main(): void {
     limitReached: values["limit-reached"],
     stopRequested: values["stop-requested"],
     runUrl: values["run-url"],
+    // From the environment rather than a flag: every caller is a workflow step, and
+    // one more argument to thread through is one more place to forget it.
+    repo: process.env.GITHUB_REPOSITORY ?? "",
     output: checked.text,
     escapedMentions: checked.escaped,
     changed: values.changed === "true",
