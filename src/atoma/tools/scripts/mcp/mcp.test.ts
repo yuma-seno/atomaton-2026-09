@@ -237,7 +237,10 @@ describe("mcp/github.ts", () => {
         .map((line) => JSON.parse(line) as string[]);
       const body = calls.find((argv) => argv.includes("--body"))?.at(-1) ?? "";
       // Backticked, so GitHub sends no notification and the name still reads.
-      expect(body).toBe("Looks right. `@torvalds` should see this.");
+      expect(body).toContain("Looks right. `@torvalds` should see this.");
+      // And the notice the other three paths add, so a person reading the review can see
+      // that a mention was intended and did not happen.
+      expect(body).toContain("had the notification removed");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
