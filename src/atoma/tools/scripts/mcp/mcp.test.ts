@@ -205,6 +205,38 @@ describe("mcp/github.ts", () => {
    * most exactly when the requester was unknown -- with no machine tag to win the
    * first match, the agent's was the only one in the body.
    */
+  /**
+   * A review body is agent prose landing where people read, and it was the one of the
+   * four such places that never got the mention check. It is also the likeliest of them
+   * to name somebody: a review is where an agent asks for a second opinion.
+   */
+  test("submit_pr_review escapes a mention it cannot vouch for", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "atoma-review-mentions-"));
+    const log = join(dir, "gh.log");
+    try {
+      await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0", id: 41, method: "tools/call",
+          params: {
+            name: "submit_pr_review",
+            arguments: { number: 7, event: "COMMENT", body: "Looks right. @torvalds should see this." },
+          },
+        },
+        {
+          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          FAKE_GH_LOG: log,
+          FAKE_GH_RESPONSES: JSON.stringify([{ match: ["pr", "review"], stdout: "" }]),
+        },
+      );
+      const sent = readFileSync(log, "utf8");
+      // Backticked, so GitHub sends no notification and the name still reads.
+      expect(sent).toContain("\`@torvalds\`");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("create_issue refuses a body that already names who to notify", async () => {
     const r = await sendRequest(
       "github.ts",

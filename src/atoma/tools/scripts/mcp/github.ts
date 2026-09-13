@@ -973,7 +973,14 @@ function submitPrReview(a: z.infer<typeof SUBMIT_PR_REVIEW_SCHEMA>): string {
   // rewritten here -- see SUBMIT_PR_REVIEW_SCHEMA -- so `event` is exactly what
   // the caller asked for and exactly what GitHub is given.
   const cmd = ["pr", "review", String(a.number), "--repo", REPO, "--" + a.event.toLowerCase()];
-  if (a.body) cmd.push("--body", a.body);
+  // A review body is agent prose reaching a place people read, so it gets the same check
+  // the other three do. It was missed when mentions were first checked, and a review is
+  // the one of the four most likely to name somebody: it is where an agent asks for a
+  // second opinion.
+  //
+  // No closing-keyword check here, deliberately. GitHub does not act on a keyword in a
+  // review, so refusing one would be a rule with nothing behind it.
+  if (a.body) cmd.push("--body", withCheckedMentions(a.body));
   const { code, stdout, stderr } = gh(...cmd);
   if (code) mcpFail(stderr || stdout);
   logOp("submit_pr_review", { number: a.number, event: a.event });
