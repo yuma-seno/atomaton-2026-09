@@ -1,6 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import { distributionOf, metricsOf, type CallRecord, type SessionRecord } from "./metrics.ts";
 import { renderReport } from "./metrics-report.ts";
+import { sessionEndedAt, within, type Window } from "./metrics-windows.ts";
+/**
+ * Render with the same metrics in every window.
+ *
+ * The report asks for one metrics per window; a test about what a table says does not
+ * care which window it lands in, and a test about windows says so explicitly.
+ */
+function render(metrics: ReturnType<typeof metricsOf>, now: Date): string {
+  return renderReport(metrics, () => metrics, now);
+}
+
 
 const call = (tool: string, extra: Partial<CallRecord> = {}): CallRecord => ({
   tool,
@@ -84,7 +95,7 @@ describe("metricsOf", () => {
 
 describe("renderReport", () => {
   const NOW = new Date("2026-09-13T00:00:00Z");
-  const report = renderReport(metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS), NOW);
+  const report = render(metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS), NOW);
 
   /**
    * Each table counts a different thing, and the first version labelled all of them
@@ -114,7 +125,7 @@ describe("renderReport", () => {
    * nothing produces no commit.
    */
   test("the same input renders the same output", () => {
-    expect(renderReport(metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS), NOW)).toBe(report);
+    expect(render(metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS), NOW)).toBe(report);
   });
 });
 
@@ -140,13 +151,13 @@ describe("the run windows", () => {
    * would read as "nothing went wrong"; this says what is actually true.
    */
   test("no recorded run says so rather than showing empty tables", () => {
-    const report = renderReport(metricsOf(withRuns([]), [], [], []), NOW);
+    const report = render(metricsOf(withRuns([]), [], [], []), NOW);
     expect(report).toContain("No run has recorded itself yet");
     expect(report).not.toContain("| window |");
   });
 
   test("a run counts in every window that reaches it", () => {
-    const report = renderReport(
+    const report = render(
       metricsOf(withRuns([run("2026-09-13T00:00:00Z"), run("2026-08-01T00:00:00Z", "failed")]), [], [], []),
       NOW,
     );
@@ -156,13 +167,13 @@ describe("the run windows", () => {
 
   /** An empty window is a row, not a gap, so the reader can see it was asked. */
   test("a window with nothing in it is still a row", () => {
-    expect(renderReport(metricsOf(withRuns([run("2026-01-01T00:00:00Z")]), [], [], []), NOW)).toContain(
+    expect(render(metricsOf(withRuns([run("2026-01-01T00:00:00Z")]), [], [], []), NOW)).toContain(
       "| Last 7 days | 0 | — | — | — |",
     );
   });
 
   test("every ending that is not completed counts as giving up", () => {
-    const report = renderReport(
+    const report = render(
       metricsOf(
         withRuns([run("2026-09-13T00:00:00Z"), run("2026-09-13T00:00:00Z", "iterations")]),
         [],
@@ -173,5 +184,66 @@ describe("the run windows", () => {
     );
     expect(report).toContain("| Last 7 days | 2 | 50% |");
     expect(report).toContain("| `iterations` | 1 |");
+  });
+});
+
+/**
+ * The two defects a reader found in the first report, both of which made it say
+ * something false with confidence.
+ */
+describe("what a window is for, beyond trend", () => {
+  const NOW = new Date("2026-09-14T00:00:00Z");
+  const call = (tool: string, extra: Partial<CallRecord> = {}): CallRecord => ({
+    tool,
+    agent: "engineer",
+    failed: false,
+    refused: false,
+    ...extra,
+  });
+  const sessions: SessionRecord[] = [
+    {
+      path: "old",
+      agent: "engineer",
+      messages: 300,
+      runs: [],
+      calls: [call("shell__terminal_operate", { failed: true }), call("filesystem__search_files", { refused: true })],
+    },
+    {
+      path: "new",
+      agent: "engineer",
+      messages: 10,
+      runs: [
+        { started: "2026-09-13T00:00:00Z", ended: "2026-09-13T00:01:00Z", seconds: 60, ended_because: "completed", messages: 10 },
+      ],
+      calls: [call("search__search_issues")],
+    },
+  ];
+  const forWindow = (window: Window) =>
+    metricsOf(sessions.filter((s) => within(sessionEndedAt(s.runs), window, NOW)), [], [], []);
+  const report = renderReport(metricsOf(sessions, [], [], []), forWindow, NOW);
+  const section = (label: string) => {
+    const start = report.indexOf(`## ${label}`);
+    const next = report.indexOf("\n## ", start + 1);
+    return report.slice(start, next === -1 ? undefined : next);
+  };
+
+  /**
+   * `shell__terminal_operate` was 333 failures from a server this repository stopped
+   * running, sitting in the same table as tools it still uses. Nothing detects a retired
+   * tool — time removes it, which also leaves a hallucinated tool name visible.
+   */
+  test("a tool nothing has called lately falls out of the recent windows", () => {
+    expect(section("Last 7 days")).not.toContain("terminal_operate");
+    expect(section("All time")).toContain("terminal_operate");
+  });
+
+  /**
+   * A denylist refusing 43 of 44 calls was rendered as "97.7% failure rate", which reads
+   * as a broken tool rather than as a guard doing its job.
+   */
+  test("a guard refusing a call is not counted as the tool failing", () => {
+    const row = metricsOf(sessions, [], [], []).byTool.find((t) => t.name === "filesystem__search_files");
+    expect([row?.failed, row?.refused]).toEqual([0, 1]);
+    expect(section("All time")).toContain("| `filesystem__search_files` | 1 | 0 | 1 | 0% |");
   });
 });
