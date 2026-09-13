@@ -2881,6 +2881,32 @@
     ]
   },
   {
+    "path": "sessions/issue-655/engineer.json",
+    "agent": "engineer",
+    "messages": 13,
+    "calls": 5,
+    "failed": 1,
+    "refused": 1,
+    "skills": [],
+    "tools": {
+      "shell__shell_execute": 3,
+      "github__commit_and_push": 1,
+      "search__search_issues": 1
+    },
+    "acts": {
+      "other": 3
+    },
+    "runs": [
+      {
+        "ended": "2026-09-13T16:31:14Z",
+        "ended_because": "completed",
+        "messages": 13,
+        "seconds": 73,
+        "started": "2026-09-13T16:30:01Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-66-orchestrator.json",
     "agent": "orchestrator",
     "messages": 8,
