@@ -93,6 +93,8 @@ export interface Tally {
 
 export interface FailureTally extends Tally {
   failed: number;
+  /** Calls the machinery refused. A guard working, counted apart from a tool breaking. */
+  refused: number;
 }
 
 export interface Distribution {
@@ -160,9 +162,10 @@ export function metricsOf(
   const calls = sessions.flatMap((s) => s.calls);
   const byTool = new Map<string, FailureTally>();
   for (const call of calls) {
-    const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0 };
+    const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0, refused: 0 };
     row.count += 1;
     if (call.failed) row.failed += 1;
+    if (call.refused) row.refused += 1;
     byTool.set(call.tool, row);
   }
 

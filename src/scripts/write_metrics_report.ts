@@ -25,7 +25,7 @@ import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atoma-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
 import { metricsOf, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
-import { type RunRecord } from "../domain/metrics-windows.ts";
+import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
 
 export const ref = defineScript(import.meta.url);
@@ -88,14 +88,29 @@ export function agentOf(path: string): string {
   return match?.[1] ?? "unknown";
 }
 
-/** Whether a tool result reads as a failure. A string match, and the report says so. */
-function looksFailed(content: string): boolean {
-  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
+/**
+ * Whether a result is the machinery refusing the call rather than a tool failing it.
+ *
+ * Three ways to be refused and they are one thing: a `before_tool` hook saying no, and
+ * atoma's own denylist and allowlist. All three arrive as an error, which is how they
+ * were counted as failures — so the report said `filesystem__search_files` fails 97.7%
+ * of the time, when what it actually says is that a denylist works 43 times out of 43.
+ *
+ * A guard doing its job is not a tool breaking, and a reader cannot act on the two the
+ * same way. Checked before `looksFailed`, because every refusal also looks like one.
+ */
+function looksRefused(content: string): boolean {
+  return (
+    /blocked by hook|shell_guard:|Tool blocked/.test(content) ||
+    /is blocked by denylist pattern/.test(content) ||
+    /is not permitted by the allowlist/.test(content)
+  );
 }
 
-/** Whether a result is a hook refusing the call rather than a tool answering it. */
-function looksRefused(content: string): boolean {
-  return /blocked by hook|shell_guard:|Tool blocked/.test(content);
+/** Whether a tool result reads as a failure. A string match, and the report says so. */
+function looksFailed(content: string): boolean {
+  if (looksRefused(content)) return false;
+  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
 }
 
 function sessionFrom(path: string, raw: string): SessionRecord | undefined {
@@ -255,7 +270,17 @@ function main(): void {
 
   const { tools, skills } = declared();
   const now = new Date();
-  const report = renderReport(metricsOf(sessions, tools, skills, tokens), now);
+  // One window is the same aggregation over fewer sessions. Placing a session by its
+  // last run is what lets a tool that no longer exists fall out of the recent windows
+  // without anything having to know it was retired.
+  const forWindow = (window: Window) =>
+    metricsOf(
+      sessions.filter((s) => within(sessionEndedAt(s.runs), window, now)),
+      tools,
+      skills,
+      tokens,
+    );
+  const report = renderReport(metricsOf(sessions, tools, skills, tokens), forWindow, now);
   const runs = sessions.flatMap((s) => s.runs);
   log(`${sessions.length} sessions, ${runs.length} recorded runs, ${tokens.length} reporting tokens`);
 

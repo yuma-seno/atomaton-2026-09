@@ -40,22 +40,48 @@ export interface Window {
  * The windows the report shows, widest last.
  *
  * Seven and thirty because those are the two questions anybody actually asks — "is this
- * week worse" and "is this month worse" — and a third number between them would be a
- * column nobody reads. All time stays because for a while it is the only one with
- * anything in it.
+ * week worse" and "is this month worse". A year because a template is adopted and then
+ * left alone, and the question after a quiet stretch is whether anything drifted. All
+ * time stays because for a while it is the only one with anything in it, and because it
+ * is the only honest place for a session that predates any record of when it ran.
+ *
+ * What a window is for beyond trend: a tool that no longer exists drops out of the
+ * recent ones on its own. `shell__terminal_operate` was 333 failures of a server this
+ * repository stopped running, sitting in the same table as tools it still uses and
+ * reading as though something were broken. Nothing has to detect a retired tool — time
+ * removes it, and an agent that invents a tool name still shows up, which a
+ * retired-tool rule would have hidden.
  */
 export const WINDOWS: Window[] = [
   { label: "Last 7 days", days: 7 },
   { label: "Last 30 days", days: 30 },
+  { label: "Last year", days: 365 },
   { label: "All time" },
 ];
 
-/** Whether a run falls inside a window, given the moment the report is being made. */
-export function within(run: RunRecord, window: Window, now: Date): boolean {
+/** Whether a moment falls inside a window, given when the report is being made. */
+export function within(ended: string | undefined, window: Window, now: Date): boolean {
   if (window.days === undefined) return true;
-  const ended = Date.parse(run.ended);
-  if (Number.isNaN(ended)) return false;
-  return now.getTime() - ended <= window.days * 86_400_000;
+  if (ended === undefined) return false;
+  const at = Date.parse(ended);
+  if (Number.isNaN(at)) return false;
+  return now.getTime() - at <= window.days * 86_400_000;
+}
+
+/**
+ * When a session last ran, or `undefined` if it never said.
+ *
+ * The last run rather than the first: a session resumed over a fortnight is one file,
+ * and placing it by when it started would put work done today in a window that closed a
+ * week ago. Neither answer is right for a session spread across a month, and the recent
+ * one is the one somebody reading "last 7 days" means.
+ *
+ * `undefined` for every session written before atoma v0.1.28, which is most of the
+ * history. Those appear under all time and nowhere else, which is exactly what is known
+ * about them.
+ */
+export function sessionEndedAt(runs: readonly RunRecord[]): string | undefined {
+  return runs.length === 0 ? undefined : runs[runs.length - 1]?.ended;
 }
 
 /** How runs ended, most common first. The rows that are not `completed` are the point. */
