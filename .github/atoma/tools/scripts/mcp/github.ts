@@ -7439,6 +7439,50 @@ function escapedMentionNotice(escaped) {
 ` + `> ${names} ${escaped.length === 1 ? "was" : "were"} written as ${escaped.length === 1 ? "a mention" : "mentions"} ` + `and had the notification removed: this run could not confirm ${escaped.length === 1 ? "that account" : "those accounts"} ` + `as a participant in this repository or this thread. Nobody was notified. If the mention was meant, mention them yourself.`;
 }
 
+// src/domain/issue-links.ts
+var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
+function claimsToClose(body, issue) {
+  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
+}
+function closingReferences(text) {
+  const pattern = new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+((?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\\d+)\\b`, "gi");
+  const found = [];
+  for (const segment of outsideCode(text)) {
+    for (const match of segment.matchAll(pattern)) {
+      const whole = match[0].trim();
+      if (!found.includes(whole))
+        found.push(whole);
+    }
+  }
+  return found;
+}
+function closingKeywordRefusal(found, what) {
+  if (found.length === 0)
+    return;
+  const quoted = found.map((f) => `"${f}"`).join(", ");
+  return `This ${what} contains ${quoted}, which GitHub acts on: merging would close ` + "whatever issue that names, without going through the path that cleans up labels and " + "tells a parent its child is done. Remove it and try again. To close an issue, call " + "github__close_issue; to link this work to the issue it belongs to, do nothing -- " + "that link is added for you.";
+}
+var CODE2 = /```[\s\S]*?```|`[^`\n]*`/g;
+function outsideCode(text) {
+  const out = [];
+  let last = 0;
+  for (const match of text.matchAll(CODE2)) {
+    const at = match.index ?? 0;
+    out.push(text.slice(last, at));
+    last = at + match[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+}
+function dedupeByNumber(...lists) {
+  const seen = new Map;
+  for (const list of lists)
+    for (const item of list)
+      if (!seen.has(item.number))
+        seen.set(item.number, item);
+  return [...seen.values()].sort((a, b) => a.number - b.number);
+}
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util) {
@@ -18717,20 +18761,6 @@ function dispatchCd(baseRef) {
   return dispatchWorkflow("dispatchCd", workflow, args, log5);
 }
 
-// src/domain/issue-links.ts
-var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
-function claimsToClose(body, issue) {
-  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
-}
-function dedupeByNumber(...lists) {
-  const seen = new Map;
-  for (const list of lists)
-    for (const item of list)
-      if (!seen.has(item.number))
-        seen.set(item.number, item);
-  return [...seen.values()].sort((a, b) => a.number - b.number);
-}
-
 // src/lib/issue-links.ts
 var LINK_LIMIT = 50;
 var QUERY = `
@@ -19240,6 +19270,11 @@ async function closeIssueAndDispatch(a) {
     ...needsAttention(aggregation) ? { note: describeGateResult(aggregation, num) } : {}
   });
 }
+function refuseClosingKeywords(text, what) {
+  const refusal = closingKeywordRefusal(closingReferences(text), what);
+  if (refusal !== undefined)
+    mcpFail(refusal);
+}
 function withCheckedMentions(body) {
   const checked = escapeUnknownMentions(body, knownParticipants(REPO, (process.env.ISSUE_NUMBER ?? "").trim()));
   if (checked.escaped.length === 0)
@@ -19252,17 +19287,15 @@ ${notice}`;
 }
 function injectParentIssue(body) {
   const parent = (process.env.ISSUE_NUMBER ?? "").trim();
+  refuseClosingKeywords(body, "pull request body");
   body = notifyTagPrefix(body, "PR") + withCheckedMentions(body);
   if (!parent)
     return body;
   if (PARENT_ISSUE_TAG.has(body)) {
     mcpFail("PR body already contains a parent-issue tag; refusing to add another");
   }
-  let closesLine = "";
-  if (!new RegExp(`\\bcloses\\s+#${parent}\\b`, "i").test(body)) {
-    closesLine = `Closes #${parent}
+  const closesLine = `Closes #${parent}
 `;
-  }
   const originAgent = (process.env.AGENT ?? "").trim();
   const originLine = originAgent ? `${ORIGIN_AGENT_TAG.write(originAgent)}
 ` : "";
@@ -19339,6 +19372,7 @@ Atoma: PR #${num} created (${stdout.trim()}). ${next}`);
 }
 function commitAndPush(a) {
   const message = a.message;
+  refuseClosingKeywords(message, "commit message");
   const branch = branchForCommit(REPO);
   {
     const { code, stdout, stderr } = gitRun("add", "-A");
@@ -19482,7 +19516,7 @@ function listPrReviewComments(a) {
 function submitPrReview(a) {
   const cmd = ["pr", "review", String(a.number), "--repo", REPO, "--" + a.event.toLowerCase()];
   if (a.body)
-    cmd.push("--body", a.body);
+    cmd.push("--body", withCheckedMentions(a.body));
   const { code, stdout, stderr } = gh(...cmd);
   if (code)
     mcpFail(stderr || stdout);
