@@ -205,6 +205,47 @@ describe("mcp/github.ts", () => {
    * most exactly when the requester was unknown -- with no machine tag to win the
    * first match, the agent's was the only one in the body.
    */
+  /**
+   * A review body is agent prose landing where people read, and it was the one of the
+   * four such places that never got the mention check. It is also the likeliest of them
+   * to name somebody: a review is where an agent asks for a second opinion.
+   */
+  test("submit_pr_review escapes a mention it cannot vouch for", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "atoma-review-mentions-"));
+    const log = join(dir, "gh.log");
+    try {
+      await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0", id: 41, method: "tools/call",
+          params: {
+            name: "submit_pr_review",
+            arguments: { number: 7, event: "COMMENT", body: "Looks right. @torvalds should see this." },
+          },
+        },
+        {
+          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          FAKE_GH_LOG: log,
+          FAKE_GH_RESPONSES: JSON.stringify([{ match: ["pr", "review"], stdout: "" }]),
+        },
+      );
+      // The argv as issued, rather than the log as text: what matters is the string gh
+      // was handed, and reading it back through JSON is how every other test here does it.
+      const calls = readFileSync(log, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as string[]);
+      const body = calls.find((argv) => argv.includes("--body"))?.at(-1) ?? "";
+      // Backticked, so GitHub sends no notification and the name still reads.
+      expect(body).toContain("Looks right. `@torvalds` should see this.");
+      // And the notice the other three paths add, so a person reading the review can see
+      // that a mention was intended and did not happen.
+      expect(body).toContain("had the notification removed");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("create_issue refuses a body that already names who to notify", async () => {
     const r = await sendRequest(
       "github.ts",
