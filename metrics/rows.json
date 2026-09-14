@@ -2946,6 +2946,32 @@
     ]
   },
   {
+    "path": "sessions/issue-659/reviewer.json",
+    "agent": "reviewer",
+    "messages": 13,
+    "calls": 3,
+    "failed": 2,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__check_merge_readiness": 1,
+      "engineering/environment": 1
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-14T14:48:49Z",
+        "ended_because": "completed",
+        "messages": 13,
+        "seconds": 12,
+        "started": "2026-09-14T14:48:37Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-66-orchestrator.json",
     "agent": "orchestrator",
     "messages": 8,
