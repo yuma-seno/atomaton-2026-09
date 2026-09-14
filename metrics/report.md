@@ -10,28 +10,28 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 10 | 10% | 37 | 499 |
-| Last 30 days | 10 | 10% | 37 | 499 |
-| Last year | 10 | 10% | 37 | 499 |
-| All time | 10 | 10% | 37 | 499 |
+| Last 7 days | 11 | 9.1% | 26 | 499 |
+| Last 30 days | 11 | 9.1% | 26 | 499 |
+| Last year | 11 | 9.1% | 26 | 499 |
+| All time | 11 | 9.1% | 26 | 499 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 9 |
+| `completed` | 10 |
 | `failed` | 1 |
 
 ## Last 7 days
 
 8 sessions.
 
-**9,113,586 tokens** over 18 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**9,428,628 tokens** over 19 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 68,832 | 877,552 | 6,403,430 | 6,403,430 | 9,113,586 |
-| messages per session | 13 | 354 | 354 | 354 | 429 |
+| tokens per run | 68,832 | 877,552 | 6,403,430 | 6,403,430 | 9,428,628 |
+| messages per session | 13 | 371 | 371 | 371 | 446 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -50,10 +50,12 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
+| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
+| `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
-| `github__get_issue` | 1 | 0 | 0 | 0% |
+| `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
 
@@ -78,12 +80,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 8 sessions.
 
-**28,141,516 tokens** over 213 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**28,456,558 tokens** over 214 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 21,618 | 116,634 | 2,281,321 | 6,403,430 | 28,141,516 |
-| messages per session | 13 | 354 | 354 | 354 | 429 |
+| tokens per run | 21,693 | 124,634 | 2,281,321 | 6,403,430 | 28,456,558 |
+| messages per session | 13 | 371 | 371 | 371 | 446 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -102,10 +104,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
+| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
+| `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
-| `github__get_issue` | 1 | 0 | 0 | 0% |
+| `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
 
@@ -130,12 +134,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 8 sessions.
 
-**116,430,548 tokens** over 417 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**116,745,590 tokens** over 418 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,430,548 |
-| messages per session | 13 | 354 | 354 | 354 | 429 |
+| tokens per run | 24,594 | 284,011 | 5,198,798 | 39,737,697 | 116,745,590 |
+| messages per session | 13 | 371 | 371 | 371 | 446 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -154,10 +158,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
+| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
+| `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
-| `github__get_issue` | 1 | 0 | 0 | 0% |
+| `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
 
@@ -182,12 +188,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 363 sessions.
 
-**116,430,548 tokens** over 417 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**116,745,590 tokens** over 418 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,430,548 |
-| messages per session | 10 | 90 | 433 | 1,011 | 13,228 |
+| tokens per run | 24,594 | 284,011 | 5,198,798 | 39,737,697 | 116,745,590 |
+| messages per session | 10 | 90 | 433 | 1,011 | 13,245 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -206,14 +212,14 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__list_directory` | 249 | 5 | 0 | 2% |
 | `github__check_merge_readiness` | 223 | 2 | 0 | 0.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
-| `github__get_issue` | 180 | 22 | 2 | 12.2% |
+| `github__get_issue` | 181 | 22 | 2 | 12.2% |
 | `atoma_builtin__load_skill` | 176 | 77 | 0 | 43.8% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 108 | 29 | 0 | 26.9% |
 | `github__commit_and_push` | 86 | 53 | 0 | 61.6% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
+| `github__get_pr` | 68 | 10 | 0 | 14.7% |
 | `search__search_code` | 68 | 0 | 0 | 0% |
-| `github__get_pr` | 67 | 10 | 0 | 14.9% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 59 | 6 | 0 | 10.2% |
 | `github__get_check_runs` | 53 | 6 | 0 | 11.3% |
@@ -225,7 +231,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
 | `github__merge_pr` | 33 | 1 | 0 | 3% |
 | `search__search_issues` | 33 | 4 | 0 | 12.1% |
-| `github__close_issue` | 31 | 1 | 12 | 3.2% |
+| `github__close_issue` | 32 | 1 | 13 | 3.1% |
 | `github__list_issues` | 31 | 3 | 0 | 9.7% |
 | `filesystem_readonly__read_text_file` | 29 | 0 | 29 | 0% |
 | `github__list_prs` | 29 | 0 | 0 | 0% |
