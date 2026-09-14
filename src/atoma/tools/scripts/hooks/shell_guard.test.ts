@@ -118,6 +118,37 @@ describe("shell_guard.ts", () => {
       }
     });
 
+    /**
+     * The rules used to match `\bgh\b` anywhere in the command string, and this
+     * repository keeps its shared `gh` wrapper in `src/lib/gh.ts`. Reading that file was
+     * refused as though it were the GitHub CLI; an agent hit it three times running and
+     * the repeated-call guard ended the run. Reading a file is not invoking a program.
+     */
+    test("a path that merely contains a routed name is not the program", () => {
+      for (const command of [
+        "grep -n dispatchWorkflow src/lib/gh.ts",
+        "cat src/scripts/testing/bin/gh",
+        "ls src/scripts/testing/bin",
+        "wc -l src/lib/curl-helper.ts",
+        "git log --oneline | grep gh",
+      ]) {
+        expect(guard({ command }), command).toContain('"allow":true');
+      }
+    });
+
+    /** Invoking it is still invoking it, including after a wrapper or a pipe. */
+    test("the routed programs are still refused where they are run", () => {
+      for (const command of [
+        "gh pr merge 12",
+        "/usr/bin/gh issue list",
+        "sudo gh pr view 3",
+        "GH_TOKEN=x gh pr list",
+        "echo hi | gh pr comment 4 --body-file -",
+        "curl https://example.com",
+      ]) {
+        expect(guard({ command }), command).toContain('"allow":false');
+      }
+    });
     test("allows safe commands", () => {
       expect(guard({ command: "ls -la" })).toContain('"allow":true');
     });
@@ -155,6 +186,46 @@ describe("shell_guard.ts", () => {
       }
     });
 
+    /**
+     * `git branch` can delete a branch, so it sits in the mutating set -- and that put
+     * `git branch --show-current`, which answers a question and changes nothing, behind a
+     * refusal telling the agent to use an MCP tool for "Git mutations". Both this and
+     * `git stash list` were refused in one recorded run.
+     */
+    test("a read-only spelling of a mutating subcommand is allowed", () => {
+      for (const command of [
+        "git branch --show-current",
+        "git branch",
+        "git branch -a",
+        "git stash list",
+        "git remote -v",
+        "git config --get user.name",
+        "git tag -l",
+      ]) {
+        expect(guard({ command }), command).toContain('"allow":true');
+      }
+    });
+
+    /**
+     * The carve-out above is per spelling, not per subcommand. `git stash` with nothing
+     * after it is `git stash push` -- it shelves the worktree -- and an earlier draft of
+     * the rule allowed it by treating an empty argument list as read-only for every
+     * subcommand. That would have handed the agent a silent way to lose its own work.
+     */
+    test("the write spellings of those same subcommands stay refused", () => {
+      for (const command of [
+        "git stash",
+        "git stash pop",
+        "git branch -d old-branch",
+        "git branch new-feature",
+        "git branch --show-current -d old-branch",
+        "git remote add upstream https://example.com/x.git",
+        "git config user.name bob",
+        "git tag v1.0.0",
+      ]) {
+        expect(guard({ command }), command).toContain('"allow":false');
+      }
+    });
     test("read-only Git inspection stays allowed", () => {
       for (const command of [
         "git status --short",

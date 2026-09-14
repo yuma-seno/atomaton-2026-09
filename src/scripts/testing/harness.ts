@@ -34,6 +34,37 @@ export interface RunWithFakeGhResult {
 }
 
 /**
+ * The ambient environment, minus the variables that only exist inside an Atoma run.
+ *
+ * A test spawns a child with `...process.env` so it inherits PATH, HOME and the rest
+ * of what a program needs. That is right until an agent runs the suite: the runner
+ * sets `ATOMA_RUN_TYPE`, `ISSUE_NUMBER` and `ATOMA_MACHINERY_ROOT` in the environment
+ * the agent works in, and they flow straight into every child a test starts. Seventeen
+ * tests failed that way in one run -- `run_checks` reading a machinery root that was
+ * not the fixture, a github tool defaulting a number the test meant to leave out --
+ * while the same commit passed all 864 in CI, where none of those variables exist.
+ *
+ * That gap is the real damage. An agent told to work test-first sees a suite that is
+ * red for reasons its change did not cause, and it cannot tell which failures are
+ * its own. The run that found this spent its remaining iterations hunting one of the
+ * phantom failures and never finished the task.
+ *
+ * Only those variables are removed, and deliberately not `GITHUB_REPOSITORY` or the
+ * tokens: those exist in CI too, so they are not the discrepancy, and taking them
+ * away would change what CI has been testing all along. A test that wants any of
+ * these declares it, and an explicit value still wins -- callers spread their own
+ * `env` after this.
+ */
+export function hermeticEnv(): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("ATOMA_") || key === "ISSUE_NUMBER" || key.startsWith("FAKE_GH_")) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
  * Runs `bun run <scriptAbsPath> ...args` with a fake `gh` on PATH configured
  * by `rules`. Returns the process result plus every `gh` invocation actually
  * made, so tests can assert on exact commands issued, not just the script's
@@ -52,7 +83,7 @@ export function runWithFakeGh(
       encoding: "utf8",
       cwd: opts.cwd,
       env: {
-        ...process.env,
+        ...hermeticEnv(),
         ...opts.env,
         PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH}`,
         FAKE_GH_RESPONSES: JSON.stringify(opts.rules ?? []),
@@ -108,7 +139,7 @@ export function runScript(name: string, env: Record<string, string> = {}) {
   return spawnSync("bun", ["run", join(process.cwd(), SCRIPTS_DIR, name)], {
     encoding: "utf8",
     cwd: join(process.cwd(), "dist"),
-    env: { ...process.env, ...env },
+    env: { ...hermeticEnv(), ...env },
   });
 }
 

@@ -51,17 +51,64 @@ import { classifyShellAct, nextStreak, refusalReason } from "../../../../domain/
  * the agent would spend discovering that. The `github__*` tools hold the token
  * and enforce merge readiness; that enforcement lives there, not here.
  */
-const ROUTING_RULES: [RegExp, string][] = [
-  [
-    /\bgh\b/,
-    "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
-  ],
-  [/\bcurl\b/, "curl is disabled. Use web__fetch, which returns the page as text."],
-  [/\bwget\b/, "wget is disabled. Use web__fetch."],
-  [/\bssh\b/, "ssh is disabled: this run works on the checked-out repository, not on other hosts."],
-  [/\bscp\b/, "scp is disabled: this run works on the checked-out repository, not on other hosts."],
-  [/\brsync\b/, "rsync is disabled: this run works on the checked-out repository, not on other hosts."],
-];
+const ROUTING_RULES: Record<string, string> = {
+  gh: "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
+  curl: "curl is disabled. Use web__fetch, which returns the page as text.",
+  wget: "wget is disabled. Use web__fetch.",
+  ssh: "ssh is disabled: this run works on the checked-out repository, not on other hosts.",
+  scp: "scp is disabled: this run works on the checked-out repository, not on other hosts.",
+  rsync: "rsync is disabled: this run works on the checked-out repository, not on other hosts.",
+};
+
+/** Wrappers that run the command named after them, so the name to judge is further along. */
+const COMMAND_WRAPPERS = new Set(["sudo", "env", "time", "nohup", "nice", "xargs", "command", "exec"]);
+
+/**
+ * The programs a command line actually invokes.
+ *
+ * Position, not mention. The rules above used to match `\bgh\b` anywhere in the
+ * string, and this repository keeps its shared `gh` wrapper in `src/lib/gh.ts` -- so
+ * `grep -n dispatchWorkflow src/lib/gh.ts` was refused as though it were the GitHub
+ * CLI. An agent hit that three times in a row on the file it needed and the run was
+ * aborted by the repeated-call guard. The same trap sat under every other rule:
+ * `curl` would have taken any path containing a `curl` segment with it.
+ *
+ * This is routing, not security, and the header of this file has always said so --
+ * `bash -c "gh ..."` walks past it either way, and the `shell` server holds no
+ * `GH_TOKEN` for a `gh` that got through to use. Given that, matching where a program
+ * is invoked rather than where its name appears costs nothing real and stops refusing
+ * reads of the repository's own source.
+ */
+const SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh"]);
+
+function invokedPrograms(command: string, depth = 0): string[] {
+  const found: string[] = [];
+  for (const segment of command.split(/\s*(?:&&|\|\||[;|])\s*/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let index = 0;
+    // `FOO=bar cmd`, and `sudo cmd`, and `env FOO=bar cmd`.
+    while (index < tokens.length) {
+      const token = tokens[index]!;
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) { index++; continue; }
+      const name = token.split("/").pop() ?? token;
+      if (COMMAND_WRAPPERS.has(name)) { index++; continue; }
+      break;
+    }
+    const program = tokens[index];
+    if (!program) continue;
+    const name = program.split("/").pop() ?? program;
+    found.push(name);
+    // `bash -c "gh pr merge"` invokes gh, and reading only the first token would miss
+    // it -- which would have traded one false positive for a hole. Bounded, because a
+    // quoted shell can nest and this is a hook that has to answer quickly.
+    if (SHELLS.has(name) && depth < 2) {
+      const flag = tokens.indexOf("-c", index + 1);
+      const inner = flag === -1 ? "" : tokens.slice(flag + 1).join(" ").replace(/^['"]|['"]$/g, "");
+      if (inner) found.push(...invokedPrograms(inner, depth + 1));
+    }
+  }
+  return found;
+}
 
 /**
  * The one rule that is not routing.
@@ -127,6 +174,53 @@ const ROUTED_GIT_COMMANDS = new Set([
   "restore", "revert", "rm", "checkout", "switch", "branch", "tag",
 ]);
 
+/**
+ * Subcommands in the set below that also have a purely read-only form.
+ *
+ * `git branch` is in the mutating set because `git branch -d` deletes one, and that
+ * put `git branch --show-current` -- which answers a question and changes nothing --
+ * behind a refusal telling the agent to use an MCP tool for "Git mutations". The
+ * refusal even said "read-only inspection runs normally", which was not true of these.
+ * Both spellings turned up in one recorded run, along with `git stash list`.
+ *
+ * Each entry names the forms that read. A subcommand is allowed only when every
+ * argument after it matches, so an unrecognised flag keeps the refusal: the default
+ * stays "refuse", and this list only carves out what has been checked by hand.
+ */
+const READ_ONLY_BRANCH_FLAG =
+  /^(-a|-r|-v|-vv|--all|--remotes|--verbose|--list|-l|--show-current|--merged|--no-merged|--contains|--points-at|--sort=.+|--format=.+|--color|--no-color)$/;
+const READ_ONLY_TAG_FLAG = /^(-l|--list|-n\d*|--sort=.+|--contains|--points-at|--merged|--no-merged)$/;
+
+const READ_ONLY_GIT_FORMS: Record<string, (args: string[]) => boolean> = {
+  // Bare `git branch` lists them. A positional name creates one, so any non-flag
+  // argument -- and any flag not named above -- falls through to the refusal.
+  branch: (args) => args.every((arg) => READ_ONLY_BRANCH_FLAG.test(arg)),
+  // Bare `git stash` is `git stash push`: it stashes. Only the two reporting forms
+  // read, and an empty argument list is NOT one of them -- the first version of this
+  // allowed it, which would have handed the agent a silent way to shelve its work.
+  stash: (args) => /^(list|show)$/.test(args[0] ?? ""),
+  // `--get` and friends take a key after them, so only the first token is judged.
+  config: (args) => /^(--get|--get-all|--get-regexp|--list|-l)$/.test(args[0] ?? ""),
+  // Bare or `-v` lists them; `show` and `get-url` take a remote name and report on it.
+  remote: (args) =>
+    args.every((arg) => /^(-v|--verbose)$/.test(arg)) || /^(show|get-url)$/.test(args[0] ?? ""),
+  tag: (args) => args.every((arg) => READ_ONLY_TAG_FLAG.test(arg)),
+};
+
+/**
+ * Whether this invocation of a mutating subcommand is one of its read-only forms.
+ *
+ * A predicate per subcommand rather than one pattern over all of them, because the
+ * subcommands do not agree on what an empty argument list means: `git branch` lists,
+ * `git stash` stashes. One shared rule got that wrong in the obvious direction.
+ *
+ * The default is refusal. Nothing is allowed here that has not been checked by hand,
+ * and an unrecognised flag keeps the refusal rather than being assumed harmless.
+ */
+function isReadOnlyGitForm(subcommand: string, args: string[]): boolean {
+  return READ_ONLY_GIT_FORMS[subcommand]?.(args) ?? false;
+}
+
 const MUTATING_GIT_COMMANDS = new Set([
   "add", "am", "apply", "bisect", "branch", "checkout", "cherry-pick", "clean", "commit", "config",
   "fetch", "init", "merge", "mv", "pull", "push", "rebase", "remote", "reset", "restore", "revert", "rm",
@@ -154,7 +248,10 @@ function findMutatingGitCommand(command: string): string | undefined {
       }
     }
     const subcommand = tokens[index];
-    if (subcommand && MUTATING_GIT_COMMANDS.has(subcommand)) return subcommand;
+    if (!subcommand || !MUTATING_GIT_COMMANDS.has(subcommand)) continue;
+    // A read-only spelling of a subcommand that can also write is not a mutation.
+    if (isReadOnlyGitForm(subcommand, tokens.slice(index + 1))) continue;
+    return subcommand;
   }
   return undefined;
 }
@@ -220,8 +317,9 @@ function checkInvocation(invocation: ShellInvocation): GuardVerdict {
   const [environPattern, environReason] = PROCESS_ENVIRONMENT_READ;
   if (environPattern.test(invocation.command)) return { allow: false, reason: environReason };
 
-  for (const [pattern, reason] of ROUTING_RULES) {
-    if (pattern.test(invocation.command)) return { allow: false, reason };
+  for (const program of invokedPrograms(invocation.command)) {
+    const reason = ROUTING_RULES[program];
+    if (reason) return { allow: false, reason };
   }
   return ALLOWED;
 }

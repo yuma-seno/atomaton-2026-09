@@ -3,6 +3,9 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+// The servers are spawned with the ambient environment, and inside an Atoma run that
+// includes the run's own `ATOMA_RUN_TYPE` and `ISSUE_NUMBER`. See `hermeticEnv`.
+import { hermeticEnv } from "../../../../scripts/testing/harness.ts";
 
 const SCRIPTS_DIR = join(process.cwd(), "src/atoma/tools/scripts/mcp");
 const FAKE_GH_BIN_DIR = join(process.cwd(), "src/scripts/testing/bin");
@@ -26,7 +29,7 @@ function sendRequest(
 ): Promise<any> {
   return new Promise((resolve, reject) => {
     const child = spawn("bun", ["run", `${SCRIPTS_DIR}/${script}`, ...extraArgs], {
-      env: { ...process.env, GITHUB_REPOSITORY: "owner/repo", ...env },
+      env: { ...hermeticEnv(), GITHUB_REPOSITORY: "owner/repo", ...env },
       cwd,
     });
     let out = "";
