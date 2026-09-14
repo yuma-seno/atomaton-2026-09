@@ -2948,7 +2948,7 @@
   {
     "path": "sessions/issue-659/reviewer.json",
     "agent": "reviewer",
-    "messages": 15,
+    "messages": 17,
     "calls": 3,
     "failed": 2,
     "refused": 0,
@@ -2975,6 +2975,13 @@
         "messages": 15,
         "seconds": 11,
         "started": "2026-09-14T15:01:45Z"
+      },
+      {
+        "ended": "2026-09-14T15:34:38Z",
+        "ended_because": "completed",
+        "messages": 17,
+        "seconds": 7,
+        "started": "2026-09-14T15:34:31Z"
       }
     ]
   },
