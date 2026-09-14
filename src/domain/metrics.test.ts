@@ -125,6 +125,28 @@ describe("renderReport", () => {
   });
 
   /**
+   * The window line is read by a person, and "1 sessions" / "over 1 runs" reads as a
+   * bug. One test, both counts: the singular shape and the plural shape it must not
+   * disturb.
+   */
+  test("a count of one is singular", () => {
+    const one = render(
+      metricsOf(
+        [{ path: "sessions/issue-1/engineer.json", agent: "engineer", messages: 10, runs: [], calls: [] }],
+        [],
+        [],
+        [{ issue: 1, total: 1000, prompt: 980, completion: 20 }],
+      ),
+      NOW,
+    );
+    expect(one).toContain("1 session.");
+    expect(one).toContain("over 1 run that reported them");
+
+    expect(report).toContain("2 sessions.");
+    expect(report).toContain("over 2 runs that reported them");
+  });
+
+  /**
    * The date is passed in rather than read from the clock, so a rerun that changed
    * nothing produces no commit.
    */
