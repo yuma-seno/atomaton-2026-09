@@ -34,17 +34,48 @@ function refusalReason(streak, limit = MAX_SEARCHES_WITHOUT_OPENING) {
 }
 
 // src/atoma/tools/scripts/hooks/shell_guard.ts
-var ROUTING_RULES = [
-  [
-    /\bgh\b/,
-    "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations."
-  ],
-  [/\bcurl\b/, "curl is disabled. Use web__fetch, which returns the page as text."],
-  [/\bwget\b/, "wget is disabled. Use web__fetch."],
-  [/\bssh\b/, "ssh is disabled: this run works on the checked-out repository, not on other hosts."],
-  [/\bscp\b/, "scp is disabled: this run works on the checked-out repository, not on other hosts."],
-  [/\brsync\b/, "rsync is disabled: this run works on the checked-out repository, not on other hosts."]
-];
+var ROUTING_RULES = {
+  gh: "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
+  curl: "curl is disabled. Use web__fetch, which returns the page as text.",
+  wget: "wget is disabled. Use web__fetch.",
+  ssh: "ssh is disabled: this run works on the checked-out repository, not on other hosts.",
+  scp: "scp is disabled: this run works on the checked-out repository, not on other hosts.",
+  rsync: "rsync is disabled: this run works on the checked-out repository, not on other hosts."
+};
+var COMMAND_WRAPPERS = new Set(["sudo", "env", "time", "nohup", "nice", "xargs", "command", "exec"]);
+var SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh"]);
+function invokedPrograms(command, depth = 0) {
+  const found = [];
+  for (const segment of command.split(/\s*(?:&&|\|\||[;|])\s*/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let index = 0;
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) {
+        index++;
+        continue;
+      }
+      const name = token.split("/").pop() ?? token;
+      if (COMMAND_WRAPPERS.has(name)) {
+        index++;
+        continue;
+      }
+      break;
+    }
+    const program = tokens[index];
+    if (!program)
+      continue;
+    const name = program.split("/").pop() ?? program;
+    found.push(name);
+    if (SHELLS.has(name) && depth < 2) {
+      const flag = tokens.indexOf("-c", index + 1);
+      const inner = flag === -1 ? "" : tokens.slice(flag + 1).join(" ").replace(/^['"]|['"]$/g, "");
+      if (inner)
+        found.push(...invokedPrograms(inner, depth + 1));
+    }
+  }
+  return found;
+}
 var PROCESS_ENVIRONMENT_READ = [
   /^(?=[\s\S]*\/proc)(?=[\s\S]*\benviron\b)/,
   "Reading a process's environment through /proc is disabled: tool servers run as the same user and each holds only the credentials it declares."
@@ -69,6 +100,18 @@ var ROUTED_GIT_COMMANDS = new Set([
   "branch",
   "tag"
 ]);
+var READ_ONLY_BRANCH_FLAG = /^(-a|-r|-v|-vv|--all|--remotes|--verbose|--list|-l|--show-current|--merged|--no-merged|--contains|--points-at|--sort=.+|--format=.+|--color|--no-color)$/;
+var READ_ONLY_TAG_FLAG = /^(-l|--list|-n\d*|--sort=.+|--contains|--points-at|--merged|--no-merged)$/;
+var READ_ONLY_GIT_FORMS = {
+  branch: (args) => args.every((arg) => READ_ONLY_BRANCH_FLAG.test(arg)),
+  stash: (args) => /^(list|show)$/.test(args[0] ?? ""),
+  config: (args) => /^(--get|--get-all|--get-regexp|--list|-l)$/.test(args[0] ?? ""),
+  remote: (args) => args.every((arg) => /^(-v|--verbose)$/.test(arg)) || /^(show|get-url)$/.test(args[0] ?? ""),
+  tag: (args) => args.every((arg) => READ_ONLY_TAG_FLAG.test(arg))
+};
+function isReadOnlyGitForm(subcommand, args) {
+  return READ_ONLY_GIT_FORMS[subcommand]?.(args) ?? false;
+}
 var MUTATING_GIT_COMMANDS = new Set([
   "add",
   "am",
@@ -111,8 +154,11 @@ function findMutatingGitCommand(command) {
       }
     }
     const subcommand = tokens[index];
-    if (subcommand && MUTATING_GIT_COMMANDS.has(subcommand))
-      return subcommand;
+    if (!subcommand || !MUTATING_GIT_COMMANDS.has(subcommand))
+      continue;
+    if (isReadOnlyGitForm(subcommand, tokens.slice(index + 1)))
+      continue;
+    return subcommand;
   }
   return;
 }
@@ -142,8 +188,9 @@ function checkInvocation(invocation) {
   const [environPattern, environReason] = PROCESS_ENVIRONMENT_READ;
   if (environPattern.test(invocation.command))
     return { allow: false, reason: environReason };
-  for (const [pattern, reason] of ROUTING_RULES) {
-    if (pattern.test(invocation.command))
+  for (const program of invokedPrograms(invocation.command)) {
+    const reason = ROUTING_RULES[program];
+    if (reason)
       return { allow: false, reason };
   }
   return ALLOWED;
