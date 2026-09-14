@@ -1026,4 +1026,48 @@ describe("generated workflows", () => {
     expect(step, "atoma-runner post-result step").toBeDefined();
     expect(step?.env?.GH_TOKEN).toBe("${{ github.token }}");
   });
+
+  /**
+   * A shell variable in an `env:` mapping is six literal characters.
+   *
+   * Actions substitutes `${{ }}` there and nothing else, so `ATOMA_OPS_LOG:
+   * ${RUNNER_TEMP}/atoma-run/atoma_ops.log` set the variable to that text. Every tool
+   * that logged an operation then tried to write into a directory literally named
+   * `${RUNNER_TEMP}`, failed with ENOENT, and wrote nothing -- for every run between the
+   * commit that introduced it and the one that added this test.
+   *
+   * Nothing failed. Two signals are read back out of that log, whether the chain is
+   * still dispatching and whether the run changed anything, and both simply read false
+   * forever. A guard that cannot fire looks exactly like a guard with nothing to do.
+   *
+   * Checked across every workflow rather than on the one value, because the mistake is
+   * available anywhere an `env:` block is written and reads correctly in both places.
+   */
+  test("no env: value expects a shell to expand it", () => {
+    const offenders: string[] = [];
+    for (const file of readdirSync("dist/.github/workflows")) {
+      if (!file.endsWith(".yml")) continue;
+      const lines = readFileSync(join("dist/.github/workflows", file), "utf8").split(/\r?\n/);
+      let envIndent: number | undefined;
+      lines.forEach((line, index) => {
+        const opens = /^(\s*)env:\s*$/.exec(line);
+        if (opens) {
+          envIndent = opens[1]!.length;
+          return;
+        }
+        if (envIndent === undefined || line.trim() === "") return;
+        const indent = (/^(\s*)/.exec(line) ?? ["", ""])[1]!.length;
+        if (indent <= envIndent) {
+          envIndent = undefined;
+          return;
+        }
+        // `${{ ... }}` is the Actions form and is fine. `${NAME}` is not.
+        const withoutExpressions = line.replace(/\$\{\{[^}]*\}\}/g, "");
+        if (/\$\{[A-Za-z_][A-Za-z0-9_]*\}/.test(withoutExpressions)) {
+          offenders.push(`${file}:${index + 1}: ${line.trim()}`);
+        }
+      });
+    }
+    expect(offenders, "env: values that only a shell would expand").toEqual([]);
+  });
 });
