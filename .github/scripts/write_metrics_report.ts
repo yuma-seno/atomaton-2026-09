@@ -240,6 +240,9 @@ function gaveUpShare(runs) {
 function n(value) {
   return value.toLocaleString("en-US");
 }
+function plural(value, singular, pluralWord) {
+  return `${n(value)} ${value === 1 ? singular : pluralWord}`;
+}
 function distributionRow(label, d) {
   return `| ${label} | ${n(d.p50)} | ${n(d.p90)} | ${n(d.p99)} | ${n(d.max)} | ${n(d.total)} |`;
 }
@@ -289,11 +292,11 @@ function windowSection(label, metrics) {
     out.push("No session ran in this window.", "");
     return out;
   }
-  out.push(`${n(metrics.sessions)} sessions.`);
+  out.push(`${plural(metrics.sessions, "session", "sessions")}.`);
   out.push("");
   if (metrics.tokens) {
     const t = metrics.tokens;
-    out.push(`**${n(t.total)} tokens** over ${n(t.runs)} runs that reported them, ` + `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** \u2014 what the agents were ` + "made to read, not what they wrote. Anything spent on making runs cheaper belongs " + "on that side. No money here, deliberately: of the four providers only one reports " + "a cost, and a price table goes quietly stale and then prints confident wrong " + "numbers.");
+    out.push(`**${n(t.total)} tokens** over ${plural(t.runs, "run", "runs")} that reported them, ` + `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** \u2014 what the agents were ` + "made to read, not what they wrote. Anything spent on making runs cheaper belongs " + "on that side. No money here, deliberately: of the four providers only one reports " + "a cost, and a price table goes quietly stale and then prints confident wrong " + "numbers.");
     out.push("");
   }
   out.push("| | p50 | p90 | p99 | max | total |");
