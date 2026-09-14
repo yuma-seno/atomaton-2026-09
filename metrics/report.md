@@ -10,28 +10,28 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 11 | 9.1% | 26 | 499 |
-| Last 30 days | 11 | 9.1% | 26 | 499 |
-| Last year | 11 | 9.1% | 26 | 499 |
-| All time | 11 | 9.1% | 26 | 499 |
+| Last 7 days | 12 | 8.3% | 37 | 499 |
+| Last 30 days | 12 | 8.3% | 37 | 499 |
+| Last year | 12 | 8.3% | 37 | 499 |
+| All time | 12 | 8.3% | 37 | 499 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 10 |
+| `completed` | 11 |
 | `failed` | 1 |
 
 ## Last 7 days
 
 8 sessions.
 
-**9,428,628 tokens** over 19 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**9,867,167 tokens** over 20 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 68,832 | 877,552 | 6,403,430 | 6,403,430 | 9,428,628 |
-| messages per session | 13 | 371 | 371 | 371 | 446 |
+| tokens per run | 78,253 | 877,552 | 6,403,430 | 6,403,430 | 9,867,167 |
+| messages per session | 13 | 380 | 380 | 380 | 455 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -42,9 +42,9 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
+| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
@@ -63,11 +63,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 70 | 42.7% |
-| `search` | 43 | 26.2% |
-| `open` | 24 | 14.6% |
-| `verify` | 17 | 10.4% |
-| `edit` | 10 | 6.1% |
+| `other` | 71 | 42.5% |
+| `search` | 43 | 25.7% |
+| `open` | 24 | 14.4% |
+| `verify` | 18 | 10.8% |
+| `edit` | 11 | 6.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -80,12 +80,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 8 sessions.
 
-**28,456,558 tokens** over 214 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**28,895,097 tokens** over 215 runs that reported them, **97.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 21,693 | 124,634 | 2,281,321 | 6,403,430 | 28,456,558 |
-| messages per session | 13 | 371 | 371 | 371 | 446 |
+| tokens per run | 21,693 | 134,745 | 2,281,321 | 6,403,430 | 28,895,097 |
+| messages per session | 13 | 380 | 380 | 380 | 455 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -96,9 +96,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
+| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
@@ -117,11 +117,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 70 | 42.7% |
-| `search` | 43 | 26.2% |
-| `open` | 24 | 14.6% |
-| `verify` | 17 | 10.4% |
-| `edit` | 10 | 6.1% |
+| `other` | 71 | 42.5% |
+| `search` | 43 | 25.7% |
+| `open` | 24 | 14.4% |
+| `verify` | 18 | 10.8% |
+| `edit` | 11 | 6.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -134,12 +134,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 8 sessions.
 
-**116,745,590 tokens** over 418 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**117,184,129 tokens** over 419 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,594 | 284,011 | 5,198,798 | 39,737,697 | 116,745,590 |
-| messages per session | 13 | 371 | 371 | 371 | 446 |
+| tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
+| messages per session | 13 | 380 | 380 | 380 | 455 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -150,9 +150,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
+| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
@@ -171,11 +171,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 70 | 42.7% |
-| `search` | 43 | 26.2% |
-| `open` | 24 | 14.6% |
-| `verify` | 17 | 10.4% |
-| `edit` | 10 | 6.1% |
+| `other` | 71 | 42.5% |
+| `search` | 43 | 25.7% |
+| `open` | 24 | 14.4% |
+| `verify` | 18 | 10.8% |
+| `edit` | 11 | 6.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -188,12 +188,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 363 sessions.
 
-**116,745,590 tokens** over 418 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**117,184,129 tokens** over 419 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,594 | 284,011 | 5,198,798 | 39,737,697 | 116,745,590 |
-| messages per session | 10 | 90 | 433 | 1,011 | 13,245 |
+| tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
+| messages per session | 10 | 90 | 433 | 1,011 | 13,254 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -205,9 +205,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 2,429 | 620 | 150 | 25.5% |
+| `shell__shell_execute` | 2,432 | 620 | 150 | 25.5% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 521 | 42 | 24 | 8.1% |
+| `filesystem__read_text_file` | 522 | 42 | 24 | 8% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
 | `filesystem__list_directory` | 249 | 5 | 0 | 2% |
 | `github__check_merge_readiness` | 223 | 2 | 0 | 0.9% |
@@ -281,11 +281,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 1,056 | 43.5% |
+| `other` | 1,057 | 43.5% |
 | `search` | 850 | 35% |
-| `open` | 283 | 11.7% |
-| `verify` | 166 | 6.8% |
-| `edit` | 74 | 3% |
+| `open` | 283 | 11.6% |
+| `verify` | 167 | 6.9% |
+| `edit` | 75 | 3.1% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
