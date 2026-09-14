@@ -177,6 +177,23 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
       row.refused += 1;
     byTool.set(call.tool, row);
   }
+  const degraded = new Map;
+  for (const session of sessions) {
+    for (const call of session.calls) {
+      if (call.failed || call.refused)
+        continue;
+      for (const { server, problem } of call.problems ?? []) {
+        const key = `${server}\x00${problem}`;
+        const row = degraded.get(key) ?? { problem, server, count: 0, sessions: 0, seen: new Set };
+        row.count += 1;
+        row.seen.add(session.path);
+        if (session.at && (row.lastSeen === undefined || session.at > row.lastSeen)) {
+          row.lastSeen = session.at;
+        }
+        degraded.set(key, row);
+      }
+    }
+  }
   const usedServers = new Set(calls.map((c) => c.tool.split("__")[0] ?? ""));
   const loaded = new Set(calls.flatMap((c) => c.skill ? [c.skill] : []));
   return {
@@ -189,6 +206,7 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
     neverUsedServers: declaredServers.filter((s) => !usedServers.has(s)).sort(),
     neverLoaded: declaredSkills.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
+    degraded: [...degraded.values()].map(({ seen, ...row }) => ({ ...row, sessions: seen.size })).sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "") || b.count - a.count),
     runs: sessions.flatMap((s) => s.runs),
     tokens: tokens.length === 0 ? undefined : tokenSummary(tokens)
   };
@@ -286,6 +304,22 @@ function runSection(runs, now) {
   out.push("");
   return out;
 }
+function degradedSection(metrics) {
+  const out = ["## Degraded answers", ""];
+  out.push("A tool can answer and report that it answered badly \u2014 a search that came back " + "unranked, a log that went nowhere. The call succeeded, so it is neither a failure " + "nor a refusal, and it is easy for one of these to run for months with nobody " + "reading it. **Read `last seen` before `reports`**: an old count is a fixed fault. " + "That date is when the session file was last written, which is the run that touched " + "it last and not necessarily the run that reported the problem \u2014 so it errs recent.");
+  out.push("");
+  if (metrics.degraded.length === 0) {
+    out.push("Nothing reported a problem alongside an answer.", "");
+    return out;
+  }
+  out.push("| last seen | server | reports | sessions | problem |");
+  out.push("| --- | --- | ---: | ---: | --- |");
+  for (const row of metrics.degraded) {
+    out.push(`| ${row.lastSeen?.slice(0, 10) ?? "\u2014"} | \`${row.server}\` | ${n(row.count)} | ` + `${n(row.sessions)} | ${row.problem.replace(/\|/g, String.fromCharCode(92) + "|")} |`);
+  }
+  out.push("");
+  return out;
+}
 function windowSection(label, metrics) {
   const out = [`## ${label}`, ""];
   if (metrics.sessions === 0) {
@@ -339,6 +373,7 @@ function renderReport(all, forWindow, now) {
   out.push(...runSection(all.runs, now));
   for (const window of WINDOWS)
     out.push(...windowSection(window.label, forWindow(window)));
+  out.push(...degradedSection(all));
   out.push("## Never used");
   out.push("");
   out.push("Over all time, because something used once a year is still used. Each of these sits " + "in the prompt of every run and returns nothing.");
@@ -397,6 +432,23 @@ function agentOf(path) {
 function looksRefused(content) {
   return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
 }
+function problemsIn(content) {
+  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
+  if (!marker)
+    return [];
+  const server = marker[1];
+  const out = [];
+  for (const line of content.slice(marker.index).split(`
+`)) {
+    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
+    if (reported)
+      out.push({ server, problem: normaliseProblem(reported[2]) });
+  }
+  return out;
+}
+function normaliseProblem(text) {
+  return text.replace(/\s+/g, " ").replace(/#[0-9]+/g, "#N").replace(/[0-9]{3,}/g, "N").trim().slice(0, 120);
+}
 function looksFailed(content) {
   if (looksRefused(content))
     return false;
@@ -439,7 +491,15 @@ function sessionFrom(path, raw) {
           act = "other";
         }
       }
-      calls.push({ tool, agent, failed: looksFailed(result), refused: looksRefused(result), skill, act });
+      calls.push({
+        tool,
+        agent,
+        failed: looksFailed(result),
+        refused: looksRefused(result),
+        skill,
+        act,
+        problems: problemsIn(result)
+      });
     }
   }
   const runs = Array.isArray(parsed.atoma_runs) ? parsed.atoma_runs : [];
@@ -500,6 +560,25 @@ function declared() {
   }
   return { tools, skills };
 }
+function sessionDates(paths) {
+  const wanted = new Set(paths);
+  const out = new Map;
+  const log = gitRun("log", `origin/${BRANCH}`, "--name-only", "--format=%x00%aI", "--", "sessions");
+  if (log.code !== 0)
+    return out;
+  let date = "";
+  for (const line of log.stdout.split(`
+`)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("\x00")) {
+      date = trimmed.slice(1);
+      continue;
+    }
+    if (trimmed && wanted.has(trimmed) && !out.has(trimmed))
+      out.set(trimmed, date);
+  }
+  return out;
+}
 function main() {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -513,6 +592,7 @@ function main() {
   const listed = gitRun("ls-tree", "-r", "--name-only", `origin/${BRANCH}`, "--", "sessions");
   const paths = listed.stdout.split(`
 `).map((s) => s.trim()).filter((s) => s.endsWith(".json"));
+  const writtenAt = sessionDates(paths);
   const sessions = [];
   for (const path of paths) {
     const shown = gitRun("show", `origin/${BRANCH}:${path}`);
@@ -520,7 +600,7 @@ function main() {
       continue;
     const record = sessionFrom(path, shown.stdout);
     if (record)
-      sessions.push(record);
+      sessions.push({ ...record, at: writtenAt.get(path) });
   }
   let tokens = [];
   if (repo) {
