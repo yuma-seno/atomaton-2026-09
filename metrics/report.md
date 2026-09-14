@@ -31,7 +31,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 149,868 | 877,552 | 6,403,430 | 6,403,430 | 9,002,518 |
-| messages per session | 10 | 280 | 280 | 280 | 321 |
+| messages per session | 10 | 354 | 354 | 354 | 395 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -41,25 +41,26 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 132 | 1 | 16 | 0.8% |
+| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 5 | 2 | 0 | 40% |
-| `filesystem__read_text_file` | 4 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
-| `filesystem__edit_file` | 2 | 0 | 0 | 0% |
+| `github__commit_and_push` | 2 | 1 | 0 | 50% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
-| `github__commit_and_push` | 1 | 1 | 0 | 100% |
+| `github__create_pr` | 1 | 0 | 0 | 0% |
 | `github__get_issue` | 1 | 0 | 0 | 0% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 46 | 34.8% |
-| `search` | 40 | 30.3% |
-| `open` | 24 | 18.2% |
-| `verify` | 13 | 9.8% |
-| `edit` | 9 | 6.8% |
+| `other` | 70 | 42.7% |
+| `search` | 43 | 26.2% |
+| `open` | 24 | 14.6% |
+| `verify` | 17 | 10.4% |
+| `edit` | 10 | 6.1% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -71,12 +72,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 6 sessions.
 
-**28,233,707 tokens** over 221 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**28,184,869 tokens** over 218 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 20,871 | 93,017 | 2,281,321 | 6,403,430 | 28,233,707 |
-| messages per session | 10 | 280 | 280 | 280 | 321 |
+| tokens per run | 21,217 | 116,634 | 2,281,321 | 6,403,430 | 28,184,869 |
+| messages per session | 10 | 354 | 354 | 354 | 395 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -86,25 +87,26 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 132 | 1 | 16 | 0.8% |
+| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 5 | 2 | 0 | 40% |
-| `filesystem__read_text_file` | 4 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
-| `filesystem__edit_file` | 2 | 0 | 0 | 0% |
+| `github__commit_and_push` | 2 | 1 | 0 | 50% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
-| `github__commit_and_push` | 1 | 1 | 0 | 100% |
+| `github__create_pr` | 1 | 0 | 0 | 0% |
 | `github__get_issue` | 1 | 0 | 0 | 0% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 46 | 34.8% |
-| `search` | 40 | 30.3% |
-| `open` | 24 | 18.2% |
-| `verify` | 13 | 9.8% |
-| `edit` | 9 | 6.8% |
+| `other` | 70 | 42.7% |
+| `search` | 43 | 26.2% |
+| `open` | 24 | 14.6% |
+| `verify` | 17 | 10.4% |
+| `edit` | 10 | 6.1% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -121,7 +123,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,319,480 |
-| messages per session | 10 | 280 | 280 | 280 | 321 |
+| messages per session | 10 | 354 | 354 | 354 | 395 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -131,25 +133,26 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 132 | 1 | 16 | 0.8% |
+| `shell__shell_execute` | 164 | 1 | 18 | 0.6% |
 | `atoma_builtin__load_skill` | 5 | 2 | 0 | 40% |
-| `filesystem__read_text_file` | 4 | 0 | 0 | 0% |
+| `filesystem__read_text_file` | 5 | 0 | 0 | 0% |
+| `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
 | `filesystem__search_files` | 3 | 0 | 0 | 0% |
-| `filesystem__edit_file` | 2 | 0 | 0 | 0% |
+| `github__commit_and_push` | 2 | 1 | 0 | 50% |
 | `filesystem__list_directory` | 1 | 0 | 0 | 0% |
-| `github__commit_and_push` | 1 | 1 | 0 | 100% |
+| `github__create_pr` | 1 | 0 | 0 | 0% |
 | `github__get_issue` | 1 | 0 | 0 | 0% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 46 | 34.8% |
-| `search` | 40 | 30.3% |
-| `open` | 24 | 18.2% |
-| `verify` | 13 | 9.8% |
-| `edit` | 9 | 6.8% |
+| `other` | 70 | 42.7% |
+| `search` | 43 | 26.2% |
+| `open` | 24 | 14.6% |
+| `verify` | 17 | 10.4% |
+| `edit` | 10 | 6.1% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -166,7 +169,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,319,480 |
-| messages per session | 10 | 90 | 433 | 1,011 | 13,120 |
+| messages per session | 10 | 90 | 433 | 1,011 | 13,194 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -178,9 +181,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 2,397 | 620 | 148 | 25.9% |
+| `shell__shell_execute` | 2,429 | 620 | 150 | 25.5% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 520 | 42 | 24 | 8.1% |
+| `filesystem__read_text_file` | 521 | 42 | 24 | 8.1% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
 | `filesystem__list_directory` | 249 | 5 | 0 | 2% |
 | `github__check_merge_readiness` | 221 | 1 | 0 | 0.5% |
@@ -189,14 +192,14 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `atoma_builtin__load_skill` | 174 | 77 | 0 | 44.3% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 107 | 29 | 0 | 27.1% |
-| `github__commit_and_push` | 85 | 53 | 0 | 62.4% |
+| `github__commit_and_push` | 86 | 53 | 0 | 61.6% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
 | `search__search_code` | 68 | 0 | 0 | 0% |
 | `github__get_pr` | 67 | 10 | 0 | 14.9% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
-| `filesystem__edit_file` | 57 | 6 | 0 | 10.5% |
+| `filesystem__edit_file` | 59 | 6 | 0 | 10.2% |
 | `github__get_check_runs` | 53 | 6 | 0 | 11.3% |
-| `github__create_pr` | 51 | 24 | 0 | 47.1% |
+| `github__create_pr` | 52 | 24 | 0 | 46.2% |
 | `filesystem__read_multiple_files` | 48 | 0 | 0 | 0% |
 | `filesystem__search_files` | 47 | 0 | 43 | 0% |
 | `github__get_pr_diff` | 47 | 4 | 0 | 8.5% |
@@ -253,11 +256,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 1,032 | 43.1% |
-| `search` | 847 | 35.3% |
-| `open` | 283 | 11.8% |
-| `verify` | 162 | 6.8% |
-| `edit` | 73 | 3% |
+| `other` | 1,056 | 43.5% |
+| `search` | 850 | 35% |
+| `open` | 283 | 11.7% |
+| `verify` | 166 | 6.8% |
+| `edit` | 74 | 3% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
