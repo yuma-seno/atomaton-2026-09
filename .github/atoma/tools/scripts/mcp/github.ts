@@ -6631,6 +6631,9 @@ function ghGraphql(query, variables = {}) {
   }
   return result.data;
 }
+function nothingToCommit(result) {
+  return /nothing to commit|no changes added to commit/i.test(`${result.stdout} ${result.stderr}`);
+}
 function gitRun(...args) {
   return run(["git", ...args]);
 }
@@ -18382,16 +18385,31 @@ function positiveInt(description) {
 function stringArray(description) {
   return preprocessType((value) => typeof value === "string" ? [value] : value, arrayType(stringType())).describe(description);
 }
-var NUMBER_ALIASES = ["issue_number", "pr_number", "pull_number", "pull_request_number"];
-function acceptNumberAliases(raw) {
+var ALIASES = {
+  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
+  branch: ["name"]
+};
+function declaredKeys(schema) {
+  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
+}
+function acceptAliases(raw, declared) {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     return raw;
-  const value = raw;
-  const alias = NUMBER_ALIASES.find((name) => (name in value));
-  if (alias === undefined)
-    return raw;
-  const { [alias]: aliased, ...rest } = value;
-  return "number" in rest ? rest : { ...rest, number: aliased };
+  let value = raw;
+  let renamed = false;
+  for (const [canonical, aliases] of Object.entries(ALIASES)) {
+    if (!declared.has(canonical))
+      continue;
+    for (const alias of aliases) {
+      if (declared.has(alias) || !(alias in value))
+        continue;
+      const { [alias]: aliased, ...rest } = value;
+      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
+      renamed = true;
+      break;
+    }
+  }
+  return renamed ? value : raw;
 }
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
@@ -18401,6 +18419,7 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
+  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -18408,8 +18427,11 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptNumberAliases(args));
+      const result = schema.safeParse(acceptAliases(args, declared));
       if (!result.success) {
+        const better = spec.guidance?.(args);
+        if (better !== undefined)
+          throw new Error(better);
         const message = result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
         throw new Error(`Invalid arguments for ${spec.name}: ${message}`);
       }
@@ -19079,6 +19101,18 @@ function issueContextNumber(args) {
   }
   return parsed;
 }
+function omittedNumberGuidance(what) {
+  return (args) => {
+    if ("number" in args)
+      return;
+    if (process.env.ATOMA_RUN_TYPE !== (what === "pull request" ? "pr" : "issue"))
+      return;
+    const raw = (process.env.ISSUE_NUMBER ?? "").trim();
+    if (!/^[0-9]+$/.test(raw))
+      return;
+    return "`number` is required and was omitted. This tool changes GitHub, so unlike the " + "read-only tools it will not infer its target -- a guessed number here is a wrong " + `merge or a wrong close, not an error message. This run is working on ${what} ` + `#${raw}; if that is the one you mean, call this again with {"number": ${raw}}.`;
+  };
+}
 function prContextNumber(args) {
   if (args.number !== undefined)
     return args.number;
@@ -19117,7 +19151,7 @@ var SEARCH_CODE_SCHEMA = objectType({
   query: stringType().min(1).describe("GitHub code-search query scoped automatically to the current repository.")
 });
 var GET_BRANCH_SCHEMA = objectType({
-  name: stringType().min(1).describe("Repository branch name, for example 'main' or 'atoma/issue-42'.")
+  branch: stringType().min(1).describe("Repository branch name, for example 'main' or 'atoma/issue-42'.")
 });
 var GET_CHECK_RUNS_SCHEMA = objectType({
   ref: stringType().min(1).describe("Commit SHA, branch name, or tag whose GitHub check runs should be returned.")
@@ -19379,19 +19413,27 @@ function commitAndPush(a) {
     if (code)
       mcpFail(stderr || stdout);
   }
+  let committed = true;
   {
-    const { code, stdout, stderr } = gitRun("commit", "-m", message);
-    if (code)
-      mcpFail(stderr || stdout);
+    const result = gitRun("commit", "-m", message);
+    if (result.code) {
+      if (!nothingToCommit(result))
+        mcpFail(result.stderr || result.stdout);
+      committed = false;
+    }
   }
+  let pushed = true;
   {
     const { code, stdout, stderr } = gitRun("push", "-u", "origin", branch);
     if (code)
       mcpFail(stderr || stdout);
+    pushed = !/Everything up-to-date/i.test(`${stdout} ${stderr}`);
   }
-  logOp("commit_and_push", {});
-  const open = gh("pr", "list", "--repo", REPO, "--head", branch, "--state", "open", "--json", "number");
-  if (!open.code) {
+  const moved = committed || pushed;
+  if (moved)
+    logOp("commit_and_push", { committed });
+  const open = moved ? gh("pr", "list", "--repo", REPO, "--head", branch, "--state", "open", "--json", "number") : { code: 1, stdout: "", stderr: "" };
+  if (moved && !open.code) {
     try {
       const [pr] = JSON.parse(open.stdout || "[]");
       if (pr)
@@ -19400,7 +19442,7 @@ function commitAndPush(a) {
       report("warning", "could not read the open pull request list, so CI validation was NOT dispatched for this push");
     }
   }
-  return JSON.stringify({ ok: true });
+  return JSON.stringify({ ok: true, committed, pushed });
 }
 function syncBranch(a) {
   const branch = a.branch?.trim() || resolveBranch();
@@ -19457,12 +19499,12 @@ function pick2(source, keys) {
   return out;
 }
 function getPr(a) {
-  const pr = ghJsonOrThrow("pr", "view", String(a.number), "--repo", REPO, "--json", "number,title,body,state,baseRefName,headRefName,createdAt");
+  const pr = ghJsonOrThrow("pr", "view", String(prContextNumber(a)), "--repo", REPO, "--json", "number,title,body,state,baseRefName,headRefName,createdAt");
   const { body, ...rest } = pr ?? {};
   return JSON.stringify({ ...rest, body: typeof body === "string" ? capText(body).text : body });
 }
 function getPrDiff(a) {
-  const { code, stdout, stderr } = gh("pr", "diff", String(a.number), "--repo", REPO);
+  const { code, stdout, stderr } = gh("pr", "diff", String(prContextNumber(a)), "--repo", REPO);
   if (code)
     mcpFail(stderr || stdout);
   return capText(stdout).text;
@@ -19472,22 +19514,54 @@ function listPrs(a) {
   const limit = a.limit ?? 30;
   return JSON.stringify(ghJsonOrThrow("pr", "list", "--repo", REPO, "--state", state, "--limit", String(limit), "--json", "number,title,state,headRefName,baseRefName") ?? []);
 }
+var SEARCH_WAIT_BUDGET_MS = 120000;
+function statedWait(text) {
+  const match = /try again in ([0-9.]+)s/i.exec(text);
+  if (!match)
+    return;
+  return Math.min(60000, Math.ceil(Number(match[1]) * 1000));
+}
 function searchCode(a) {
-  const { code, stdout, stderr } = gh("search", "code", a.query, "--repo", REPO, "--limit", "30");
-  if (code)
-    mcpFail(stderr || stdout);
-  return capText(stdout).text;
+  const backoff = [5000, 15000, 30000, 60000];
+  let waited = 0;
+  for (let attempt = 0;; attempt += 1) {
+    const { code, stdout, stderr } = gh("search", "code", a.query, "--repo", REPO, "--limit", "30");
+    if (!code)
+      return capText(stdout).text;
+    const text = `${stderr} ${stdout}`;
+    if (!/HTTP 429|rate limit/i.test(text))
+      mcpFail(stderr || stdout);
+    const delay = statedWait(text) ?? backoff[Math.min(attempt, backoff.length - 1)] ?? 60000;
+    if (waited + delay > SEARCH_WAIT_BUDGET_MS) {
+      mcpFail(`GitHub's code search quota is still exhausted after waiting ${Math.round(waited / 1000)}s, ` + "so this search did not run. For code in this repository use search__search_code, " + "which reads the checkout and has no quota. This tool is the one to use for a " + "repository that is not checked out, and it will be available again shortly.");
+    }
+    Bun.sleepSync(delay);
+    waited += delay;
+  }
 }
 function getBranch(a) {
-  const branch = ghJsonOrThrow("api", `repos/${REPO}/branches/${a.name}`);
-  return JSON.stringify({ name: branch?.name, sha: branch?.commit?.sha, protected: branch?.protected });
+  const found = gh("api", `repos/${REPO}/branches/${a.branch}`);
+  if (found.code) {
+    const text = `${found.stderr} ${found.stdout}`;
+    if (/HTTP 404|Branch not found|Not Found/i.test(text)) {
+      return JSON.stringify({ branch: a.branch, exists: false });
+    }
+    mcpFail(found.stderr || found.stdout);
+  }
+  const branch = found.stdout ? JSON.parse(found.stdout) : {};
+  return JSON.stringify({
+    branch: branch.name,
+    exists: true,
+    sha: branch.commit?.sha,
+    protected: branch.protected
+  });
 }
 function getCheckRuns(a) {
   const d = ghJsonOrThrow("api", `repos/${REPO}/commits/${a.ref}/check-runs`);
   return JSON.stringify((d?.check_runs ?? []).map((run) => pick2(run, ["name", "status", "conclusion", "html_url"])));
 }
 function getPrReviews(a) {
-  const d = ghJsonOrThrow("pr", "view", String(a.number), "--repo", REPO, "--json", "reviews");
+  const d = ghJsonOrThrow("pr", "view", String(prContextNumber(a)), "--repo", REPO, "--json", "reviews");
   const reviews = (d?.reviews ?? []).map((review) => {
     const kept = pick2(review, ["author", "state", "submittedAt"]);
     const body = review.body;
@@ -19497,7 +19571,7 @@ function getPrReviews(a) {
   return JSON.stringify({ total: reviews.length, omitted, reviews: kept });
 }
 function listPrReviewComments(a) {
-  const comments = ghJsonOrThrow(`api`, `repos/${REPO}/pulls/${a.number}/comments`) ?? [];
+  const comments = ghJsonOrThrow(`api`, `repos/${REPO}/pulls/${prContextNumber(a)}/comments`) ?? [];
   const projected = comments.map((comment) => {
     const record = typeof comment === "object" && comment !== null ? comment : {};
     const user = record.user;
@@ -19646,13 +19720,13 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves \u2014 use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atoma parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atoma parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atoma branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
-  defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: getPr }),
-  defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: NUMBER_ARG_SCHEMA, handler: getPrDiff }),
+  defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
+  defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),
   defineMcpTool({ name: "list_prs", description: "List pull request summaries in the current repository, optionally filtered by state. Use this to discover PRs; use get_pr for full metadata. Returns a JSON array and does not mutate GitHub.", schema: LIST_PRS_SCHEMA, handler: listPrs }),
   defineMcpTool({ name: "search_code", description: "Search code through GitHub within the current repository. Use this for remote repository text or symbol discovery when local filesystem search is unavailable; do not use it for uncommitted changes. Returns GitHub CLI search text; a long result is truncated and says so where the cut falls.", schema: SEARCH_CODE_SCHEMA, handler: searchCode }),
-  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name. Use this to inspect remote branch identity and protection information, not local worktree state. Returns only `name`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
+  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name, or report that no such branch exists. Use this to inspect remote branch identity and protection information, not local worktree state. A branch that is not there is an answer, not an error: it returns `{branch, exists: false}`, so this is the tool for checking before you create one. When the branch does exist it returns `branch`, `exists`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
   defineMcpTool({
     name: "sync_branch",
     description: "Synchronize the checked-out branch with its remote counterpart and report ahead/behind status. Use this after a non-fast-forward push failure or before retrying branch publication; it fast-forwards only when safe. It never rebases or force-pushes, and reports diverged branches for explicit resolution.",
@@ -19666,12 +19740,13 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
     schema: PR_CONTEXT_NUMBER_ARG_SCHEMA,
     handler: checkMergeReadiness
   }),
-  defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: getPrReviews }),
-  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
+  defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrReviews }),
+  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
   defineMcpTool({
     name: "submit_pr_review",
     description: "Submit a pull request review as either a general COMMENT or REQUEST_CHANGES. Use this after inspecting the diff and checks. There is no APPROVE: every Atoma agent shares the identity that opened the pull request, and GitHub refuses to let an identity approve its own -- so COMMENT is how a review says the change is good, and github__merge_pr is how it merges. This mutates GitHub and returns JSON success status.",
     schema: SUBMIT_PR_REVIEW_SCHEMA,
+    guidance: omittedNumberGuidance("pull request"),
     handler: submitPrReview
   }),
   defineMcpTool({
@@ -19684,6 +19759,7 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
     name: "merge_pr",
     description: "Merge a pull request, then continue Atoma's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge_gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around \u2014 read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
     schema: NUMBER_ARG_SCHEMA,
+    guidance: omittedNumberGuidance("pull request"),
     handler: mergePr
   })
 ]);

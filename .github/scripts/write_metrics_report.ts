@@ -331,6 +331,8 @@ function renderReport(all, forWindow, now) {
   out.push("");
   out.push(`Generated ${now.toISOString().slice(0, 10)}.`);
   out.push("");
+  out.push("A session appears in a dated window only if it recorded when its runs ended. " + "Sessions from before run recording existed are counted under All time alone, " + "so the dated windows are thinner than the project was \u2014 that gap closes as new " + "sessions arrive, not by anything changing here.");
+  out.push("");
   out.push(...runSection(all.runs, now));
   for (const window of WINDOWS)
     out.push(...windowSection(window.label, forWindow(window)));
@@ -390,7 +392,7 @@ function agentOf(path) {
   return match?.[1] ?? "unknown";
 }
 function looksRefused(content) {
-  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content);
+  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
 }
 function looksFailed(content) {
   if (looksRefused(content))
@@ -466,7 +468,8 @@ function tokensReported(repo) {
       issue: number,
       total: toNumber(match[1]),
       prompt: toNumber(match[2]),
-      completion: toNumber(match[3])
+      completion: toNumber(match[3]),
+      at: comment.created_at
     });
   }
   return out;
@@ -526,7 +529,7 @@ function main() {
   }
   const { tools, skills } = declared();
   const now = new Date;
-  const forWindow = (window) => metricsOf(sessions.filter((s) => within(sessionEndedAt(s.runs), window, now)), tools, skills, tokens);
+  const forWindow = (window) => metricsOf(sessions.filter((s) => within(sessionEndedAt(s.runs), window, now)), tools, skills, tokens.filter((t) => within(t.at, window, now)));
   const report = renderReport(metricsOf(sessions, tools, skills, tokens), forWindow, now);
   const runs = sessions.flatMap((s) => s.runs);
   log(`${sessions.length} sessions, ${runs.length} recorded runs, ${tokens.length} reporting tokens`);

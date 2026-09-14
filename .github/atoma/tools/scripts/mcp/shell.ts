@@ -17501,16 +17501,31 @@ class StdioServerTransport {
 }
 
 // src/lib/mcp-tool.ts
-var NUMBER_ALIASES = ["issue_number", "pr_number", "pull_number", "pull_request_number"];
-function acceptNumberAliases(raw) {
+var ALIASES = {
+  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
+  branch: ["name"]
+};
+function declaredKeys(schema) {
+  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
+}
+function acceptAliases(raw, declared) {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw))
     return raw;
-  const value = raw;
-  const alias = NUMBER_ALIASES.find((name) => (name in value));
-  if (alias === undefined)
-    return raw;
-  const { [alias]: aliased, ...rest } = value;
-  return "number" in rest ? rest : { ...rest, number: aliased };
+  let value = raw;
+  let renamed = false;
+  for (const [canonical, aliases] of Object.entries(ALIASES)) {
+    if (!declared.has(canonical))
+      continue;
+    for (const alias of aliases) {
+      if (declared.has(alias) || !(alias in value))
+        continue;
+      const { [alias]: aliased, ...rest } = value;
+      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
+      renamed = true;
+      break;
+    }
+  }
+  return renamed ? value : raw;
 }
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
@@ -17520,6 +17535,7 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
+  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -17527,8 +17543,11 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptNumberAliases(args));
+      const result = schema.safeParse(acceptAliases(args, declared));
       if (!result.success) {
+        const better = spec.guidance?.(args);
+        if (better !== undefined)
+          throw new Error(better);
         const message = result.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
         throw new Error(`Invalid arguments for ${spec.name}: ${message}`);
       }
