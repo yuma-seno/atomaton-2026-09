@@ -188,8 +188,27 @@ export function gatherMergeSignals(
 ): { signals: MergeSignals; refs: PullRequestRefs } {
   const json = <T>(...args: string[]): T => {
     const { code, stdout, stderr } = gh(...args);
-    if (code) throwOnFailure(stderr || stdout);
+    // Named, because the message GitHub sends does not name it. `Resource not
+    // accessible by integration (HTTP 403)` arrived from one of the two calls below and
+    // said nothing about which; it cost two investigations, and in between the reviewer
+    // told a pull request it had run a diagnostic it had not. An error a reader cannot
+    // act on is worth as little here as it is in a tool description.
+    if (code) throwOnFailure(`gh ${args.slice(0, 3).join(" ")}: ${stderr || stdout}`);
     return stdout ? (JSON.parse(stdout) as T) : (null as T);
+  };
+
+  /** Like `json`, but a failure is an absent answer rather than the end of the call. */
+  const tryJson = <T>(...args: string[]): T | null => {
+    const { code, stdout, stderr } = gh(...args);
+    if (code) {
+      log(`WARN gh ${args.slice(0, 3).join(" ")}: ${stderr || stdout}`);
+      return null;
+    }
+    try {
+      return stdout ? (JSON.parse(stdout) as T) : null;
+    } catch {
+      return null;
+    }
   };
 
   const pr = json<PullRequestView>(
@@ -206,7 +225,21 @@ export function gatherMergeSignals(
     // call already being made, so a project that declares no gate pays nothing
     // for the ones it could have declared.
     "--json",
-    "mergeStateStatus,isDraft,author,state,headRefOid,headRefName,baseRefName,title,labels",
+    "isDraft,author,state,headRefOid,headRefName,baseRefName,title,labels",
+  );
+
+  // Asked for on its own, because it is the field GitHub is most willing to refuse and
+  // the only one whose refusal used to take the whole tool down with it. The reviewer
+  // got `Resource not accessible by integration` here and returned nothing at all --
+  // no draft check, no human-author check, no governed-path check, none of which need
+  // this field.
+  //
+  // Missing reads as `UNKNOWN`, which `decideMergeReadiness` already treats as a
+  // blocker. So the degraded answer refuses the merge and says it could not determine
+  // mergeability, which is the honest answer and the safe one; it does not quietly
+  // become a yes.
+  const mergeState = tryJson<{ mergeStateStatus?: string }>(
+    "pr", "view", String(num), "--repo", repo, "--json", "mergeStateStatus",
   );
 
   // Check runs hang off the commit, so a `workflow_dispatch` run against the
@@ -239,7 +272,7 @@ export function gatherMergeSignals(
 
   return {
     signals: {
-      mergeStateStatus: pr?.mergeStateStatus ?? "UNKNOWN",
+      mergeStateStatus: mergeState?.mergeStateStatus ?? "UNKNOWN",
       isDraft: pr?.isDraft ?? false,
       // Defaults to treating the author as a person. If the field is missing the
       // safe reading is "do not merge this for someone", not "merge it".
