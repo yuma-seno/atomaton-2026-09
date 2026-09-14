@@ -2907,6 +2907,46 @@
     ]
   },
   {
+    "path": "sessions/issue-659/archive/reviewer-1.json",
+    "agent": "reviewer",
+    "messages": 17,
+    "calls": 3,
+    "failed": 2,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__check_merge_readiness": 1,
+      "engineering/environment": 1
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-14T14:48:49Z",
+        "ended_because": "completed",
+        "messages": 13,
+        "seconds": 12,
+        "started": "2026-09-14T14:48:37Z"
+      },
+      {
+        "ended": "2026-09-14T15:01:56Z",
+        "ended_because": "completed",
+        "messages": 15,
+        "seconds": 11,
+        "started": "2026-09-14T15:01:45Z"
+      },
+      {
+        "ended": "2026-09-14T15:34:38Z",
+        "ended_because": "completed",
+        "messages": 17,
+        "seconds": 7,
+        "started": "2026-09-14T15:34:31Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-659/engineer.json",
     "agent": "engineer",
     "messages": 354,
@@ -2949,8 +2989,8 @@
     "path": "sessions/issue-659/reviewer.json",
     "agent": "reviewer",
     "messages": 17,
-    "calls": 3,
-    "failed": 2,
+    "calls": 4,
+    "failed": 0,
     "refused": 0,
     "skills": [
       "review/quick-quality-gate"
@@ -2958,30 +2998,17 @@
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
-      "engineering/environment": 1
+      "github__submit_pr_review": 1,
+      "github__merge_pr": 1
     },
     "acts": {},
     "runs": [
       {
-        "ended": "2026-09-14T14:48:49Z",
-        "ended_because": "completed",
-        "messages": 13,
-        "seconds": 12,
-        "started": "2026-09-14T14:48:37Z"
-      },
-      {
-        "ended": "2026-09-14T15:01:56Z",
-        "ended_because": "completed",
-        "messages": 15,
-        "seconds": 11,
-        "started": "2026-09-14T15:01:45Z"
-      },
-      {
-        "ended": "2026-09-14T15:34:38Z",
+        "ended": "2026-09-14T15:40:38Z",
         "ended_because": "completed",
         "messages": 17,
-        "seconds": 7,
-        "started": "2026-09-14T15:34:31Z"
+        "seconds": 24,
+        "started": "2026-09-14T15:40:14Z"
       }
     ]
   },
