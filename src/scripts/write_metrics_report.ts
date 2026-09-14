@@ -103,7 +103,12 @@ function looksRefused(content: string): boolean {
   return (
     /blocked by hook|shell_guard:|Tool blocked/.test(content) ||
     /is blocked by denylist pattern/.test(content) ||
-    /is not permitted by the allowlist/.test(content)
+    /is not permitted by the allowlist/.test(content) ||
+    // `close_issue` declining a human's issue. A guard of ours, matched on wording we
+    // wrote ourselves, so unlike a general "looks like a refusal" rule it cannot
+    // swallow a call the agent simply got wrong. Fourteen of these were counted as
+    // failures, which read as a broken tool when it was the tool doing its job.
+    /Refusing to close issue #[0-9]+: opened by a human/.test(content)
   );
 }
 
@@ -190,7 +195,7 @@ function shellAct(command: string): CallRecord["act"] {
 
 /** Every `_Tokens: N total (P prompt + C completion)_` line the agents have posted. */
 function tokensReported(repo: string): TokenRecord[] {
-  const comments = ghPaginated<{ body?: string; issue_url?: string }>(
+  const comments = ghPaginated<{ body?: string; issue_url?: string; created_at?: string }>(
     "api",
     `repos/${repo}/issues/comments?per_page=100`,
   );
@@ -207,6 +212,8 @@ function tokensReported(repo: string): TokenRecord[] {
       total: toNumber(match[1]!),
       prompt: toNumber(match[2]!),
       completion: toNumber(match[3]!),
+      // The comment's own timestamp, which is what puts these tokens in a window.
+      at: comment.created_at,
     });
   }
   return out;
@@ -278,7 +285,9 @@ function main(): void {
       sessions.filter((s) => within(sessionEndedAt(s.runs), window, now)),
       tools,
       skills,
-      tokens,
+      // Filtered by the same window as the sessions. They used not to be, and every
+      // window printed the all-time total under its own heading.
+      tokens.filter((t) => within(t.at, window, now)),
     );
   const report = renderReport(metricsOf(sessions, tools, skills, tokens), forWindow, now);
   const runs = sessions.flatMap((s) => s.runs);

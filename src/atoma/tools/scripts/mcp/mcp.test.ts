@@ -368,13 +368,113 @@ describe("mcp/github.ts", () => {
         protection: { enabled: true },
         protection_url: "u",
       };
+      // Called with `name`, which is no longer what this tool declares: the schema says
+      // `branch`, to match `sync_branch` beside it, and `name` is folded in as the
+      // synonym it is. Left this way deliberately -- it is the only place that path is
+      // exercised end to end.
       const r = await call("get_branch", { name: "main" }, [
         { match: ["branches/main"], stdout: JSON.stringify(payload) },
       ]);
-      expect(JSON.parse(r.result.content[0].text)).toEqual({ name: "main", sha: "deadbeef", protected: true });
+      expect(JSON.parse(r.result.content[0].text)).toEqual({
+        branch: "main",
+        exists: true,
+        sha: "deadbeef",
+        protected: true,
+      });
       expect(r.result.content[0].text).not.toContain("mmmm");
     });
 
+    /**
+     * The branch that is not there.
+     *
+     * Six recorded calls asked about `atoma/issue-104`, `atoma/issue-190` and
+     * `atoma/issue-219` before creating them, and every one was charged an error for
+     * asking a question this tool exists to answer. The property is that a missing
+     * branch is a result -- not the exact wording of the field, which a later reader
+     * may well improve.
+     */
+    test("a branch that does not exist is an answer, not an error", async () => {
+      const r = await call("get_branch", { branch: "atoma/issue-104" }, [
+        { match: ["branches/atoma/issue-104"], code: 1, stdout: "gh: Branch not found (HTTP 404)" },
+      ]);
+      expect(r.result.isError).toBe(false);
+      expect(JSON.parse(r.result.content[0].text)).toEqual({ branch: "atoma/issue-104", exists: false });
+    });
+
+    /**
+     * A 404 is an answer; anything else is the absence of one. Reporting "no such
+     * branch" because GitHub was down would be a confident wrong answer in exactly the
+     * place a caller is deciding whether to create something.
+     */
+    test("a server error is still an error, not a missing branch", async () => {
+      const r = await call("get_branch", { branch: "main" }, [
+        { match: ["branches/main"], code: 1, stdout: "gh: Server Error (HTTP 500)" },
+      ]);
+      expect(r.result.isError).toBe(true);
+      expect(r.result.content[0].text).not.toContain("exists");
+    });
+
+    /**
+     * `submit_pr_review` was called 28 times with `{event, body}` and no number.
+     *
+     * The number stays required -- this writes to GitHub, and the rule that mutations
+     * do not infer their target is deliberate and stays. What is tested here is the
+     * refusal: it has to name the number to pass, because a refusal that says what to
+     * do next is followed and one that only restates the schema is not.
+     */
+    test("a mutation that needs a number says which number", async () => {
+      const r = await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0", id: 44, method: "tools/call",
+          params: { name: "submit_pr_review", arguments: { event: "COMMENT", body: "LGTM" } },
+        },
+        {
+          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          FAKE_GH_RESPONSES: "[]",
+          ATOMA_RUN_TYPE: "pr",
+          ISSUE_NUMBER: "305",
+        },
+      );
+      expect(r.result.isError).toBe(true);
+      expect(r.result.content[0].text).toContain("305");
+    });
+
+    /**
+     * GitHub allows ten code searches a minute, and a 429 names its own wait. Thirty
+     * recorded failures were that, each one costing an iteration to learn something the
+     * error had already said. The property is that the answer arrives, not how many
+     * times it was asked for.
+     */
+    test("a rate-limited search waits out the limit instead of failing", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "atoma-search-retry-"));
+      const log = join(dir, "gh.log");
+      try {
+        const r = await sendRequest(
+          "github.ts",
+          {
+            jsonrpc: "2.0", id: 45, method: "tools/call",
+            params: { name: "search_code", arguments: { query: "atoma_github" } },
+          },
+          {
+            PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+            FAKE_GH_LOG: log,
+            FAKE_GH_RESPONSES: JSON.stringify([
+              // A wait GitHub states in milliseconds keeps the test honest and quick:
+              // the code reads the stated number rather than using its own backoff.
+              { match: ["search", "code"], attempt: 1, code: 1, stdout: "HTTP 429: try again in 0.01s" },
+              { match: ["search", "code"], stdout: "main.rs:12: atoma_github" },
+            ]),
+          },
+        );
+        expect(r.result.isError).toBe(false);
+        expect(r.result.content[0].text).toContain("atoma_github");
+        // Asked twice, which is the whole point.
+        expect(readFileSync(log, "utf8").split("\n").filter(Boolean).length).toBe(2);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
     test("get_pr_reviews drops the fields nothing decides on", async () => {
       const payload = {
         reviews: [

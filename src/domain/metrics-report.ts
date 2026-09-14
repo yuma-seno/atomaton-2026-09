@@ -195,6 +195,18 @@ export function renderReport(
   out.push("");
   out.push(`Generated ${now.toISOString().slice(0, 10)}.`);
   out.push("");
+  // Without this, a reader comparing "Last year: 5 sessions" against "All time: 360"
+  // concludes the project went quiet. It did not: a session reaches a window through
+  // the run records it carries, and runs were only recorded from the release that
+  // added them. The windows fill in on their own, and the sentence can go when they
+  // have. Better an explained gap than a silent one that reads as a finding.
+  out.push(
+    "A session appears in a dated window only if it recorded when its runs ended. " +
+      "Sessions from before run recording existed are counted under All time alone, " +
+      "so the dated windows are thinner than the project was — that gap closes as new " +
+      "sessions arrive, not by anything changing here.",
+  );
+  out.push("");
   out.push(...runSection(all.runs, now));
 
   for (const window of WINDOWS) out.push(...windowSection(window.label, forWindow(window)));

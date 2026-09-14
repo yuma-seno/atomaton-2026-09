@@ -16,6 +16,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { unknownToolMessage } from "./mcp-tool.ts";
+import { nothingToCommit } from "./gh.ts";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -456,5 +457,28 @@ describe("what a server says about a tool it does not have", () => {
   test("several near misses are all offered", () => {
     const message = unknownToolMessage("read", ["read_file", "read_media_file", "write_file"]);
     expect(message).toContain("'read_file' or 'read_media_file'");
+  });
+});
+
+/**
+ * `git commit` with a clean tree exits non-zero, and `commit_and_push` treated that
+ * as a failure and stopped -- skipping the push that still had work to do. It cost 23
+ * recorded failures, and in the sessions where the agent had committed through the
+ * shell first, it meant the commit never reached origin.
+ */
+describe("nothingToCommit", () => {
+  const result = (stdout: string, stderr = "") => ({ code: 1, stdout, stderr });
+
+  test("recognises a clean tree", () => {
+    expect(nothingToCommit(result("On branch atoma/issue-104\nnothing to commit, working tree clean"))).toBe(true);
+  });
+
+  test("recognises unstaged changes that were never added", () => {
+    expect(nothingToCommit(result("no changes added to commit (use \"git add\")"))).toBe(true);
+  });
+
+  /** A real failure must stay a failure, or a broken hook would look like a clean tree. */
+  test("a hook rejecting the commit is not a clean tree", () => {
+    expect(nothingToCommit(result("", "pre-commit hook failed"))).toBe(false);
   });
 });

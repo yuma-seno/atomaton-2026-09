@@ -14,7 +14,7 @@
  * in-process (resolveNotify/dispatchOrchestratorIfSubIssueReady/etc.);
  * always `console.error()` (`log()` below) for logging.
  */
-import { gh, ghGraphql, gitRun } from "../../../../lib/gh.ts";
+import { gh, ghGraphql, gitRun, nothingToCommit } from "../../../../lib/gh.ts";
 import { getBaseBranch, getLabel } from "../../../../lib/config.ts";
 import { resolveNotify } from "../../../../lib/notify.ts";
 import {
@@ -174,6 +174,34 @@ function issueContextNumber(args: { number?: number }): number {
 }
 
 /**
+ * The message a mutation gives when `number` was left out.
+ *
+ * Reads above may default their target from the run; mutations may not, and the
+ * comment on `ISSUE_CONTEXT_NUMBER_ARG_SCHEMA` says why: inferring the target of an
+ * irreversible outward-facing action turns a malformed call into a wrong merge.
+ * That rule stays. What changes is the refusal it produces.
+ *
+ * `submit_pr_review` was called 28 times with `{event, body}` and no number, and each
+ * one came back as "number: Expected number, received undefined" -- true, and no help
+ * at all to a caller that is looking at exactly one pull request. Naming the number
+ * costs nothing and keeps the decision with the agent: it still has to pass it.
+ */
+function omittedNumberGuidance(what: "pull request" | "issue"): (args: Record<string, unknown>) => string | undefined {
+  return (args) => {
+    if ("number" in args) return undefined;
+    if (process.env.ATOMA_RUN_TYPE !== (what === "pull request" ? "pr" : "issue")) return undefined;
+    const raw = (process.env.ISSUE_NUMBER ?? "").trim();
+    if (!/^[0-9]+$/.test(raw)) return undefined;
+    return (
+      "`number` is required and was omitted. This tool changes GitHub, so unlike the " +
+      "read-only tools it will not infer its target -- a guessed number here is a wrong " +
+      `merge or a wrong close, not an error message. This run is working on ${what} ` +
+      `#${raw}; if that is the one you mean, call this again with {"number": ${raw}}.`
+    );
+  };
+}
+
+/**
  * Resolve a pull request read's target, falling back to this run's number only
  * when the run is a pull request run.
  *
@@ -238,7 +266,8 @@ const SEARCH_CODE_SCHEMA = z.object({
   query: z.string().min(1).describe("GitHub code-search query scoped automatically to the current repository."),
 });
 const GET_BRANCH_SCHEMA = z.object({
-  name: z.string().min(1).describe("Repository branch name, for example 'main' or 'atoma/issue-42'."),
+  // `branch`, not `name`, so this and `sync_branch` call one thing by one name.
+  branch: z.string().min(1).describe("Repository branch name, for example 'main' or 'atoma/issue-42'."),
 });
 const GET_CHECK_RUNS_SCHEMA = z.object({
   ref: z.string().min(1).describe("Commit SHA, branch name, or tag whose GitHub check runs should be returned."),
@@ -745,15 +774,36 @@ function commitAndPush(a: z.infer<typeof COMMIT_AND_PUSH_SCHEMA>): string {
     const { code, stdout, stderr } = gitRun("add", "-A");
     if (code) mcpFail(stderr || stdout);
   }
+  // "nothing to commit" is not a failure to commit; it is having nothing to commit.
+  // It happened 23 times, and failing here skipped the push below -- so an agent that
+  // had committed through the shell and called this to publish the work got an error
+  // and a branch that never reached origin. The push is the part that still had
+  // something to do, so fall through to it and report honestly that nothing was
+  // committed. `git push` on an already-published branch exits 0 saying so.
+  let committed = true;
   {
-    const { code, stdout, stderr } = gitRun("commit", "-m", message);
-    if (code) mcpFail(stderr || stdout);
+    const result = gitRun("commit", "-m", message);
+    if (result.code) {
+      if (!nothingToCommit(result)) mcpFail(result.stderr || result.stdout);
+      committed = false;
+    }
   }
+  let pushed = true;
   {
     const { code, stdout, stderr } = gitRun("push", "-u", "origin", branch);
     if (code) mcpFail(stderr || stdout);
+    pushed = !/Everything up-to-date/i.test(`${stdout} ${stderr}`);
   }
-  logOp("commit_and_push", {});
+
+  // Only when something moved.
+  //
+  // The runner reads this log to decide whether a run changed anything, and stops a
+  // chain that has stopped moving. Letting the commit through when the tree was clean
+  // was right -- there was a commit waiting to be pushed -- but a call that commits
+  // nothing AND pushes nothing must not register as progress, or the fix to one
+  // failure would have quietly disarmed a guard against another.
+  const moved = committed || pushed;
+  if (moved) logOp("commit_and_push", { committed });
 
   // A push to a branch that already has a pull request has to be validated the
   // same way the first push was. Nothing else will do it: GitHub raises no event
@@ -768,8 +818,10 @@ function commitAndPush(a: z.infer<typeof COMMIT_AND_PUSH_SCHEMA>): string {
   //
   // Repeated pushes within one run each dispatch, and the validation workflow's
   // own concurrency group collapses them, keeping the last.
-  const open = gh("pr", "list", "--repo", REPO, "--head", branch, "--state", "open", "--json", "number");
-  if (!open.code) {
+  const open = moved
+    ? gh("pr", "list", "--repo", REPO, "--head", branch, "--state", "open", "--json", "number")
+    : { code: 1, stdout: "", stderr: "" };
+  if (moved && !open.code) {
     try {
       const [pr] = JSON.parse(open.stdout || "[]") as { number: number }[];
       // No reviewer. This dispatch exists to refresh the required check on the new
@@ -792,7 +844,11 @@ function commitAndPush(a: z.infer<typeof COMMIT_AND_PUSH_SCHEMA>): string {
     }
   }
 
-  return JSON.stringify({ ok: true });
+  // `committed: false, pushed: false` is the honest report of a call that found nothing
+  // to do. It used to be an error, which stopped the run; it is a fact the agent can
+  // read and act on, and saying it plainly is better than either failing or implying
+  // work was published.
+  return JSON.stringify({ ok: true, committed, pushed });
 }
 
 function syncBranch(a: z.infer<typeof SYNC_BRANCH_SCHEMA>): string {
@@ -879,9 +935,9 @@ function pick<K extends string>(source: unknown, keys: readonly K[]): Partial<Re
   return out;
 }
 
-function getPr(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
+function getPr(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): string {
   const pr = ghJsonOrThrow<{ body?: unknown }>(
-    "pr", "view", String(a.number), "--repo", REPO,
+    "pr", "view", String(prContextNumber(a)), "--repo", REPO,
     "--json", "number,title,body,state,baseRefName,headRefName,createdAt",
   );
   const { body, ...rest } = pr ?? {};
@@ -889,8 +945,8 @@ function getPr(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
   return JSON.stringify({ ...rest, body: typeof body === "string" ? capText(body).text : body });
 }
 
-function getPrDiff(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
-  const { code, stdout, stderr } = gh("pr", "diff", String(a.number), "--repo", REPO);
+function getPrDiff(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): string {
+  const { code, stdout, stderr } = gh("pr", "diff", String(prContextNumber(a)), "--repo", REPO);
   if (code) mcpFail(stderr || stdout);
   // `head`: a diff's first files are the subject of the change. And the cut is now
   // announced in the text rather than being a silent `slice` -- a truncated read
@@ -904,21 +960,89 @@ function listPrs(a: z.infer<typeof LIST_PRS_SCHEMA>): string {
   return JSON.stringify(ghJsonOrThrow("pr", "list", "--repo", REPO, "--state", state, "--limit", String(limit), "--json", "number,title,state,headRefName,baseRefName") ?? []);
 }
 
-function searchCode(a: z.infer<typeof SEARCH_CODE_SCHEMA>): string {
-  const { code, stdout, stderr } = gh("search", "code", a.query, "--repo", REPO, "--limit", "30");
-  if (code) mcpFail(stderr || stdout);
-  return capText(stdout).text;
+/**
+ * How long to keep waiting out a rate limit before reporting one.
+ *
+ * GitHub allows ten code searches a minute, which is why this was the most-failed
+ * read in the catalog: 30 refusals, all quota, none of them anything the query could
+ * have avoided. A 429 names its own wait -- "try again in 2.32s" -- so most of these
+ * are two seconds away from succeeding, and the agent was paying an iteration for
+ * each one instead.
+ *
+ * Bounded, because the run holds a runner while it sleeps. Two minutes clears the
+ * per-minute limit comfortably; the hourly installation limit it will not clear, and
+ * sitting on a runner for an hour to find that out is worse than saying so.
+ */
+const SEARCH_WAIT_BUDGET_MS = 120_000;
+
+/** The wait GitHub stated, in ms, when it stated one. */
+function statedWait(text: string): number | undefined {
+  const match = /try again in ([0-9.]+)s/i.exec(text);
+  if (!match) return undefined;
+  return Math.min(60_000, Math.ceil(Number(match[1]) * 1000));
 }
 
+function searchCode(a: z.infer<typeof SEARCH_CODE_SCHEMA>): string {
+  const backoff = [5_000, 15_000, 30_000, 60_000];
+  let waited = 0;
+  for (let attempt = 0; ; attempt += 1) {
+    const { code, stdout, stderr } = gh("search", "code", a.query, "--repo", REPO, "--limit", "30");
+    if (!code) return capText(stdout).text;
+    const text = `${stderr} ${stdout}`;
+    // Both shapes GitHub uses: 429 for the per-minute limit, 403 for the installation
+    // quota. Anything else is a real failure and is reported as it always was.
+    if (!/HTTP 429|rate limit/i.test(text)) mcpFail(stderr || stdout);
+    const delay = statedWait(text) ?? backoff[Math.min(attempt, backoff.length - 1)] ?? 60_000;
+    if (waited + delay > SEARCH_WAIT_BUDGET_MS) {
+      mcpFail(
+        `GitHub's code search quota is still exhausted after waiting ${Math.round(waited / 1000)}s, ` +
+          "so this search did not run. For code in this repository use search__search_code, " +
+          "which reads the checkout and has no quota. This tool is the one to use for a " +
+          "repository that is not checked out, and it will be available again shortly.",
+      );
+    }
+    Bun.sleepSync(delay);
+    waited += delay;
+  }
+}
+
+/**
+ * Branch metadata, or a plain report that there is no such branch.
+ *
+ * The comment below used to describe this as serving "a caller asking whether a
+ * branch exists" while the only available answer to that question was a thrown 404.
+ * Six calls in the recorded sessions asked about `atoma/issue-104`, `atoma/issue-190`
+ * and `atoma/issue-219` before creating them, and each was charged an error for
+ * asking. A tool that cannot say "no" makes every correct check look like a fault,
+ * and it buries the 404s that ARE faults among them.
+ *
+ * Only 404 becomes an answer. A 403 or a 500 is still the absence of one, and
+ * reporting "this branch does not exist" because GitHub was unreachable would be a
+ * confident lie in the one place a caller is deciding whether to create something.
+ */
 function getBranch(a: z.infer<typeof GET_BRANCH_SCHEMA>): string {
-  const branch = ghJsonOrThrow<{ name?: string; commit?: { sha?: string }; protected?: boolean }>(
-    "api",
-    `repos/${REPO}/branches/${a.name}`,
-  );
+  const found = gh("api", `repos/${REPO}/branches/${a.branch}`);
+  if (found.code) {
+    const text = `${found.stderr} ${found.stdout}`;
+    if (/HTTP 404|Branch not found|Not Found/i.test(text)) {
+      return JSON.stringify({ branch: a.branch, exists: false });
+    }
+    mcpFail(found.stderr || found.stdout);
+  }
   // 11,614 bytes to 81. The whole `commit` object -- author, committer, tree,
   // parents, verification and the message -- was 11,164 of it, for a caller asking
   // whether a branch exists and what its head is.
-  return JSON.stringify({ name: branch?.name, sha: branch?.commit?.sha, protected: branch?.protected });
+  const branch = (found.stdout ? JSON.parse(found.stdout) : {}) as {
+    name?: string;
+    commit?: { sha?: string };
+    protected?: boolean;
+  };
+  return JSON.stringify({
+    branch: branch.name,
+    exists: true,
+    sha: branch.commit?.sha,
+    protected: branch.protected,
+  });
 }
 
 function getCheckRuns(a: z.infer<typeof GET_CHECK_RUNS_SCHEMA>): string {
@@ -929,8 +1053,10 @@ function getCheckRuns(a: z.infer<typeof GET_CHECK_RUNS_SCHEMA>): string {
   return JSON.stringify((d?.check_runs ?? []).map((run) => pick(run, ["name", "status", "conclusion", "html_url"])));
 }
 
-function getPrReviews(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
-  const d = ghJsonOrThrow<{ reviews?: unknown[] }>("pr", "view", String(a.number), "--repo", REPO, "--json", "reviews");
+function getPrReviews(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): string {
+  const d = ghJsonOrThrow<{ reviews?: unknown[] }>(
+    "pr", "view", String(prContextNumber(a)), "--repo", REPO, "--json", "reviews",
+  );
   // `reactionGroups`, `includesCreatedEdit` and `authorAssociation` are dropped:
   // nothing an agent does with a review depends on them. Each body is capped on its
   // own, because a count of reviews says nothing about the size of one.
@@ -946,8 +1072,9 @@ function getPrReviews(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
   return JSON.stringify({ total: reviews.length, omitted, reviews: kept });
 }
 
-function listPrReviewComments(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
-  const comments = ghJsonOrThrow<unknown[]>(`api`, `repos/${REPO}/pulls/${a.number}/comments`) ?? [];
+function listPrReviewComments(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): string {
+  const comments =
+    ghJsonOrThrow<unknown[]>(`api`, `repos/${REPO}/pulls/${prContextNumber(a)}/comments`) ?? [];
   // The raw REST review comment carries about thirty fields, including a `user`
   // object of roughly a kilobyte to convey one login and a `diff_hunk` repeating
   // code the caller can read from the diff. What acting on a review comment needs
@@ -1163,13 +1290,13 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves — use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atoma parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atoma parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atoma branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
-  defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: getPr }),
-  defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: NUMBER_ARG_SCHEMA, handler: getPrDiff }),
+  defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
+  defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),
   defineMcpTool({ name: "list_prs", description: "List pull request summaries in the current repository, optionally filtered by state. Use this to discover PRs; use get_pr for full metadata. Returns a JSON array and does not mutate GitHub.", schema: LIST_PRS_SCHEMA, handler: listPrs }),
   defineMcpTool({ name: "search_code", description: "Search code through GitHub within the current repository. Use this for remote repository text or symbol discovery when local filesystem search is unavailable; do not use it for uncommitted changes. Returns GitHub CLI search text; a long result is truncated and says so where the cut falls.", schema: SEARCH_CODE_SCHEMA, handler: searchCode }),
-  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name. Use this to inspect remote branch identity and protection information, not local worktree state. Returns only `name`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
+  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name, or report that no such branch exists. Use this to inspect remote branch identity and protection information, not local worktree state. A branch that is not there is an answer, not an error: it returns `{branch, exists: false}`, so this is the tool for checking before you create one. When the branch does exist it returns `branch`, `exists`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
   defineMcpTool({
     name: "sync_branch",
     description: "Synchronize the checked-out branch with its remote counterpart and report ahead/behind status. Use this after a non-fast-forward push failure or before retrying branch publication; it fast-forwards only when safe. It never rebases or force-pushes, and reports diverged branches for explicit resolution.",
@@ -1184,12 +1311,13 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
     schema: PR_CONTEXT_NUMBER_ARG_SCHEMA,
     handler: checkMergeReadiness,
   }),
-  defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: getPrReviews }),
-  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
+  defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrReviews }),
+  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
   defineMcpTool({
     name: "submit_pr_review",
     description: "Submit a pull request review as either a general COMMENT or REQUEST_CHANGES. Use this after inspecting the diff and checks. There is no APPROVE: every Atoma agent shares the identity that opened the pull request, and GitHub refuses to let an identity approve its own -- so COMMENT is how a review says the change is good, and github__merge_pr is how it merges. This mutates GitHub and returns JSON success status.",
     schema: SUBMIT_PR_REVIEW_SCHEMA,
+    guidance: omittedNumberGuidance("pull request"),
     handler: submitPrReview,
   }),
   defineMcpTool({
@@ -1202,6 +1330,7 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
     name: "merge_pr",
     description: "Merge a pull request, then continue Atoma's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge_gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around — read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
     schema: NUMBER_ARG_SCHEMA,
+    guidance: omittedNumberGuidance("pull request"),
     handler: mergePr,
   }),
 ]);

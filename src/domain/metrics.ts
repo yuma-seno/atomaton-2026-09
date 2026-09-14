@@ -61,12 +61,25 @@ export interface SessionRecord {
   runs: RunRecord[];
 }
 
-/** One run's token usage, read from the result comment it posted. */
+/**
+ * One run's token usage, read from the result comment it posted.
+ *
+ * `at` is when that comment was posted, and it is here because without it the report
+ * printed the same token totals under all four window headings -- the sessions were
+ * filtered and the tokens were not, so "Last 7 days" claimed 116 million tokens over
+ * five sessions. A number under a heading it does not belong to is worse than no
+ * number: a reader has no way to see that it is wrong.
+ *
+ * Optional, because a record read before this field was captured has no time and must
+ * not be silently placed in a window. `within` already excludes an absent time from
+ * every bounded window and keeps it in all-time, which is exactly right here.
+ */
 export interface TokenRecord {
   issue: number;
   total: number;
   prompt: number;
   completion: number;
+  at?: string;
 }
 
 /** Everything the report is rendered from. */

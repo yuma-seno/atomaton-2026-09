@@ -18,25 +18,46 @@
  *   FAKE_GH_LOG = path this appends one JSON line (the full argv array) to
  *     per invocation, so tests can assert on exact commands issued (e.g.
  *     the body of a posted comment), not just the script's own stdout.
+ *
+ * A rule may also carry `attempt: N`, meaning it applies only the Nth time a call
+ * matching THAT rule is made -- not the Nth `gh` invocation overall. Counting per
+ * rule rather than globally is what keeps such a test from breaking when unrelated
+ * `gh` traffic appears before it. That is what makes a retry testable: attempt 1
+ * returns the rate limit and the next returns the answer. The count comes from
+ * FAKE_GH_LOG, so a test using `attempt` must set it -- each invocation is its own
+ * process and the log is the only state they share.
  */
 const args = process.argv.slice(2);
 
 const logPath = process.env.FAKE_GH_LOG;
+let history: string[][] = [];
 if (logPath) {
-  const { appendFileSync } = await import("node:fs");
+  const { appendFileSync, readFileSync } = await import("node:fs");
   appendFileSync(logPath, JSON.stringify(args) + "\n");
+  // Every invocation so far, this one included -- so the first call sees length 1.
+  history = readFileSync(logPath, "utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as string[]);
 }
 
 interface Rule {
   match: string[];
   stdout?: string;
   code?: number;
+  attempt?: number;
 }
 
 const rules: Rule[] = process.env.FAKE_GH_RESPONSES ? JSON.parse(process.env.FAKE_GH_RESPONSES) : [];
 
+function argvMatches(rule: Rule, argv: string[]): boolean {
+  return rule.match.every((needle) => argv.some((a) => a.includes(needle)));
+}
+
 function matches(rule: Rule): boolean {
-  return rule.match.every((needle) => args.some((a) => a.includes(needle)));
+  if (!argvMatches(rule, args)) return false;
+  if (rule.attempt === undefined) return true;
+  return rule.attempt === history.filter((argv) => argvMatches(rule, argv)).length;
 }
 
 const found = rules.find(matches);
