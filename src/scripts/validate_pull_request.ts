@@ -318,11 +318,18 @@ function main(): void {
   }
   const requiredContexts = required.contexts;
   log(`required contexts on ${baseRef}: ${requiredContexts.join(", ") || "(none)"}`);
-  if (requiredContexts.length === 0) {
-    // Legitimate, and worth saying once: with nothing required, this writes no
-    // check runs and every run reports as passed. That is accurate — no required
-    // check failed — but it means CI results gate nothing, which is usually a
-    // ruleset that was never imported rather than a decision.
+  if (!required.enforceable) {
+    // Not a misconfiguration and not something to fix: a free account cannot have
+    // branch rules on a private repository, and this template is meant to be adopted
+    // by people who have one. The verdict below is still decided by what CI actually
+    // concluded, so a red run still fails, still posts its brief, and still advances
+    // the retry tally. What is gone is GitHub refusing the merge -- github__merge_pr
+    // holds that line instead, and says so.
+    log(`::notice::${required.why}. Atoma enforces the CI result itself when merging.`);
+  } else if (requiredContexts.length === 0) {
+    // A different situation, and worth saying once: the rules ARE readable and
+    // require nothing. That is usually a ruleset nobody imported rather than a
+    // decision, so it reads as a warning where the case above reads as a notice.
     log(
       `::warning::${baseRef} requires no status checks, so CI results gate nothing here. ` +
         "Import .github/atoma/rulesets/main.json if that was not intended.",

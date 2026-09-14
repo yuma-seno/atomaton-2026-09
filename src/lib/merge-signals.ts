@@ -245,6 +245,10 @@ export function gatherMergeSignals(
       // safe reading is "do not merge this for someone", not "merge it".
       authoredByAgent: pr?.author?.is_bot ?? false,
       state: pr?.state ?? "UNKNOWN",
+      // Unknown reads as enforceable, which is the cautious direction: it keeps Atoma
+      // from standing in for GitHub on a repository where GitHub is in fact blocking,
+      // and so from reporting one refusal twice.
+      requiredChecksEnforceable: required.known ? required.enforceable : true,
       checks: (runs?.check_runs ?? []).map((run) => ({
         name: run.name,
         status: run.status,
