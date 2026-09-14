@@ -18,4 +18,12 @@ export const ATOMA_WORKFLOW_PERMISSIONS: GWT.PermissionsEvent = {
   issues: "write",
   "pull-requests": "write",
   contents: "write",
+  // Read-only, and added because `github__check_merge_readiness` reads the check runs on
+  // a head commit to say which one is failing. Declaring any permission sets every other
+  // one to `none`, and on a PUBLIC repository that still worked -- the data is public, so
+  // the endpoint served it anyway. On a private repository it does not: the reviewer got
+  // `Resource not accessible by integration` on the first run after this repository went
+  // private, having succeeded 220 times before it. A template meant to be adopted cannot
+  // depend on its own repository being public.
+  checks: "read",
 };
