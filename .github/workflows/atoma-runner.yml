@@ -570,7 +570,7 @@ jobs:
           ATOMA_RUN_TYPE: ${{ inputs.type }}
           ATOMA_RELOAD_COUNT: ${{ inputs.reload_count }}
           ISSUE_NOTIFY: ${{ steps.notify.outputs.notify }}
-          ATOMA_OPS_LOG: ${RUNNER_TEMP}/atoma-run/atoma_ops.log
+          ATOMA_OPS_LOG: ${{ runner.temp }}/atoma-run/atoma_ops.log
           OPENAI_BASE_URL_IN: ${{ vars.OPENAI_BASE_URL }}
           ATOMA_PROVIDER_IN: ${{ vars.ATOMA_PROVIDER }}
         shell: bash
