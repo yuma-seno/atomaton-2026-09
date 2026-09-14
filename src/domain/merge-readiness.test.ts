@@ -508,3 +508,24 @@ describe("a repository that cannot have branch rules", () => {
     expect(out.ready).toBe(true);
   });
 });
+
+/**
+ * `mergeStateStatus` is asked for on its own now, because GitHub refused it -- `Resource
+ * not accessible by integration` -- and took the whole tool down with it. A refusal that
+ * loses one field must not lose the checks that never needed it, and must never become a
+ * yes.
+ */
+describe("when GitHub will not say whether a pull request is mergeable", () => {
+  test("an absent merge state refuses the merge rather than allowing it", () => {
+    const out = decideMergeReadiness(signals({ mergeStateStatus: "UNKNOWN" }));
+    expect(out.ready).toBe(false);
+    expect(out.blockers.map((b) => b.kind)).toContain("mergeability-unknown");
+  });
+
+  /** The checks that do not depend on it still run, which is the point of keeping going. */
+  test("the blockers that need no merge state are still reported", () => {
+    const out = decideMergeReadiness(signals({ mergeStateStatus: "UNKNOWN", isDraft: true }));
+    expect(out.blockers.map((b) => b.kind)).toContain("draft");
+  });
+});
+
