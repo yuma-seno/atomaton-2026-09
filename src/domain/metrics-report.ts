@@ -45,6 +45,11 @@ function n(value: number): string {
   return value.toLocaleString("en-US");
 }
 
+/** "1 run", "2 runs" — the report is read by a person, and a count of one must not be plural. */
+function plural(value: number, singular: string, pluralWord: string): string {
+  return `${n(value)} ${value === 1 ? singular : pluralWord}`;
+}
+
 function distributionRow(label: string, d: Distribution): string {
   return `| ${label} | ${n(d.p50)} | ${n(d.p90)} | ${n(d.p99)} | ${n(d.max)} | ${n(d.total)} |`;
 }
@@ -113,13 +118,13 @@ function windowSection(label: string, metrics: Metrics): string[] {
     return out;
   }
 
-  out.push(`${n(metrics.sessions)} sessions.`);
+  out.push(`${plural(metrics.sessions, "session", "sessions")}.`);
   out.push("");
 
   if (metrics.tokens) {
     const t = metrics.tokens;
     out.push(
-      `**${n(t.total)} tokens** over ${n(t.runs)} runs that reported them, ` +
+      `**${n(t.total)} tokens** over ${plural(t.runs, "run", "runs")} that reported them, ` +
         `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** — what the agents were ` +
         "made to read, not what they wrote. Anything spent on making runs cheaper belongs " +
         "on that side. No money here, deliberately: of the four providers only one reports " +
