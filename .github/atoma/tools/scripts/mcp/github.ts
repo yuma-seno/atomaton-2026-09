@@ -6729,7 +6729,21 @@ function decideMergeReadiness(signals) {
   }
   switch (signals.mergeStateStatus?.toUpperCase()) {
     case "CLEAN":
+      break;
     case "UNSTABLE":
+      if (!signals.requiredChecksEnforceable) {
+        for (const run of signals.checks) {
+          if (run.status !== "completed")
+            continue;
+          if (PASSING.has((run.conclusion ?? "").toLowerCase()))
+            continue;
+          const where = run.detailsUrl ? ` (${run.detailsUrl})` : "";
+          blockers.push({
+            kind: "checks-failing",
+            detail: `check "${run.name}" concluded ${run.conclusion}${where}. ` + "Branch rules are unavailable on this repository, so GitHub does not " + "block this merge and Atoma does."
+          });
+        }
+      }
       break;
     case "DRAFT":
       if (!signals.isDraft) {
@@ -18831,16 +18845,27 @@ function issueLinks(repo, number) {
 }
 
 // src/lib/branch-rules.ts
+var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
 function readRequiredChecks(repo, baseRef) {
   if (!baseRef)
     return { known: false, why: "no base branch was given" };
-  const { code, stdout } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
-  if (code)
+  const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
+  if (code) {
+    if (FEATURE_UNAVAILABLE.test(`${stderr} ${stdout}`)) {
+      return {
+        known: true,
+        enforceable: false,
+        contexts: [],
+        why: "branch rules are not available on this repository (they are a paid feature on a " + "private one), so GitHub cannot require a status check or refuse a merge here"
+      };
+    }
     return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  }
   try {
     const rules = JSON.parse(stdout || "[]");
     return {
       known: true,
+      enforceable: true,
       contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context)
     };
   } catch {
@@ -18931,6 +18956,7 @@ function gatherMergeSignals(repo, num, throwOnFailure) {
       isDraft: pr?.isDraft ?? false,
       authoredByAgent: pr?.author?.is_bot ?? false,
       state: pr?.state ?? "UNKNOWN",
+      requiredChecksEnforceable: required.known ? required.enforceable : true,
       checks: (runs?.check_runs ?? []).map((run) => ({
         name: run.name,
         status: run.status,
