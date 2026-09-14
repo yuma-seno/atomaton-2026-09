@@ -2949,16 +2949,16 @@
   {
     "path": "sessions/issue-659/engineer.json",
     "agent": "engineer",
-    "messages": 354,
-    "calls": 179,
+    "messages": 371,
+    "calls": 182,
     "failed": 1,
-    "refused": 17,
+    "refused": 18,
     "skills": [
       "engineering/tdd",
       "project/conventions"
     ],
     "tools": {
-      "github__get_issue": 1,
+      "github__get_issue": 2,
       "atoma_builtin__load_skill": 2,
       "filesystem__search_files": 3,
       "filesystem__list_directory": 1,
@@ -2966,7 +2966,9 @@
       "filesystem__read_text_file": 5,
       "filesystem__edit_file": 4,
       "github__commit_and_push": 1,
-      "github__create_pr": 1
+      "github__create_pr": 1,
+      "github__get_pr": 1,
+      "github__close_issue": 1
     },
     "acts": {
       "other": 67,
@@ -2982,6 +2984,13 @@
         "messages": 280,
         "seconds": 499,
         "started": "2026-09-14T11:38:56Z"
+      },
+      {
+        "ended": "2026-09-14T15:41:39Z",
+        "ended_because": "completed",
+        "messages": 371,
+        "seconds": 25,
+        "started": "2026-09-14T15:41:14Z"
       }
     ]
   },
