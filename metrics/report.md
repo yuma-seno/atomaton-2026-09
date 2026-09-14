@@ -10,28 +10,28 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 8 | 12.5% | 55 | 499 |
-| Last 30 days | 8 | 12.5% | 55 | 499 |
-| Last year | 8 | 12.5% | 55 | 499 |
-| All time | 8 | 12.5% | 55 | 499 |
+| Last 7 days | 9 | 11.1% | 37 | 499 |
+| Last 30 days | 9 | 11.1% | 37 | 499 |
+| Last year | 9 | 11.1% | 37 | 499 |
+| All time | 9 | 11.1% | 37 | 499 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 7 |
+| `completed` | 8 |
 | `failed` | 1 |
 
 ## Last 7 days
 
 7 sessions.
 
-**9,057,878 tokens** over 16 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**9,069,571 tokens** over 17 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 78,253 | 877,552 | 6,403,430 | 6,403,430 | 9,057,878 |
-| messages per session | 10 | 354 | 354 | 354 | 410 |
+| tokens per run | 68,832 | 877,552 | 6,403,430 | 6,403,430 | 9,069,571 |
+| messages per session | 10 | 354 | 354 | 354 | 412 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -76,12 +76,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 7 sessions.
 
-**28,099,087 tokens** over 212 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**28,097,501 tokens** over 212 runs that reported them, **97.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 21,618 | 116,634 | 2,281,321 | 6,403,430 | 28,099,087 |
-| messages per session | 10 | 354 | 354 | 354 | 410 |
+| tokens per run | 21,618 | 116,634 | 2,281,321 | 6,403,430 | 28,097,501 |
+| messages per session | 10 | 354 | 354 | 354 | 412 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -126,12 +126,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 7 sessions.
 
-**116,374,840 tokens** over 415 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**116,386,533 tokens** over 416 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,374,840 |
-| messages per session | 10 | 354 | 354 | 354 | 410 |
+| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,386,533 |
+| messages per session | 10 | 354 | 354 | 354 | 412 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -176,12 +176,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 362 sessions.
 
-**116,374,840 tokens** over 415 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**116,386,533 tokens** over 416 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,374,840 |
-| messages per session | 10 | 90 | 433 | 1,011 | 13,209 |
+| tokens per run | 24,584 | 270,394 | 5,198,798 | 39,737,697 | 116,386,533 |
+| messages per session | 10 | 90 | 433 | 1,011 | 13,211 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
