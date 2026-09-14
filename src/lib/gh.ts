@@ -124,6 +124,18 @@ export function ghGraphql<T = unknown>(
   return result.data as T;
 }
 
+/**
+ * Whether a failed `git commit` failed because there was nothing to commit.
+ *
+ * Separated from the caller so it can be tested without a repository, and named
+ * after what it means rather than what it matches: this is not an error to report,
+ * it is the answer "no changes", and a caller that treats it as a failure abandons
+ * the steps that came after the commit.
+ */
+export function nothingToCommit(result: RunResult): boolean {
+  return /nothing to commit|no changes added to commit/i.test(`${result.stdout} ${result.stderr}`);
+}
+
 /** Run a `git` command. */
 export function gitRun(...args: string[]): RunResult {
   return run(["git", ...args]);

@@ -80,7 +80,7 @@ export function stringArray(description: string) {
 }
 
 /**
- * Names a model reaches for when the schema says `number`.
+ * Names a model reaches for when the schema says something else.
  *
  * Measured, not guessed. A verification run on a real runner produced three of
  * these in a row:
@@ -104,24 +104,64 @@ export function stringArray(description: string) {
  * KNOWN confusion whose intent is unambiguous. It is the opposite of the APPROVE
  * case, where the runtime used to accept a value that could never work and taught
  * the model to keep asking for it.
+ *
+ * Generalised from `number` to a map after the same confusion turned up on a second
+ * key. `get_branch` took `name` while `sync_branch`, sitting beside it in the same
+ * catalog, took `branch` -- so an agent that had just synchronised a branch asked
+ * about it with the key it had used a moment earlier and was refused. Two adjacent
+ * tools naming one concept differently is the defect; accepting the synonym is the
+ * repair that does not require every caller to know which is which.
  */
-const NUMBER_ALIASES = ["issue_number", "pr_number", "pull_number", "pull_request_number"] as const;
+const ALIASES: Record<string, readonly string[]> = {
+  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
+  // `name` is what `get_branch` used to declare. It is listed rather than guessed at:
+  // the confusion ran the other way -- agents passed `branch` to a tool asking for
+  // `name` -- and renaming the parameter to `branch` is what fixed that. This entry
+  // catches the reverse, from a caller working off the older shape. Nothing else goes
+  // in here until a session shows an agent reaching for it; a speculative synonym is
+  // indistinguishable from a typo, and quietly accepting a typo is the defect
+  // strictness exists to prevent.
+  branch: ["name"],
+};
 
 /**
- * Fold a synonym for `number` into `number`, before validation sees it.
+ * The keys a schema actually declares.
+ *
+ * An alias is folded only into a key this tool declares, and never over a key the
+ * tool also declares in its own right. The second half is the guard that matters: a
+ * tool taking both `branch` and `name` as separate parameters would otherwise have
+ * one quietly overwrite the other. Where a tool has only the canonical key the fold
+ * is exactly what is wanted -- `sync_branch` takes `branch`, so a caller that said
+ * `name` is understood there too, which is the consistency this map exists to give.
+ */
+function declaredKeys(schema: z.ZodTypeAny): Set<string> {
+  return schema instanceof z.ZodObject ? new Set(Object.keys(schema.shape as object)) : new Set<string>();
+}
+
+/**
+ * Fold a synonym into the key it is a synonym for, before validation sees it.
  *
  * Applied to whole object schemas rather than to a field, because the key itself
  * is what needs renaming and a field-level check never sees a key it does not
- * know. An alias present alongside a real `number` is ignored — the explicit one
+ * know. An alias present alongside the real key is ignored — the explicit one
  * wins, and nothing silently overrides it.
  */
-function acceptNumberAliases(raw: unknown): unknown {
+function acceptAliases(raw: unknown, declared: Set<string>): unknown {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
-  const value = raw as Record<string, unknown>;
-  const alias = NUMBER_ALIASES.find((name) => name in value);
-  if (alias === undefined) return raw;
-  const { [alias]: aliased, ...rest } = value;
-  return "number" in rest ? rest : { ...rest, number: aliased };
+  let value = raw as Record<string, unknown>;
+  let renamed = false;
+  for (const [canonical, aliases] of Object.entries(ALIASES)) {
+    if (!declared.has(canonical)) continue;
+    for (const alias of aliases) {
+      if (declared.has(alias) || !(alias in value)) continue;
+      const { [alias]: aliased, ...rest } = value;
+      // An alias alongside the real key is dropped: the explicit one wins.
+      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
+      renamed = true;
+      break;
+    }
+  }
+  return renamed ? value : raw;
 }
 
 /** An image in MCP's own content-block shape, which the Atoma core maps per provider. */
@@ -149,6 +189,19 @@ export interface McpToolSpec<S extends z.ZodTypeAny> {
   description: string;
   schema: S;
   handler: (args: z.infer<S>) => McpToolResult | Promise<McpToolResult>;
+  /**
+   * A better message for arguments this tool can diagnose but the schema cannot.
+   *
+   * The schema knows `number` is missing. Only the tool knows that this run is
+   * reviewing pull request #305, and that naming it is the difference between a
+   * refusal an agent can act on and one it can only retry. Measured three times in
+   * this project: a refusal that says what to do next is followed, and one that only
+   * states a rule is not.
+   *
+   * Returning `undefined` keeps the schema's own message, which is right whenever
+   * the tool has nothing more specific to add.
+   */
+  guidance?: (args: Record<string, unknown>) => string | undefined;
 }
 
 /**
@@ -198,6 +251,7 @@ function refuseUnknownKeys<S extends z.ZodTypeAny>(schema: S): S {
 
 export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): BuiltMcpTool {
   const schema = refuseUnknownKeys(spec.schema);
+  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none",
@@ -208,8 +262,10 @@ export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): Bui
       // Before validation, not inside the schema: the key is what is being
       // renamed, and a strict object rejects an unknown key before any field-level
       // rule could see it.
-      const result = schema.safeParse(acceptNumberAliases(args));
+      const result = schema.safeParse(acceptAliases(args, declared));
       if (!result.success) {
+        const better = spec.guidance?.(args);
+        if (better !== undefined) throw new Error(better);
         const message = result.error.issues
           .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
           .join("; ");
