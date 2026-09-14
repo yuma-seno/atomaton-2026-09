@@ -273,3 +273,107 @@ describe("what a window is for, beyond trend", () => {
     expect(section("All time")).toContain("| `filesystem__search_files` | 1 | 0 | 1 | 0% |");
   });
 });
+
+/**
+ * The third state. `failed` is an error instead of an answer, `refused` is a guard
+ * saying no, and this is an answer that arrived worse than it should have. Two real
+ * defects lived in this data unread -- an audit log writing to a path that did not
+ * exist, and a search falling back to unranked results -- because nothing counted it.
+ */
+describe("degraded answers", () => {
+  const withProblem = (tool: string, server: string, problem: string, extra: Partial<CallRecord> = {}) =>
+    call(tool, { problems: [{ server, problem }], ...extra });
+
+  const session = (path: string, calls: CallRecord[], at?: string) => ({
+    path,
+    agent: "engineer",
+    messages: 10,
+    runs: [],
+    calls,
+    at,
+  });
+
+  test("a problem reported beside a successful answer is counted", () => {
+    const m = metricsOf(
+      [session("a", [withProblem("search__search_code", "search", "reranking failed")], "2026-09-13T00:00:00Z")],
+      [],
+      [],
+      [],
+    );
+    expect(m.degraded).toHaveLength(1);
+    expect(m.degraded[0]).toMatchObject({ server: "search", count: 1, sessions: 1 });
+  });
+
+  /**
+   * Otherwise this section becomes a second copy of the failure and refusal columns,
+   * and the one state it exists to show is buried in the two that were already visible.
+   */
+  test("a call that failed or was refused is not counted again here", () => {
+    const m = metricsOf(
+      [
+        session("a", [
+          withProblem("github__get_pr", "github", "x", { failed: true }),
+          withProblem("github__close_issue", "github", "y", { refused: true }),
+        ]),
+      ],
+      [],
+      [],
+      [],
+    );
+    expect(m.degraded).toEqual([]);
+  });
+
+  /**
+   * The reranker's complaints arrive on whatever call was in flight when the search
+   * server noticed, so taking the name from the tool filed them under `atoma_builtin` --
+   * a server with no reranker in it.
+   */
+  test("the server is the one that reported, not the one that was called", () => {
+    const m = metricsOf(
+      [session("a", [withProblem("atoma_builtin__load_skill", "search", "could not preload the reranker")])],
+      [],
+      [],
+      [],
+    );
+    expect(m.degraded[0]?.server).toBe("search");
+  });
+
+  /**
+   * One run reporting the same fault ten times is one fault. Counting sessions as well
+   * as reports is what keeps a chatty run from looking like a widespread problem.
+   */
+  test("reports and sessions are counted separately", () => {
+    const m = metricsOf(
+      [
+        session("a", [
+          withProblem("search__search_code", "search", "same"),
+          withProblem("search__search_code", "search", "same"),
+        ]),
+        session("b", [withProblem("search__search_code", "search", "same")]),
+      ],
+      [],
+      [],
+      [],
+    );
+    expect(m.degraded).toHaveLength(1);
+    expect(m.degraded[0]).toMatchObject({ count: 3, sessions: 2 });
+  });
+
+  /**
+   * Recency over volume, because the question is whether it is still happening. A fault
+   * seen once today matters more than one seen forty times in August, which is the shape
+   * of a fault somebody already fixed.
+   */
+  test("the most recently seen problem is listed first", () => {
+    const m = metricsOf(
+      [
+        session("old", Array.from({ length: 40 }, () => withProblem("search__search_code", "search", "loud but old")), "2026-08-01T00:00:00Z"),
+        session("new", [withProblem("github__get_pr", "github", "quiet but current")], "2026-09-14T00:00:00Z"),
+      ],
+      [],
+      [],
+      [],
+    );
+    expect(m.degraded[0]?.problem).toBe("quiet but current");
+  });
+});

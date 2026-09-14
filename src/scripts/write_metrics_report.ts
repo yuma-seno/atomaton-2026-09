@@ -24,7 +24,7 @@ import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atoma-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
-import { metricsOf, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
+import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
 
@@ -112,6 +112,54 @@ function looksRefused(content: string): boolean {
   );
 }
 
+/**
+ * The problems a server reported alongside an answer it did give.
+ *
+ * A tool result can end with a block the server appended:
+ *
+ *     --- 1 problem reported by the 'search' server, not part of the answer above ---
+ *     warning: reranking failed (EACCES); these results are first-stage ordered
+ *
+ * The call succeeded, so neither `looksFailed` nor `looksRefused` is true, and until
+ * now nothing else looked either. Twenty-six of these sat in the recorded sessions;
+ * six were an audit log writing to a path that did not exist, which went unnoticed for
+ * weeks and took two control signals with it.
+ *
+ * Only lines after the marker are read. The same words can appear in an answer -- a
+ * grep for "error:" returns lines beginning "error:" -- and counting those would fill
+ * this with whatever the agents happened to be reading.
+ */
+function problemsIn(content: string): ReportedProblem[] {
+  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
+  if (!marker) return [];
+  const server = marker[1]!;
+  const out: ReportedProblem[] = [];
+  for (const line of content.slice(marker.index).split("\n")) {
+    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
+    if (reported) out.push({ server, problem: normaliseProblem(reported[2]!) });
+  }
+  return out;
+}
+
+/**
+ * One problem, spelled the same way every time it happened.
+ *
+ * Without this the same fault splits across rows on whatever issue number, pull
+ * request number or byte count it mentioned, and a fault reported forty times reads
+ * as forty faults reported once -- which is exactly the shape that gets ignored.
+ *
+ * Truncated because some of these carry a whole query or a path list, and the tail is
+ * never what identifies them.
+ */
+function normaliseProblem(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/#[0-9]+/g, "#N")
+    .replace(/[0-9]{3,}/g, "N")
+    .trim()
+    .slice(0, 120);
+}
+
 /** Whether a tool result reads as a failure. A string match, and the report says so. */
 function looksFailed(content: string): boolean {
   if (looksRefused(content)) return false;
@@ -160,7 +208,15 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
           act = "other";
         }
       }
-      calls.push({ tool, agent, failed: looksFailed(result), refused: looksRefused(result), skill, act });
+      calls.push({
+        tool,
+        agent,
+        failed: looksFailed(result),
+        refused: looksRefused(result),
+        skill,
+        act,
+        problems: problemsIn(result),
+      });
     }
   }
   // `atoma_runs` is atoma's own, written from v0.1.28. Anything unreadable is no
@@ -242,6 +298,36 @@ function declared(): { tools: string[]; skills: string[] } {
   return { tools, skills };
 }
 
+/**
+ * When each session file was last written, from the branch's own history.
+ *
+ * One `git log` over the whole branch rather than one per file: there are hundreds of
+ * sessions, and a `git log` each would be hundreds of processes to answer a question
+ * the branch answers once.
+ *
+ * This is the file's date, not the work's. It is used only to say when a problem was
+ * last seen, where being a day out changes nothing, and deliberately not to place a
+ * session in a dated window -- a window is about when the work ran, and a session
+ * rewritten by a later run would move.
+ */
+function sessionDates(paths: readonly string[]): Map<string, string> {
+  const wanted = new Set(paths);
+  const out = new Map<string, string>();
+  const log = gitRun("log", `origin/${BRANCH}`, "--name-only", "--format=%x00%aI", "--", "sessions");
+  if (log.code !== 0) return out;
+  let date = "";
+  for (const line of log.stdout.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("\u0000")) {
+      date = trimmed.slice(1);
+      continue;
+    }
+    // Newest first, so the first sighting of a path is its latest write.
+    if (trimmed && wanted.has(trimmed) && !out.has(trimmed)) out.set(trimmed, date);
+  }
+  return out;
+}
+
 function main(): void {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -256,12 +342,14 @@ function main(): void {
   const listed = gitRun("ls-tree", "-r", "--name-only", `origin/${BRANCH}`, "--", "sessions");
   const paths = listed.stdout.split("\n").map((s) => s.trim()).filter((s) => s.endsWith(".json"));
 
+  const writtenAt = sessionDates(paths);
+
   const sessions: SessionRecord[] = [];
   for (const path of paths) {
     const shown = gitRun("show", `origin/${BRANCH}:${path}`);
     if (shown.code !== 0) continue;
     const record = sessionFrom(path, shown.stdout);
-    if (record) sessions.push(record);
+    if (record) sessions.push({ ...record, at: writtenAt.get(path) });
   }
 
   let tokens: TokenRecord[] = [];

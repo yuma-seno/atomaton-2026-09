@@ -41,6 +41,51 @@ export interface CallRecord {
   act?: ShellAct;
   /** Whether a hook refused the call. */
   refused: boolean;
+  /**
+   * Problems the server reported alongside an answer it did give.
+   *
+   * The third state, and the one nothing was counting. `failed` is an error instead of
+   * an answer and `refused` is a guard saying no; this is an answer that arrived worse
+   * than it should have -- a search that came back in first-stage order because the
+   * reranker would not load, a tool whose audit log went nowhere. The call succeeded,
+   * so neither of the other two is true, so the report said nothing at all.
+   *
+   * Each entry is one reported line, normalised so the same problem does not split
+   * across rows on an issue number.
+   */
+  problems?: ReportedProblem[];
+}
+
+/** One line a server reported alongside an answer, and the server that reported it. */
+export interface ReportedProblem {
+  /**
+   * Read from the report block, not from the tool name.
+   *
+   * They differ. The reranker's complaints arrive on whatever call was in flight when
+   * the search server noticed, so taking the name from the tool filed them under
+   * `atoma_builtin` -- a server that has no reranker.
+   */
+  server: string;
+  problem: string;
+}
+
+/** One problem a server kept reporting, and where it was last seen. */
+export interface DegradedTally {
+  problem: string;
+  /** The server named in the report block, not guessed from the tool name. */
+  server: string;
+  /** Reports, which may be several within one session. */
+  count: number;
+  sessions: number;
+  /**
+   * The most recent session that carried it, by the date its file was written.
+   *
+   * This is the column to read first. A problem reported six times tells you nothing
+   * on its own -- six times last week is a live fault, and six times in August is one
+   * somebody already fixed. The op-log defect sat in this data for weeks and was found
+   * by a person reading a session, which is the reading this column replaces.
+   */
+  lastSeen?: string;
 }
 
 /** What a shell command was doing, coarsely. The categories the guard proposals argue about. */
@@ -59,6 +104,15 @@ export interface SessionRecord {
    * is why the report's windows fill in going forward rather than being backfilled.
    */
   runs: RunRecord[];
+  /**
+   * When this session was last written, from the commit that wrote it.
+   *
+   * Not used to place a session in a window -- that stays on the run records, which say
+   * when the work happened rather than when the file was stored. It is here so a
+   * problem a server keeps reporting can say when it was last seen, which is the only
+   * thing that separates a live fault from one already fixed.
+   */
+  at?: string;
 }
 
 /**
@@ -94,6 +148,8 @@ export interface Metrics {
   neverUsedServers: string[];
   neverLoaded: string[];
   refusals: number;
+  /** Answers that arrived degraded, worst-recurring first. See `DegradedTally`. */
+  degraded: DegradedTally[];
   /** Every run every session recorded, flattened. Empty until atoma v0.1.28 wrote any. */
   runs: RunRecord[];
   tokens?: TokenSummary;
@@ -182,6 +238,31 @@ export function metricsOf(
     byTool.set(call.tool, row);
   }
 
+  // Counted per problem rather than per tool: the same fault appears under whichever
+  // tool happened to be called when the server noticed it, and it is the fault that
+  // gets fixed. `sessions` is a set because one run can report the same thing ten times
+  // and that is one fault, not ten.
+  const degraded = new Map<string, DegradedTally & { seen: Set<string> }>();
+  for (const session of sessions) {
+    for (const call of session.calls) {
+      // A call that failed or was refused is already counted, and counting it again
+      // here would make this section a second copy of those two. What belongs here is
+      // the third state only: the call worked, and said it worked badly.
+      if (call.failed || call.refused) continue;
+      for (const { server, problem } of call.problems ?? []) {
+        const key = `${server}\u0000${problem}`;
+        const row =
+          degraded.get(key) ?? { problem, server, count: 0, sessions: 0, seen: new Set<string>() };
+        row.count += 1;
+        row.seen.add(session.path);
+        if (session.at && (row.lastSeen === undefined || session.at > row.lastSeen)) {
+          row.lastSeen = session.at;
+        }
+        degraded.set(key, row);
+      }
+    }
+  }
+
   const usedServers = new Set(calls.map((c) => c.tool.split("__")[0] ?? ""));
   const loaded = new Set(calls.flatMap((c) => (c.skill ? [c.skill] : [])));
 
@@ -195,6 +276,10 @@ export function metricsOf(
     neverUsedServers: declaredServers.filter((s) => !usedServers.has(s)).sort(),
     neverLoaded: declaredSkills.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
+    degraded: [...degraded.values()]
+      .map(({ seen, ...row }) => ({ ...row, sessions: seen.size }))
+      // Recency first: a fault last seen today outranks a louder one from August.
+      .sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "") || b.count - a.count),
     runs: sessions.flatMap((s) => s.runs),
     tokens: tokens.length === 0 ? undefined : tokenSummary(tokens),
   };

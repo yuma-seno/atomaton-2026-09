@@ -111,6 +111,46 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
 }
 
 /** One window's worth of everything else. */
+/**
+ * The answers that arrived worse than they should have.
+ *
+ * All-time and not per window, because the question this answers is whether something
+ * is still happening, and a count inside a window cannot say that -- `last seen` can.
+ * Sorted by that date for the same reason: a fault seen today outranks a louder one
+ * from August, and the loud old ones are the ones somebody already fixed.
+ *
+ * This section exists because two real defects sat in the session data unread. The
+ * audit log wrote to a path that did not exist for weeks, taking two control signals
+ * with it, and the reranker fell back to unranked results. Both reported themselves
+ * every single time. Nothing was counting, so nothing was said.
+ */
+function degradedSection(metrics: Metrics): string[] {
+  const out = ["## Degraded answers", ""];
+  out.push(
+    "A tool can answer and report that it answered badly — a search that came back " +
+      "unranked, a log that went nowhere. The call succeeded, so it is neither a failure " +
+      "nor a refusal, and it is easy for one of these to run for months with nobody " +
+      "reading it. **Read `last seen` before `reports`**: an old count is a fixed fault. " +
+      "That date is when the session file was last written, which is the run that touched " +
+      "it last and not necessarily the run that reported the problem — so it errs recent.",
+  );
+  out.push("");
+  if (metrics.degraded.length === 0) {
+    out.push("Nothing reported a problem alongside an answer.", "");
+    return out;
+  }
+  out.push("| last seen | server | reports | sessions | problem |");
+  out.push("| --- | --- | ---: | ---: | --- |");
+  for (const row of metrics.degraded) {
+    out.push(
+      `| ${row.lastSeen?.slice(0, 10) ?? "—"} | \`${row.server}\` | ${n(row.count)} | ` +
+        `${n(row.sessions)} | ${row.problem.replace(/\|/g, String.fromCharCode(92) + "|")} |`,
+    );
+  }
+  out.push("");
+  return out;
+}
+
 function windowSection(label: string, metrics: Metrics): string[] {
   const out = [`## ${label}`, ""];
   if (metrics.sessions === 0) {
@@ -215,6 +255,8 @@ export function renderReport(
   out.push(...runSection(all.runs, now));
 
   for (const window of WINDOWS) out.push(...windowSection(window.label, forWindow(window)));
+
+  out.push(...degradedSection(all));
 
   out.push("## Never used");
   out.push("");
