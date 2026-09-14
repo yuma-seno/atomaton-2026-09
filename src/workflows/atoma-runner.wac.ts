@@ -234,6 +234,24 @@ echo "cache_key=atoma-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHUB_O
 const RUN_DIR = "\${RUNNER_TEMP}/atoma-run";
 
 /**
+ * The same directory, written so GitHub Actions expands it rather than a shell.
+ *
+ * `RUN_DIR` is shell syntax. That is right everywhere it is used inside a `run:` block
+ * and wrong in an `env:` mapping -- Actions substitutes `${{ }}` there and leaves
+ * `${RUNNER_TEMP}` as literal characters. `ATOMA_OPS_LOG` was set that way, so every tool
+ * that logged an operation tried to write into a directory literally named
+ * `${RUNNER_TEMP}`, failed with ENOENT, and wrote nothing at all.
+ *
+ * Two signals are read back out of that log -- whether the chain is still dispatching,
+ * and whether this run changed anything, which is what stops a chain that has stopped
+ * getting anywhere. Both have been false on every run since the log moved here.
+ *
+ * The readers were never wrong: they sit in `run:` blocks, where the shell does expand
+ * it, so they were looking in the right place at a file nothing had written.
+ */
+const RUN_DIR_EXPR = "${{ runner.temp }}/atoma-run";
+
+/**
  * The file `atoma run --stop-file` watches, and `watch_for_stop.ts` creates.
  *
  * A file, because a stop has to cross a boundary nothing else can: the person who
@@ -618,7 +636,7 @@ const runAgentStep = new TypedOutputsStep(
       // Structured JSON-lines log every MCP tool mutation/dispatch decision
       // is written to (see lib/ops-log.ts) -- read back below to determine
       // chain_continues, and generally useful as a per-run audit trail.
-      ATOMA_OPS_LOG: `${RUN_DIR}/atoma_ops.log`,
+      ATOMA_OPS_LOG: `${RUN_DIR_EXPR}/atoma_ops.log`,
       // Repository variables, not secrets: which provider to use and which host
       // to reach. The `_IN` suffix keeps them out of the names Atoma reads until
       // the script has checked they are non-empty, so an unset variable cannot
