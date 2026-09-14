@@ -17,6 +17,10 @@ function signals(overrides: Partial<MergeSignals> = {}): MergeSignals {
     state: "OPEN",
     checks: [{ name: "check", status: "completed", conclusion: "success" }],
     requiredChecks: ["check"],
+    // The ordinary repository: GitHub can and does refuse a merge itself. The case
+    // where it cannot is a paid feature a free private repository lacks, and it has
+    // its own tests rather than being the default here.
+    requiredChecksEnforceable: true,
     mergePolicy: "auto",
     governancePaths: [],
     gateMatches: [],
@@ -418,5 +422,89 @@ describe("declared merge gates", () => {
       expect.arrayContaining(["merge-gate", "checks-missing"]),
     );
     expect(result.needsCiDispatch).toBe(true);
+  });
+});
+
+/**
+ * Branch rules are a paid feature on a private repository, and this template is meant
+ * to be adopted by people on a free account. GitHub answers 403 for every branch there,
+ * which is a definite answer -- nothing can be required -- and not a failed read.
+ *
+ * The consequence is narrow and easy to miss: a failing check that no rule requires
+ * makes a pull request UNSTABLE, and UNSTABLE is mergeable. On a repository that HAS
+ * rules that is somebody's decision. Where rules cannot exist it is just a red build
+ * with nothing in front of it, so Atoma refuses in GitHub's place.
+ */
+describe("a repository that cannot have branch rules", () => {
+  const failing = [{ name: "atoma-check", status: "completed", conclusion: "failure" }];
+
+  test("a failing check blocks the merge even though GitHub calls it mergeable", () => {
+    const out = decideMergeReadiness(
+      signals({
+        mergeStateStatus: "UNSTABLE",
+        requiredChecksEnforceable: false,
+        requiredChecks: [],
+        checks: failing,
+      }),
+    );
+    expect(out.ready).toBe(false);
+    expect(out.blockers.map((b) => b.kind)).toContain("checks-failing");
+  });
+
+  /**
+   * The refusal has to say why GitHub is not the one refusing, or the obvious next move
+   * is to go looking for the branch rule that did it.
+   */
+  test("the refusal says that Atoma is standing in for GitHub", () => {
+    const out = decideMergeReadiness(
+      signals({ mergeStateStatus: "UNSTABLE", requiredChecksEnforceable: false, requiredChecks: [], checks: failing }),
+    );
+    expect(formatBlockers(out.blockers)).toContain("Atoma does");
+  });
+
+  test("a passing check still merges", () => {
+    const out = decideMergeReadiness(
+      signals({
+        mergeStateStatus: "UNSTABLE",
+        requiredChecksEnforceable: false,
+        requiredChecks: [],
+        checks: [{ name: "atoma-check", status: "completed", conclusion: "success" }],
+      }),
+    );
+    expect(out.ready).toBe(true);
+  });
+
+  /**
+   * A check still running is not a failing one. Blocking on it here would be a second
+   * rule nobody asked for -- the question this case answers is only whether a RED build
+   * may be merged.
+   */
+  test("a check still running is not treated as a failure", () => {
+    const out = decideMergeReadiness(
+      signals({
+        mergeStateStatus: "UNSTABLE",
+        requiredChecksEnforceable: false,
+        requiredChecks: [],
+        checks: [{ name: "atoma-check", status: "in_progress", conclusion: null }],
+      }),
+    );
+    expect(out.blockers.map((b) => b.kind)).not.toContain("checks-failing");
+  });
+
+  /**
+   * Where rules DO exist, UNSTABLE keeps meaning what it meant: somebody chose not to
+   * require this check, and that choice stands. This is the case the change must not
+   * disturb.
+   */
+  test("on a repository with rules, an unrequired failing check still merges", () => {
+    const out = decideMergeReadiness(
+      signals({
+        mergeStateStatus: "UNSTABLE",
+        requiredChecksEnforceable: true,
+        requiredChecks: [],
+        checks: failing,
+      }),
+    );
+    expect(out.ready).toBe(true);
   });
 });

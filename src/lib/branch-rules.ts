@@ -31,9 +31,31 @@ interface BranchRule {
   parameters?: { required_status_checks?: { context: string }[] };
 }
 
+/**
+ * GitHub's answer when branch rules are not a feature this repository has.
+ *
+ * Rulesets and branch protection are paid features on a private repository, so a free
+ * account gets 403 with this message for every branch. That is a DEFINITE answer --
+ * no rule can be required here -- and it is not the same as a read that failed, which
+ * is why it gets its own state below rather than being folded into either.
+ *
+ * Matched on GitHub's wording, which is the only signal the response carries: the
+ * status is a plain 403, indistinguishable from a token that lacks the scope. If the
+ * wording ever changes this stops matching and the answer falls back to "could not be
+ * read", which is the safe direction -- a caller then refuses instead of assuming.
+ */
+const FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
+
 export type RequiredChecks =
   /** The branch's protection was read. `contexts` may legitimately be empty. */
-  | { known: true; contexts: string[] }
+  | { known: true; enforceable: true; contexts: string[] }
+  /**
+   * This repository cannot have branch rules at all, so nothing is required and
+   * nothing ever will be. Known, so a caller proceeds -- but `enforceable: false`,
+   * because GitHub will not refuse a merge on this repository's behalf and a caller
+   * that gates on merges has to do that itself.
+   */
+  | { known: true; enforceable: false; contexts: string[]; why: string }
   /** The branch's protection could not be read. `why` is for a log or a report. */
   | { known: false; why: string };
 
@@ -46,13 +68,26 @@ export type RequiredChecks =
 export function readRequiredChecks(repo: string, baseRef: string): RequiredChecks {
   if (!baseRef) return { known: false, why: "no base branch was given" };
 
-  const { code, stdout } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
-  if (code) return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
+  if (code) {
+    if (FEATURE_UNAVAILABLE.test(`${stderr} ${stdout}`)) {
+      return {
+        known: true,
+        enforceable: false,
+        contexts: [],
+        why:
+          "branch rules are not available on this repository (they are a paid feature on a " +
+          "private one), so GitHub cannot require a status check or refuse a merge here",
+      };
+    }
+    return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  }
 
   try {
     const rules = JSON.parse(stdout || "[]") as BranchRule[];
     return {
       known: true,
+      enforceable: true,
       contexts: rules
         .filter((rule) => rule.type === "required_status_checks")
         .flatMap((rule) => rule.parameters?.required_status_checks ?? [])

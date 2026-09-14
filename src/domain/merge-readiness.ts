@@ -71,6 +71,21 @@ export interface MergeSignals {
    * has no such rule.
    */
   requiredChecks: string[];
+  /**
+   * Whether GitHub will refuse a merge on this repository's behalf.
+   *
+   * False when branch rules are not available at all -- they are a paid feature on a
+   * private repository, and this template is adopted by people on a free account. It
+   * is not the same as an empty `requiredChecks`: that can be a deliberate choice on
+   * a repository where a rule COULD be added, and GitHub still reports a merge as
+   * blocked for the other reasons a ruleset carries.
+   *
+   * It matters because `UNSTABLE` -- a failing check that no rule requires -- is
+   * mergeable when a ruleset decided so, and is simply an unguarded red build when no
+   * ruleset can exist. Same signal from GitHub, opposite meanings, and only this
+   * tells them apart.
+   */
+  requiredChecksEnforceable: boolean;
   /** `merge_policy` from config.json. Atoma's own gate, not GitHub's. */
   mergePolicy: string;
   /**
@@ -274,7 +289,28 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
 
   switch (signals.mergeStateStatus?.toUpperCase()) {
     case "CLEAN":
-    case "UNSTABLE": // a non-required check is failing; the ruleset permits merging
+      break;
+    case "UNSTABLE":
+      // A check is failing and no rule requires it. On a repository that HAS rules
+      // that is a decision -- somebody chose not to require this one -- and merging is
+      // allowed. Where rules cannot exist, nobody decided anything: it is just a red
+      // build with nothing standing in front of it, and letting an agent merge that
+      // would make "we handle the free private case" mean "we quietly stopped
+      // checking". Atoma refuses in GitHub's place.
+      if (!signals.requiredChecksEnforceable) {
+        for (const run of signals.checks) {
+          if (run.status !== "completed") continue;
+          if (PASSING.has((run.conclusion ?? "").toLowerCase())) continue;
+          const where = run.detailsUrl ? ` (${run.detailsUrl})` : "";
+          blockers.push({
+            kind: "checks-failing",
+            detail:
+              `check "${run.name}" concluded ${run.conclusion}${where}. ` +
+              "Branch rules are unavailable on this repository, so GitHub does not " +
+              "block this merge and Atoma does.",
+          });
+        }
+      }
       break;
     case "DRAFT":
       // Kept although `isDraft` above already covers it, so this does not break if
