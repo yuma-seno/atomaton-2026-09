@@ -80,16 +80,27 @@ function gh(...args) {
 }
 
 // src/lib/branch-rules.ts
+var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
 function readRequiredChecks(repo, baseRef) {
   if (!baseRef)
     return { known: false, why: "no base branch was given" };
-  const { code, stdout } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
-  if (code)
+  const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
+  if (code) {
+    if (FEATURE_UNAVAILABLE.test(`${stderr} ${stdout}`)) {
+      return {
+        known: true,
+        enforceable: false,
+        contexts: [],
+        why: "branch rules are not available on this repository (they are a paid feature on a " + "private one), so GitHub cannot require a status check or refuse a merge here"
+      };
+    }
     return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  }
   try {
     const rules = JSON.parse(stdout || "[]");
     return {
       known: true,
+      enforceable: true,
       contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context)
     };
   } catch {
@@ -254,7 +265,9 @@ function main() {
   }
   const requiredContexts = required.contexts;
   log(`required contexts on ${baseRef}: ${requiredContexts.join(", ") || "(none)"}`);
-  if (requiredContexts.length === 0) {
+  if (!required.enforceable) {
+    log(`::notice::${required.why}. Atoma enforces the CI result itself when merging.`);
+  } else if (requiredContexts.length === 0) {
     log(`::warning::${baseRef} requires no status checks, so CI results gate nothing here. ` + "Import .github/atoma/rulesets/main.json if that was not intended.");
   }
   const { conclusion, runUrl } = deliverableProblems.length > 0 ? { conclusion: "", runUrl: "" } : runCiAndWait(repo, workflow, branch, headSha, Number(values["timeout-seconds"] ?? "1800"));
