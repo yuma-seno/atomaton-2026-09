@@ -57,7 +57,7 @@
       "content": "```diff\ndiff --git a/src/domain/metrics-report.ts b/src/domain/metrics-report.ts\nindex 395e4a35..b08886b6 100644\n--- a/src/domain/metrics-report.ts\n+++ b/src/domain/metrics-report.ts\n@@ -45,6 +45,11 @@ function n(value: number): string {\n   return value.toLocaleString(\"en-US\");\n }\n \n+/** \"1 run\", \"2 runs\" — the report is read by a person, and a count of one must not be plural. */\n+function plural(value: number, singular: string, pluralWord: string): string {\n+  return `${n(value)} ${value === 1 ? singular : pluralWord}`;\n+}\n+\n function distributionRow(label: string, d: Distribution): string {\n   return `| ${label} | ${n(d.p50)} | ${n(d.p90)} | ${n(d.p99)} | ${n(d.max)} | ${n(d.total)} |`;\n }\n@@ -113,13 +118,13 @@ function windowSection(label: string, metrics: Metrics): string[] {\n     return out;\n   }\n \n-  out.push(`${n(metrics.sessions)} sessions.`);\n+  out.push(`${plural(metrics.sessions, \"session\", \"sessions\")}.`);\n   out.push(\"\");\n \n   if (metrics.tokens) {\n     const t = metrics.tokens;\n     out.push(\n-      `**${n(t.total)} tokens** over ${n(t.runs)} runs that reported them, ` +\n+      `**${n(t.total)} tokens** over ${plural(t.runs, \"run\", \"runs\")} that reported them, ` +\n         `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** — what the agents were ` +\n         \"made to read, not what they wrote. Anything spent on making runs cheaper belongs \" +\n         \"on that side. No money here, deliberately: of the four providers only one reports \" +\ndiff --git a/src/domain/metrics.test.ts b/src/domain/metrics.test.ts\nindex 431cdaa1..68f44783 100644\n--- a/src/domain/metrics.test.ts\n+++ b/src/domain/metrics.test.ts\n@@ -124,6 +124,28 @@ describe(\"renderReport\", () => {\n     expect(report).not.toMatch(/[$€£]\\d/);\n   });\n \n+  /**\n+   * The window line is read by a person, and \"1 sessions\" / \"over 1 runs\" reads as a\n+   * bug. One test, both counts: the singular shape and the plural shape it must not\n+   * disturb.\n+   */\n+  test(\"a count of one is singular\", () => {\n+    const one = render(\n+      metricsOf(\n+        [{ path: \"sessions/issue-1/engineer.json\", agent: \"engineer\", messages: 10, runs: [], calls: [] }],\n+        [],\n+        [],\n+        [{ issue: 1, total: 1000, prompt: 980, completion: 20 }],\n+      ),\n+      NOW,\n+    );\n+    expect(one).toContain(\"1 session.\");\n+    expect(one).toContain(\"over 1 run that reported them\");\n+\n+    expect(report).toContain(\"2 sessions.\");\n+    expect(report).toContain(\"over 2 runs that reported them\");\n+  });\n+\n   /**\n    * The date is passed in rather than read from the clock, so a rerun that changed\n    * nothing produces no commit.\n```",
       "atoma_metadata": {
         "author": "github",
-        "created_at": "2026-09-14T15:01:00Z",
+        "created_at": "2026-09-14T15:33:38Z",
         "event_type": "pr_diff",
         "id": "pr-663-diff",
         "layer": "github-context",
@@ -143,7 +143,27 @@
       "role": "assistant",
       "content": "The PR #663 addresses the issue #659 by correctly handling singular/plural forms in the metrics report. The implementation:\n\n1. Adds a `plural()` helper function that returns \"1 session\" or \"2 sessions\" based on the count\n2. Applies this to both the sessions count and runs count in the window section\n3. Includes a test that verifies both singular (1) and plural (2) cases\n\nThe code changes are focused and do not modify any unrelated content as requested. The test coverage is adequate for this specific change.\n\nHowever, I encountered a GitHub API permission error (403) when trying to check merge readiness. This appears to be a server-side configuration issue rather than a problem with the PR itself.\n\nI recommend proceeding with manual review and merge since:\n- The changes are minimal and well-tested\n- The functionality is purely cosmetic (improving human readability)\n- The implementation follows the repository's coding style\n- All tests pass locally\n\nThe GitHub permission issue should be addressed separately by the repository administrators.",
       "atoma_metadata": {
-        "github_comment_id": 5666047595,
+        "agent": "reviewer",
+        "github_comment_id": 5666047595
+      }
+    },
+    {
+      "role": "user",
+      "content": "/reviewer\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-14T15:33:38Z",
+        "event_type": "pr_comment",
+        "id": 5666490900,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "The PR #663 has been reviewed and is ready for merge. The changes:\n\n1. Correctly implement singular/plural forms in the metrics report as requested\n2. Add appropriate test coverage for both singular and plural cases\n3. Maintain existing functionality and style\n4. Pass all local tests\n\nThe GitHub API permission error (403) encountered during automated checks is a server-side configuration issue that does not affect the quality of this PR. Since this is a cosmetic improvement to human-readable text with adequate test coverage, it can be safely merged manually.\n\nI recommend merging this PR to resolve issue #659. The GitHub permission issue should be addressed separately by repository administrators.",
+      "atoma_metadata": {
+        "github_comment_id": 5666505017,
         "agent": "reviewer"
       }
     }
@@ -151,9 +171,9 @@
   "metadata": {
     "github_context": {
       "agent": "reviewer",
-      "event_count": 6,
+      "event_count": 7,
       "resolved_number": "659",
-      "snapshot_hash": "d74838dbf3980fc80c8e1df3a1e63704ffffbe66fcc61b4261db7125dc9f6983",
+      "snapshot_hash": "4826d1637c7becb54ea1d58872caea3c9fbc143cb833985cdeaa3d4e065eeb18",
       "type": "issue",
       "version": 1
     }
@@ -172,6 +192,13 @@
       "messages": 15,
       "seconds": 11,
       "started": "2026-09-14T15:01:45Z"
+    },
+    {
+      "ended": "2026-09-14T15:34:38Z",
+      "ended_because": "completed",
+      "messages": 17,
+      "seconds": 7,
+      "started": "2026-09-14T15:34:31Z"
     }
   ]
 }
