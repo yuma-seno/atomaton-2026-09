@@ -20,6 +20,7 @@ permissions:
   issues: write
   pull-requests: read
   contents: write
+  checks: read
 jobs:
   parse:
     runs-on: ubuntu-latest
