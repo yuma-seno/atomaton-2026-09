@@ -18928,10 +18928,23 @@ function gatherMergeSignals(repo, num, throwOnFailure) {
   const json = (...args) => {
     const { code, stdout, stderr } = gh(...args);
     if (code)
-      throwOnFailure(stderr || stdout);
+      throwOnFailure(`gh ${args.slice(0, 3).join(" ")}: ${stderr || stdout}`);
     return stdout ? JSON.parse(stdout) : null;
   };
-  const pr = json("pr", "view", String(num), "--repo", repo, "--json", "mergeStateStatus,isDraft,author,state,headRefOid,headRefName,baseRefName,title,labels");
+  const tryJson = (...args) => {
+    const { code, stdout, stderr } = gh(...args);
+    if (code) {
+      log6(`WARN gh ${args.slice(0, 3).join(" ")}: ${stderr || stdout}`);
+      return null;
+    }
+    try {
+      return stdout ? JSON.parse(stdout) : null;
+    } catch {
+      return null;
+    }
+  };
+  const pr = json("pr", "view", String(num), "--repo", repo, "--json", "isDraft,author,state,headRefOid,headRefName,baseRefName,title,labels");
+  const mergeState = tryJson("pr", "view", String(num), "--repo", repo, "--json", "mergeStateStatus");
   const sha = pr?.headRefOid ?? "";
   const runs = sha ? json("api", `repos/${repo}/commits/${sha}/check-runs`) : null;
   const baseRefName = pr?.baseRefName ?? "";
@@ -18952,7 +18965,7 @@ function gatherMergeSignals(repo, num, throwOnFailure) {
   ];
   return {
     signals: {
-      mergeStateStatus: pr?.mergeStateStatus ?? "UNKNOWN",
+      mergeStateStatus: mergeState?.mergeStateStatus ?? "UNKNOWN",
       isDraft: pr?.isDraft ?? false,
       authoredByAgent: pr?.author?.is_bot ?? false,
       state: pr?.state ?? "UNKNOWN",
