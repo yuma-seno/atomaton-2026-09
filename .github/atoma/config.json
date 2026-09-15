@@ -10,7 +10,8 @@
       "bun run \"${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/scan_secrets.ts\"",
       "bun run typecheck",
       "bun run synth",
-      "bun run test"
+      "bun run test",
+      "bash -c 'set -e; V=$(gh api repos/rhysd/actionlint/releases/latest --jq .tag_name); curl -sSfL \"https://github.com/rhysd/actionlint/releases/download/${V}/actionlint_${V#v}_linux_amd64.tar.gz\" | tar -xz -C /tmp actionlint; /tmp/actionlint -color .github/workflows/atoma-*.yml'"
     ],
     "secrets": []
   },
