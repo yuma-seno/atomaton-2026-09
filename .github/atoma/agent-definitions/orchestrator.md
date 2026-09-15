@@ -4,9 +4,6 @@ description: Recursively decomposes delivery work, coordinates dependencies, and
 provider: openrouter-responses
 model: qwen/qwen3.7-plus
 vision: true
-callable_by:
-  - user
-  - agent
 knows_about:
   - engineer
   - reviewer

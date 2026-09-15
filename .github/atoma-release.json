@@ -1,7 +1,8 @@
 {
-  "version": "v0.1.112",
+  "version": "v0.1.113",
   "files": [
     ".github/atoma-release.json",
+    ".github/atoma/README.md",
     ".github/atoma/agent-definitions/engineer.md",
     ".github/atoma/agent-definitions/orchestrator.md",
     ".github/atoma/agent-definitions/reviewer.md",

@@ -56,10 +56,21 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
+// src/domain/machinery-layout.ts
+var MACHINERY_ROOT = ".github/atoma";
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
+var TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
+var TOOL_HOOKS_DIR = `${MACHINERY_ROOT}/tools/scripts/hooks`;
+var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
+var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
+
 // src/lib/config.ts
 function configPath() {
   const root = process.env.ATOMA_MACHINERY_ROOT?.trim();
-  return root ? `${root}/.github/atoma/config.json` : ".github/atoma/config.json";
+  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
 }
 var cached;
 function loadConfig() {
