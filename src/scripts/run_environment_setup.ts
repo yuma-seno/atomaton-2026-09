@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * run_environment_setup.ts — Run each command in config.json's
+ * run_environment_setup.ts — Run each command in config.yaml's
  * `environment.setup_commands` (if any) via `bash -c`, before the agent
  * starts, so it never has to spend iterations/tool calls doing one-off
  * environment prep itself on a cold runner. No-ops quietly if unset/empty.

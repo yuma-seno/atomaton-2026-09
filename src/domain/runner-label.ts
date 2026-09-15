@@ -1,19 +1,19 @@
 /**
  * runner-label.ts — which machine a project's own commands run on.
  *
- * `runs-on: ubuntu-latest` was hardcoded in eleven files, and `config.json` could
+ * `runs-on: ubuntu-latest` was hardcoded in eleven files, and `config.yaml` could
  * not reach any of them. For a project that builds on macOS, or that needs a
  * self-hosted runner for a licensed toolchain or a GPU, `atoma-check` and
  * `atoma-deploy` were simply unusable -- and fixing them meant editing
  * `.github/workflows/**`, the one place `GITHUB_TOKEN` cannot write. So neither an
  * agent nor a workflow could do it, and a hand-edited fork is overwritten by the
- * next upgrade. The same argument that put `checks.commands` in
- * `config.json` applies: a fact a project owns was living where the project cannot
+ * next upgrade. The same argument that put `checks.atoma_runs.commands` in
+ * `config.yaml` applies: a fact a project owns was living where the project cannot
  * reach it.
  *
  * ## Two jobs, not a matrix
  *
- * `runs-on` cannot read a file, so a small job reads `config.json` first and the
+ * `runs-on` cannot read a file, so a small job reads `config.yaml` first and the
  * real job takes its output. Measured on a throwaway branch: asking for
  * `ubuntu-22.04` through a job output landed on `Ubuntu 22.04.5 LTS`, while
  * `ubuntu-latest` is 24.04 -- so the value genuinely decides the machine.

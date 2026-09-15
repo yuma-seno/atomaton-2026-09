@@ -238,7 +238,7 @@ export interface BuiltMcpTool {
  * It also puts `additionalProperties: false` in the advertised JSON Schema, so
  * the constraint reaches the model before the call rather than after.
  *
- * `merge_gates` already made this decision for configuration: an unrecognised key
+ * `merge.gates` already made this decision for configuration: an unrecognised key
  * is an error there, because a silently-dropped one is indistinguishable from a
  * setting nobody needed. The same argument holds for a tool call.
  *

@@ -38,7 +38,7 @@ interface PullRequestView {
   headRefOid?: string;
   headRefName?: string;
   baseRefName?: string;
-  /** Both read only for `merge_gates` conditions; nothing else consults them. */
+  /** Both read only for `merge.gates` conditions; nothing else consults them. */
   title?: string;
   labels?: { name?: string }[];
 }
@@ -52,14 +52,14 @@ function log(message: string): void {
 }
 
 /**
- * Why this project's `governed_paths` cannot be honoured as written.
+ * Why this project's `merge.governed_paths` cannot be honoured as written.
  *
- * The same check `merge_gates` patterns get, on the gate that matters more.
- * `governed_paths` decides which changes to the agent's own limits fall to a
+ * The same check `merge.gates` patterns get, on the gate that matters more.
+ * `merge.governed_paths` decides which changes to the agent's own limits fall to a
  * person, so a pattern that matches nothing hands the agent exactly what the
  * setting was written to withhold — and does it in silence.
  *
- * Reported through the same `gate-config-invalid` blocker as a bad `merge_gates`
+ * Reported through the same `gate-config-invalid` blocker as a bad `merge.gates`
  * entry, because it is the same sentence to the person reading it: a gate this
  * project declared could not be evaluated, so the merge is theirs.
  */
@@ -67,7 +67,7 @@ function governedPathProblems(): string[] {
   return getGovernedPaths()
     .map((pattern) => pathPatternProblem(pattern))
     .filter((problem) => problem !== "")
-    .map((problem) => `\`governed_paths\`: ${problem}`);
+    .map((problem) => `\`merge.governed_paths\`: ${problem}`);
 }
 
 /**
@@ -221,7 +221,7 @@ export function gatherMergeSignals(
     // opinion on mergeability. It is here because `mergeStateStatus` came back
     // `CLEAN` for a draft, so the verdict alone reported one as ready to merge.
     //
-    // `title` and `labels` are here for `merge_gates` only. They ride along on a
+    // `title` and `labels` are here for `merge.gates` only. They ride along on a
     // call already being made, so a project that declares no gate pays nothing
     // for the ones it could have declared.
     "--json",

@@ -17,7 +17,8 @@ mcp_servers:
   - web
   - search
   # `reload_environment` only -- the same server the orchestrator has, with its
-  # other two tools withheld. See tools.yaml for why it is a separate entry.
+  # other two tools withheld. See `tools.servers` in config.yaml for why it is a
+  # separate entry.
   - atoma_env
 extra_body:
   # OpenRouter provider routing; see orchestrator.md for the full rationale.

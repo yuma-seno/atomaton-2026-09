@@ -11,7 +11,7 @@
  *
  * ## Why this reads a file it is handed, and not the checkout
  *
- * Every other script here reads `.github/atoma/config.json` through
+ * Every other script here reads `.github/atoma/config.yaml` through
  * `lib/config.ts`, which resolves it against the working tree. This one must
  * not. On a pull request run the working tree is the pull request's own head --
  * `atoma-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
@@ -19,7 +19,7 @@
  * are handed to the run reviewing it. The governance gate does not help: it
  * blocks the merge, and the run happens before the merge.
  *
- * The caller materialises the DEFAULT BRANCH's config.json and passes its path.
+ * The caller materialises the DEFAULT BRANCH's config.yaml and passes its path.
  * The distinction is deliberate and worth keeping straight: what a run *does*
  * comes from the branch under test, and what a run *may reach* comes from the
  * branch a person already approved.
@@ -60,7 +60,7 @@ import { defineScript } from "./lib/script-ref.ts";
 export interface ReadSecretNamesArgs {
   /** Which of the configuration's credential lists to publish. */
   destination: string;
-  /** The trusted config.json to read it from — NOT the working tree's. */
+  /** The trusted config.yaml to read it from — NOT the working tree's. */
   config: string;
 }
 
@@ -68,12 +68,20 @@ export const ref = defineScript<ReadSecretNamesArgs>(import.meta.url);
 
 /** The declaration for `destination`, or undefined when the file cannot be used. */
 export function declarationIn(configText: string, destination: SecretDestinationName): unknown {
-  const config = JSON.parse(configText) as {
+  // Parsed here rather than through `lib/config.ts` on purpose: this text comes
+  // from the default branch's object store, not from a file on disk, and the
+  // separation is what keeps a missing ATOMA_MACHINERY_ROOT from downgrading a
+  // credential decision to the working tree.
+  const config = Bun.YAML.parse(configText) as {
     tools?: { secrets?: unknown };
-    checks?: { secrets?: unknown };
-    deploy?: { secrets?: unknown };
+    checks?: { atoma_runs?: { secrets?: unknown } };
+    deploy?: { atoma_runs?: { secrets?: unknown } };
   };
-  return { tools: config.tools, checks: config.checks, deploy: config.deploy }[destination]?.secrets;
+  // `checks` and `deploy` carry theirs inside `atoma_runs`: a secret is reached by
+  // the step Atoma runs, and a project naming its own workflow gives that workflow
+  // its secrets itself. `tools` has no arms -- the servers are always Atoma's.
+  if (destination === "tools") return config.tools?.secrets;
+  return (destination === "checks" ? config.checks : config.deploy)?.atoma_runs?.secrets;
 }
 
 function main(): void {
@@ -89,7 +97,7 @@ function main(): void {
   let declared: unknown;
   if (!values.config) {
     console.error(
-      "::warning::read_secret_names: no --config given, so no credentials are declared for this run. The workflow should pass the default branch's config.json.",
+      "::warning::read_secret_names: no --config given, so no credentials are declared for this run. The workflow should pass the default branch's config.yaml.",
     );
   } else {
     try {
@@ -103,7 +111,7 @@ function main(): void {
 
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.json: ${problem}`);
+      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
     }
     process.exit(1);
   }
@@ -114,7 +122,7 @@ function main(): void {
   }
 
   // Names only. The values are secrets; that these particular ones travel is
-  // already public in config.json, and saying so makes a missing repository
+  // already public in config.yaml, and saying so makes a missing repository
   // secret diagnosable from the log.
   console.error(
     names.length > 0

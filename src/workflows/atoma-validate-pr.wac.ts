@@ -41,7 +41,7 @@ import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scrip
  * content being judged is the pull request's, and it has to be fetched separately.
  *
  * That separation is the whole security story of this step. Everything under here is
- * DATA: a JSON file parsed, agent definitions and a tools file handed to a binary
+ * DATA: a YAML file parsed, agent definitions and a tools file handed to a binary
  * downloaded from a release. Nothing in it is executed, nothing in it decides how
  * the validation behaves, and no script is loaded from it — which matters because
  * this job holds `checks: write` and could otherwise be made to write its own
@@ -93,9 +93,9 @@ const configStep = new TypedOutputsStep(
     id: "cfg",
     shell: "bash",
     // The same fallback as the tool side, by importing it rather than by matching it:
-    // a repository that never set `workflows.ci` validates against the workflow that
+    // a repository that never set `checks.your_workflow` validates against the workflow that
     // certainly exists, and there is one name to change if that ever moves.
-    run: `WORKFLOW=$(${scriptCommand(getConfigValueRef, configValueArgv("workflows.ci", DEFAULT_CI_WORKFLOW))})
+    run: `WORKFLOW=$(${scriptCommand(getConfigValueRef, configValueArgv("checks.your_workflow", DEFAULT_CI_WORKFLOW))})
 echo "workflow=\${WORKFLOW}" >> "$GITHUB_OUTPUT"
 `,
   },

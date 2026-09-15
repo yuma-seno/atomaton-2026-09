@@ -14,20 +14,20 @@ function run(config: Record<string, unknown>) {
 
 describe("run_checks.ts", () => {
   test("runs the configured commands in order", () => {
-    const r = run({ checks: { commands: ["echo one", "echo two"] } });
+    const r = run({ checks: { atoma_runs: { commands: ["echo one", "echo two"] } } });
     expect(r.status).toBe(0);
     expect(r.stdout.indexOf("one")).toBeLessThan(r.stdout.indexOf("two"));
   });
 
   test("stops at the first failure and exits with its code", () => {
-    const r = run({ checks: { commands: ["echo before", "exit 3", "echo after"] } });
+    const r = run({ checks: { atoma_runs: { commands: ["echo before", "exit 3", "echo after"] } } });
     expect(r.status).toBe(3);
     expect(r.stdout).toContain("before");
     expect(r.stdout).not.toContain("after");
     expect(r.stderr).toContain("::error::");
   });
 
-  // This workflow is the default `workflows.ci`, so an empty list means a pull
+  // This workflow is the default `checks.your_workflow`, so an empty list means a pull
   // request satisfied a required check that tested nothing. Failing instead
   // would block every pull request from the moment a repository adopts Atoma
   // until someone configures it, which is a worse first hour.
@@ -38,7 +38,7 @@ describe("run_checks.ts", () => {
   });
 
   test("an all-whitespace command is not treated as a command", () => {
-    const r = run({ checks: { commands: ["  ", ""] } });
+    const r = run({ checks: { atoma_runs: { commands: ["  ", ""] } } });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("verified nothing");
   });

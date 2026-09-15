@@ -9,8 +9,8 @@
  * mean the merge is forbidden, it means the judgement is not an agent's to make.
  * Branch protection cannot express that, because it does not know who is merging.
  *
- * `governed_paths` already has exactly this property and is the model. It says
- * "changes under `.github/**` fall to a person", the agent reviews and reports,
+ * `merge.governed_paths` already has exactly this property and is the model. It
+ * says "changes under `.github/**` fall to a person", the agent reviews and reports,
  * and a person merges. What it lacks is expressiveness: it matches paths and
  * nothing else, so `db/migrations/**` is sayable but "only when a migration is
  * ADDED" is not. These gates are that generalisation.
@@ -27,7 +27,7 @@
  * has to be chosen, a program that must itself be read from the machinery rather
  * than from the pull request under review, and arbitrary code on the path that
  * decides whether that code may merge. Configuration has none of those. It is
- * read from `config.json`, which `loadConfig()` already resolves under
+ * read from `config.yaml`, which `loadConfig()` already resolves under
  * `ATOMA_MACHINERY_ROOT`, so a pull request cannot weaken the gate judging it --
  * for free, with nothing to plumb.
  *
@@ -74,7 +74,7 @@ export interface MergeGateConditions {
   readonly filesAdded: readonly string[];
   readonly filesRemoved: readonly string[];
   readonly filesModified: readonly string[];
-  /** Added, removed or modified -- the union, and what `governed_paths` matches on. */
+  /** Added, removed or modified -- the union, and what `merge.governed_paths` matches on. */
   readonly filesChanged: readonly string[];
   /** Matches when the pull request carries any one of these labels. */
   readonly labels: readonly string[];
@@ -201,7 +201,7 @@ function constrainsAnything(when: MergeGateConditions): boolean {
 }
 
 /**
- * Validate `merge_gates`.
+ * Validate `merge.gates`.
  *
  * All or nothing, for the same reason `resolveDeployTargets` is: a partly
  * honoured gate list reports that the gates ran while the one that mattered was
@@ -211,14 +211,14 @@ function constrainsAnything(when: MergeGateConditions): boolean {
 export function resolveMergeGates(raw: unknown): MergeGatesResolution {
   if (raw === undefined || raw === null) return { gates: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { gates: [], problems: ["`merge_gates` must be an array of gate objects."] };
+    return { gates: [], problems: ["`merge.gates` must be an array of gate objects."] };
   }
 
   const problems: string[] = [];
   const gates: MergeGate[] = [];
 
   raw.forEach((entry, index) => {
-    const where = `\`merge_gates[${index}]\``;
+    const where = `\`merge.gates[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object with \`reason\` and \`when\`.`);
       return;
@@ -264,12 +264,12 @@ export function resolveMergeGates(raw: unknown): MergeGatesResolution {
     };
 
     // A gate with no conditions would stop every merge. That is already sayable
-    // as `merge_policy: "manual"`, and someone who wrote it here meant something
+    // as `merge.policy: "manual"`, and someone who wrote it here meant something
     // narrower and lost it to a typo.
     if (!constrainsAnything(when)) {
       problems.push(
         `${where}: \`when\` names no usable condition, so this gate would stop every merge. ` +
-          `Set \`merge_policy\` to "manual" if that is the intent.`,
+          `Set \`merge.policy\` to "manual" if that is the intent.`,
       );
       return;
     }

@@ -28,23 +28,27 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const AGENT_DIR = join(process.cwd(), "src/atoma/agent-definitions");
-const TOOLS_YAML = join(process.cwd(), "src/atoma/tools/tools.yaml");
+const CONFIG = join(process.cwd(), "src/atoma/config.yaml");
 
 /**
- * Top-level (unindented) keys of tools.yaml, minus the one that is not a server.
+ * The servers this project declares, read from the config rather than from the
+ * tools file.
  *
- * atoma reserves `hooks` at this level for hooks that apply to every server. Counting
- * it would make this check pass for an agent that named a server called `hooks`, which
- * is exactly the failure the check exists to catch.
+ * The tools file is generated from `tools.servers` now, so reading it would be
+ * checking the generator's output against a definition the generator also produced.
+ * The config is where a person writes a server's name and where they mistype it.
+ *
+ * `hooks` is not filtered out here the way it had to be when this read the tools
+ * file: in the config the servers are inside `tools.servers`, and the file-wide
+ * declaration is `tools.watch` beside them. A server called `hooks` is caught by
+ * `reservedServerNames` at build time instead, which fails the build rather than
+ * quietly letting an agent name it.
  */
 function declaredServers(): Set<string> {
-  const yaml = readFileSync(TOOLS_YAML, "utf8");
-  const names = new Set<string>();
-  for (const line of yaml.split(/\r?\n/)) {
-    const match = /^([A-Za-z_][A-Za-z0-9_-]*):\s*$/.exec(line);
-    if (match?.[1] && match[1] !== "hooks") names.add(match[1]);
-  }
-  return names;
+  const config = Bun.YAML.parse(readFileSync(CONFIG, "utf8")) as {
+    tools?: { servers?: Record<string, unknown> };
+  };
+  return new Set(Object.keys(config.tools?.servers ?? {}));
 }
 
 /** `mcp_servers` entries from one agent definition's YAML frontmatter. */
@@ -78,7 +82,7 @@ describe("agent definitions", () => {
     for (const server of requested) {
       expect(
         available.has(server),
-        `${agentFile} lists mcp_servers "${server}", which tools.yaml does not define. ` +
+        `${agentFile} lists mcp_servers "${server}", which tools.servers does not define. ` +
           `Atoma aborts the run on this. Available: ${[...available].sort().join(", ")}`,
       ).toBe(true);
     }

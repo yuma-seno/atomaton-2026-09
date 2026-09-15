@@ -11,7 +11,6 @@ import {
 import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import {
   AGENT_DEFINITIONS_DIR,
-  CONFIG_FILE,
   MCP_PACKAGES_FILE,
   PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
   SKILLS_DIR as SKILLS_DIRECTORY,
@@ -61,7 +60,7 @@ import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 //   2. install runtime deps (atoma CLI, Bun, MCP server deps)
 //   3. run configured environment setup, set git identity
 //   4. resolve the `notify` login from config
-//   5. add atoma/in-progress label, resolve which repository secrets config.json
+//   5. add atoma/in-progress label, resolve which repository secrets config.yaml
 //      lets the agent see, then RUN THE AGENT
 //   6. post the agent's result as a comment
 //   7. handle follow-ups: uncommitted-changes notice, limit-reached notice,
@@ -95,11 +94,12 @@ const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt it
 // They were here until `atoma-validate-pr` needed the same binary, to run
 // `atoma validate` against the agent definitions and tools file a pull request would
 // merge. Two workflows installing it from two copies of a download-and-chmod is two
-// places to move the pin, and the pin is coupled to `tools/tools.yaml`, to
+// places to move the pin, and the pin is coupled to `tools.servers`, to
 // `agent-definitions/*.md` and to the repository's secrets.
 
 // Deployed-repo-relative paths into the `.github/atoma/` content tree (see
-// src/atoma/ -- config.json, agent-definitions/, tools/tools.yaml).
+// src/atoma/ -- config.yaml and agent-definitions/; tools/tools.yaml is written
+// into the deployed tree from config.yaml's `tools.servers` at build time).
 // Referenced from three separate steps below (prepare/run/dispatch-next);
 // centralized here so they can't drift from each other by typo.
 /**
@@ -156,7 +156,6 @@ const MACHINERY = "${ATOMA_MACHINERY_ROOT}";
 // Six literals used to sit here, and five other files spelled the same strings
 // for themselves. See `domain/machinery-layout.ts` for why they are constants at
 // all, and why they are now in one place.
-const ORCHESTRATION_FILE = CONFIG_FILE;
 const AGENT_DEF_DIR = AGENT_DEFINITIONS_DIR;
 const PROMPT_TEMPLATE = PROMPT_TEMPLATE_FILE;
 const SKILLS_DIR = SKILLS_DIRECTORY;
@@ -170,7 +169,7 @@ const TOOLS_FILE = TOOLS_FILE_PATH;
  * sudoers, because with sudo nothing else means anything: `sudo cat
  * /proc/<pid>/environ` reads any process, whatever else is arranged.
  *
- * See `tools/tools.yaml`'s `shell` entry for what that leaves protected and what
+ * See config.yaml's `tools.servers.shell` for what that leaves protected and what
  * it leaves exposed. The short version: the provider API key is never in a tool
  * server, the servers this project ships protect their own credentials, and a
  * credential routed to a third-party server is readable by the shell.
@@ -199,7 +198,7 @@ const TOOL_CACHE_INPUT = `\${{ runner.temp }}/${TOOL_CACHE_NAME}`;
 /**
  * Which reranker to key the model cache on.
  *
- * Read from `config.json` with the server's own default as the fallback, imported
+ * Read from `config.yaml` with the server's own default as the fallback, imported
  * rather than repeated: a fallback of its own would key the cache on one name while
  * the server loaded another, and the cache would simply never hit. Nothing would
  * fail, which is the kind of miss nobody finds.
@@ -212,7 +211,7 @@ const rerankerModelStep = new TypedOutputsStep(
     name: "Read which reranker to cache",
     id: "reranker",
     shell: "bash",
-    run: `MODEL=$(${scriptCommand(getConfigValueRef, configValueArgv("search.reranker_model", DEFAULT_RERANKER))})
+    run: `MODEL=$(${scriptCommand(getConfigValueRef, configValueArgv("tools.servers.search.settings.reranker_model", DEFAULT_RERANKER))})
 echo "reranker: \${MODEL}"
 echo "cache_key=atoma-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHUB_OUTPUT"
 `,
@@ -319,8 +318,9 @@ const resolveIssueBranchStep = new TypedOutputsStep(
   },
   ["branch"] as const,
 );
-// Hook scripts named by `tools.yaml`. Atoma resolves a relative hook path
-// against the directory holding that file, so these two have to agree.
+// Hook scripts named by the `hooks` entries under `tools.servers`, which reach the
+// generated tools file verbatim. Atoma resolves a relative hook path against the
+// directory holding that file, so these two have to agree.
 const TOOL_HOOKS_DIR = TOOL_HOOKS_DIRECTORY;
 
 // Every input this workflow takes is spliced into shell TEXT somewhere below:
@@ -456,7 +456,6 @@ const buildContextStep = new TypedOutputsStep(
       // Read for its `vision` field: an agent whose model cannot see a picture
       // must not be sent one.
       "agent-def": `${MACHINERY}/${AGENT_DEF_DIR}/\${{ inputs.agent }}.md`,
-      config: `${MACHINERY}/${ORCHESTRATION_FILE}`,
       session: `${RUN_DIR}/session.json`,
       out: `${RUN_DIR}/session.json`,
     })}\n`,
@@ -515,7 +514,7 @@ echo "the agent must be finished by $(date -u -d @\${DEADLINE} +%H:%M:%SZ)"
 );
 
 /**
- * Which repository secrets config.json lets this run hand to the agent.
+ * Which repository secrets config.yaml lets this run hand to the agent.
  *
  * A step and not a job: step-level `env:` is evaluated when the step runs, so
  * the "Run agent" step below can use this output as the KEY of a secret lookup.
@@ -575,7 +574,7 @@ const writeCredentialsStep = new TypedOutputsStep({
     // Written here rather than generated: its value is the run's own token, not a
     // repository secret, so it is not one of the names `RUN_CREDENTIALS` can supply.
     GH_TOKEN: "${{ github.token }}",
-    // Plus whatever config.json declared. See `actions/secret-slots.ts`.
+    // Plus whatever `tools.secrets` declared. See `actions/secret-slots.ts`.
     ...secretSlotEnv(),
   },
   run: `${scriptCommandWithArgs(writeCredentialsFileRef, { out: CREDENTIALS_FILE })}
@@ -1357,7 +1356,7 @@ fi
   // Keyed on the model name, because that is the only thing that invalidates it.
   // `hashFiles` would have been the habit and is wrong twice: it resolves relative
   // to `GITHUB_WORKSPACE` and cannot see this path at all, and keying on
-  // `config.json` would throw the model away every time an unrelated setting
+  // `config.yaml` would throw the model away every time an unrelated setting
   // changed.
   rerankerModelStep,
   new CacheAction({
@@ -1373,7 +1372,7 @@ fi
     },
   }),
   // Hooks are the one part of the tool tree that has to be directly executable.
-  // `tools.yaml` names a `before_tool` hook by path and Atoma spawns it as a
+  // The generated `tools.yaml` names a `before_tool` hook by path and Atoma spawns it as a
   // program, so it runs via its shebang and needs its exec bit. Everything else
   // is launched as `bun run <path>`, where the file mode is irrelevant.
   //

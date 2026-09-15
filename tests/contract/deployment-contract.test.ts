@@ -27,8 +27,11 @@ const BUILD_DIST = join(process.cwd(), "src/build-dist.ts");
 /** Filenames in build-dist.ts's verbatim-copy list. */
 function copiedFiles(): string[] {
   const source = readFileSync(BUILD_DIST, "utf8");
-  const list = /for \(const file of \[([^\]]*)\]\)/.exec(source)?.[1];
-  if (!list) throw new Error("could not locate build-dist.ts's static copy list");
+  // The declaration, not the loop that consumes it. Matching the loop broke the
+  // moment the list was given a name so that the same array could also decide
+  // which leftovers to sweep out of `dist/`.
+  const list = /const filesCopiedVerbatim = \[([^\]]*)\]/.exec(source)?.[1];
+  if (!list) throw new Error("could not locate build-dist.ts's static copy list (`filesCopiedVerbatim`)");
   return [...list.matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
 }
 
@@ -137,7 +140,9 @@ describe("deployment contract", () => {
     // stale entry here is worse than none.
     const PROVIDED_BY_THE_RUNNER = new Map<string, string>([]);
 
-    const yaml = readFileSync(join(ATOMA_SRC, "tools/tools.yaml"), "utf8");
+    // The generated file, because that is what the runner starts servers from. The
+    // source is `tools.servers` in config.yaml now and carries the same commands.
+    const yaml = readFileSync("dist/.github/atoma/tools/tools.yaml", "utf8");
     const commands = [...yaml.matchAll(/^\s{2}command:\s*(\S+)\s*$/gm)].map((m) => m[1] as string);
     const external = [...new Set(commands.filter((c) => c !== "bun" && c !== "npx"))];
     const mustBeInstalled = external.filter((c) => !PROVIDED_BY_THE_RUNNER.has(c));

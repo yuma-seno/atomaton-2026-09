@@ -59,8 +59,8 @@ Required before first run:
   agent definitions, and similar. It reviews and reports; the merge is yours. See
   [Changes an agent may not merge](docs/customization.md#changes-an-agent-may-not-merge).
 - Nothing to do for labels. `atoma/in-progress`, `atoma/sub-issue` and
-  `atoma/launched` are created on first use. Rename them in `config.json` if your
-  taxonomy differs.
+  `atoma/launched` are created on first use. Rename them under `chain.labels` in
+  `config.yaml` if your taxonomy differs.
 - Nothing to do about `.gitignore`. A run keeps its own files — the session, the
   logs, the fetched events — outside the work tree, so `git add -A` never sees
   them. Earlier versions wrote them to the repository root and asked you for five

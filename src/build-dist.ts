@@ -7,10 +7,13 @@
  *     directly from a `*.wac.ts` file's `run:` step) -> `dist/.github/scripts/`.
  *   - `src/atoma/tools/scripts/**` (Atoma's own MCP servers, `before_tool`
  *     hook, and the one-shot scripts they use) -> `dist/.github/atoma/tools/scripts/`.
- *   - Atoma's static, non-code content (`config.json`, `prompt-template.md`,
- *     agent definitions, recursive skill Markdown, and `tools/tools.yaml`) ->
- *     `dist/.github/atoma/`,
- *     copied verbatim (nothing to bundle).
+ *   - Atoma's static, non-code content (`config.yaml`, `prompt-template.md`,
+ *     `mcp-packages.json`, agent definitions, recursive skill Markdown, and the
+ *     rulesets) -> `dist/.github/atoma/`, copied verbatim (nothing to bundle).
+ *   - `dist/.github/atoma/tools/tools.yaml`, which is the one static-looking
+ *     file that is not copied: it is WRITTEN here from `tools.servers` in
+ *     `config.yaml`, so that an adopter has one configuration file and not two.
+ *     See `domain/tools-file.ts`.
  *
  * Every entry point is bundled with ALL of its imports inlined -- including
  * the shared `src/lib/**` kernel (so `src/scripts/**` and
@@ -30,6 +33,7 @@
  * it should ever be hand-edited directly.
  */
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { reservedServerNames, toolsFileFrom, type ToolsSection } from "./domain/tools-file.ts";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildManifest, MANIFEST_PATH } from "./domain/release-manifest.ts";
@@ -110,7 +114,24 @@ function copyStaticAtomaContent(): void {
   // `deployment-contract.test.ts` keeps this list in step with `src/atoma/`.
   // README.md is here for the same reason the rest is: an adopter who opens this
   // directory should find out what each path means without leaving it.
-  for (const file of ["README.md", "config.json", "mcp-packages.json", "prompt-template.md"]) {
+  const filesCopiedVerbatim = ["README.md", "config.yaml", "mcp-packages.json", "prompt-template.md"];
+
+  // A file dropped from that list, or renamed, is still sitting in `dist/` from
+  // the last build -- `cpSync` adds and never removes. It then ships: the release
+  // manifest is built by walking `dist/`, so the orphan is listed as part of the
+  // release and unzipped into an adopter's repository. `config.json` became
+  // `config.yaml` and both were in the archive until this ran.
+  //
+  // Only the files, and only at this level. The subdirectories below are each
+  // replaced wholesale, and `tools/scripts/` was bundled before this runs.
+  for (const entry of readdirSync(distAtomaDir, { withFileTypes: true })) {
+    if (entry.isFile() && !filesCopiedVerbatim.includes(entry.name)) {
+      rmSync(join(distAtomaDir, entry.name));
+      console.log(`build-dist: removed ${entry.name}, left over from an earlier build`);
+    }
+  }
+
+  for (const file of filesCopiedVerbatim) {
     cpSync(join(srcAtomaDir, file), join(distAtomaDir, file));
   }
   copyDirectoryFresh(join(srcAtomaDir, "agent-definitions"), join(distAtomaDir, "agent-definitions"));
@@ -120,8 +141,30 @@ function copyStaticAtomaContent(): void {
   // also ships, and a ruleset written by hand against a remembered job name is
   // the failure `generated-workflows.test.ts` exists to prevent.
   copyDirectoryFresh(join(srcAtomaDir, "rulesets"), join(distAtomaDir, "rulesets"));
+  // The tools file is WRITTEN, not copied. `tools.servers` in config.yaml is the
+  // core's own format one level in; this turns it back into the file the core is
+  // handed. See domain/tools-file.ts for why there is one config and not two.
   mkdirSync(join(distAtomaDir, "tools"), { recursive: true });
-  cpSync(join(srcAtomaDir, "tools", "tools.yaml"), join(distAtomaDir, "tools", "tools.yaml"));
+  const config = Bun.YAML.parse(readFileSync(join(srcAtomaDir, "config.yaml"), "utf8")) as {
+    tools?: ToolsSection;
+  };
+  const collisions = reservedServerNames(config.tools);
+  if (collisions.length > 0) {
+    console.error(`build-dist: tools.servers may not be named ${collisions.join(", ")} -- reserved by the core`);
+    process.exit(1);
+  }
+  writeFileSync(
+    join(distAtomaDir, "tools", "tools.yaml"),
+    "# Generated from .github/atoma/config.yaml. Edit that, not this.\n" +
+      // Indented: flow style puts the whole file on one line, and a generated file
+      // still has to be readable by whoever is finding out why a server did not start.
+      //
+      // The trailing space is the serialiser's: it writes `shell: ` before a nested
+      // block. Harmless to a parser and noise to everyone else -- a diff marks the
+      // line, and an editor that strips it makes the file differ from what the next
+      // build writes.
+      Bun.YAML.stringify(toolsFileFrom(config.tools), null, 2).replace(/[ \t]+$/gm, ""),
+  );
 
   console.log(`build-dist: copied static content: ${srcAtomaDir} -> ${distAtomaDir}`);
 }

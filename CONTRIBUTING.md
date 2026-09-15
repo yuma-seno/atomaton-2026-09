@@ -13,7 +13,7 @@ The deliverable:
 - `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
-- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.targets`
+- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atoma_runs.targets`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
   every adopter as `.github/scripts/scan_secrets.ts`; this repository runs the
@@ -124,8 +124,8 @@ The version is the single declaration, and `scripts/release.sh` derives the tag
 from it, so there is no tag to push and nothing that can disagree. Releasing is an
 ordinary reviewed change rather than a separate act of remembering.
 
-That script is this project's one `deploy.targets` entry, declared `on: merge` in
-`.github/atoma/config.json`. It runs after every merge and is idempotent: it reads
+That script is this project's one `deploy.atoma_runs.targets` entry, declared `on: merge` in
+`.github/atoma/config.yaml`. It runs after every merge and is idempotent: it reads
 the declared version, finds a release already exists for it, and stops before
 installing anything. Only a merge that changes the version reaches the build,
 where it packages `dist/` as `atoma-delivery.zip` with `.github/` at the archive
@@ -155,7 +155,7 @@ gh workflow run atoma-self-deploy.yml --ref main -f version=latest
 ```
 
 Or press **Run workflow** on **Atoma Self Deploy** in the Actions tab. It opens a
-pull request and merges nothing: `.github/**` is in `governed_paths`, so a person
+pull request and merges nothing: `.github/**` is in `merge.governed_paths`, so a person
 reviews it.
 
 What the job does, in three lines:
@@ -211,7 +211,7 @@ overwrites it from `self/` and the change disappears without a diff.
 Nothing checks that every file in `.github/` is accounted for, and nothing needs
 to. The deploy runs `rm -rf .github` first, so a file the release stopped shipping
 is not recreated. A file ADDED to `.github/` with no counterpart in `self/` would
-be silently removed by the next deploy — but `.github/**` is in `governed_paths`,
+be silently removed by the next deploy — but `.github/**` is in `merge.governed_paths`,
 so any pull request touching it carries the blocker "this pull request changes how
 agents themselves run" and no agent can merge it. A person is already reading it.
 

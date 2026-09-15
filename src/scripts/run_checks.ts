@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * run_checks.ts — run config.json's `checks.commands`, in order, stopping at the
- * first failure.
+ * run_checks.ts — run config.yaml's `checks.atoma_runs.commands`, in order,
+ * stopping at the first failure.
  *
  * This is the body of `atoma-check.yml`. The verification itself is
  * configuration rather than workflow YAML because an agent can write the former
@@ -9,13 +9,13 @@
  * identity, on every path and every branch. A project whose checks an agent is
  * expected to author has to express them somewhere an agent can reach.
  *
- * Declaring nothing passes, loudly. This workflow is the default `workflows.ci`,
- * so an empty list means every pull request satisfies a required check that
- * verified nothing — true of any repository with no CI, but worth saying out
- * loud rather than reporting a quiet success. Failing instead would block every
- * pull request in a repository from the moment it adopts Atoma until someone
- * configures it, which is a worse first hour and teaches nothing the warning
- * does not.
+ * Declaring nothing passes, loudly. This workflow is what runs when a project
+ * names no `checks.your_workflow` of its own, so an empty list means every pull
+ * request satisfies a required check that verified nothing — true of any
+ * repository with no CI, but worth saying out loud rather than reporting a quiet
+ * success. Failing instead would block every pull request in a repository from
+ * the moment it adopts Atoma until someone configures it, which is a worse first
+ * hour and teaches nothing the warning does not.
  *
  * Mirrors GitHub Actions' own default `bash -e {0}` semantics: the first failing
  * command aborts with its exit code, so the job's conclusion is the command's.
@@ -32,7 +32,7 @@ function main(): void {
   const commands = getCheckCommands();
   if (commands.length === 0) {
     console.log(
-      "::warning::This check verified nothing: `checks.commands` in .github/atoma/config.json is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `workflows.ci` at a workflow of your own.",
+      "::warning::This check verified nothing: `checks.atoma_runs.commands` in .github/atoma/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.",
     );
     return;
   }

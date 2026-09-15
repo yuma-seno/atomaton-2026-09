@@ -1,7 +1,7 @@
 /**
  * harness.ts — shared test helpers for spawning src/scripts/*.ts with a fake
- * `gh` CLI (testing/bin/gh) and/or an isolated config.json, so a script that
- * shells out to `gh` or reads `.github/atoma/config.json` can be tested without
+ * `gh` CLI (testing/bin/gh) and/or an isolated config.yaml, so a script that
+ * shells out to `gh` or reads `.github/atoma/config.yaml` can be tested without
  * touching the real GitHub API or this repository's own shared config.
  *
  * Everything here is used from more than one test file. When the scripts' tests
@@ -14,6 +14,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FAKE_GH_BIN_DIR = join(HERE, "bin");
@@ -101,15 +102,21 @@ export function runWithFakeGh(
 }
 
 /**
- * Creates a fresh temp directory containing `.github/atoma/config.json`
+ * Creates a fresh temp directory containing `.github/atoma/config.yaml`
  * with the given content, for scripts that read config via `lib/config.ts`
  * (which always resolves that path relative to `cwd`). Caller is
  * responsible for `rmSync(dir, { recursive: true, force: true })`.
+ *
+ * Callers still pass a plain object; serialising it is this helper's job, so the
+ * file's format is decided in one place. It is written as YAML because that is
+ * what `loadConfig()` parses -- a test that wrote JSON here would be testing a
+ * file the machinery no longer reads. The path comes from `CONFIG_FILE` rather
+ * than a literal, so a config that moves again moves the fixtures with it.
  */
 export function makeConfigDir(config: Record<string, unknown>): string {
   const dir = mkdtempSync(join(tmpdir(), "atoma-config-"));
-  mkdirSync(join(dir, ".github/atoma"), { recursive: true });
-  writeFileSync(join(dir, ".github/atoma/config.json"), JSON.stringify(config));
+  mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });
+  writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify(config));
   return dir;
 }
 

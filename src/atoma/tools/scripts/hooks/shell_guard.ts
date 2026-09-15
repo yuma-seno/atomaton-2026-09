@@ -46,7 +46,7 @@ import { classifyShellAct, nextStreak, refusalReason } from "../../../../domain/
  *
  * `gh` is the clearest case, and it is worth knowing it is no longer load
  * bearing for safety: the `shell` server declares no credentials in
- * `tools.yaml`, so `GH_TOKEN` is stripped from it and `gh pr merge` fails with
+ * `tools.servers`, so `GH_TOKEN` is stripped from it and `gh pr merge` fails with
  * 401 whether or not this rule exists. What the rule saves is the iterations
  * the agent would spend discovering that. The `github__*` tools hold the token
  * and enforce merge readiness; that enforcement lives there, not here.
@@ -113,7 +113,7 @@ function invokedPrograms(command: string, depth = 0): string[] {
 /**
  * The one rule that is not routing.
  *
- * Each tool server holds the credentials its `tools.yaml` entry declares, and a
+ * Each tool server holds the credentials its `tools.servers` entry declares, and a
  * process reading `/proc/<pid>/environ` of another server obtains a credential it
  * was deliberately not given.
  *

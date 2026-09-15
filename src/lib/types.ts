@@ -13,230 +13,85 @@
 // Re-exported so the many callers that import their config types from one place
 // keep working. `domain/` is the definition; this is a doorway to it, not a
 // second copy.
+/**
+ * `.github/atoma/config.yaml`, as the readers in `lib/config.ts` see it.
+ *
+ * Grouped by who consumes the value. Every field is optional because a project
+ * that declares nothing still runs -- the readers carry the defaults, in one place
+ * each, so two callers cannot disagree about what an absent setting means.
+ *
+ * The reasons are in `docs/configuration.md` rather than here. They used to be in
+ * both, and a reason written twice is a reason that will disagree with itself.
+ */
 export interface AtomaConfig {
-  merge_policy: "auto" | "manual" | string;
-  /**
-   * Branch an issue's work starts from and its pull request targets.
-   *
-   * Unset means the repository's default branch, which is what most projects
-   * want and why this ships unset. It exists for the one arrangement the default
-   * cannot express: keeping `main` as the default branch, for releases and for
-   * what GitHub shows first, while agents' work accumulates somewhere else.
-   *
-   * Fixing a branching strategy here would be the wrong trade. Requiring `main`
-   * shuts out projects with an integration branch; assuming one saddles every
-   * other project with a branch it does not use.
-   */
+  /** Where work branches from and merges back to. Empty means the default branch. */
   base_branch?: string;
-  /**
-   * Paths whose change takes the merge away from an agent and gives it to a
-   * person — workflows, runner scripts, agent definitions, tool configuration,
-   * rulesets.
-   *
-   * Unset takes `DEFAULT_GOVERNED_PATHS`, the whole deployed `.github/` control
-   * surface. Set it to add a repository's own — a template that generates its
-   * workflows from source has a second place those live — or to hand a corner of
-   * `.github/` back, which is better done by naming the parts you do want
-   * governed than by trusting a shorter default. Set it to `[]` to turn the gate
-   * off, which is a decision rather than an accident.
-   *
-   * A pattern is a literal path or a directory followed by `/**`.
-   */
-  governed_paths?: string[];
-  /**
-   * Conditions under which an agent must not merge, beyond what a path can say.
-   *
-   * `governed_paths` above is the special case: paths, and nothing else. This is
-   * the general form — "only when a migration is ADDED", "only when the pull
-   * request carries this label", "only when the title says BREAKING" — for the
-   * situations a project knows about and Atoma could not have guessed.
-   *
-   * Same outcome as `governed_paths`: the agent reviews and reports, and a person
-   * merges. Not a required status check, because a required check stops people too.
-   *
-   * ```json
-   * "merge_gates": [
-   *   {
-   *     "reason": "新しいマイグレーションを含むため、人間が確認してください",
-   *     "when": { "files_added": ["db/migrations/**"] }
-   *   }
-   * ]
-   * ```
-   *
-   * Validated by `resolveMergeGates`; see `domain/merge-gates.ts` for the
-   * condition set, why it is configuration rather than a script, and why a
-   * misspelled condition is an error rather than a gate that quietly never fires.
-   */
-  merge_gates?: unknown;
-  /**
-   * What this project runs to verify a change, as commands.
-   *
-   * Commands and not a workflow file because an agent can write one and not the
-   * other: GITHUB_TOKEN is refused on `.github/workflows/**` by identity, on
-   * every path and branch. `atoma-check.yml` runs whatever is named here, so a
-   * project's verification can be authored by an agent and reviewed as an
-   * ordinary diff.
-   *
-   * Unset means this project verifies nothing through Atoma; point
-   * `workflows.ci` at a workflow of your own instead.
-   */
-  checks?: {
-    /** Run in order, stopping at the first failure. */
-    commands?: string[];
-    /** Repository secrets `atoma-check.yml` may reach. See `tools.secrets`. */
-    secrets?: string[];
-    /**
-     * Which machine the checks run on. `"macos-latest"`, or a list of labels a
-     * self-hosted runner must have — `["self-hosted", "linux", "gpu"]`.
-     *
-     * Unset takes `ubuntu-latest`. This was hardcoded and unreachable from here,
-     * which made `atoma-check` unusable for a project that builds on macOS or needs
-     * a licensed toolchain: fixing it meant editing `.github/workflows/**`, the one
-     * place `GITHUB_TOKEN` cannot write, so neither an agent nor a workflow could,
-     * and a hand-edited fork is overwritten by the next upgrade.
-     *
-     * One runner, however many labels — not several runners. Several would change
-     * the check run's NAME (`atoma-check (ubuntu-latest)`), so the context the
-     * ruleset requires would stop existing and every pull request would wait on a
-     * check that never reports. See `domain/runner-label.ts`.
-     */
-    runs_on?: string | string[];
-  };
-  /**
-   * What this project deploys, and which event deploys it.
-   *
-   * Validated by `resolveDeployTargets`. See `domain/deploy-targets.ts` for why
-   * the trigger is configuration rather than the workflow's own `on:`.
-   */
-  deploy?: {
-    targets?: unknown;
-    /** Repository secrets `atoma-deploy.yml` may reach. See `tools.secrets`. */
-    secrets?: string[];
-    /**
-     * Which machine the deployment runs on. Same form as `checks.runs_on`.
-     *
-     * One runner for the whole job, because the targets run in declared order and
-     * stop at the first failure — that ordering is the contract, and a runner per
-     * target would end it. A project that genuinely needs different machines for
-     * different targets is asking for something else.
-     */
-    runs_on?: string | string[];
-  };
-  /** Settings for the tool servers an agent calls. */
-  tools?: {
-    /**
-     * Repository secrets a run hands to the agent, for tool servers that talk to
-     * something outside GitHub.
-     *
-     * Unset, and `[]`, mean the agent sees only the credentials the run needs to
-     * work at all — which is the default and what most projects want. Naming one
-     * here is a deliberate widening of what the agent can read, which is why it
-     * lives in a versioned, reviewable file rather than in repository settings.
-     *
-     * Each entry is the name of a secret that already exists in the repository;
-     * this declares which of them may travel, it does not create them. Validated
-     * by `resolveToolSecrets` — a name the run already uses for itself, a
-     * duplicate, or more than `TOOL_SECRET_SLOTS` of them fails the run with a
-     * message rather than being quietly dropped.
-     *
-     * Nested under the feature that consumes it, rather than named for it at the
-     * top level, because it is one of several destinations a credential can have
-     * — these reach the agent's own process, and nothing else should.
-     */
-    secrets?: string[];
-  };
-  search?: {
-    /**
-     * Cross encoder used to rank issue search results.
-     *
-     * The one model choice that changes the answer: the first stage is BM25,
-     * which has no model, and this decides the order of what it finds. Any
-     * transformers.js-compatible sequence-classification model works.
-     */
-     reranker_model?: string;
-  };
-  /**
-   * Bounds on how far a chain of agent runs may go before a person is asked.
-   *
-   * These bound the CHAIN. What bounds a single run is its time, which is not
-   * configured here at all: the runner gives an agent what is left of the job it is
-   * running inside, so the run stops itself while there is still time to save its
-   * session. A number in a config file could not know that.
-   */
-  limits?: {
-    /**
-     * How many times agents may hand work to each other with nobody else
-     * commenting, before the chain stops and a person is asked.
-     *
-     * Counted from the target's comments rather than stored anywhere, so it
-     * survives a re-dispatch — see `domain/dispatch-chain.ts`. Issue and pull
-     * request count separately: opening a pull request is progress.
-     *
-     * Unset takes 5. That is chosen against a history where a person intervenes
-     * often — the longest chain measured is three — so a repository running
-     * autonomously will want a larger number, and one that wants tighter
-     * supervision a smaller one. `0` means the default rather than "no handoffs";
-     * set it to `1` to say that.
-     */
-    agent_handoffs?: number;
-    /**
-     * How many consecutive agent runs may change nothing before the next
-     * automatic handoff is withheld and a person is asked.
-     *
-     * "Changed nothing" means the run pushed no commit, opened no pull request and
-     * merged none — read from what each result comment records about itself, not
-     * from a counter. See `domain/progress.ts`.
-     *
-     * Unset takes 2. One run that changes nothing is ordinary: an agent that
-     * investigated and reported did its job. Two in a row, with nothing else
-     * happening between them, is the shape of an agent going round — and it fires
-     * sooner than `agent_handoffs` while leaving a long piece of real work alone,
-     * because length is not the thing being measured. `0` means the default.
-     */
-    runs_without_change?: number;
-    /**
-     * How many times one piece of work may rebuild its environment with
-     * `atoma_env__reload_environment`, before the tool refuses.
-     *
-     * A reload re-runs `environment.setup_commands` as a privileged workflow step
-     * and starts a NEW RUN — so the run's own time budget resets with it. Without a
-     * limit, reloading is an unbounded extension of whatever bounds a run, which is
-     * why the tool was blocked until there was one.
-     *
-     * Carried as a workflow input rather than counted from comments, unlike
-     * `agent_handoffs`: a reload leaves no comment for a later run to count.
-     *
-     * Unset takes 3, borrowed from `CI_RETRY_LIMIT` for the same reason — enough
-     * for a fix that needed another look, few enough that a stuck run reaches a
-     * person quickly. `0` means the default; a project that wants no reloads at all
-     * removes the `atoma_env` server from an agent's `mcp_servers`, which says so.
-     */
-    environment_reloads?: number;
-  };
+
+  /** What has to be installed before checks, deployments and agent runs. */
   environment?: {
     setup_commands?: string[];
+    /** Bounds environment rebuilds. The refusal goes to the agent, which carries on. */
+    max_reloads?: unknown;
   };
+
+  /** How a change is verified. Exactly one arm; declaring both is a configuration error. */
+  checks?: {
+    atoma_runs?: {
+      commands?: string[];
+      secrets?: string[];
+      runs_on?: string | string[];
+    };
+    your_workflow?: string;
+  };
+
+  /** How a merged change ships. The same two arms. */
+  deploy?: {
+    atoma_runs?: {
+      /** Validated by `resolveDeployTargets`, which owns what a malformed one means. */
+      targets?: unknown;
+      secrets?: string[];
+      runs_on?: string | string[];
+    };
+    your_workflow?: string;
+  };
+
+  /** When a person, not an agent, performs the merge. Any member firing is enough. */
+  merge?: {
+    policy?: "auto" | "manual" | string;
+    governed_paths?: string[];
+    /** Validated by `resolveMergeGates`, which owns what a malformed one means. */
+    gates?: unknown;
+  };
+
+  /** When a chain of runs stops and asks a person. */
+  chain?: {
+    after_handoffs?: unknown;
+    after_runs_without_change?: unknown;
+    /** State one run leaves for the next, not presentation. */
+    labels?: {
+      in_progress?: string;
+      sub_issue?: string;
+      launched?: string;
+      [key: string]: string | undefined;
+    };
+  };
+
   /**
-   * Workflows of this project's own that Atoma should dispatch instead of the
-   * shipped ones.
+   * What an agent can reach, and under what watch.
    *
-   * Set these only when a pipeline cannot be expressed as `checks.commands` or
-   * `deploy.targets` — a deployment approval gate, an unusual trigger, a job
-   * needing permissions the shipped workflows do not declare. Otherwise leave
-   * both unset: the default is `atoma-check.yml` / `atoma-deploy.yml`, which run
-   * this project's configured commands and need no workflow authoring.
+   * `servers` is passed through to the core's own tools-file format verbatim, so a
+   * key the core gains works here the day it ships. `settings` is the one key this
+   * project reserves inside a server entry: the generator strips it, and the server
+   * reads it back through `lib/config.ts`.
    */
-  workflows?: {
-    /** Put a required check on a pull request's head commit before merging. Defaults to `atoma-check.yml`. */
-    ci?: string;
-    /** Dispatched after a successful merge. Defaults to `atoma-deploy.yml`, which no-ops with no merge targets. */
-    cd?: string;
-  };
-  labels?: {
-    in_progress?: string;
-    sub_issue?: string;
-    launched?: string;
-    [key: string]: string | undefined;
+  tools?: {
+    secrets?: string[];
+    watch?: Record<string, string>;
+    // Not enumerated, and `settings` is not either: the runtime schema passes every
+    // key inside a server entry through, so naming them here would make the two
+    // disagree about what a known key is -- which a contract test catches, and which
+    // would otherwise surface as an adopter's valid config being refused.
+    servers?: Record<string, Record<string, unknown>>;
   };
 }
 

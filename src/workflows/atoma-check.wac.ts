@@ -8,18 +8,19 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { ref as runChecksRef } from "../scripts/run_checks.ts";
 
-// Runs whatever config.json's `checks.commands` says verifies this project.
+// Runs whatever config.yaml's `checks.atoma_runs.commands` says verifies this project.
 //
 // It exists so that a project's verification is something an agent can write.
 // GITHUB_TOKEN is refused on `.github/workflows/**` by identity -- on every path
 // and every branch, measured -- so an agent asked to set up CI for a new
 // repository cannot author a workflow. It can author configuration, and this
 // workflow is the fixed shell that runs it. Nothing here changes per project;
-// everything that does lives in config.json.
+// everything that does lives in config.yaml.
 //
-// A repository that already has CI does not need this: point `workflows.ci` at
-// that workflow instead and leave `checks.commands` unset, and the job says so
-// and passes rather than failing over an empty list.
+// A repository that already has CI does not need this: name that workflow in
+// `checks.your_workflow` instead of filling in `checks.atoma_runs`, and the job
+// says so and passes rather than failing over an empty list. The two are
+// alternatives -- declaring both is a configuration error, not a precedence rule.
 //
 // Two triggers, because the two kinds of pull request arrive differently.
 //
@@ -29,7 +30,7 @@ import { ref as runChecksRef } from "../scripts/run_checks.ts";
 // result onto the head commit where a ruleset can see it.
 //
 // A person's pull request does fire `pull_request`, and nothing was dispatching
-// this workflow for one. Since this is what `workflows.ci` defaults to, that left
+// this workflow for one. Since this is what `checks.your_workflow` defaults to, that left
 // a repository with no CI at all for its human contributors -- a required check
 // that never ran, and a merge refused for a missing check until someone
 // dispatched it by hand. So `pull_request` is listed too, and it is inert for the
@@ -50,9 +51,9 @@ const runStep = new TypedOutputsStep({
     // It grants no more than the job already holds. `contents: read` is what the
     // checkout used, so on a public repository this is what any visitor has, and
     // on a private one it is what the code being tested was fetched with. Not
-    // shadowable either: `GH_TOKEN` is reserved against `checks.secrets`.
+    // shadowable either: `GH_TOKEN` is reserved against `checks.atoma_runs.secrets`.
     GH_TOKEN: "${{ github.token }}",
-    // The slots carry `checks.secrets` -- a private registry token, say. They are
+    // The slots carry `checks.atoma_runs.secrets` -- a private registry token, say. They are
     // this job's, not the agent's: nothing here runs an agent, and a credential
     // declared for checks never enters an agent's process.
     ...secretSlotEnv(),
@@ -81,7 +82,7 @@ export const atomaCheck = new Workflow("atoma-check", {
     CHECK_JOB_NAME,
     {
       needs: [pick.name],
-      // From `checks.runs_on`, via the job above -- `runs-on` cannot read a file.
+      // From `checks.atoma_runs.runs_on`, via the job above -- `runs-on` cannot read a file.
       // `fromJSON` always, so one label and a self-hosted runner's several are
       // consumed the same way. See `domain/runner-label.ts`.
       //

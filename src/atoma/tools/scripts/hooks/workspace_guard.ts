@@ -3,7 +3,7 @@
  * workspace_guard.ts — tells the agent when its scratch workspace has grown past
  * what will be carried into the next run, while it can still do something about it.
  *
- * Invoked as an `after_tool` hook declared file-wide in `tools.yaml`, so it runs after
+ * Invoked as an `after_tool` hook declared once in `tools.watch`, so it runs after
  * every call to every server. See `domain/workspace-size.ts` for why it is every server
  * and why the check is here rather than where the workspace is saved.
  *

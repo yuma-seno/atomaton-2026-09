@@ -20,7 +20,7 @@ import { targetsForMerge } from "../domain/deploy-targets.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
 
 // The two shipped workflow names now live in `domain/shipped-workflows.ts`. They were
-// declared here, in a module that runs `gh` and reads config.json, and re-exported from
+// declared here, in a module that runs `gh` and reads config.yaml, and re-exported from
 // here to a workflow generator and — once `deliverable-integrity.ts` needed them — to a
 // module that must stay pure. The constants are facts about what this template ships, not
 // about dispatching, so they moved to where a pure module can reach them.
@@ -115,13 +115,13 @@ export function dispatchCi(branch: string): boolean {
  * no `push` on the base branch and a deployment waiting on that chain never
  * runs.
  *
- * A project either names its own workflow in `workflows.cd`, or declares
- * `deploy.targets` and lets `atoma-deploy.yml` run them. In the second case the
- * decision is made HERE rather than in the workflow: a dispatch that starts a
- * runner only to discover that nothing deploys on merge is a wasted run on every
- * single merge, and this is the one trigger where the question can be answered
- * before starting anything. The tag trigger has no such luxury -- `on:` takes no
- * expression -- so that one filters after the fact.
+ * A project either names its own workflow in `deploy.your_workflow`, or declares
+ * `deploy.atoma_runs.targets` and lets `atoma-deploy.yml` run them. In the second
+ * case the decision is made HERE rather than in the workflow: a dispatch that
+ * starts a runner only to discover that nothing deploys on merge is a wasted run
+ * on every single merge, and this is the one trigger where the question can be
+ * answered before starting anything. The tag trigger has no such luxury -- `on:`
+ * takes no expression -- so that one filters after the fact.
  *
  * A declaration that does not parse is not this function's to report. It fails
  * loudly inside the deploy run, where the log belongs to the deployment; here it
@@ -140,7 +140,7 @@ export function dispatchCd(baseRef: string): boolean {
   if (!configured) {
     const { targets, problems } = getDeployTargets();
     if (problems.length === 0 && targetsForMerge(targets).length === 0) {
-      log("dispatchCd: no deploy.targets deploy on merge, and workflows.cd is unset; nothing to dispatch");
+      log("dispatchCd: no deploy.atoma_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
       return false;
     }
   }

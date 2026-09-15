@@ -14,7 +14,7 @@
  *   - `setfacl -R` grants the tool user read on `ATOMA_MACHINERY_ROOT`. A path
  *     outside it is unreadable to the servers, and the symptom is "no server
  *     started" rather than "that path was wrong".
- *   - `governed_paths` defaults to `.github/**`, which is what keeps a change to a
+ *   - `merge.governed_paths` defaults to `.github/**`, which is what keeps a change to a
  *     model, a tool list or a role prompt in a person's hands. A redirected
  *     `agent-definitions/` leaves that gate permanently, on one approval that
  *     reads as tidying.
@@ -58,7 +58,7 @@ export const MACHINERY_ROOT = ".github/atoma";
  * That read is a security boundary: it is what stops a pull request declaring
  * which credentials it may reach.
  */
-export const CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+export const CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 
 /** Agent definitions: one file per agent, frontmatter plus the role prompt. */
 export const AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;

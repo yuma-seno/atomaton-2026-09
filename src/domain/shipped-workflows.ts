@@ -5,15 +5,16 @@
  * Two constants and no behaviour, in `domain/` rather than in `lib/`, because
  * three unrelated callers need them and one of those callers must not reach into
  * `lib/`. `lib/dispatch-targets.ts` was their home: a module that runs `gh`,
- * reads config.json off the disk and dispatches workflow runs. Importing it to
+ * reads config.yaml off the disk and dispatches workflow runs. Importing it to
  * learn a default file name pulled all of that in — `atoma-validate-pr.wac.ts`
  * does exactly that today at generation time, and `domain/deliverable-integrity.ts`
  * cannot, being pure by construction.
  *
  * The shipped ones are the default because they are the arrangement this template
- * is for: a pipeline expressed as commands in config.json, which an agent can
+ * is for: a pipeline expressed as commands in config.yaml, which an agent can
  * write and a workflow file is not. A project that has its own workflows says so
- * in `workflows.ci` / `workflows.cd` and neither of these is consulted.
+ * in `checks.your_workflow` / `deploy.your_workflow` and neither of these is
+ * consulted.
  *
  * Guessing `ci.yml` instead — a name a repository may or may not use — would
  * dispatch a workflow that does not exist and leave every pull request waiting
@@ -23,7 +24,7 @@
 /**
  * Put a required check on a pull request's head commit before merging.
  *
- * Imported rather than repeated: `validate_pull_request.ts` reads `workflows.ci`
+ * Imported rather than repeated: `validate_pull_request.ts` reads `checks.your_workflow`
  * through a workflow step, and that step's fallback used to be written out with a
  * comment saying it matched this value — which is the admission that nothing
  * checked. Rename the shipped check workflow and the tool side would dispatch the

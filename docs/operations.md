@@ -159,7 +159,7 @@ separate, and stopping work nobody asked to stop is the worse mistake.
 
 | Symptom | Likely cause | Recovery action |
 | --- | --- | --- |
-| Workflow ran but agent did not start | Route step produced empty `agent` output | Check issue first line slash command or trigger mapping in `config.json` |
+| Workflow ran but agent did not start | Route step produced empty `agent` output | Check the slash command on the issue's first line; that is the only thing that names an agent |
 | Agent exits immediately with provider error | Missing/invalid API credential or provider mismatch | Verify secrets and optional `ATOMA_PROVIDER` variable |
 | `More than one provider credential is set` | Two provider secrets exist, so the credentials do not decide which to use | Remove the one this repository does not use, or name the provider in `ATOMA_PROVIDER` |
 | `atoma/in-progress` label remains | Run chain still continuing or release step skipped by failure chain | Inspect `decide_guard_release` output and rerun after fixing upstream failure |

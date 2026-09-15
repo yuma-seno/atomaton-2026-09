@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Print a dotted-path value from .github/atoma/config.json.
+ * Print a dotted-path value from .github/atoma/config.yaml.
  *
  * Thin CLI wrapper around lib/config.ts's loadConfig(), invoked as a
  * workflow step (via `scriptCommand` from atoma-runner.wac.ts). Every
@@ -10,8 +10,8 @@
  *   bun run get_config_value.ts <dotted.path> [default]
  *
  * Examples:
- *   bun run get_config_value.ts limits.agent_handoffs 5
- *   bun run get_config_value.ts labels.in_progress atoma/in-progress
+ *   bun run get_config_value.ts chain.after_handoffs 5
+ *   bun run get_config_value.ts chain.labels.in_progress atoma/in-progress
  */
 import { loadConfig } from "../lib/config.ts";
 import { defineScript } from "./lib/script-ref.ts";

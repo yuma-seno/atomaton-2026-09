@@ -10,14 +10,21 @@ import { describe, expect, test } from "bun:test";
 import { configProblems, knownConfigKeys } from "./deliverable-integrity.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts";
 
-/** The shipped configuration, near enough: consistent, and the baseline for each case. */
+/**
+ * The shipped configuration, near enough: consistent, and the baseline for each case.
+ *
+ * Grouped the way `config.yaml` groups it — by who consumes the value — so a case
+ * that replaces one section replaces everything that section decides, and nothing
+ * else.
+ */
 const SOUND = {
-  merge_policy: "auto",
+  base_branch: "",
   environment: { setup_commands: [] },
-  checks: { commands: [], secrets: [] },
-  deploy: { targets: [], secrets: [] },
+  checks: { atoma_runs: { commands: [], secrets: [] } },
+  deploy: { atoma_runs: { targets: [], secrets: [] } },
+  merge: { policy: "auto" },
+  chain: { labels: { in_progress: "atoma/in-progress" } },
   tools: { secrets: [] },
-  labels: { in_progress: "atoma/in-progress" },
 };
 
 const facts = (config: unknown) => ({
@@ -42,28 +49,76 @@ describe("a sound deliverable", () => {
 
 describe("keys nothing reads", () => {
   test("a misspelled top-level key is reported", () => {
-    const problems = problemsFor({ ...SOUND, governed_path: ["docs/**"] });
+    const problems = problemsFor({ ...SOUND, enviroment: { setup_commands: ["bun install"] } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`governed_path`");
+    expect(problems[0]).toContain("`enviroment`");
   });
 
   // The nested form is exactly as silent and rather more likely: the reader asks
-  // for `checks.commands`, finds nothing, and runs no commands.
+  // for `checks.atoma_runs.commands`, finds nothing, and runs no commands.
   test("a misspelled nested key is reported with its path", () => {
-    const problems = problemsFor({ ...SOUND, checks: { command: ["bun test"] } });
+    const problems = problemsFor({ ...SOUND, checks: { atoma_runs: { command: ["bun test"] } } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`checks.command`");
+    expect(problems[0]).toContain("`checks.atoma_runs.command`");
   });
 
-  // `labels` has an index signature: a project may name labels of its own, and
+  // `chain.labels` has an index signature: a project may name labels of its own, and
   // those are not typos.
   test("a project's own label name is legal", () => {
-    expect(problemsFor({ ...SOUND, labels: { in_progress: "wip", needs_design: "design" } })).toEqual([]);
+    expect(problemsFor({ ...SOUND, chain: { labels: { in_progress: "wip", needs_design: "design" } } })).toEqual([]);
   });
 
-  test("a config that is not an object is reported once", () => {
+  /**
+   * The one level the schema deliberately stops naming keys at.
+   *
+   * `tools.servers.<name>` is handed to the core verbatim — this is where
+   * `tools/tools.yaml` went — so what may be inside one is the core's vocabulary
+   * and not this project's: `url` and `headers` for a remote server, and whatever a
+   * later release adds. Reporting those as typos is the opposite failure to the one
+   * this module exists for, and the only one of the two an adopter cannot work
+   * around: a setting the core accepts, held out of the repository by a check.
+   */
+  test("a key inside a server entry is the core's to recognise, not this module's", () => {
+    const problems = problemsFor({
+      ...SOUND,
+      tools: {
+        secrets: [],
+        servers: {
+          search: {
+            url: "https://example.invalid/mcp",
+            headers: { Authorization: "Bearer x" },
+            settings: { reranker_model: "onnx-community/bge-reranker-v2-m3-ONNX" },
+          },
+        },
+      },
+    });
+    expect(problems).toEqual([]);
+  });
+
+  test("a config that is not a mapping is reported once", () => {
     expect(problemsFor([])).toHaveLength(1);
     expect(problemsFor("x")).toHaveLength(1);
+  });
+});
+
+/**
+ * `atoma_runs` and `your_workflow` are alternatives, and the structure says so by
+ * putting them side by side. The check says it again in a sentence, because "both
+ * are set" is otherwise a precedence puzzle: one of the two is being ignored, and
+ * nothing anywhere says which.
+ */
+describe("two arms, and exactly one of them", () => {
+  test("declaring both is reported, in either section", () => {
+    for (const section of ["checks", "deploy"] as const) {
+      const problems = problemsFor({ ...SOUND, [section]: { atoma_runs: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
+      expect(problems, section).toHaveLength(1);
+      expect(problems[0], section).toContain(`\`${section}\``);
+    }
+  });
+
+  test("either arm on its own is sound", () => {
+    expect(problemsFor({ ...SOUND, checks: { your_workflow: DEFAULT_CI_WORKFLOW } })).toEqual([]);
+    expect(problemsFor({ ...SOUND, deploy: { your_workflow: DEFAULT_CD_WORKFLOW } })).toEqual([]);
   });
 });
 
@@ -75,24 +130,30 @@ describe("keys nothing reads", () => {
 describe("the resolvers, run early", () => {
 
   test("a malformed merge gate is reported", () => {
-    expect(problemsFor({ ...SOUND, merge_gates: [{ reason: "r", when: { title_match: "^x" } }] }).length).toBeGreaterThan(
+    expect(
+      problemsFor({ ...SOUND, merge: { gates: [{ reason: "r", when: { title_match: "^x" } }] } }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  test("a malformed deploy target is reported", () => {
+    expect(problemsFor({ ...SOUND, deploy: { atoma_runs: { targets: [{ name: "Prod" }] } } }).length).toBeGreaterThan(
       0,
     );
   });
 
-  test("a malformed deploy target is reported", () => {
-    expect(problemsFor({ ...SOUND, deploy: { targets: [{ name: "Prod" }] } }).length).toBeGreaterThan(0);
-  });
-
   // A declared credential that collides with one the run needs for itself would
   // replace it. Today that fails the run; here it fails the pull request.
+  //
+  // Three destinations, and the declaration sits at a different depth in each:
+  // `tools.secrets` is the agent's own, the other two live inside the arm that
+  // declares the commands they are handed to.
   test("a reserved credential name is reported for every destination", () => {
-    for (const [section, key] of [
-      ["tools", "secrets"],
-      ["checks", "secrets"],
-      ["deploy", "secrets"],
+    for (const [section, declaration] of [
+      ["tools", { secrets: ["GH_TOKEN"] }],
+      ["checks", { atoma_runs: { secrets: ["GH_TOKEN"] } }],
+      ["deploy", { atoma_runs: { secrets: ["GH_TOKEN"] } }],
     ] as const) {
-      const problems = problemsFor({ ...SOUND, [section]: { [key]: ["GH_TOKEN"] } });
+      const problems = problemsFor({ ...SOUND, [section]: declaration });
       expect(problems.length, section).toBeGreaterThan(0);
     }
   });
@@ -147,7 +208,7 @@ describe("names that have to resolve to a file", () => {
 
 describe("the workflows a dispatch names", () => {
   test("a configured workflow that is not a file is reported", () => {
-    const problems = problemsFor({ ...SOUND, workflows: { ci: "ci.yml" } });
+    const problems = problemsFor({ ...SOUND, checks: { your_workflow: "ci.yml" } });
     expect(problems).toHaveLength(1);
     expect(problems[0]).toContain("ci.yml");
   });
@@ -169,9 +230,9 @@ describe("the workflows a dispatch names", () => {
 describe("labels", () => {
   test("an empty label is reported", () => {
     for (const value of ["", "   ", 3, null]) {
-      const problems = problemsFor({ ...SOUND, labels: { in_progress: value } });
+      const problems = problemsFor({ ...SOUND, chain: { labels: { in_progress: value } } });
       expect(problems, String(value)).toHaveLength(1);
-      expect(problems[0], String(value)).toContain("`labels.in_progress`");
+      expect(problems[0], String(value)).toContain("chain.labels.in_progress");
     }
   });
 });
@@ -182,9 +243,19 @@ describe("knownConfigKeys", () => {
   // mismatch with the type rather than as a change to this function.
   test("renders a wildcard level as `*` and descends through it", () => {
     const keys = knownConfigKeys();
-    expect(keys).toContain("labels.*");
-    expect(keys).toContain("labels.in_progress");
-    expect(keys).toContain("checks.commands");
+    expect(keys).toContain("chain.labels.*");
+    expect(keys).toContain("chain.labels.in_progress");
+    expect(keys).toContain("checks.atoma_runs.commands");
     expect(keys).toEqual([...keys].sort());
+  });
+
+  // A server entry is two wildcard levels and no names at all: the name of the
+  // server is this project's, everything inside it is the core's. An enumeration
+  // here would be one program guessing at another's vocabulary, and going stale
+  // every time that other program ships a key.
+  test("a server entry's interior is a wildcard, not an enumeration", () => {
+    const keys = knownConfigKeys();
+    expect(keys).toContain("tools.servers.*.*");
+    expect(keys.filter((key) => key.startsWith("tools.servers.*.") && key !== "tools.servers.*.*")).toEqual([]);
   });
 });
