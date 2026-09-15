@@ -22,7 +22,7 @@ export default defineConfig({
     "# write it -- GitHub refuses to let one write a workflow.",
     "# See docs/customization.md, \"Set up CI and deployment\".",
     "#",
-    "# Upstream: https://github.com/yuma-seno/atoma-autonomous-delivery",
+    "# Upstream: https://github.com/yuma-seno/atomaton",
     "",
   ],
   dumpOptions: {
