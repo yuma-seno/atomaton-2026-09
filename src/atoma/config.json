@@ -4,7 +4,9 @@
     "setup_commands": []
   },
   "checks": {
-    "commands": [],
+    "commands": [
+      "bun run \"${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/scan_secrets.ts\""
+    ],
     "secrets": []
   },
   "deploy": {

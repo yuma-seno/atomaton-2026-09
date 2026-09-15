@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import ts from "typescript";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { configProblems, knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
 import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/merge-gates.ts";
 
@@ -201,5 +201,53 @@ describe("config.json's recognised keys", () => {
         workflowFiles: readdirSync("dist/.github/workflows"),
       }),
     ).toEqual([]);
+  });
+});
+
+/**
+ * The template ships one check, and it has to be one every adopter can run.
+ *
+ * `checks.commands` was empty, which `run_checks.ts` reports as "this check verified
+ * nothing" -- true, and the first hour of an adoption is a poor time to learn it. A
+ * credential is a credential in every language, so a secret scan is the one verification
+ * a template can hand a project it knows nothing about. Everything beside it in that
+ * list is the project's own and only the project can write it.
+ */
+describe("the default checks a project inherits", () => {
+  const config = JSON.parse(readFileSync("src/atoma/config.json", "utf8")) as {
+    checks?: { commands?: string[] };
+  };
+  const commands = config.checks?.commands ?? [];
+
+  test("there is at least one, so an adoption does not start verifying nothing", () => {
+    expect(commands.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * A default that names a file the deliverable does not carry fails in the adopter's
+   * repository and not in ours, which is the worst place to find out. The path is the
+   * one every other invocation uses, so it also has to keep working when the machinery
+   * is checked out somewhere else.
+   */
+  test("each one runs a script the deliverable actually ships", () => {
+    for (const command of commands) {
+      const named = /\.github\/scripts\/([A-Za-z0-9_-]+\.ts)/.exec(command);
+      expect(named, `${command} should run a script under .github/scripts/`).not.toBeNull();
+      expect(existsSync(`src/scripts/${named![1]}`), `src/scripts/${named![1]} must exist`).toBe(true);
+      expect(command, "the machinery root indirection every other invocation uses").toContain(
+        "${ATOMA_MACHINERY_ROOT:-.}",
+      );
+    }
+  });
+
+  /**
+   * The adopter's own commands go beside this one, not instead of it -- so a default
+   * that assumed a language would be a default most adopters delete. Nothing here may
+   * name a package manager or a runtime beyond the one Atoma already requires.
+   */
+  test("no default assumes what the project is written in", () => {
+    for (const command of commands) {
+      expect(command).not.toMatch(/\b(npm|yarn|pnpm|cargo|pip|poetry|go|mvn|gradle|dotnet)\b/);
+    }
   });
 });
