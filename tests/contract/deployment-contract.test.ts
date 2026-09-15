@@ -18,7 +18,7 @@
  * switching tools.yaml to a binary that only that file installs.
  */
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ATOMA_SRC = join(process.cwd(), "src/atoma");
@@ -158,5 +158,57 @@ describe("deployment contract", () => {
           `PROVIDED_BY_THE_RUNNER with the reason.`,
       ).toBe(true);
     }
+  });
+});
+
+/**
+ * The machinery's layout is a set of constants, and stays one.
+ *
+ * Six literals used to sit in the workflow generator while five other files spelled
+ * the same strings for themselves -- the config reader, the secret slots, the
+ * bundler, the metrics report and the test harness. Nothing failed, because they
+ * agreed. That is how a set of literals stays wrong once one of them moves, and it
+ * is the shape of defect this repository keeps finding in itself.
+ */
+describe("the machinery layout is declared once", () => {
+  const SOURCES = [
+    "src/workflows/atoma-runner.wac.ts",
+    "src/lib/config.ts",
+    "src/scripts/write_metrics_report.ts",
+    "src/build-dist.ts",
+  ];
+
+  /**
+   * Only the module itself may spell the root. A message that mentions the path to a
+   * person is not a use of it, so this looks for the string in code: quoted with a
+   * slash after it, or interpolated.
+   */
+  test("no source outside the layout module builds a machinery path from a literal", () => {
+    const offenders: string[] = [];
+    for (const file of SOURCES) {
+      const lines = readFileSync(file, "utf8").split(/\r?\n/);
+      lines.forEach((line, index) => {
+        if (line.trim().startsWith("//") || line.trim().startsWith("*")) return;
+        if (/["'`]\.github\/atoma\//.test(line)) offenders.push(`${file}:${index + 1}: ${line.trim()}`);
+      });
+    }
+    expect(offenders, "import from domain/machinery-layout.ts instead").toEqual([]);
+  });
+
+  /**
+   * `validate_deliverable.ts` is the deliberate exception and must stay one. It
+   * validates a pull request's OWN `.github/atoma/`, which is data to it and never
+   * code -- taking its paths from that tree would let a pull request redirect the
+   * validation that is judging it.
+   */
+  test("the validator keeps its own paths", () => {
+    const source = readFileSync("src/scripts/validate_deliverable.ts", "utf8");
+    expect(source).not.toContain("machinery-layout.ts");
+  });
+
+  /** An adopter opening the directory should find out what each path means there. */
+  test("the README ships", () => {
+    expect(existsSync("src/atoma/README.md")).toBe(true);
+    expect(readFileSync("src/build-dist.ts", "utf8")).toContain('"README.md"');
   });
 });

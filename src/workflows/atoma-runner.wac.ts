@@ -9,6 +9,15 @@ import {
   installAtomaCliStep,
 } from "./actions/atoma-cli.ts";
 import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import {
+  AGENT_DEFINITIONS_DIR,
+  CONFIG_FILE,
+  MCP_PACKAGES_FILE,
+  PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
+  SKILLS_DIR as SKILLS_DIRECTORY,
+  TOOLS_FILE as TOOLS_FILE_PATH,
+  TOOL_HOOKS_DIR as TOOL_HOOKS_DIRECTORY,
+} from "../domain/machinery-layout.ts";
 import { defineCallableWorkflow } from "./actions/reusable-workflow.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
@@ -144,11 +153,14 @@ const MACHINERY_ABS = "\${RUNNER_TEMP}/atoma-machinery";
 /** The same directory, as shell -- the job exports it so every step agrees. */
 const MACHINERY = "${ATOMA_MACHINERY_ROOT}";
 
-const ORCHESTRATION_FILE = ".github/atoma/config.json";
-const AGENT_DEF_DIR = ".github/atoma/agent-definitions";
-const PROMPT_TEMPLATE = ".github/atoma/prompt-template.md";
-const SKILLS_DIR = ".github/atoma/skills";
-const TOOLS_FILE = ".github/atoma/tools/tools.yaml";
+// Six literals used to sit here, and five other files spelled the same strings
+// for themselves. See `domain/machinery-layout.ts` for why they are constants at
+// all, and why they are now in one place.
+const ORCHESTRATION_FILE = CONFIG_FILE;
+const AGENT_DEF_DIR = AGENT_DEFINITIONS_DIR;
+const PROMPT_TEMPLATE = PROMPT_TEMPLATE_FILE;
+const SKILLS_DIR = SKILLS_DIRECTORY;
+const TOOLS_FILE = TOOLS_FILE_PATH;
 
 /**
  * The OS user every tool server runs as.
@@ -309,7 +321,7 @@ const resolveIssueBranchStep = new TypedOutputsStep(
 );
 // Hook scripts named by `tools.yaml`. Atoma resolves a relative hook path
 // against the directory holding that file, so these two have to agree.
-const TOOL_HOOKS_DIR = ".github/atoma/tools/scripts/hooks";
+const TOOL_HOOKS_DIR = TOOL_HOOKS_DIRECTORY;
 
 // Every input this workflow takes is spliced into shell TEXT somewhere below:
 // `AGENT="${{ inputs.agent }}"`, `BRANCH="atoma/issue-${{ inputs.number }}"`,
@@ -1259,14 +1271,14 @@ git checkout -B "\${BRANCH_NAME}" "refs/remotes/origin/\${BRANCH_NAME}"
     name: "Cache MCP server package downloads",
     with: {
       path: "~/.npm",
-      key: "mcp-npm-${{ hashFiles('" + MACHINERY_DIR + "/.github/atoma/mcp-packages.json') }}",
+      key: "mcp-npm-${{ hashFiles('" + MACHINERY_DIR + "/" + MCP_PACKAGES_FILE + "') }}",
       "restore-keys": "mcp-npm-",
     },
   }),
   new TypedOutputsStep({
     name: "Install MCP server packages",
     shell: "bash",
-    run: `MCP_PKGS_FILE="${MACHINERY}/.github/atoma/mcp-packages.json"
+    run: `MCP_PKGS_FILE="${MACHINERY}/${MCP_PACKAGES_FILE}"
 if [ ! -f "$MCP_PKGS_FILE" ]; then
   echo "No mcp-packages.json found; skipping MCP package installation."
   exit 0

@@ -24,6 +24,7 @@ import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atoma-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
+import { SKILLS_DIR, TOOLS_FILE } from "../domain/machinery-layout.ts";
 import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
@@ -281,7 +282,7 @@ function declared(): { tools: string[]; skills: string[] } {
   const tools: string[] = [];
   const skills: string[] = [];
   try {
-    const yaml = readFileSync(`${root}/.github/atoma/tools/tools.yaml`, "utf8");
+    const yaml = readFileSync(`${root}/${TOOLS_FILE}`, "utf8");
     for (const line of yaml.split(/\r?\n/)) {
       const match = /^([A-Za-z_][A-Za-z0-9_-]*):\s*$/.exec(line);
       // `hooks` is the reserved key at this level, not a server.
@@ -290,7 +291,7 @@ function declared(): { tools: string[]; skills: string[] } {
   } catch {
     log("could not read tools.yaml; the report will not name unused tools");
   }
-  const listed = gitRun("ls-files", `${root}/.github/atoma/skills`);
+  const listed = gitRun("ls-files", `${root}/${SKILLS_DIR}`);
   for (const path of listed.stdout.split("\n")) {
     const match = /skills\/(.+)\.md$/.exec(path.trim());
     if (match?.[1]) skills.push(match[1]);

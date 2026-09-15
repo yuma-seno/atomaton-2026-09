@@ -16,6 +16,7 @@ import {
 import { resolveDeployTargets, type DeployTargetsResolution } from "../domain/deploy-targets.ts";
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
+import { CONFIG_FILE } from "../domain/machinery-layout.ts";
 
 /**
  * Where this project's configuration is read from.
@@ -31,7 +32,7 @@ import type { AtomaConfig } from "./types.ts";
  */
 function configPath(): string {
   const root = process.env.ATOMA_MACHINERY_ROOT?.trim();
-  return root ? `${root}/.github/atoma/config.json` : ".github/atoma/config.json";
+  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
 }
 
 let cached: AtomaConfig | undefined;

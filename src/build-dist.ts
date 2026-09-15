@@ -108,7 +108,9 @@ function copyStaticAtomaContent(): void {
   // missing from this list is invisible in review: it keeps working in whatever
   // `.github/` already has it and is simply absent from everyone else's.
   // `deployment-contract.test.ts` keeps this list in step with `src/atoma/`.
-  for (const file of ["config.json", "mcp-packages.json", "prompt-template.md"]) {
+  // README.md is here for the same reason the rest is: an adopter who opens this
+  // directory should find out what each path means without leaving it.
+  for (const file of ["README.md", "config.json", "mcp-packages.json", "prompt-template.md"]) {
     cpSync(join(srcAtomaDir, file), join(distAtomaDir, file));
   }
   copyDirectoryFresh(join(srcAtomaDir, "agent-definitions"), join(distAtomaDir, "agent-definitions"));
