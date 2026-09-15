@@ -8,7 +8,7 @@
  * this project keeps producing and cannot see. `mcp_servers: [filesystem]` with
  * no `filesystem` in tools.yaml aborts the whole run before a single server
  * starts; `labels.in_progres` guards work with a label nobody applies; an
- * `auto_triggers` entry that fails validation resolves the WHOLE list to empty,
+ * A `merge_gates` entry that fails validation resolves the WHOLE list to empty,
  * so every trigger stops firing. Each of those is silent at merge time and
  * surfaces on whoever triggers the next run.
  *
@@ -16,7 +16,7 @@
  *
  * No new validator is written here. Every rule below is either a reference that
  * either resolves or does not, or a call to a resolver that already exists and
- * already runs — `resolveAutoTriggers`, `resolveMergeGates`,
+ * already runs — `resolveMergeGates`,
  * `resolveDeployTargets`, `resolveDeclaredSecrets`. All four are pure functions of
  * a config value, and all four currently run too late to matter: at merge time, at
  * deploy time, when a credential is handed out. Running them at pull-request time
@@ -40,7 +40,6 @@
  * which the core has never heard of.
  */
 import { isControlCommand } from "./control-commands.ts";
-import { resolveAutoTriggers } from "./auto-triggers.ts";
 import { resolveDeclaredSecrets, SECRET_DESTINATIONS } from "./declared-secrets.ts";
 import { resolveDeployTargets } from "./deploy-targets.ts";
 import { resolveMergeGates } from "./merge-gates.ts";
@@ -51,7 +50,7 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
  * does not describe.
  *
  * `null` is not "anything goes" — it is "the key is recognised and something else
- * decides what may be in it". `auto_triggers`, `merge_gates` and `deploy.targets`
+ * decides what may be in it". `merge_gates` and `deploy.targets`
  * are all `null` here and all validated below by their own resolver.
  */
 interface Section {
@@ -85,7 +84,6 @@ const CONFIG_SCHEMA: Section = {
     base_branch: null,
     governed_paths: null,
     merge_gates: null,
-    auto_triggers: null,
     checks: { children: { commands: null, secrets: null, runs_on: null } },
     deploy: { children: { targets: null, secrets: null, runs_on: null } },
     tools: { children: { secrets: null } },
@@ -161,7 +159,7 @@ export interface DeliverableFacts {
   readonly workflowFiles: readonly string[];
 }
 
-/** The agent an `auto_triggers` entry names, or "" when it names one at run time. */
+/** Kept for the agent-name check below; see its call site. */
 function triggerAgent(agent: string): string {
   // `$dispatch_agent` and anything else `$`-prefixed is filled in from the event
   // — see `match_trigger.ts`. There is no name here to check against a file.
@@ -191,9 +189,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
     problems.push(`\`${key}\` in config.json is not a setting Atoma reads. Check the spelling.`);
   }
 
-  // ── the four resolvers, run early ─────────────────────────────────────────
-  const triggers = resolveAutoTriggers(config.auto_triggers);
-  problems.push(...triggers.problems);
+  // ── the resolvers, run early ──────────────────────────────────────────────
   problems.push(...resolveMergeGates(config.merge_gates).problems);
 
   // `deploy` and `checks` are read for their SHAPE only, which is not the same as
@@ -230,21 +226,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // Only checked when the definitions were found at all. An empty set means the
   // directory was not there, and reporting every agent as missing would bury the
   // one problem that matters under noise.
-  if (agentNames.length > 0) {
-    const known = new Set(agentNames);
-    const available = [...known].sort().join(", ");
-
-    for (const trigger of triggers.triggers) {
-      const agent = triggerAgent(trigger.agent);
-      if (agent && !known.has(agent)) {
-        problems.push(
-          `\`auto_triggers\` routes \`${trigger.event}\` to '${agent}', which has no ` +
-            `agent-definitions/${agent}.md. The event would dispatch a run that cannot start. ` +
-            `Available: ${available}`,
-        );
-      }
-    }
-  } else {
+  if (agentNames.length === 0) {
     problems.push("No agent definitions were found. `.github/atoma/agent-definitions/*.md` is empty or missing.");
   }
 

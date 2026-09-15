@@ -15,7 +15,6 @@ import {
 } from "../domain/declared-secrets.ts";
 import { resolveDeployTargets, type DeployTargetsResolution } from "../domain/deploy-targets.ts";
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
-import { resolveAutoTriggers } from "../domain/auto-triggers.ts";
 import type { AtomaConfig } from "./types.ts";
 
 /**

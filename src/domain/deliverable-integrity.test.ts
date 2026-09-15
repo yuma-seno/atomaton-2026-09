@@ -18,7 +18,6 @@ const SOUND = {
   deploy: { targets: [], secrets: [] },
   tools: { secrets: [] },
   labels: { in_progress: "atoma/in-progress" },
-  auto_triggers: [{ event: "pull_request.opened", agent: "reviewer" }],
 };
 
 const facts = (config: unknown) => ({
@@ -74,21 +73,6 @@ describe("keys nothing reads", () => {
  * merge, deploy or credential-handout time, with nothing said at pull-request time.
  */
 describe("the resolvers, run early", () => {
-  // The worst of the set: ONE bad entry resolves the WHOLE list to empty, so every
-  // trigger stops firing and no event dispatches anything.
-  test("a bad auto_triggers entry is reported", () => {
-    const problems = problemsFor({ ...SOUND, auto_triggers: [{ event: "pull_request.opened" }] });
-    expect(problems.length).toBeGreaterThan(0);
-    expect(problems.join(" ")).toContain("auto_triggers[0]");
-  });
-
-  test("an unknown trigger condition is reported", () => {
-    const problems = problemsFor({
-      ...SOUND,
-      auto_triggers: [{ event: "pull_request_review.submitted", agent: "engineer", condition: "changes-requested" }],
-    });
-    expect(problems.length).toBeGreaterThan(0);
-  });
 
   test("a malformed merge gate is reported", () => {
     expect(problemsFor({ ...SOUND, merge_gates: [{ reason: "r", when: { title_match: "^x" } }] }).length).toBeGreaterThan(
@@ -115,25 +99,22 @@ describe("the resolvers, run early", () => {
 });
 
 describe("names that have to resolve to a file", () => {
-  test("a trigger routing to a nonexistent agent is reported", () => {
+  /**
+   * `auto_triggers` was removed because nothing read it: the one consumer went when
+   * opening a pull request stopped starting anyone by itself, and the single shipped
+   * entry named a condition this project handles by parsing the comment body.
+   *
+   * An adopter's config may still carry it, and silence would be the wrong answer --
+   * they wrote a setting believing it did something. The unknown-key rule already
+   * says so, and this pins that it keeps saying so for this key in particular.
+   */
+  test("a config still carrying auto_triggers is told nothing reads it", () => {
     const problems = problemsFor({
       ...SOUND,
-      auto_triggers: [{ event: "pull_request.opened", agent: "reviwer" }],
+      auto_triggers: [{ event: "pull_request.opened", agent: "reviewer" }],
     });
-    expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("reviwer");
-    expect(problems[0]).toContain("agent-definitions/reviwer.md");
-  });
-
-  // `$dispatch_agent` and friends are filled in from the event, so there is no
-  // name here to look for. Reporting one would refuse the shipped configuration.
-  test("a runtime-resolved agent is not looked up", () => {
-    expect(
-      problemsFor({
-        ...SOUND,
-        auto_triggers: [{ event: "issue_comment.created", agent: "$dispatch_agent", condition: "atoma:dispatch" }],
-      }),
-    ).toEqual([]);
+    expect(problems.join(" ")).toContain("auto_triggers");
+    expect(problems.join(" ")).toContain("not a setting Atoma reads");
   });
 
   // The key an adopter is most likely to still have: it configured a per-agent
