@@ -12,69 +12,6 @@ function isControlCommand(name) {
   return CONTROL_COMMAND_NAMES.includes(name);
 }
 
-// src/domain/auto-triggers.ts
-var TRIGGER_CONDITIONS = {
-  changes_requested: {
-    kind: "runtime",
-    matches: (context) => context.reviewState === "changes_requested"
-  },
-  non_draft: {
-    kind: "runtime",
-    matches: (context) => context.isDraft !== true
-  },
-  "atoma:dispatch": {
-    kind: "elsewhere",
-    matches: () => false
-  }
-};
-var KNOWN = Object.keys(TRIGGER_CONDITIONS).sort();
-function readTrigger(raw, where, problems) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    problems.push(`${where}: each entry must be an object with \`event\` and \`agent\`.`);
-    return;
-  }
-  const entry = raw;
-  const unknownKeys = Object.keys(entry).filter((key) => !["event", "agent", "condition"].includes(key));
-  if (unknownKeys.length > 0) {
-    problems.push(`${where}: unknown key(s) ${unknownKeys.join(", ")}; expected event, agent, condition.`);
-  }
-  if (typeof entry.event !== "string" || entry.event.trim() === "") {
-    problems.push(`${where}: \`event\` must be a non-empty string, e.g. "pull_request.opened".`);
-  }
-  if (typeof entry.agent !== "string" || entry.agent.trim() === "") {
-    problems.push(`${where}: \`agent\` must be a non-empty string.`);
-  }
-  if (entry.condition !== undefined) {
-    if (typeof entry.condition !== "string") {
-      problems.push(`${where}: \`condition\` must be a string; found ${JSON.stringify(entry.condition)}.`);
-    } else if (!(entry.condition in TRIGGER_CONDITIONS)) {
-      problems.push(`${where}: unknown condition "${entry.condition}". Known conditions are ${KNOWN.join(", ")}. ` + `An unrecognised condition used to be ignored, which made the trigger fire every time instead of never.`);
-    }
-  }
-  if (typeof entry.event !== "string" || typeof entry.agent !== "string")
-    return;
-  return {
-    event: entry.event,
-    agent: entry.agent,
-    ...typeof entry.condition === "string" ? { condition: entry.condition } : {}
-  };
-}
-function resolveAutoTriggers(raw) {
-  if (raw === undefined)
-    return { triggers: [], problems: [] };
-  if (!Array.isArray(raw)) {
-    return { triggers: [], problems: ["`auto_triggers` must be an array of {event, agent, condition?} objects."] };
-  }
-  const problems = [];
-  const triggers = [];
-  raw.forEach((entry, index) => {
-    const trigger = readTrigger(entry, `auto_triggers[${index}]`, problems);
-    if (trigger)
-      triggers.push(trigger);
-  });
-  return problems.length > 0 ? { triggers: [], problems } : { triggers, problems };
-}
-
 // src/domain/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMA_SECRET_";
@@ -416,7 +353,6 @@ var CONFIG_SCHEMA = {
     base_branch: null,
     governed_paths: null,
     merge_gates: null,
-    auto_triggers: null,
     checks: { children: { commands: null, secrets: null, runs_on: null } },
     deploy: { children: { targets: null, secrets: null, runs_on: null } },
     tools: { children: { secrets: null } },
@@ -451,9 +387,6 @@ function unknownKeys(value, section, prefix) {
   }
   return unknown;
 }
-function triggerAgent(agent) {
-  return agent.startsWith("$") ? "" : agent;
-}
 function configProblems(facts) {
   const problems = [];
   const { config, agentNames, workflowFiles } = facts;
@@ -463,8 +396,6 @@ function configProblems(facts) {
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
     problems.push(`\`${key}\` in config.json is not a setting Atoma reads. Check the spelling.`);
   }
-  const triggers = resolveAutoTriggers(config.auto_triggers);
-  problems.push(...triggers.problems);
   problems.push(...resolveMergeGates(config.merge_gates).problems);
   const deploy = isRecord3(config.deploy) ? config.deploy : {};
   problems.push(...resolveDeployTargets(deploy.targets).problems);
@@ -476,16 +407,7 @@ function configProblems(facts) {
   for (const name of agentNames.filter(isControlCommand).sort()) {
     problems.push(`agent-definitions/${name}.md is named after the '/${name}' control command, ` + `so '/${name}' will never dispatch it. Rename the agent.`);
   }
-  if (agentNames.length > 0) {
-    const known = new Set(agentNames);
-    const available = [...known].sort().join(", ");
-    for (const trigger of triggers.triggers) {
-      const agent = triggerAgent(trigger.agent);
-      if (agent && !known.has(agent)) {
-        problems.push(`\`auto_triggers\` routes \`${trigger.event}\` to '${agent}', which has no ` + `agent-definitions/${agent}.md. The event would dispatch a run that cannot start. ` + `Available: ${available}`);
-      }
-    }
-  } else {
+  if (agentNames.length === 0) {
     problems.push("No agent definitions were found. `.github/atoma/agent-definitions/*.md` is empty or missing.");
   }
   if (workflowFiles.length > 0) {
