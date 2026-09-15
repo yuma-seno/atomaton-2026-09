@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.110",
+  "version": "v0.1.111",
   "files": [
     ".github/atoma-release.json",
     ".github/atoma/agent-definitions/engineer.md",
@@ -61,6 +61,7 @@
     ".github/scripts/run_environment_setup.ts",
     ".github/scripts/save_agent_session.ts",
     ".github/scripts/save_workspace.ts",
+    ".github/scripts/scan_secrets.ts",
     ".github/scripts/validate_deliverable.ts",
     ".github/scripts/validate_pull_request.ts",
     ".github/scripts/watch_for_stop.ts",
