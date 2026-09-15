@@ -2,7 +2,7 @@
 
 Read from the sessions stored on this branch. Nothing here is recorded specially: every number is something the agents already wrote down while working.
 
-Generated 2026-09-14.
+Generated 2026-09-15.
 
 A session appears in a dated window only if it recorded when its runs ended. Sessions from before run recording existed are counted under All time alone, so the dated windows are thinner than the project was — that gap closes as new sessions arrive, not by anything changing here.
 
@@ -10,224 +10,236 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 12 | 8.3% | 37 | 499 |
-| Last 30 days | 12 | 8.3% | 37 | 499 |
-| Last year | 12 | 8.3% | 37 | 499 |
-| All time | 12 | 8.3% | 37 | 499 |
+| Last 7 days | 13 | 15.4% | 37 | 2,144 |
+| Last 30 days | 13 | 15.4% | 37 | 2,144 |
+| Last year | 13 | 15.4% | 37 | 2,144 |
+| All time | 13 | 15.4% | 37 | 2,144 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
 | `completed` | 11 |
-| `failed` | 1 |
+| `failed` | 2 |
 
 ## Last 7 days
 
-8 sessions.
+9 sessions.
 
-**9,867,167 tokens** over 20 runs that reported them, **98.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**2,237,371 tokens** over 15 runs that reported them, **97.5% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 78,253 | 877,552 | 6,403,430 | 6,403,430 | 9,867,167 |
-| messages per session | 13 | 380 | 380 | 380 | 455 |
+| tokens per run | 53,712 | 438,539 | 877,552 | 877,552 | 2,237,371 |
+| messages per session | 13 | 396 | 396 | 396 | 851 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 6 | 75% |
-| `reviewer` | 2 | 25% |
+| `engineer` | 7 | 77.8% |
+| `reviewer` | 2 | 22.2% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
-| `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
+| `shell__shell_execute` | 320 | 5 | 35 | 1.6% |
+| `filesystem__read_text_file` | 20 | 1 | 0 | 5% |
+| `search__search_code` | 19 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
+| `filesystem__read_multiple_files` | 6 | 0 | 0 | 0% |
+| `filesystem__search_files` | 5 | 0 | 0 | 0% |
+| `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
-| `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
-| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `filesystem__list_directory` | 1 | 0 | 0 | 0% |
 | `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
+| `github__get_issue_comments` | 1 | 0 | 0 | 0% |
 | `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
+| `read_text_file` | 1 | 1 | 0 | 100% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 71 | 42.5% |
-| `search` | 43 | 25.7% |
-| `open` | 24 | 14.4% |
-| `verify` | 18 | 10.8% |
-| `edit` | 11 | 6.6% |
+| `search` | 159 | 49.7% |
+| `other` | 81 | 25.3% |
+| `open` | 46 | 14.4% |
+| `verify` | 18 | 5.6% |
+| `edit` | 16 | 5% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 2 | 33.3% |
-| `review/quick-quality-gate` | 2 | 33.3% |
-| `engineering/nonexistent` | 1 | 16.7% |
-| `project/conventions` | 1 | 16.7% |
+| `engineering/tdd` | 3 | 37.5% |
+| `project/conventions` | 2 | 25% |
+| `review/quick-quality-gate` | 2 | 25% |
+| `engineering/nonexistent` | 1 | 12.5% |
 
 ## Last 30 days
 
-8 sessions.
+9 sessions.
 
-**28,895,097 tokens** over 215 runs that reported them, **97.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**22,685,610 tokens** over 175 runs that reported them, **97.2% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 21,693 | 134,745 | 2,281,321 | 6,403,430 | 28,895,097 |
-| messages per session | 13 | 380 | 380 | 380 | 455 |
+| tokens per run | 23,251 | 213,927 | 2,281,321 | 6,403,430 | 22,685,610 |
+| messages per session | 13 | 396 | 396 | 396 | 851 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 6 | 75% |
-| `reviewer` | 2 | 25% |
+| `engineer` | 7 | 77.8% |
+| `reviewer` | 2 | 22.2% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
-| `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
+| `shell__shell_execute` | 320 | 5 | 35 | 1.6% |
+| `filesystem__read_text_file` | 20 | 1 | 0 | 5% |
+| `search__search_code` | 19 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
+| `filesystem__read_multiple_files` | 6 | 0 | 0 | 0% |
+| `filesystem__search_files` | 5 | 0 | 0 | 0% |
+| `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
-| `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
-| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `filesystem__list_directory` | 1 | 0 | 0 | 0% |
 | `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
+| `github__get_issue_comments` | 1 | 0 | 0 | 0% |
 | `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
+| `read_text_file` | 1 | 1 | 0 | 100% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 71 | 42.5% |
-| `search` | 43 | 25.7% |
-| `open` | 24 | 14.4% |
-| `verify` | 18 | 10.8% |
-| `edit` | 11 | 6.6% |
+| `search` | 159 | 49.7% |
+| `other` | 81 | 25.3% |
+| `open` | 46 | 14.4% |
+| `verify` | 18 | 5.6% |
+| `edit` | 16 | 5% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 2 | 33.3% |
-| `review/quick-quality-gate` | 2 | 33.3% |
-| `engineering/nonexistent` | 1 | 16.7% |
-| `project/conventions` | 1 | 16.7% |
+| `engineering/tdd` | 3 | 37.5% |
+| `project/conventions` | 2 | 25% |
+| `review/quick-quality-gate` | 2 | 25% |
+| `engineering/nonexistent` | 1 | 12.5% |
 
 ## Last year
 
-8 sessions.
+9 sessions.
 
 **117,184,129 tokens** over 419 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 13 | 380 | 380 | 380 | 455 |
+| messages per session | 13 | 396 | 396 | 396 | 851 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 6 | 75% |
-| `reviewer` | 2 | 25% |
+| `engineer` | 7 | 77.8% |
+| `reviewer` | 2 | 22.2% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 167 | 1 | 18 | 0.6% |
-| `atoma_builtin__load_skill` | 7 | 2 | 0 | 28.6% |
-| `filesystem__read_text_file` | 6 | 0 | 0 | 0% |
+| `shell__shell_execute` | 320 | 5 | 35 | 1.6% |
+| `filesystem__read_text_file` | 20 | 1 | 0 | 5% |
+| `search__search_code` | 19 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
+| `filesystem__read_multiple_files` | 6 | 0 | 0 | 0% |
+| `filesystem__search_files` | 5 | 0 | 0 | 0% |
+| `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
 | `search__search_issues` | 4 | 0 | 0 | 0% |
-| `filesystem__search_files` | 3 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 2 | 1 | 0 | 50% |
 | `github__commit_and_push` | 2 | 1 | 0 | 50% |
-| `github__get_issue` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `filesystem__list_directory` | 1 | 0 | 0 | 0% |
 | `github__close_issue` | 1 | 0 | 1 | 0% |
 | `github__create_pr` | 1 | 0 | 0 | 0% |
+| `github__get_issue_comments` | 1 | 0 | 0 | 0% |
 | `github__get_pr` | 1 | 0 | 0 | 0% |
 | `github__merge_pr` | 1 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 1 | 0 | 0 | 0% |
+| `read_text_file` | 1 | 1 | 0 | 100% |
 
 What the agents do when they reach for a shell. `search` without a matching `open` is the shape that produced this project's most expensive runs; `edit` against `verify` is the shape that turned out not to occur at all.
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 71 | 42.5% |
-| `search` | 43 | 25.7% |
-| `open` | 24 | 14.4% |
-| `verify` | 18 | 10.8% |
-| `edit` | 11 | 6.6% |
+| `search` | 159 | 49.7% |
+| `other` | 81 | 25.3% |
+| `open` | 46 | 14.4% |
+| `verify` | 18 | 5.6% |
+| `edit` | 16 | 5% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 2 | 33.3% |
-| `review/quick-quality-gate` | 2 | 33.3% |
-| `engineering/nonexistent` | 1 | 16.7% |
-| `project/conventions` | 1 | 16.7% |
+| `engineering/tdd` | 3 | 37.5% |
+| `project/conventions` | 2 | 25% |
+| `review/quick-quality-gate` | 2 | 25% |
+| `engineering/nonexistent` | 1 | 12.5% |
 
 ## All time
 
-363 sessions.
+364 sessions.
 
 **117,184,129 tokens** over 419 runs that reported them, **98.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 10 | 90 | 433 | 1,011 | 13,254 |
+| messages per session | 10 | 96 | 433 | 1,011 | 13,650 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 238 | 65.6% |
-| `engineer` | 88 | 24.2% |
+| `reviewer` | 238 | 65.4% |
+| `engineer` | 89 | 24.5% |
 | `orchestrator` | 37 | 10.2% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 2,432 | 620 | 150 | 25.5% |
+| `shell__shell_execute` | 2,585 | 624 | 167 | 24.1% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 522 | 42 | 24 | 8% |
+| `filesystem__read_text_file` | 536 | 43 | 24 | 8% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
-| `filesystem__list_directory` | 249 | 5 | 0 | 2% |
+| `filesystem__list_directory` | 255 | 6 | 0 | 2.4% |
 | `github__check_merge_readiness` | 223 | 2 | 0 | 0.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
-| `github__get_issue` | 181 | 22 | 2 | 12.2% |
-| `atoma_builtin__load_skill` | 176 | 77 | 0 | 43.8% |
+| `github__get_issue` | 184 | 22 | 2 | 12% |
+| `atoma_builtin__load_skill` | 178 | 77 | 0 | 43.3% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 108 | 29 | 0 | 26.9% |
+| `search__search_code` | 87 | 0 | 0 | 0% |
 | `github__commit_and_push` | 86 | 53 | 0 | 61.6% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
 | `github__get_pr` | 68 | 10 | 0 | 14.7% |
-| `search__search_code` | 68 | 0 | 0 | 0% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 59 | 6 | 0 | 10.2% |
+| `filesystem__read_multiple_files` | 54 | 0 | 0 | 0% |
 | `github__get_check_runs` | 53 | 6 | 0 | 11.3% |
 | `github__create_pr` | 52 | 24 | 0 | 46.2% |
-| `filesystem__read_multiple_files` | 48 | 0 | 0 | 0% |
-| `filesystem__search_files` | 47 | 0 | 43 | 0% |
+| `filesystem__search_files` | 49 | 0 | 43 | 0% |
 | `github__get_pr_diff` | 47 | 4 | 0 | 8.5% |
-| `github__get_issue_comments` | 40 | 8 | 0 | 20% |
+| `github__get_issue_comments` | 41 | 8 | 0 | 19.5% |
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
 | `github__merge_pr` | 33 | 1 | 0 | 3% |
 | `search__search_issues` | 33 | 4 | 0 | 12.1% |
@@ -271,6 +283,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem_readonly__list_directory_with_sizes` | 1 | 0 | 1 | 0% |
 | `github__add_issue_comment` | 1 | 0 | 0 | 0% |
 | `read_multiple_files` | 1 | 1 | 0 | 100% |
+| `read_text_file` | 1 | 1 | 0 | 100% |
 | `shell__ssh_execute` | 1 | 1 | 0 | 100% |
 | `shell__terminals_terminal_operate` | 1 | 1 | 0 | 100% |
 | `shell__write_file` | 1 | 1 | 0 | 100% |
@@ -281,23 +294,41 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `other` | 1,057 | 43.5% |
-| `search` | 850 | 35% |
-| `open` | 283 | 11.6% |
-| `verify` | 167 | 6.9% |
-| `edit` | 75 | 3.1% |
+| `other` | 1,067 | 41.3% |
+| `search` | 966 | 37.4% |
+| `open` | 305 | 11.8% |
+| `verify` | 167 | 6.5% |
+| `edit` | 80 | 3.1% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `review/quick-quality-gate` | 36 | 36% |
-| `project/conventions` | 23 | 23% |
-| `delivery/implementation-handoff` | 18 | 18% |
-| `delivery/issue-decomposition` | 8 | 8% |
-| `engineering/tdd` | 7 | 7% |
-| `engineering/debugging` | 3 | 3% |
+| `review/quick-quality-gate` | 36 | 35.3% |
+| `project/conventions` | 24 | 23.5% |
+| `delivery/implementation-handoff` | 18 | 17.6% |
+| `delivery/issue-decomposition` | 8 | 7.8% |
+| `engineering/tdd` | 8 | 7.8% |
+| `engineering/debugging` | 3 | 2.9% |
 | `engineering/environment` | 2 | 2% |
 | `research/web-search` | 2 | 2% |
 | `engineering/nonexistent` | 1 | 1% |
+
+## Degraded answers
+
+A tool can answer and report that it answered badly — a search that came back unranked, a log that went nowhere. The call succeeded, so it is neither a failure nor a refusal, and it is easy for one of these to run for months with nobody reading it. **Read `last seen` before `reports`**: an old count is a fixed fault. That date is when the session file was last written, which is the run that touched it last and not necessarily the run that reported the problem — so it errs recent.
+
+| last seen | server | reports | sessions | problem |
+| --- | --- | ---: | ---: | --- |
+| 2026-09-15 | `github` | 3 | 2 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
+| 2026-09-15 | `search` | 1 | 1 | [atoma-search] code query "tests that assert on the warning message text emitted by res" -> src/scripts/resolve_entry_ag |
+| 2026-09-14 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
+| 2026-09-14 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
+| 2026-09-14 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
+| 2026-09-14 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
+| 2026-09-14 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
+| 2026-09-14 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
+| 2026-09-14 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
+| 2026-09-14 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
+| 2026-09-14 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
 
 ## Never used
 
