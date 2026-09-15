@@ -14,10 +14,12 @@ The deliverable:
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
 - `scripts/`: this project's own pipeline. `release.sh` is what `deploy.targets`
-  names, and it is part of the reason there are no hand-written workflows left.
-  Governed, like `.github/`. The secret scan used to live here too and now ships
-  to every adopter as `.github/scripts/scan_secrets.ts`; this repository runs the
-  shipped one, so a defect in it fails here before it reaches anybody else.
+  names, and they are the reason there are no hand-written workflows left.
+  Governed, like `.github/`. `scan-secrets.sh` is on its way out: the secret scan
+  now ships to every adopter as `.github/scripts/scan_secrets.ts`, `self/` names
+  that one, and the `.sh` goes once a deploy has carried the change into
+  `.github/atoma/config.json` — until then it is what the deployed config still
+  runs.
 
 This repository's own:
 
