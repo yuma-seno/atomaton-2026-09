@@ -2,7 +2,7 @@
   "name": "atoma-autonomous-delivery",
   "private": true,
   "type": "module",
-  "version": "0.1.110",
+  "version": "0.1.111",
   "engines": {
     "bun": ">=1.2.0"
   },
