@@ -1,12 +1,12 @@
 {
-  "version": "v0.1.113",
+  "version": "v0.1.114",
   "files": [
     ".github/atoma-release.json",
     ".github/atoma/README.md",
     ".github/atoma/agent-definitions/engineer.md",
     ".github/atoma/agent-definitions/orchestrator.md",
     ".github/atoma/agent-definitions/reviewer.md",
-    ".github/atoma/config.json",
+    ".github/atoma/config.yaml",
     ".github/atoma/mcp-packages.json",
     ".github/atoma/prompt-template.md",
     ".github/atoma/rulesets/main.json",

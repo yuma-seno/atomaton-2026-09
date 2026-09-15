@@ -206,17 +206,7 @@ function isSelfEvent(event, agentName, ownCommentIds) {
     return true;
   return extractResultCommentAgent(event) === agentName;
 }
-function contextPolicy(config, agentName) {
-  const sharedContext = config.agents?.[agentName]?.shared_context;
-  if (!sharedContext)
-    return { exclude: new Set };
-  return {
-    include: sharedContext.include_event_types ? new Set(sharedContext.include_event_types) : undefined,
-    exclude: new Set(sharedContext.exclude_event_types ?? [])
-  };
-}
-function filterEventsForAgent(events, agentName, ownCommentIds, config) {
-  const { include, exclude } = contextPolicy(config, agentName);
+function filterEventsForAgent(events, agentName, ownCommentIds) {
   const filtered = [];
   for (const event of events) {
     if (event.author.endsWith("[bot]") && LLM_CONTEXT_TAG.read(event.content) === "exclude") {
@@ -227,10 +217,6 @@ function filterEventsForAgent(events, agentName, ownCommentIds, config) {
       console.error(`  Skipping current agent comment from shared context: id=${event.id}`);
       continue;
     }
-    if (include && !include.has(event.event_type))
-      continue;
-    if (exclude.has(event.event_type))
-      continue;
     filtered.push(event);
   }
   return filtered;
@@ -270,9 +256,9 @@ function snapshotHashForEvents(events) {
 function previousSnapshotHash(session) {
   return session.metadata?.github_context?.snapshot_hash;
 }
-function reconcileGithubSession(session, events, agentName, config = {}, vision = false) {
+function reconcileGithubSession(session, events, agentName, vision = false) {
   const ownCommentIds = buildOwnCommentIds(session, agentName);
-  const filteredEvents = filterEventsForAgent(events, agentName, ownCommentIds, config);
+  const filteredEvents = filterEventsForAgent(events, agentName, ownCommentIds);
   const currentHash = snapshotHashForEvents(filteredEvents);
   const previousHash = previousSnapshotHash(session);
   const contextMessages = filteredEvents.map((event) => eventToUserMessage(event, vision));
@@ -309,19 +295,17 @@ function main() {
       events: { type: "string" },
       "agent-name": { type: "string" },
       "agent-def": { type: "string" },
-      config: { type: "string" },
       session: { type: "string" },
       out: { type: "string" }
     }
   });
   if (!values.events || !values["agent-name"] || !values.session || !values.out) {
-    console.error("usage: reconcile_github_session.ts --events events.json --agent-name AGENT --session session.json [--config config.json] --out session.json");
+    console.error("usage: reconcile_github_session.ts --events events.json --agent-name AGENT --session session.json --out session.json");
     process.exit(2);
   }
   const session = existsSync(values.session) ? JSON.parse(readFileSync(values.session, "utf8")) : { messages: [] };
   const events = JSON.parse(readFileSync(values.events, "utf8"));
-  const config = values.config && existsSync(values.config) ? JSON.parse(readFileSync(values.config, "utf8")) : {};
-  const { mergedSession, changedCount, snapshotHash, eventCount } = reconcileGithubSession(session, events, values["agent-name"], config, agentReadsImages(values["agent-def"]));
+  const { mergedSession, changedCount, snapshotHash, eventCount } = reconcileGithubSession(session, events, values["agent-name"], agentReadsImages(values["agent-def"]));
   writeFileSync(values.out, JSON.stringify(mergedSession, null, 2) + `
 `);
   const githubOutput = process.env.GITHUB_OUTPUT;

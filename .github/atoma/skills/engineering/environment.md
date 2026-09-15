@@ -32,17 +32,13 @@ question — go to 2.
 that is deliberate: an install done during a run does not exist on the next one, so
 it would work once and then look like a flake.
 
-It belongs in `environment.setup_commands` in `.github/atoma/config.json`:
+It belongs in `environment.setup_commands` in `.github/atoma/config.yaml`:
 
-```json
-{
-  "environment": {
-    "setup_commands": [
-      "sudo apt-get install -y libpq-dev",
-      "bun install --frozen-lockfile"
-    ]
-  }
-}
+```yaml
+environment:
+  setup_commands:
+    - sudo apt-get install -y libpq-dev
+    - bun install --frozen-lockfile
 ```
 
 **Add it, then say so in your report and stop.** That file is a governed path — a

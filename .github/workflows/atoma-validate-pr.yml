@@ -3,9 +3,9 @@
 # Edits here are lost when this file is regenerated upstream.
 #
 # To change what CI or deployment DOES, you do not need this file: put the
-# commands in .github/atoma/config.json under `checks.commands` or
-# `deploy.targets`. That file is yours, it survives upgrades, and an agent can
-# write it -- GitHub refuses to let one write a workflow.
+# commands in .github/atoma/config.yaml under `checks.atoma_runs.commands` or
+# `deploy.atoma_runs.targets`. That file is yours, it survives upgrades, and an
+# agent can write it -- GitHub refuses to let one write a workflow.
 # See docs/customization.md, "Set up CI and deployment".
 #
 # Upstream: https://github.com/yuma-seno/atomaton
@@ -95,7 +95,7 @@ jobs:
         id: cfg
         shell: bash
         run: |
-          WORKFLOW=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/get_config_value.ts" "workflows.ci" "atoma-check.yml")
+          WORKFLOW=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/get_config_value.ts" "checks.your_workflow" "atoma-check.yml")
           echo "workflow=${WORKFLOW}" >> "$GITHUB_OUTPUT"
       - name: Run CI and write its result where the ruleset looks
         id: validate

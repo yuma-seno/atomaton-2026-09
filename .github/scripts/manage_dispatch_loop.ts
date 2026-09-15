@@ -80,7 +80,7 @@ var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
@@ -97,15 +97,15 @@ function configPath() {
 var cached;
 function loadConfig() {
   if (!cached) {
-    cached = JSON.parse(readFileSync(configPath(), "utf8"));
+    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
   }
   return cached;
 }
 function getHandoffLimit() {
-  return loadConfig().limits?.agent_handoffs;
+  return loadConfig().chain?.after_handoffs;
 }
 function getNoProgressLimit() {
-  return loadConfig().limits?.runs_without_change;
+  return loadConfig().chain?.after_runs_without_change;
 }
 
 // src/lib/gh.ts

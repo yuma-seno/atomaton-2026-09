@@ -3,9 +3,9 @@
 # Edits here are lost when this file is regenerated upstream.
 #
 # To change what CI or deployment DOES, you do not need this file: put the
-# commands in .github/atoma/config.json under `checks.commands` or
-# `deploy.targets`. That file is yours, it survives upgrades, and an agent can
-# write it -- GitHub refuses to let one write a workflow.
+# commands in .github/atoma/config.yaml under `checks.atoma_runs.commands` or
+# `deploy.atoma_runs.targets`. That file is yours, it survives upgrades, and an
+# agent can write it -- GitHub refuses to let one write a workflow.
 # See docs/customization.md, "Set up CI and deployment".
 #
 # Upstream: https://github.com/yuma-seno/atomaton
@@ -83,24 +83,24 @@ jobs:
           ATOMA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           DEFAULT_BRANCH="${ATOMA_DEFAULT_BRANCH:-main}"
-          TRUSTED_CONFIG="$RUNNER_TEMP/atoma-declared-secrets.json"
+          TRUSTED_CONFIG="$RUNNER_TEMP/atoma-declared-secrets.yaml"
 
           # Fetched into a ref this line owns, and read back from that same ref, so a
           # failed fetch has nothing to fall back to. Shallow: one commit of one branch is
           # all this needs. `+` so a re-run overwrites rather than refusing.
           if git fetch --quiet --depth=1 origin "+$DEFAULT_BRANCH:refs/atoma/trusted-config" 2>/dev/null \
-            && git show "refs/atoma/trusted-config:.github/atoma/config.json" > "$TRUSTED_CONFIG" 2>/dev/null; then
+            && git show "refs/atoma/trusted-config:.github/atoma/config.yaml" > "$TRUSTED_CONFIG" 2>/dev/null; then
             echo "Read the credential declaration from ${DEFAULT_BRANCH}."
           else
-            # Either the branch has no config.json or the fetch failed, and this cannot
+            # Either the branch has no config.yaml or the fetch failed, and this cannot
             # tell which. It does not need to: both answers are "declare nothing", which is
             # the safe one. Naming both is the honest message -- asserting the first would
             # be asserting something this could not determine.
             echo '{}' > "$TRUSTED_CONFIG"
-            echo "::warning::Could not read .github/atoma/config.json from ${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
+            echo "::warning::Could not read .github/atoma/config.yaml from ${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
           fi
 
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/read_secret_names.ts" --destination "deploy" --config "$RUNNER_TEMP/atoma-declared-secrets.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/read_secret_names.ts" --destination "deploy" --config "$RUNNER_TEMP/atoma-declared-secrets.yaml"
       - name: Deploy the targets this run is for
         shell: bash
         env:
@@ -121,7 +121,7 @@ jobs:
           ATOMA_DEPLOY_TARGET_INPUT: ${{ inputs.target }}
         run: |
           # Credentials arrive in numbered slots because this file is generated and cannot
-          # know what a project called its Slack token; config.json does, and the resolve
+          # know what a project called its Slack token; config.yaml does, and the resolve
           # step above published that list. Put the declared name back on each slot before
           # anything that needs one runs.
           ATOMA_DECLARED_SECRETS="${ATOMA_SECRET_NAMES:-[]}"
@@ -134,7 +134,7 @@ jobs:
               export "${secret_name}=${secret_value}"
               echo "Secret ${secret_name} is available to this run."
             else
-              echo "::warning::config.json declares secret ${secret_name}, but this repository has no secret by that name. Whatever needs it will fail."
+              echo "::warning::config.yaml declares secret ${secret_name}, but this repository has no secret by that name. Whatever needs it will fail."
             fi
             slot=$((slot + 1))
           done

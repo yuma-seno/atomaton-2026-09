@@ -39,11 +39,11 @@ var TOOL_SECRETS = {
   ])
 };
 var CHECK_SECRETS = {
-  field: "checks.secrets",
+  field: "checks.atoma_runs.secrets",
   reserved: new Set(["GH_TOKEN"])
 };
 var DEPLOY_SECRETS = {
-  field: "deploy.secrets",
+  field: "deploy.atoma_runs.secrets",
   reserved: new Set([
     "ATOMA_DEPLOY_REF",
     "ATOMA_DEPLOY_TARGET",
@@ -81,7 +81,7 @@ function collect(env) {
     if (value)
       out[name] = value;
     else {
-      console.error(`::warning::config.json declares ${name}, but this repository has no secret by that name. Whatever needs it will fail.`);
+      console.error(`::warning::config.yaml declares ${name}, but this repository has no secret by that name. Whatever needs it will fail.`);
     }
   });
   return out;

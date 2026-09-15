@@ -17864,7 +17864,7 @@ var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
@@ -17881,13 +17881,14 @@ function configPath() {
 var cached2;
 function loadConfig() {
   if (!cached2) {
-    cached2 = JSON.parse(readFileSync(configPath(), "utf8"));
+    cached2 = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
   }
   return cached2;
 }
 var DEFAULT_RERANKER = "onnx-community/bge-reranker-v2-m3-ONNX";
 function getRerankerModel() {
-  return loadConfig().search?.reranker_model?.trim() || DEFAULT_RERANKER;
+  const settings = loadConfig().tools?.servers?.search?.settings;
+  return settings?.reranker_model?.trim() || DEFAULT_RERANKER;
 }
 
 // src/domain/model-cache.ts

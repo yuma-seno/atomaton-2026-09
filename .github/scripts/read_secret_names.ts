@@ -39,11 +39,11 @@ var TOOL_SECRETS = {
   ])
 };
 var CHECK_SECRETS = {
-  field: "checks.secrets",
+  field: "checks.atoma_runs.secrets",
   reserved: new Set(["GH_TOKEN"])
 };
 var DEPLOY_SECRETS = {
-  field: "deploy.secrets",
+  field: "deploy.atoma_runs.secrets",
   reserved: new Set([
     "ATOMA_DEPLOY_REF",
     "ATOMA_DEPLOY_TARGET",
@@ -112,8 +112,10 @@ function defineScript(importMetaUrl) {
 // src/scripts/read_secret_names.ts
 var ref = defineScript(import.meta.url);
 function declarationIn(configText, destination) {
-  const config = JSON.parse(configText);
-  return { tools: config.tools, checks: config.checks, deploy: config.deploy }[destination]?.secrets;
+  const config = Bun.YAML.parse(configText);
+  if (destination === "tools")
+    return config.tools?.secrets;
+  return (destination === "checks" ? config.checks : config.deploy)?.atoma_runs?.secrets;
 }
 function main() {
   const { values } = parseArgs({
@@ -127,7 +129,7 @@ function main() {
   }
   let declared;
   if (!values.config) {
-    console.error("::warning::read_secret_names: no --config given, so no credentials are declared for this run. The workflow should pass the default branch's config.json.");
+    console.error("::warning::read_secret_names: no --config given, so no credentials are declared for this run. The workflow should pass the default branch's config.yaml.");
   } else {
     try {
       declared = declarationIn(readFileSync(values.config, "utf8"), destination);
@@ -138,7 +140,7 @@ function main() {
   const { names, problems } = resolveDeclaredSecrets(declared, SECRET_DESTINATIONS[destination]);
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.json: ${problem}`);
+      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
     }
     process.exit(1);
   }

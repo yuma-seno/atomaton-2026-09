@@ -6788,7 +6788,7 @@ function decideMergeReadiness(signals) {
   if (signals.mergePolicy !== "auto") {
     blockers.push({
       kind: "merge-policy",
-      detail: `merge_policy is '${signals.mergePolicy}', not 'auto'; a human performs the merge`
+      detail: `merge.policy is '${signals.mergePolicy}', not 'auto'; a human performs the merge`
     });
   }
   if (signals.governanceUnknown) {
@@ -6802,7 +6802,7 @@ function decideMergeReadiness(signals) {
     const rest = signals.governancePaths.length - 5;
     blockers.push({
       kind: "governance-change",
-      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atoma/config.json` (`checks.commands`, `deploy.targets`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
+      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atoma/config.yaml` (`checks.atoma_runs.commands`, `deploy.atoma_runs.targets`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
     });
   }
   for (const match of signals.gateMatches) {
@@ -6857,13 +6857,13 @@ function resolveDeployTargets(raw) {
   if (raw === undefined || raw === null)
     return { targets: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.targets` must be an array."] };
+    return { targets: [], problems: ["`deploy.atoma_runs.targets` must be an array."] };
   }
   const problems = [];
   const targets = [];
   const seen = new Set;
   raw.forEach((entry, index) => {
-    const where = `\`deploy.targets[${index}]\``;
+    const where = `\`deploy.atoma_runs.targets[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;
@@ -6999,12 +6999,12 @@ function resolveMergeGates(raw) {
   if (raw === undefined || raw === null)
     return { gates: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { gates: [], problems: ["`merge_gates` must be an array of gate objects."] };
+    return { gates: [], problems: ["`merge.gates` must be an array of gate objects."] };
   }
   const problems = [];
   const gates = [];
   raw.forEach((entry, index) => {
-    const where = `\`merge_gates[${index}]\``;
+    const where = `\`merge.gates[${index}]\``;
     if (!isRecord2(entry)) {
       problems.push(`${where} must be an object with \`reason\` and \`when\`.`);
       return;
@@ -7037,7 +7037,7 @@ function resolveMergeGates(raw) {
       titleMatches: readTitleMatches(declared.title_matches, `${where}.when.title_matches`, problems)
     };
     if (!constrainsAnything(when)) {
-      problems.push(`${where}: \`when\` names no usable condition, so this gate would stop every merge. ` + `Set \`merge_policy\` to "manual" if that is the intent.`);
+      problems.push(`${where}: \`when\` names no usable condition, so this gate would stop every merge. ` + `Set \`merge.policy\` to "manual" if that is the intent.`);
       return;
     }
     gates.push({ reason, when });
@@ -7092,7 +7092,7 @@ function matchMergeGates(gates, facts) {
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
@@ -7109,7 +7109,7 @@ function configPath() {
 var cached;
 function loadConfig() {
   if (!cached) {
-    cached = JSON.parse(readFileSync(configPath(), "utf8"));
+    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
   }
   return cached;
 }
@@ -7119,10 +7119,10 @@ var DEFAULT_LABELS = {
   in_progress: "atoma/in-progress"
 };
 function getLabel(key) {
-  return loadConfig().labels?.[key] ?? DEFAULT_LABELS[key];
+  return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 function getMergePolicy(fallback = "manual") {
-  return loadConfig().merge_policy ?? fallback;
+  return loadConfig().merge?.policy ?? fallback;
 }
 function getBaseBranch(fallback = "") {
   try {
@@ -7134,16 +7134,17 @@ function getBaseBranch(fallback = "") {
   }
 }
 function getGovernedPaths() {
-  return loadConfig().governed_paths ?? DEFAULT_GOVERNED_PATHS;
+  return loadConfig().merge?.governed_paths ?? DEFAULT_GOVERNED_PATHS;
 }
 function getMergeGates() {
-  return resolveMergeGates(loadConfig().merge_gates);
+  return resolveMergeGates(loadConfig().merge?.gates);
 }
 function getDeployTargets() {
-  return resolveDeployTargets(loadConfig().deploy?.targets);
+  return resolveDeployTargets(loadConfig().deploy?.atoma_runs?.targets);
 }
 function getWorkflowName(kind, fallback = "") {
-  return (loadConfig().workflows?.[kind] ?? "").trim() || fallback;
+  const section = kind === "ci" ? loadConfig().checks : loadConfig().deploy;
+  return (section?.your_workflow ?? "").trim() || fallback;
 }
 
 // src/lib/agent-name.ts
@@ -18797,7 +18798,7 @@ function dispatchCd(baseRef) {
   if (!configured) {
     const { targets, problems } = getDeployTargets();
     if (problems.length === 0 && targetsForMerge(targets).length === 0) {
-      log5("dispatchCd: no deploy.targets deploy on merge, and workflows.cd is unset; nothing to dispatch");
+      log5("dispatchCd: no deploy.atoma_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
       return false;
     }
   }
@@ -18889,7 +18890,7 @@ function log6(message) {
   console.error(`[atoma-merge-signals] ${message}`);
 }
 function governedPathProblems() {
-  return getGovernedPaths().map((pattern) => pathPatternProblem(pattern)).filter((problem) => problem !== "").map((problem) => `\`governed_paths\`: ${problem}`);
+  return getGovernedPaths().map((pattern) => pathPatternProblem(pattern)).filter((problem) => problem !== "").map((problem) => `\`merge.governed_paths\`: ${problem}`);
 }
 var STATUS_MAP = {
   added: "added",
@@ -19786,7 +19787,7 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({ name: "get_check_runs", description: "Retrieve GitHub Actions and other check runs for a commit, branch, or tag. Use this to verify CI status after pushing or before merge decisions. Returns one object per check with `name`, `status`, `conclusion` and `html_url` -- follow the URL for a failing check's log, which is not included. Does not wait for incomplete checks.", schema: GET_CHECK_RUNS_SCHEMA, handler: getCheckRuns }),
   defineMcpTool({
     name: "check_merge_readiness",
-    description: "Report whether a pull request can be merged right now, and every reason it cannot. Read the `blockers` array rather than assuming a fixed set: kinds include failing, pending and absent required checks, merge conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge_gates`, and merge policy. Call this before github__merge_pr, and to explain a refused merge. When the only thing missing is a CI run on the head commit, this dispatches CI and says so \u2014 re-check afterwards rather than merging blind. Read-only apart from that dispatch.",
+    description: "Report whether a pull request can be merged right now, and every reason it cannot. Read the `blockers` array rather than assuming a fixed set: kinds include failing, pending and absent required checks, merge conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge.gates`, and merge policy. Call this before github__merge_pr, and to explain a refused merge. When the only thing missing is a CI run on the head commit, this dispatches CI and says so \u2014 re-check afterwards rather than merging blind. Read-only apart from that dispatch.",
     schema: PR_CONTEXT_NUMBER_ARG_SCHEMA,
     handler: checkMergeReadiness
   }),
@@ -19807,7 +19808,7 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
   }),
   defineMcpTool({
     name: "merge_pr",
-    description: "Merge a pull request, then continue Atoma's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge_gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around \u2014 read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
+    description: "Merge a pull request, then continue Atoma's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge.gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around \u2014 read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
     schema: NUMBER_ARG_SCHEMA,
     guidance: omittedNumberGuidance("pull request"),
     handler: mergePr

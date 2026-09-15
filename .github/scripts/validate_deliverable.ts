@@ -46,11 +46,11 @@ var TOOL_SECRETS = {
   ])
 };
 var CHECK_SECRETS = {
-  field: "checks.secrets",
+  field: "checks.atoma_runs.secrets",
   reserved: new Set(["GH_TOKEN"])
 };
 var DEPLOY_SECRETS = {
-  field: "deploy.secrets",
+  field: "deploy.atoma_runs.secrets",
   reserved: new Set([
     "ATOMA_DEPLOY_REF",
     "ATOMA_DEPLOY_TARGET",
@@ -134,13 +134,13 @@ function resolveDeployTargets(raw) {
   if (raw === undefined || raw === null)
     return { targets: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.targets` must be an array."] };
+    return { targets: [], problems: ["`deploy.atoma_runs.targets` must be an array."] };
   }
   const problems = [];
   const targets = [];
   const seen = new Set;
   raw.forEach((entry, index) => {
-    const where = `\`deploy.targets[${index}]\``;
+    const where = `\`deploy.atoma_runs.targets[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;
@@ -296,12 +296,12 @@ function resolveMergeGates(raw) {
   if (raw === undefined || raw === null)
     return { gates: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { gates: [], problems: ["`merge_gates` must be an array of gate objects."] };
+    return { gates: [], problems: ["`merge.gates` must be an array of gate objects."] };
   }
   const problems = [];
   const gates = [];
   raw.forEach((entry, index) => {
-    const where = `\`merge_gates[${index}]\``;
+    const where = `\`merge.gates[${index}]\``;
     if (!isRecord2(entry)) {
       problems.push(`${where} must be an object with \`reason\` and \`when\`.`);
       return;
@@ -334,7 +334,7 @@ function resolveMergeGates(raw) {
       titleMatches: readTitleMatches(declared.title_matches, `${where}.when.title_matches`, problems)
     };
     if (!constrainsAnything(when)) {
-      problems.push(`${where}: \`when\` names no usable condition, so this gate would stop every merge. ` + `Set \`merge_policy\` to "manual" if that is the intent.`);
+      problems.push(`${where}: \`when\` names no usable condition, so this gate would stop every merge. ` + `Set \`merge.policy\` to "manual" if that is the intent.`);
       return;
     }
     gates.push({ reason, when });
@@ -349,20 +349,42 @@ var DEFAULT_CD_WORKFLOW = "atoma-deploy.yml";
 // src/domain/deliverable-integrity.ts
 var CONFIG_SCHEMA = {
   children: {
-    merge_policy: null,
     base_branch: null,
-    governed_paths: null,
-    merge_gates: null,
-    checks: { children: { commands: null, secrets: null, runs_on: null } },
-    deploy: { children: { targets: null, secrets: null, runs_on: null } },
-    tools: { children: { secrets: null } },
-    search: { children: { reranker_model: null } },
-    environment: { children: { setup_commands: null } },
-    workflows: { children: { ci: null, cd: null } },
-    limits: { children: { agent_handoffs: null, environment_reloads: null, runs_without_change: null } },
-    labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null }
+    environment: { children: { setup_commands: null, max_reloads: null } },
+    checks: {
+      children: {
+        atoma_runs: { children: { commands: null, secrets: null, runs_on: null } },
+        your_workflow: null
+      }
+    },
+    deploy: {
+      children: {
+        atoma_runs: { children: { targets: null, secrets: null, runs_on: null } },
+        your_workflow: null
+      }
+    },
+    merge: { children: { policy: null, governed_paths: null, gates: null } },
+    chain: {
+      children: {
+        after_handoffs: null,
+        after_runs_without_change: null,
+        labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null }
+      }
+    },
+    tools: {
+      children: {
+        secrets: null,
+        watch: { anyName: null },
+        servers: { anyName: { anyName: null } }
+      }
+    }
   }
 };
+function arm(section) {
+  if (!isRecord3(section))
+    return {};
+  return isRecord3(section.atoma_runs) ? section.atoma_runs : {};
+}
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -391,19 +413,28 @@ function configProblems(facts) {
   const problems = [];
   const { config, agentNames, workflowFiles } = facts;
   if (!isRecord3(config)) {
-    return ["`config.json` must be a JSON object."];
+    return ["`config.yaml` must be a YAML mapping."];
   }
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
-    problems.push(`\`${key}\` in config.json is not a setting Atoma reads. Check the spelling.`);
+    problems.push(`\`${key}\` in config.yaml is not a setting Atoma reads. Check the spelling.`);
   }
-  problems.push(...resolveMergeGates(config.merge_gates).problems);
-  const deploy = isRecord3(config.deploy) ? config.deploy : {};
-  problems.push(...resolveDeployTargets(deploy.targets).problems);
-  const checks = isRecord3(config.checks) ? config.checks : {};
+  for (const section of ["checks", "deploy"]) {
+    const value = config[section];
+    if (!isRecord3(value))
+      continue;
+    if (value.atoma_runs !== undefined && value.your_workflow !== undefined) {
+      problems.push("`" + section + "` sets both `atoma_runs` and `your_workflow`. They are alternatives: " + "`your_workflow` dispatches a workflow of your own and nothing reads " + "`atoma_runs`. Remove whichever you did not mean.");
+    }
+  }
+  const merge = isRecord3(config.merge) ? config.merge : {};
+  problems.push(...resolveMergeGates(merge.gates).problems);
+  const deployRuns = arm(config.deploy);
+  problems.push(...resolveDeployTargets(deployRuns.targets).problems);
+  const checkRuns = arm(config.checks);
   const tools = isRecord3(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(checks.secrets, SECRET_DESTINATIONS.checks).problems);
-  problems.push(...resolveDeclaredSecrets(deploy.secrets, SECRET_DESTINATIONS.deploy).problems);
+  problems.push(...resolveDeclaredSecrets(checkRuns.secrets, SECRET_DESTINATIONS.checks).problems);
+  problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
   for (const name of agentNames.filter(isControlCommand).sort()) {
     problems.push(`agent-definitions/${name}.md is named after the '/${name}' control command, ` + `so '/${name}' will never dispatch it. Rename the agent.`);
   }
@@ -412,22 +443,23 @@ function configProblems(facts) {
   }
   if (workflowFiles.length > 0) {
     const present = new Set(workflowFiles);
-    const workflows = isRecord3(config.workflows) ? config.workflows : {};
-    for (const [kind, fallback] of [
-      ["ci", DEFAULT_CI_WORKFLOW],
-      ["cd", DEFAULT_CD_WORKFLOW]
+    for (const [section, fallback] of [
+      ["checks", DEFAULT_CI_WORKFLOW],
+      ["deploy", DEFAULT_CD_WORKFLOW]
     ]) {
-      const configured = typeof workflows[kind] === "string" ? workflows[kind].trim() : "";
+      const named = isRecord3(config[section]) ? config[section].your_workflow : undefined;
+      const configured = typeof named === "string" ? named.trim() : "";
       const effective = configured || fallback;
       if (!present.has(effective)) {
-        problems.push(`\`workflows.${kind}\` resolves to '${effective}', which is not a file in .github/workflows/. ` + (configured ? "Check the name." : "The shipped default is missing from this repository."));
+        problems.push(`\`${section}.your_workflow\` resolves to '${effective}', which is not a file in .github/workflows/. ` + (configured ? "Check the name." : "The shipped default is missing from this repository."));
       }
     }
   }
-  if (isRecord3(config.labels)) {
-    for (const [key, value] of Object.entries(config.labels)) {
+  const chain = isRecord3(config.chain) ? config.chain : {};
+  if (isRecord3(chain.labels)) {
+    for (const [key, value] of Object.entries(chain.labels)) {
       if (typeof value !== "string" || value.trim() === "") {
-        problems.push(`\`labels.${key}\` must be a non-empty label name.`);
+        problems.push(`\`chain.labels.${key}\` must be a non-empty label name.`);
       }
     }
   }
@@ -485,7 +517,7 @@ function collect(root, atoma) {
   const atomaDir = join(root, ".github", "atoma");
   const agentDir = join(atomaDir, "agent-definitions");
   const toolsFile = join(atomaDir, "tools", "tools.yaml");
-  const configFile = join(atomaDir, "config.json");
+  const configFile = join(atomaDir, "config.yaml");
   const names = agentNames(agentDir);
   const problems = [];
   if (!existsSync(configFile)) {
@@ -493,9 +525,9 @@ function collect(root, atoma) {
   } else {
     let config;
     try {
-      config = JSON.parse(readFileSync(configFile, "utf8"));
+      config = Bun.YAML.parse(readFileSync(configFile, "utf8"));
     } catch (error) {
-      problems.push(`${configFile} is not valid JSON: ${error.message}`);
+      problems.push(`${configFile} is not valid YAML: ${error.message}`);
     }
     if (config !== undefined) {
       problems.push(...configProblems({
