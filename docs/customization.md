@@ -707,7 +707,7 @@ question that only has one right answer.
 What it checks:
 
 - Every `mcp_servers` name in every agent definition exists in `tools.yaml`, along
-  with `knows_about` targets, `callable_by` values and `extra_body` keys. This part
+  with `knows_about` targets and `extra_body` keys. This part
   runs `atoma validate`, so it is the same resolution a run performs rather than an
   imitation of it.
 - `config.json` uses only keys Atoma reads — see [the contract

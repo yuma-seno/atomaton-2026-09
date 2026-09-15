@@ -6,9 +6,6 @@ model: qwen/qwen3-vl-235b-a22b-instruct
 # A vision-language model, and the agent meant to look at screens: a tool that
 # returns a screenshot reaches this one as a picture.
 vision: true
-callable_by:
-  - user
-  - agent
 knows_about:
   - engineer
   - orchestrator

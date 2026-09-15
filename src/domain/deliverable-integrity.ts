@@ -31,7 +31,7 @@
  *
  * Not here. `atoma validate --agent-def X.md --tools-file tools.yaml` already
  * checks the parse, `mcp_servers` against the tools file, `knows_about` targets,
- * `callable_by` values, `extra_body` reserved keys and the hook paths the tools
+ * `extra_body` reserved keys and the hook paths the tools
  * file names — using the same code the run itself uses. `validate_deliverable.ts`
  * calls it once per agent definition rather than reimplementing any of that in
  * TypeScript, which would be the same facts in two languages.

@@ -7,9 +7,6 @@ model: deepseek/deepseek-v4-flash-0731
 # the image was withheld and naming this setting. That is the wanted behaviour
 # here: the reviewer is the agent that looks at screens.
 vision: false
-callable_by:
-  - user
-  - agent
 knows_about:
   - reviewer
   - orchestrator
