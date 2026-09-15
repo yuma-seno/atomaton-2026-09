@@ -22,7 +22,7 @@
  * Agent definitions and tools.yaml are the core's formats, and the core already
  * validates them: `atoma validate --agent-def X.md --tools-file tools.yaml` checks
  * the parse, `mcp_servers` against the tools file, `knows_about` targets and their
- * `callable_by`, `extra_body` reserved keys, and the hook paths the tools file
+ * `extra_body` reserved keys, and the hook paths the tools file
  * names — with the same code a run uses. This calls it once per agent definition
  * instead of parsing YAML again in TypeScript.
  *
