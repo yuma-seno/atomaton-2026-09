@@ -8,7 +8,9 @@ This guide separates two workflows clearly:
 ## Contents
 
 - [Source vs deliverable](#source-vs-deliverable) — which files you edit, and which are generated
-- [`config.json` contract](#configjson-contract) — every supported field, and [which file a setting belongs in](#which-file-a-setting-belongs-in)
+- [`config.yaml` contract](#configyaml-contract) — what happens to a key Atoma does
+  not read, and what survives an upgrade. Every setting itself is in
+  [docs/configuration.md](configuration.md)
 - [Upgrading an adopted repository](#upgrading-an-adopted-repository)
 - [Regenerate and deploy changes](#regenerate-and-deploy-changes)
 
@@ -62,105 +64,46 @@ In your adopted repository:
 
 - `.github/` is the runtime copy that workflows execute.
 
-If you only customize your own repository, edit your copied `.github/atoma/*` files directly.
+If you only customize your own repository, edit your copied `.github/atoma/` files
+directly — `config.yaml` for every setting, and the agent definitions, the skills
+and the prompt template for the rest.
 
-## `config.json` contract
+## `config.yaml` contract
 
-Primary file: `.github/atoma/config.json`
+Primary file: `.github/atoma/config.yaml`
 
-Every setting Atoma reads, one per line. A key that is not on this list is not
-read by anything — so a typo silently does nothing, which is why the pull request
-that introduces one now fails: see [What a pull request is checked
-against](#what-a-pull-request-is-checked-against).
+[docs/configuration.md](configuration.md) is the reference: every setting, what it
+is for, and the measurements behind the numbers that have one. It is not repeated
+here. What belongs here is what holds whatever that page says — what happens to a
+key Atoma does not read, and what survives an upgrade.
 
-- `merge_policy`
-- `base_branch`
-- `governed_paths`
-- `merge_gates` — a list, each entry with `reason` and `when`
-- `environment.setup_commands`
-- `limits.agent_handoffs`
-- `limits.runs_without_change`
-- `limits.environment_reloads`
-- `labels.in_progress`
-- `labels.sub_issue`
-- `labels.launched`
-- `workflows.ci`
-- `workflows.cd`
-- `search.reranker_model`
-- `checks.commands`
-- `checks.secrets`
-- `checks.runs_on`
-- `deploy.targets`
-- `deploy.secrets`
-- `deploy.runs_on`
-- `tools.secrets`
+**A key that is not a setting is read by nothing** — so a typo silently does
+nothing, which is why the pull request that introduces one now fails: see [What a
+pull request is checked against](#what-a-pull-request-is-checked-against). One
+level accepts names of your own: `chain.labels` takes more than the three Atoma
+reads, so a misspelling there is not caught by this.
 
-`labels` also accepts names of your own beyond the three above.
+The recognised set is held to the code by `tests/contract/config-contract.test.ts`,
+which compares the validator's schema against the `AtomaConfig` interface in
+`lib/types.ts`, using TypeScript's own parser. The same test holds
+[docs/configuration.md](configuration.md) to that schema in both directions: a
+settable key documented nowhere fails it, and so does a dotted path the reference
+names that the validator would reject.
 
-This list is held to the code by `tests/contract/config-contract.test.ts`, which
-compares it against the same schema the validator uses. It was a fourth copy of
-the same fact — the interface in `lib/types.ts`, the runtime schema, the readers
-in `lib/config.ts`, and this — with nothing keeping them in step.
+That second direction is the one that does damage, and it is why the list lives on
+one page rather than being restated here. A key documented but not read is a key
+you write, and the pull request is then failed for following the documentation —
+which is exactly what happened while this migration was under way, with two
+credential lists described at the wrong depth.
 
-Credentials are declared under the feature that consumes them, not in one list
-for the repository. The nesting is the boundary, so keep it — collapsing these
-into a single list would put every credential in every destination.
-
-| Layer | Decides | Lives in |
-| --- | --- | --- |
-| Repository secrets | the value | Settings |
-| `checks.secrets` / `deploy.secrets` / `tools.secrets` | whether that destination may hold it | `config.json` |
-| `env: ${NAME}` | which tool server receives it | `tools.yaml` |
-
-The third row applies to `tools.secrets` only, and it is easy to miss:
-authorising a credential does not deliver it. `checks` and `deploy` need no
-routing step, because their commands run in a workflow of their own rather than
-beside an agent. See [Give a tool a credential](#give-a-tool-a-credential).
-
-`config.json` is **yours**. Everything else under `.github/atoma/` is generated and
+`config.yaml` is **yours**. Everything else under `.github/atoma/` is generated and
 is replaced when you upgrade the template; this file is not, so edits to it
-survive. Keep project-specific settings here rather than in repository variables,
-where they are neither versioned nor reviewable.
-
-### Which file a setting belongs in
-
-The line follows what the setting is *about*, not which file is more convenient to
-edit:
-
-- **`config.json` — the delivery system.** How agents coordinate with each other
-  and with GitHub: which event dispatches which agent, the labels used to track
-  work, the merge policy, the workflows to dispatch, the environment a run needs.
-- **The agent definition — one agent.** What that agent *is*: its model and
-  provider, the tools it may use, the colleagues it knows about, who may call it,
-  and its role prompt.
-
-This is not an invention of this template. The agent definition is Atoma's own
-contract and is validated by `atoma validate`; `config.json` is the delivery
-layer's. Keeping them apart means an agent definition stays portable — it describes
-an agent, not a delivery pipeline.
-
-Resist moving a setting across this line for operational convenience. Wanting to
-avoid an upgrade conflict is not a reason to describe an agent's model as delivery
-configuration; fix the upgrade procedure instead.
-
-Supported trigger conditions:
-
-- `changes_requested` — the review that fired this event requested changes
-- `non_draft` — the pull request is not a draft
-
-The `atoma:dispatch` entry in the shipped config is reserved for comments
-generated by the delivery system. `atoma-manual-comment.yml` parses that marker
-out of the comment body directly, so the entry documents a path rather than
-selecting an agent: it never matches here, whatever agent it names.
-
-**A condition that is not one of these is an error.** It used to be ignored,
-which was worse than it sounds: the matcher asked "do I know a reason to skip
-this entry?" rather than "does this entry apply?", so an unrecognised condition
-was not a trigger that never fires — it was a trigger that fires **every time**.
-A `non_draft` mistyped as `nondraft` dispatched an agent onto every draft pull
-request, and the author of the typo had every reason to believe the opposite.
-The whole list is rejected, for the same reason `merge_gates` rejects one: a
-partly-honoured trigger list dispatches some agents and silently not others.
+survive. A setting that describes one agent rather than the delivery system belongs
+in that agent's definition instead — that file is Atoma's own contract, validated
+by `atoma validate`, and keeping the two apart is what lets a definition stay
+portable: it describes an agent, not a delivery pipeline. Keep project-specific
+settings here rather than in repository variables, where they are neither versioned
+nor reviewable.
 
 ## Upgrading an adopted repository
 
@@ -169,14 +112,20 @@ kinds of file, and only you can say which of your edits are deliberate:
 
 | Path | Yours to edit? |
 | --- | --- |
-| `.github/scripts/**`, `.github/workflows/**`, `.github/atoma/tools/scripts/**` | No — generated code, replace wholesale |
-| `.github/atoma/config.json` | Yes — most settings live here on purpose |
+| `.github/scripts/**`, `.github/workflows/**`, `.github/atoma/tools/scripts/**`, `.github/atoma/tools/tools.yaml` | No — generated, replace wholesale |
+| `.github/atoma/config.yaml` | Yes — every setting lives here on purpose |
 | `.github/atoma/skills/project/**` | Yes — your own skills, the template ships none |
-| `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `tools/tools.yaml`, `mcp-packages.json` | Both — the template ships defaults it also expects you to tune |
+| `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `mcp-packages.json` | Both — the template ships defaults it also expects you to tune |
 
 That last row is the awkward one, and no script can resolve it: a difference there
 is either an improvement you have not taken yet or a change you made on purpose,
 and the files look identical either way.
+
+`tools/tools.yaml` left that row for the first one. It is written from
+`tools.servers` in `config.yaml` when the deliverable is built, so an edit to it
+is an edit to a build output: replaced on the next upgrade, and invisible to
+anyone reading the config to find out what the tool servers are. Change
+`tools.servers`.
 
 So treat it as vendoring, and let git do the merge:
 
@@ -185,7 +134,7 @@ gh release download v0.1.1 -R yuma-seno/atomaton -p atoma-delivery.zip
 unzip -o atoma-delivery.zip   # the archive holds .github/, so run this at the repo root
 rm atoma-delivery.zip
 git diff .github/            # every difference is now a decision
-git checkout -- .github/atoma/config.json    # for anything you meant to keep
+git checkout -- .github/atoma/config.yaml    # for anything you meant to keep
 ```
 
 Name the version rather than taking `latest`, and read the upstream changes between
@@ -217,9 +166,9 @@ Read it rather than acting on it: your own workflows and your own project skills
 files the template never shipped, and they are supposed to be there.
 
 Review that diff rather than trusting the copy. The safest habit is to keep your
-customisation where the template will not fight you for it — `config.json` covers
-models, labels, triggers, merge policy, environment setup and
-workflow names, and `skills/project/` is yours outright.
+customisation where the template will not fight you for it — `config.yaml` covers
+the labels, the merge policy, the environment setup, the tool servers and the
+workflows to dispatch, and `skills/project/` is yours outright.
 
 ## Task-oriented recipes
 
@@ -356,7 +305,7 @@ session, posting the result, dispatching whatever comes next. A run that stops o
 that budget saves its session and can be continued with `/<agent>`; a run killed by
 the job's timeout reaches none of those steps and its work is gone.
 
-A number in `config.json` could not have said that. It would have been a guess about
+A number in `config.yaml` could not have said that. It would have been a guess about
 how long the checkout, the container build and the environment setup take on the
 day, and a guess that was too large would be silently ignored by the job timeout.
 
@@ -368,12 +317,9 @@ long. For how far the CHAIN of runs may go, see below.
 
 ### Limit how far agents hand work to each other
 
-```json
-{
-  "limits": {
-    "agent_handoffs": 5
-  }
-}
+```yaml
+chain:
+  after_handoffs: 5
 ```
 
 An agent finishing its turn can name the next one, and that one can name another.
@@ -401,12 +347,9 @@ run next. Posting `/<agent>` resumes it.
 
 ### Stop a chain that is not getting anywhere
 
-```json
-{
-  "limits": {
-    "runs_without_change": 2
-  }
-}
+```yaml
+chain:
+  after_runs_without_change: 2
 ```
 
 The limit above counts runs. This one counts **runs that changed nothing**, which is
@@ -419,7 +362,7 @@ useless one run.
 
 So a run that pushed no commit, opened no pull request and merged none is recorded
 as having changed nothing, and two of those in a row stops the chain. It fires
-sooner than `agent_handoffs` on repetition, and never on a long piece of real work,
+sooner than `after_handoffs` on repetition, and never on a long piece of real work,
 because length is not what it measures.
 
 Counted from the comments like the limit above, so nothing is stored: each result
@@ -476,15 +419,21 @@ Addressed to whoever the run resolves as the person to notify.
 
 ### Run checks or deployment on a different machine
 
-```json
-{
-  "checks": { "runs_on": "macos-latest" },
-  "deploy":  { "runs_on": ["self-hosted", "linux", "gpu"] }
-}
+```yaml
+checks:
+  atoma_runs:
+    runs_on: macos-latest
+deploy:
+  atoma_runs:
+    runs_on: ["self-hosted", "linux", "gpu"]
 ```
 
 A string is one runner label. A list is the set of labels one runner must have —
 which is how a self-hosted runner is addressed. Unset takes `ubuntu-latest`.
+
+It sits inside `atoma_runs` because the machine is a property of the step Atoma
+runs: a project that names `your_workflow` instead declares its runner in that
+workflow, where the rest of its pipeline already is.
 
 **One runner, however many labels. Not several runners.** Several would change the
 check run's *name*: `atoma-check` becomes `atoma-check (ubuntu-latest)`, so the
@@ -499,25 +448,26 @@ that configurable would mean an agent's shell running with every one of those
 protections silently absent.
 
 **An extra job appears.** `runs-on` cannot read a file, so a small `pick-runner` job
-reads `config.json` first and the real job takes its output. It costs a few seconds
+reads `config.yaml` first and the real job takes its output. It costs a few seconds
 and always runs on `ubuntu-latest` — it is the job that finds out what your runner
 is, so it cannot be on it.
 
-`atoma-check` reads the **pull request's own** `config.json` here, as it does for
+`atoma-check` reads the **pull request's own** `config.yaml` here, as it does for
 `environment.setup_commands`: an agent can change the runner and prove the change in
 the same pull request rather than waiting for a merge to find out.
 
 ### Add environment setup commands
 
 Add shell commands to `environment.setup_commands`. They run through `bash -c`, in
-order, and stop on first failure — before the agent starts, before `checks.commands`,
-and before `deploy.targets`. One declaration, three jobs.
+order, and stop on first failure — before the agent starts, before
+`checks.atoma_runs.commands`, and before `deploy.atoma_runs.targets`. One
+declaration, three jobs.
 
 That is the reason to use this field rather than putting `npm ci` at the front of
-`checks.commands`, which works and drifts: the agent's shell and CI then install
-their dependencies from two places, and a test that passes for the agent and fails
-in CI reaches an engineer as a defect that does not reproduce on the machine they
-can see.
+`checks.atoma_runs.commands`, which works and drifts: the agent's shell and CI
+then install their dependencies from two places, and a test that passes for the
+agent and fails in CI reaches an engineer as a defect that does not reproduce on
+the machine they can see.
 
 Nothing here receives a secret. Setup runs before any credential enters the
 environment, in all three jobs.
@@ -527,17 +477,16 @@ iterations installing or configuring tooling themselves, so anything they need a
 run time belongs here. The template ships it empty on purpose: it is
 language- and framework-agnostic, and only you know what your project needs.
 
-(This guidance previously lived in an `environment.description` field inside
-`config.json`. Nothing ever read it — JSON has no comments, so prose in a config
-file is invisible to both the code and the agents. It is documentation, so it
-lives in the documentation.)
+(This guidance previously lived in an `environment.description` field inside the
+config. Nothing ever read it, and a value no code opens is invisible to the
+machinery and to the agents alike — a field is not a place to write prose. The
+file is YAML now, so a comment beside a key can say in a line what the key is for;
+anything longer is documentation, and lives in the documentation.)
 
 ### Choose the branch agents work from
 
-```json
-{
-  "base_branch": "develop"
-}
+```yaml
+base_branch: develop
 ```
 
 Agents branch from this and open their pull requests against it. Leave it unset
@@ -582,65 +531,76 @@ author and maintain; naming a workflow of your own opts back out of that. Reach
 for it when the pipeline needs something commands cannot express — the four
 cases are listed in that section.
 
-```json
-{
-  "workflows": {
-    "ci": "ci.yml",
-    "cd": "deploy.yml"
-  }
-}
+```yaml
+checks:
+  your_workflow: ci.yml
+deploy:
+  your_workflow: deploy.yml
 ```
 
-`ci` is the workflow Atoma runs against an agent's pull request before anyone
-reviews it. Defaults to `atoma-check.yml`. Name yours here, exactly as the file
-is called, or the dispatch fails silently and every merge is refused for a
-missing check.
+`checks.your_workflow` is the workflow Atoma runs against an agent's pull request
+before anyone reviews it. Defaults to `atoma-check.yml`. Name yours here, exactly
+as the file is called, or the dispatch fails silently and every merge is refused
+for a missing check.
 
 Its result decides what happens next: the reviewer is dispatched when it passes,
 the engineer when it fails. See below for what that workflow has to support.
 
-`cd` is dispatched after a successful merge — required rather than optional if
-your deployment is chained off CI or off a push to the base branch. An agent
-merge is performed with `GITHUB_TOKEN`, and GitHub starts no workflow run for
-events its own token triggers, so nothing downstream of that merge fires by
-itself and your deployment would silently never run. Defaults to
+`deploy.your_workflow` is dispatched after a successful merge — required rather
+than optional if your deployment is chained off CI or off a push to the base
+branch. An agent merge is performed with `GITHUB_TOKEN`, and GitHub starts no
+workflow run for events its own token triggers, so nothing downstream of that
+merge fires by itself and your deployment would silently never run. Defaults to
 `atoma-deploy.yml`, which does nothing when no target deploys on merge.
+
+**Delete the `atoma_runs` block in the section you name a workflow in.** The two
+are alternatives: declaring both fails the pull request's check, naming the
+section, rather than resolving by a precedence rule — so a `commands` list left
+behind is reported instead of sitting there reading as live.
 
 ### Set up CI and deployment
 
 You can point Atoma at workflows you wrote, as above. Or you can write no
 workflow at all and describe the pipeline as commands:
 
-```json
-{
-  "checks": {
-    "commands": ["bun install --frozen-lockfile", "bun run typecheck", "bun test"]
-  },
-  "deploy": {
-    "targets": [
-      { "name": "staging", "on": "merge", "commands": ["./scripts/deploy.sh staging"] },
-      { "name": "production", "on": "tag", "tags": ["v*"], "commands": ["./scripts/deploy.sh prod"] }
-    ]
-  }
-}
+```yaml
+checks:
+  atoma_runs:
+    commands:
+      - bun install --frozen-lockfile
+      - bun run typecheck
+      - bun test
+
+deploy:
+  atoma_runs:
+    targets:
+      - name: staging
+        on: merge
+        commands: ["./scripts/deploy.sh staging"]
+      - name: production
+        on: tag
+        tags: ["v*"]
+        commands: ["./scripts/deploy.sh prod"]
 ```
 
 Two shipped workflows run these — `atoma-check.yml` and `atoma-deploy.yml`.
 Neither changes per project, which is the whole point: **an agent can write
 configuration and cannot write a workflow.** GitHub refuses `GITHUB_TOKEN` on
 `.github/workflows/**` by identity, on every path and every branch, and no
-permission grants it. So a repository whose pipeline lives in `config.json` is
+permission grants it. So a repository whose pipeline lives in `config.yaml` is
 one an agent can set up, extend and repair; one whose pipeline lives in workflow
 YAML always needs a person.
 
 Nothing needs pointing at these — `atoma-check.yml` and `atoma-deploy.yml` are
-what `workflows.ci` and `workflows.cd` default to. Fill in the commands and they
-run.
+what a section runs when it names no `your_workflow`. Fill in the commands and
+they run.
 
-Until you do, the check passes and says so as a warning: it is the required
-check, so an empty `checks.commands` means a pull request satisfied something
-that tested nothing. Failing instead would block every pull request from the
-moment you adopt Atoma.
+One command ships already, a secret scan; [docs/configuration.md](configuration.md)
+says why that is the one verification a template can hand a project it knows
+nothing about. Empty the list entirely and the check passes but says so as a
+warning: it is the required check, so nothing to run means a pull request
+satisfied something that tested nothing. Failing instead would block every pull
+request from the moment you adopt Atoma.
 
 **Triggers.** `on` is `merge` (a change landing on your default branch, whether an
 agent merged it or you did), `tag` (a pushed tag matching `tags`, which is a
@@ -656,17 +616,17 @@ workflow's `on:` cannot say "the default branch", so those two are listed
 literally and then narrowed to the branch your repository actually defaults to. If
 yours is named something else, an agent's merge still deploys — that path is an
 explicit dispatch, not an event — but your own merges will not, and
-`workflows.cd` is the way to cover them.
+`deploy.your_workflow` is the way to cover them.
 
-**Credentials** go in the list belonging to whatever needs them — `checks.secrets`
-or `deploy.secrets`, alongside `tools.secrets`. Add the secret to the repository
-first; these name it, they do not create it. Inside a deployment,
-`$ATOMA_DEPLOY_TARGET` holds the target's name. `atoma-deploy.yml` declares
-`id-token: write`, so a cloud provider's OIDC login works and is worth preferring
-over storing a long-lived key at all.
+**Credentials** go in the list belonging to whatever needs them —
+`checks.atoma_runs.secrets` or `deploy.atoma_runs.secrets`, alongside
+`tools.secrets`. Add the secret to the repository first; these name it, they do
+not create it. Inside a deployment, `$ATOMA_DEPLOY_TARGET` holds the target's
+name. `atoma-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
+login works and is worth preferring over storing a long-lived key at all.
 
 **What commands cannot express**, and where you still need a workflow of your own
-through `workflows.cd`:
+through `deploy.your_workflow`:
 
 - a job's `permissions` beyond what the shipped workflows declare. `atoma-check.yml`
   runs with `contents: read` plus a `GITHUB_TOKEN` in `GH_TOKEN`;
@@ -700,24 +660,26 @@ Every pull request an agent opens is checked for one thing before your CI is ask
 to run at all: whether the `.github/atoma/` it would merge can still start a run.
 
 This is not your pipeline and it is not configurable. It runs whether or not
-`checks.commands` is set, and it reads nothing from `checks` or `deploy` to decide
-what to check — those describe what YOU verify. This one answers a narrower
-question that only has one right answer.
+`checks.atoma_runs.commands` is set, and it reads nothing from `checks` or `deploy`
+to decide what to check — those describe what YOU verify. This one answers a
+narrower question that only has one right answer.
 
 What it checks:
 
-- Every `mcp_servers` name in every agent definition exists in `tools.yaml`, along
-  with `knows_about` targets and `extra_body` keys. This part
-  runs `atoma validate`, so it is the same resolution a run performs rather than an
-  imitation of it.
-- `config.json` uses only keys Atoma reads — see [the contract
-  above](#configjson-contract).
-- `merge_gates`, `deploy.targets` and the three `secrets` lists parse. These were
-  already validated, but at merge time, at deploy time, and when
+- Every `mcp_servers` name in every agent definition exists in the tools file
+  `tools.servers` generates, along with `knows_about` targets and `extra_body`
+  keys. This part runs `atoma validate`, so it is the same resolution a run
+  performs rather than an imitation of it.
+- `config.yaml` uses only keys Atoma reads — see [the contract
+  above](#configyaml-contract).
+- `checks` and `deploy` each declare one arm. `atoma_runs` and `your_workflow`
+  together are reported here rather than resolved by a precedence rule.
+- `merge.gates`, `deploy.atoma_runs.targets` and the three `secrets` lists parse.
+  These were already validated, but at merge time, at deploy time, and when
   a credential was handed out. Nothing new is being judged; it is being judged
   earlier.
-- Names resolve to files: an agent `agents.<name>` configures, the workflow
-  `workflows.ci` and `workflows.cd` name.
+- Names resolve to files: the workflow `checks.your_workflow` or
+  `deploy.your_workflow` names.
 
 What it does not check is anything that needs a run to find out. Whether your
 commands pass, whether a deployment works, whether a model answers — that is CI's
@@ -821,15 +783,13 @@ where the runner's own control logic lives — nothing decided that, the list wa
 simply written before the directory existed. A list of the paths that count has
 to be revisited every time the tree grows, and gives no sign when it has not been.
 
-Narrow it, or extend it, with `governed_paths`, which replaces the default:
+Narrow it, or extend it, with `merge.governed_paths`, which replaces the default:
 
-```json
-{
-  "governed_paths": [
-    ".github/**",
-    "infra/**"
-  ]
-}
+```yaml
+merge:
+  governed_paths:
+    - ".github/**"
+    - "infra/**"
 ```
 
 Set it to `[]` to turn the gate off.
@@ -849,24 +809,21 @@ declared, and the declaration is in a file this gate already covers — see
 
 ### Conditions of your own that an agent may not merge past
 
-`governed_paths` covers Atoma's own machinery. Your project has its own things
-that should not land unread — a database migration, a change to a pricing table, a
-release note — and they are not describable as a path alone. "Anything under
+`merge.governed_paths` covers Atoma's own machinery. Your project has its own
+things that should not land unread — a database migration, a change to a pricing
+table, a release note — and they are not describable as a path alone. "Anything under
 `db/migrations/`" is sayable; "only when a migration is **added**" is not.
 
-`merge_gates` is that, and it behaves exactly like the gate above: the agent
+`merge.gates` is that, and it behaves exactly like the gate above: the agent
 reviews the pull request, posts the review, and says it is ready for a person. The
 merge is yours.
 
-```json
-{
-  "merge_gates": [
-    {
-      "reason": "This adds a database migration. Please check it before merging.",
-      "when": { "files_added": ["db/migrations/**"] }
-    }
-  ]
-}
+```yaml
+merge:
+  gates:
+    - reason: "This adds a database migration. Please check it before merging."
+      when:
+        files_added: ["db/migrations/**"]
 ```
 
 `reason` is written to a person and relayed to them verbatim, in whatever language
@@ -881,13 +838,13 @@ Several gates are several situations.
 | `files_added` | a file the pattern claims was added (a rename into it counts) |
 | `files_removed` | a file the pattern claims was deleted (a rename out of it counts) |
 | `files_modified` | an existing file the pattern claims changed |
-| `files_changed` | any of the three — what `governed_paths` matches on |
+| `files_changed` | any of the three — what `merge.governed_paths` matches on |
 | `labels` | the pull request carries any one of these labels |
 | `title_matches` | the title matches this regular expression, case-insensitively |
 
 A pattern is a literal path or a directory followed by `/**` — the same two forms
-`governed_paths` accepts, and the only two. Anything else, `**/*.sql` included, is
-rejected when the file is read rather than quietly matching nothing.
+`merge.governed_paths` accepts, and the only two. Anything else, `**/*.sql`
+included, is rejected when the file is read rather than quietly matching nothing.
 
 **Mistakes are errors, not silence.** A misspelled condition, a pattern this
 matcher cannot honour, a gate with no conditions at all: each stops the merge and
@@ -905,7 +862,7 @@ merged" but "this is not an agent's call".
 **Why configuration and not a script.** A script could read a migration and notice
 it drops a production table, which no amount of configuration can. It also needs a
 timeout, a decision about what a crash means, and protection against a pull
-request supplying the very program that judges it. `config.json` is read from the
+request supplying the very program that judges it. `config.yaml` is read from the
 default branch already, so a pull request cannot weaken the gate that is judging
 it. If you hit a real case that conditions cannot express, that is worth an issue —
 the shape here leaves room for it.
@@ -922,30 +879,40 @@ straight.
 **1. Add the secret to the repository**, the usual way, in Settings. Nothing here
 creates a secret; the other two steps only refer to one.
 
-**2. Authorise the run to hold it**, in `config.json`:
+**2. Authorise the run to hold it**, in `tools.secrets`:
 
-```json
-{
-  "tools": { "secrets": ["SLACK_TOKEN"] }
-}
+```yaml
+tools:
+  secrets:
+    - SLACK_TOKEN
 ```
 
 This says the run may obtain that secret. It does not say which tool gets it — at
 this point no tool can see it.
 
-**3. Route it to the tool that needs it**, in `tools.yaml`:
+**3. Route it to the tool that needs it**, in that server's `env`:
 
 ```yaml
-slack:
-  command: mcp-server-slack
-  env:
-    SLACK_TOKEN: "${SLACK_TOKEN}"
+tools:
+  servers:
+    slack:
+      command: mcp-server-slack
+      env:
+        SLACK_TOKEN: "${SLACK_TOKEN}"
 ```
 
 Now that one server receives it, under that name. **Every other tool still
 cannot see it**, including the shell.
 
-You never edit a workflow for any of this.
+Steps 2 and 3 are two keys in the same file, which does not make them one step:
+authorising a credential does not deliver it. `checks` and `deploy` need no third
+step at all, because their commands run in a workflow of their own rather than
+beside an agent — a secret named in `checks.atoma_runs.secrets` is in that job's
+environment and there is no server to route it to.
+
+You never edit a workflow for any of this, and you never edit
+`tools/tools.yaml`: it is generated from `tools.servers` when the template is
+built.
 
 ### Why a credential has to be routed
 
@@ -964,10 +931,14 @@ Which layer decides what:
 | Layer | Decides |
 | --- | --- |
 | Repository secrets | the value |
-| `config.json` `tools.secrets` | whether the run may hold it |
-| `tools.yaml` `env: ${NAME}` | which tool receives it |
+| `tools.secrets` | whether the run may hold it |
+| `tools.servers.<name>.env: ${NAME}` | which tool receives it |
 
-Never write a value in `tools.yaml`, only a `${NAME}` reference. A pasted secret
+The bottom two are keys in one file now and are still two decisions: the list says
+what the run may hold, a server's `env` says which server sees it, and the second
+is what keeps the first out of the shell.
+
+Never write a value in the config, only a `${NAME}` reference. A pasted secret
 is committed in plain text.
 
 ### What this does and does not protect
@@ -1032,13 +1003,18 @@ configurable, because measurement put the whole difference there — enlarging
 the reranker moved top-1 accuracy from 27% to 91%, while adding a dense vector
 index alongside the first stage changed no ranking at all.
 
-```json
-{
-  "search": {
-    "reranker_model": "onnx-community/bge-reranker-v2-m3-ONNX"
-  }
-}
+```yaml
+tools:
+  servers:
+    search:
+      settings:
+        reranker_model: onnx-community/bge-reranker-v2-m3-ONNX
 ```
+
+It sits under the server because the server itself reads it, not the core:
+`settings` is the one key this project reserves inside a server entry, and the
+generator strips it out of the tools file the core is handed, which would
+otherwise refuse a key it does not know.
 
 The default is multilingual and about 600MB, downloaded once per runner and
 cached after that. Name a smaller cross encoder here if that cost matters more
@@ -1068,7 +1044,7 @@ it. The endpoint lives in that file on purpose:
 - To stop agents querying a public search engine at all, delete that section of
   the skill. Fetching a page whose address is already known keeps working.
 - To remove web access entirely, drop `web` from `mcp_servers` in the agent
-  definitions that name it, and from `tools.yaml`.
+  definitions that name it, and from `tools.servers`.
 
 ### What a shell command may print
 
@@ -1102,13 +1078,14 @@ the one run.
 
 ### Rename labels
 
-Set `labels.in_progress`, `labels.sub_issue`, and `labels.launched` in `config.json`.
+Set `in_progress`, `sub_issue` and `launched` under `chain.labels` in
+`config.yaml`.
 
 Keep names consistent with your repository label taxonomy.
 
 ### Change merge behavior
 
-Set `merge_policy` in `config.json`.
+Set `merge.policy` in `config.yaml`.
 
 Current code path reads this value for merge decisions in GitHub MCP tooling.
 
@@ -1121,7 +1098,10 @@ This file is passed to Atoma with `--template` on every runner invocation.
 ### Customize skills and tools
 
 - Skills live under `.github/atoma/skills/**/*.md`.
-- Tool server config lives in `.github/atoma/tools/tools.yaml`.
+- Tool servers are declared under `tools.servers` in `.github/atoma/config.yaml`,
+  one entry per server: `command`, `args`, `env`, `hooks`,
+  `request_timeout_secs`. `.github/atoma/tools/tools.yaml` is written from that
+  section when the template is built and is not edited.
 - Tool scripts and MCP servers live under `.github/atoma/tools/scripts/`.
 
 Dynamic skill behavior:
@@ -1181,7 +1161,7 @@ credential you give a third-party server is readable by the shell tool.
 
 If that matters for a particular credential, the options are to give it only to a
 server shipped here, or not to route it at all and let the tool that needs it be a
-step in `checks.commands`, which runs in its own job.
+step in `checks.atoma_runs.commands`, which runs in its own job.
 
 #### What this replaced
 
@@ -1271,7 +1251,7 @@ before — 1,000,000 **bytes** in the shell, 60,000 characters in `web_fetch`, 5
 in two GitHub tools, and nothing anywhere else.
 
 **What is not covered.** `filesystem*` is a third-party server
-(`@modelcontextprotocol/server-filesystem`), and `tools.yaml`'s hooks can allow or
+(`@modelcontextprotocol/server-filesystem`), and a server's `hooks` can allow or
 deny a tool but not touch its output — so `read_file` on a large file has no cap
 this project can impose. Two of that server's heaviest tools, `directory_tree` and
 `search_files`, are on its denylist for that reason. For a large file, have the
@@ -1280,13 +1260,15 @@ agent read a range with `shell_execute` (`sed -n`, `head`) instead.
 ### How long your tool has to answer
 
 Atoma cuts off one `tools/call` after 60 seconds. If your server can take longer,
-say so in its `tools.yaml` entry:
+say so in its entry under `tools.servers`:
 
 ```yaml
-my_tool:
-  command: bun
-  args: ["run", "./scripts/my_tool.ts"]
-  request_timeout_secs: 600
+tools:
+  servers:
+    my_tool:
+      command: bun
+      args: ["run", "./scripts/my_tool.ts"]
+      request_timeout_secs: 600
 ```
 
 **A timeout argument in your tool's own schema does not raise this.** That is the
@@ -1408,12 +1390,9 @@ It cannot conjure a system package your setup does not already ask for. Those
 commands come from the default branch, so a line the agent just added to its branch
 is not in them yet.
 
-```json
-{
-  "limits": {
-    "environment_reloads": 3
-  }
-}
+```yaml
+environment:
+  max_reloads: 3
 ```
 
 There is a limit because **each reload starts a new run, with a fresh time budget** —
@@ -1466,7 +1445,7 @@ into your own `.github/workflows/`, edit the cron, the title, the body and the
 agent, and you are done.
 
 **Why it is not a setting.** `on:` accepts no expression, so a cron string cannot
-come from `config.json`. That is GitHub's rule, not a choice made here. The
+come from `config.yaml`. That is GitHub's rule, not a choice made here. The
 workaround — a fixed daily cron that checks the date inside a script — was
 considered for deployments and rejected, and is worse for agents: a deployment
 that no-ops costs a few seconds of runner time, while an agent that starts and

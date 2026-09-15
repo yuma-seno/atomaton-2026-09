@@ -15,7 +15,6 @@
  *   2. Filter fetched GitHub events:
  *        - keep issue/PR bodies, diffs, human comments, and other-agent comments
  *        - exclude this agent's own result comments
- *        - apply the agent's configured shared_context include/exclude policy, if any
  *   3. Reconcile the filtered events into session.json by stable event ID.
  *   4. Compute a snapshot hash for change detection.
  *   5. Write new_event_count/context_snapshot_hash/context_event_count/messages_before
@@ -23,7 +22,13 @@
  *
  * Usage:
  *   reconcile_github_session.ts --events events.json --agent-name orchestrator \
- *     --session session.json [--config config.json] --out session.json
+ *     --session session.json --out session.json
+ *
+ * It took a `--config` too, for a per-agent `agents.<name>.shared_context` filter.
+ * No config has ever had an `agents` key: the validator reports one as a setting
+ * Atoma does not read, so the filter could only ever be empty. Passing it the new
+ * `config.yaml` would have been worse than useless -- the read was `JSON.parse`,
+ * which throws on YAML, and nothing here catches it.
  */
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -39,7 +44,6 @@ export interface ReconcileGithubSessionArgs {
   "agent-name": string;
   /** Path to the running agent's definition, read for its `vision` field. */
   "agent-def"?: string;
-  config?: string;
   session?: string;
   out: string;
 }
@@ -47,10 +51,6 @@ export interface ReconcileGithubSessionArgs {
 export const ref = defineScript<ReconcileGithubSessionArgs>(import.meta.url);
 
 const GITHUB_CONTEXT_LAYER = "github-context";
-
-interface SharedContextConfig {
-  agents?: Record<string, { shared_context?: { include_event_types?: string[]; exclude_event_types?: string[] } }>;
-}
 
 interface GithubEventMessage extends SessionMessage {
   role: "user";
@@ -192,22 +192,7 @@ function isSelfEvent(event: GithubEvent, agentName: string, ownCommentIds: Set<s
   return extractResultCommentAgent(event) === agentName;
 }
 
-function contextPolicy(config: SharedContextConfig, agentName: string): { include?: Set<string>; exclude: Set<string> } {
-  const sharedContext = config.agents?.[agentName]?.shared_context;
-  if (!sharedContext) return { exclude: new Set() };
-  return {
-    include: sharedContext.include_event_types ? new Set(sharedContext.include_event_types) : undefined,
-    exclude: new Set(sharedContext.exclude_event_types ?? []),
-  };
-}
-
-function filterEventsForAgent(
-  events: GithubEvent[],
-  agentName: string,
-  ownCommentIds: Set<string>,
-  config: SharedContextConfig,
-): GithubEvent[] {
-  const { include, exclude } = contextPolicy(config, agentName);
+function filterEventsForAgent(events: GithubEvent[], agentName: string, ownCommentIds: Set<string>): GithubEvent[] {
   const filtered: GithubEvent[] = [];
   for (const event of events) {
     if (event.author.endsWith("[bot]") && LLM_CONTEXT_TAG.read(event.content) === "exclude") {
@@ -218,8 +203,6 @@ function filterEventsForAgent(
       console.error(`  Skipping current agent comment from shared context: id=${event.id}`);
       continue;
     }
-    if (include && !include.has(event.event_type)) continue;
-    if (exclude.has(event.event_type)) continue;
     filtered.push(event);
   }
   return filtered;
@@ -274,11 +257,10 @@ export function reconcileGithubSession(
   session: Session,
   events: GithubEvent[],
   agentName: string,
-  config: SharedContextConfig = {},
   vision = false,
 ): ReconcileGithubSessionResult {
   const ownCommentIds = buildOwnCommentIds(session, agentName);
-  const filteredEvents = filterEventsForAgent(events, agentName, ownCommentIds, config);
+  const filteredEvents = filterEventsForAgent(events, agentName, ownCommentIds);
   const currentHash = snapshotHashForEvents(filteredEvents);
   const previousHash = previousSnapshotHash(session);
   const contextMessages = filteredEvents.map((event) => eventToUserMessage(event, vision));
@@ -316,7 +298,6 @@ function main(): void {
       events: { type: "string" },
       "agent-name": { type: "string" },
       "agent-def": { type: "string" },
-      config: { type: "string" },
       session: { type: "string" },
       out: { type: "string" },
     },
@@ -324,20 +305,18 @@ function main(): void {
 
   if (!values.events || !values["agent-name"] || !values.session || !values.out) {
     console.error(
-      "usage: reconcile_github_session.ts --events events.json --agent-name AGENT --session session.json [--config config.json] --out session.json",
+      "usage: reconcile_github_session.ts --events events.json --agent-name AGENT --session session.json --out session.json",
     );
     process.exit(2);
   }
 
   const session: Session = existsSync(values.session) ? JSON.parse(readFileSync(values.session, "utf8")) : { messages: [] };
   const events = JSON.parse(readFileSync(values.events, "utf8")) as GithubEvent[];
-  const config: SharedContextConfig = values.config && existsSync(values.config) ? JSON.parse(readFileSync(values.config, "utf8")) : {};
 
   const { mergedSession, changedCount, snapshotHash, eventCount } = reconcileGithubSession(
     session,
     events,
     values["agent-name"],
-    config,
     agentReadsImages(values["agent-def"]),
   );
 

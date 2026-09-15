@@ -18,7 +18,8 @@ import { TypedOutputsStep } from "./base.ts";
  * Every raise of this pin so far has been coupled to something else in this
  * repository, and the record of what is the reason this comment is long.
  *
- * Moves with `tools/tools.yaml`, not independently. From v0.1.11 atoma removes
+ * Moves with `tools.servers` in config.yaml -- the declarations the tools file is
+ * generated from -- not independently. From v0.1.11 atoma removes
  * the credentials it knows about from a tool server's environment unless that
  * server names them, and expands `${NAME}` in an `env:` value against the run's
  * credentials. Before v0.1.11 those values were literal, so a tools file carrying
@@ -33,7 +34,7 @@ import { TypedOutputsStep } from "./base.ts";
  * environment, which is how a tool server is read from the machinery checkout
  * rather than from the pull request under review. To v0.1.11 an `args` entry
  * carrying `${ATOMA_MACHINERY_ROOT:-.}` is a literal path that does not exist, so
- * this pin and `tools/tools.yaml` move together here too.
+ * this pin and `tools.servers` move together here too.
  *
  * v0.1.13 is a third coupling, and this one is with the repository's SECRETS.
  * Providers became a table there: `openai` means OpenAI rather than defaulting to
@@ -63,7 +64,7 @@ import { TypedOutputsStep } from "./base.ts";
  * session, so what atoma-data recorded was not what happened: resuming with
  * `vision: true` could never get them back.
  *
- * v0.1.17 is a fourth coupling, this one with `tools/tools.yaml` again, and the
+ * v0.1.17 is a fourth coupling, this one with `tools.servers` again, and the
  * first where the OLD version is actively wrong rather than merely unaware.
  *
  * It reads `request_timeout_secs` per server. v0.1.16 ignores the key -- serde
@@ -97,7 +98,7 @@ import { TypedOutputsStep } from "./base.ts";
  * be shown.
  *
  * v0.1.19 adds MCP's Streamable HTTP transport, which nothing here uses yet: every
- * server in `tools.yaml` is still a child process over stdio. The pin moves anyway
+ * server under `tools.servers` is still a child process over stdio. The pin moves anyway
  * because it is what `probe-http-transport.ts` measures, and a repository whose
  * probes and whose runs are on different builds is one where a green probe means
  * less than it looks. What it opens up is a server that is already running -- a

@@ -1,5 +1,5 @@
 /**
- * config.ts — shared helper for reading .github/atoma/config.json. The one
+ * config.ts — shared helper for reading .github/atoma/config.yaml. The one
  * canonical copy used by every script and MCP server in this repo.
  *
  * Resolved against `ATOMA_MACHINERY_ROOT` when that is set, and against the
@@ -37,16 +37,23 @@ function configPath(): string {
 
 let cached: AtomaConfig | undefined;
 
-/** Load and parse config.json (cached after first read within a process). */
+/**
+ * Load and parse the configuration, cached after the first read in a process.
+ *
+ * YAML rather than JSON so a setting can carry its reason beside it. `Bun.YAML`
+ * follows YAML 1.2, where `no`, `on` and `y` are strings and only `true`/`false`
+ * are booleans -- the coercion trap that makes YAML risky for a file full of branch
+ * and label names is not present here. Measured, not assumed.
+ */
 export function loadConfig(): AtomaConfig {
   if (!cached) {
-    cached = JSON.parse(readFileSync(configPath(), "utf8")) as AtomaConfig;
+    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8")) as AtomaConfig;
   }
   return cached;
 }
 
 /**
- * The label each key means when `config.json` does not say.
+ * The label each key means when `config.yaml` does not say.
  *
  * One place, because a default written at the call site is written at every call site: the
  * sub-issue label's fallback appeared in `sibling-check.ts` and in `mcp/github.ts`, the
@@ -65,18 +72,18 @@ export const DEFAULT_LABELS = {
 export type LabelKey = keyof typeof DEFAULT_LABELS;
 
 /**
- * Look up a label from the top-level `labels` section of config.json.
+ * Look up a label from the `chain.labels` section of config.yaml.
  *
  * The fallback comes from [`DEFAULT_LABELS`] rather than from the caller, so two callers
  * asking for the same label cannot disagree about what it is called.
  */
 export function getLabel(key: LabelKey): string {
-  return loadConfig().labels?.[key] ?? DEFAULT_LABELS[key];
+  return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-/** Look up the top-level `merge_policy` from config.json. */
+/** Look up `merge.policy` from config.yaml. */
 export function getMergePolicy(fallback = "manual"): string {
-  return loadConfig().merge_policy ?? fallback;
+  return loadConfig().merge?.policy ?? fallback;
 }
 
 /**
@@ -87,13 +94,13 @@ export function getMergePolicy(fallback = "manual"): string {
  * that never sets this needs no special case anywhere.
  */
 export function getBaseBranch(fallback = ""): string {
-  // The one reader here that tolerates a MISSING config.json. No config means no
+  // The one reader here that tolerates a MISSING config.yaml. No config means no
   // base branch, which is the same answer as a config without the key, so
   // `create_pr` should not start failing over a setting whose absence is the
   // normal case. The others deliberately still throw: defaulting a merge policy
   // or a label because a file could not be read would act on a guess.
   //
-  // Narrowed to ENOENT, having been a bare `catch`. That caught a config.json
+  // Narrowed to ENOENT, having been a bare `catch`. That caught a config.yaml
   // that exists and will not parse as well — the one case where every other
   // reader in this file throws, and where this one quietly aimed `create_pr` at
   // the default branch instead. "The file is not there" and "the file is broken"
@@ -131,7 +138,11 @@ export const DEFAULT_RERANKER = "onnx-community/bge-reranker-v2-m3-ONNX";
  * on the first search — should be able to say so.
  */
 export function getRerankerModel(): string {
-  return loadConfig().search?.reranker_model?.trim() || DEFAULT_RERANKER;
+  // Narrowed here rather than in `AtomaConfig`, which passes a server entry through
+  // untyped so the schema and the interface agree about what a known key is. This is
+  // the one reader of the one reserved key, so the cast lives with it.
+  const settings = loadConfig().tools?.servers?.search?.settings as { reranker_model?: string } | undefined;
+  return settings?.reranker_model?.trim() || DEFAULT_RERANKER;
 }
 
 /**
@@ -139,11 +150,11 @@ export function getRerankerModel(): string {
  *
  * Configurable because "how agents run here" is not the same set of files in
  * every repository — one that keeps its workflows generated from source has a
- * second place to name. An empty array in config.json is a deliberate choice to
+ * second place to name. An empty array in config.yaml is a deliberate choice to
  * turn the gate off, and is honoured; an absent key takes the default.
  */
 export function getGovernedPaths(): readonly string[] {
-  return loadConfig().governed_paths ?? DEFAULT_GOVERNED_PATHS;
+  return loadConfig().merge?.governed_paths ?? DEFAULT_GOVERNED_PATHS;
 }
 
 /**
@@ -155,7 +166,7 @@ export function getGovernedPaths(): readonly string[] {
  * loses the verdict instead of reporting it.
  */
 export function getMergeGates(): MergeGatesResolution {
-  return resolveMergeGates(loadConfig().merge_gates);
+  return resolveMergeGates(loadConfig().merge?.gates);
 }
 
 // `getTriggerAgent` was here: it read which agent an unconditional `auto_triggers`
@@ -184,10 +195,10 @@ export function getMergeGates(): MergeGatesResolution {
  * Commands that verify a change, in order.
  *
  * Empty means this project runs nothing through `atoma-check.yml`, which is the
- * normal state for a repository pointing `workflows.ci` at its own workflow.
+ * normal state for a repository pointing `checks.your_workflow` at its own workflow.
  */
 export function getCheckCommands(): readonly string[] {
-  return loadConfig().checks?.commands?.filter((command) => command.trim() !== "") ?? [];
+  return loadConfig().checks?.atoma_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
 }
 
 /**
@@ -198,20 +209,25 @@ export function getCheckCommands(): readonly string[] {
  * parse.
  */
 export function getDeployTargets(): DeployTargetsResolution {
-  return resolveDeployTargets(loadConfig().deploy?.targets);
+  return resolveDeployTargets(loadConfig().deploy?.atoma_runs?.targets);
 }
 
 /**
- * Look up one of this project's own workflow names from the `workflows` section.
+ * Look up one of this project's own workflow names — `checks.your_workflow` for
+ * ci, `deploy.your_workflow` for cd.
  *
- * Lives in config.json rather than in a repository variable because it is
+ * Lives in config.yaml rather than in a repository variable because it is
  * project configuration: versioned, reviewable in a pull request, and one fewer
  * thing to remember when setting a repository up. That only works because
- * config.json is yours — the documented upgrade deliberately does not overwrite
+ * config.yaml is yours — the documented upgrade deliberately does not overwrite
  * it, unlike everything else under `.github/atoma/`.
  */
 export function getWorkflowName(kind: "ci" | "cd", fallback = ""): string {
-  return (loadConfig().workflows?.[kind] ?? "").trim() || fallback;
+  // `checks.your_workflow` and `deploy.your_workflow` are the other arm of those two
+  // sections, not a third place that names a workflow. A project either hands Atoma
+  // its commands or hands it a workflow; there is no order of precedence to remember.
+  const section = kind === "ci" ? loadConfig().checks : loadConfig().deploy;
+  return (section?.your_workflow ?? "").trim() || fallback;
 }
 
 /**
@@ -224,7 +240,7 @@ export function getWorkflowName(kind: "ci" | "cd", fallback = ""): string {
  * the limit.
  */
 export function getHandoffLimit(): unknown {
-  return loadConfig().limits?.agent_handoffs;
+  return loadConfig().chain?.after_handoffs;
 }
 
 /**
@@ -235,7 +251,7 @@ export function getHandoffLimit(): unknown {
  * comment quotes back.
  */
 export function getNoProgressLimit(): unknown {
-  return loadConfig().limits?.runs_without_change;
+  return loadConfig().chain?.after_runs_without_change;
 }
 
 /**
@@ -247,7 +263,7 @@ export function getNoProgressLimit(): unknown {
  * name a number that was not the limit.
  */
 export function getReloadLimit(): unknown {
-  return loadConfig().limits?.environment_reloads;
+  return loadConfig().environment?.max_reloads;
 }
 
 /**
@@ -260,5 +276,7 @@ export function getReloadLimit(): unknown {
  */
 export function getRunsOn(field: "checks" | "deploy"): unknown {
   const config = loadConfig();
-  return field === "checks" ? config.checks?.runs_on : config.deploy?.runs_on;
+  // Inside `atoma_runs`, because the machine a step runs on is a property of the
+  // step Atoma runs -- a project naming its own workflow decides that there.
+  return field === "checks" ? config.checks?.atoma_runs?.runs_on : config.deploy?.atoma_runs?.runs_on;
 }

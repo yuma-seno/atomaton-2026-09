@@ -44,12 +44,12 @@ function main(): void {
   // fire for one completion turns on WHO performed the merge, because GitHub
   // suppresses the event cascade only for actions taken with GITHUB_TOKEN:
   //
-  // - An agent merge (`github__merge_pr`, which the shipped `merge_policy:
-  //   "auto"` permits) runs as GITHUB_TOKEN, so the auto-close fires no
+  // - An agent merge (`github__merge_pr`, which the shipped `merge.policy:
+  //   auto` permits) runs as GITHUB_TOKEN, so the auto-close fires no
   //   `issues: closed` event and this workflow never starts. The guard below
   //   costs nothing.
   // - A person merging from the GitHub UI — the only route under
-  //   `merge_policy: "manual"`, and always available regardless — uses their
+  //   `merge.policy: manual`, and always available regardless — uses their
   //   own credentials, so the auto-close DOES fire this workflow while
   //   atoma-pr-merged is already handling the same completion.
   //

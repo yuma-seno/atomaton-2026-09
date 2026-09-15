@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * run_deploy.ts — work out which of config.json's `deploy.targets` this run is
- * for, and run their commands.
+ * run_deploy.ts — work out which of config.yaml's `deploy.atoma_runs.targets`
+ * this run is for, and run their commands.
  *
  * This is the body of `atoma-deploy.yml`. Selection happens here rather than in
  * the workflow's `on:` because `on:` takes no expression: a tag pattern that an
@@ -82,7 +82,7 @@ function main(): void {
   const { targets, problems } = getDeployTargets();
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.json: ${problem}`);
+      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
     }
     process.exit(1);
   }

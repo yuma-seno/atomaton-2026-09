@@ -7,8 +7,8 @@
  * A name in configuration that resolves to nothing is the one class of defect
  * this project keeps producing and cannot see. `mcp_servers: [filesystem]` with
  * no `filesystem` in tools.yaml aborts the whole run before a single server
- * starts; `labels.in_progres` guards work with a label nobody applies; an
- * A `merge_gates` entry that fails validation resolves the WHOLE list to empty,
+ * starts; `chain.labels.in_progres` guards work with a label nobody applies; a
+ * `merge.gates` entry that fails validation resolves the WHOLE list to empty,
  * so every trigger stops firing. Each of those is silent at merge time and
  * surfaces on whoever triggers the next run.
  *
@@ -23,9 +23,9 @@
  * adds no opinion, it moves an existing one earlier.
  *
  * Anything that needs a run to find out is out of scope and stays out. Whether a
- * `checks.commands` entry passes, whether a deploy target's shell works, whether a
- * model answers — none of that is knowable from the files, and pretending
- * otherwise would make this a second, worse CI.
+ * `checks.atoma_runs.commands` entry passes, whether a deploy target's shell
+ * works, whether a model answers — none of that is knowable from the files, and
+ * pretending otherwise would make this a second, worse CI.
  *
  * ## Where the agent definitions and tools.yaml are checked
  *
@@ -36,7 +36,7 @@
  * calls it once per agent definition rather than reimplementing any of that in
  * TypeScript, which would be the same facts in two languages.
  *
- * So this module owns exactly one format: config.json, which is delivery's own and
+ * So this module owns exactly one format: config.yaml, which is delivery's own and
  * which the core has never heard of.
  */
 import { isControlCommand } from "./control-commands.ts";
@@ -46,12 +46,12 @@ import { resolveMergeGates } from "./merge-gates.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts";
 
 /**
- * One section of config.json, or `null` for a value whose interior config.json
+ * One section of config.yaml, or `null` for a value whose interior config.yaml
  * does not describe.
  *
  * `null` is not "anything goes" — it is "the key is recognised and something else
- * decides what may be in it". `merge_gates` and `deploy.targets`
- * are all `null` here and all validated below by their own resolver.
+ * decides what may be in it". `merge.gates` and `deploy.atoma_runs.targets`
+ * are both `null` here and both validated below by their own resolver.
  */
 interface Section {
   /** Keys recognised by name. */
@@ -59,14 +59,14 @@ interface Section {
   /**
    * Present when any name is legal at this level, and the shape each one takes.
    *
-   * `labels` is the case that needs it: three names with meanings, and an index
-   * signature for a project's own.
+   * `chain.labels` is the case that needs it: three names with meanings, and an
+   * index signature for a project's own.
    */
   readonly anyName?: Section | null;
 }
 
 /**
- * config.json's recognised keys.
+ * config.yaml's recognised keys.
  *
  * `AtomaConfig` in `lib/types.ts` is the definition; this is the runtime mirror,
  * because an interface is erased before anything can consult it.
@@ -80,20 +80,52 @@ interface Section {
  */
 const CONFIG_SCHEMA: Section = {
   children: {
-    merge_policy: null,
     base_branch: null,
-    governed_paths: null,
-    merge_gates: null,
-    checks: { children: { commands: null, secrets: null, runs_on: null } },
-    deploy: { children: { targets: null, secrets: null, runs_on: null } },
-    tools: { children: { secrets: null } },
-    search: { children: { reranker_model: null } },
-    environment: { children: { setup_commands: null } },
-    workflows: { children: { ci: null, cd: null } },
-    limits: { children: { agent_handoffs: null, environment_reloads: null, runs_without_change: null } },
-    labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null },
+    environment: { children: { setup_commands: null, max_reloads: null } },
+    checks: {
+      children: {
+        atoma_runs: { children: { commands: null, secrets: null, runs_on: null } },
+        your_workflow: null,
+      },
+    },
+    deploy: {
+      children: {
+        atoma_runs: { children: { targets: null, secrets: null, runs_on: null } },
+        your_workflow: null,
+      },
+    },
+    merge: { children: { policy: null, governed_paths: null, gates: null } },
+    chain: {
+      children: {
+        after_handoffs: null,
+        after_runs_without_change: null,
+        labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null },
+      },
+    },
+    // `servers` is not enumerated: every key inside a server entry is passed to the
+    // core verbatim, so listing them here would refuse a setting the core accepts --
+    // `url` and `headers` for a remote server, and whatever a later release adds.
+    tools: {
+      children: {
+        secrets: null,
+        watch: { anyName: null },
+        servers: { anyName: { anyName: null } },
+      },
+    },
   },
 };
+
+/**
+ * The `atoma_runs` arm of a `checks` or `deploy` section, or an empty one.
+ *
+ * Both sections have two arms and only one can be filled. The other arm names a
+ * workflow of the project's own, and nothing inside it is Atoma's to validate --
+ * so an absent `atoma_runs` is a project that made the other choice, not a fault.
+ */
+function arm(section: unknown): Record<string, unknown> {
+  if (!isRecord(section)) return {};
+  return isRecord(section.atoma_runs) ? section.atoma_runs : {};
+}
 
 /**
  * Every key the schema recognises, as dotted paths, with `*` for a level where
@@ -151,7 +183,7 @@ function unknownKeys(value: unknown, section: Section, prefix: string): string[]
  * input and the whole rule set is testable without a directory on disk.
  */
 export interface DeliverableFacts {
-  /** Parsed config.json. */
+  /** Parsed config.yaml. */
   readonly config: unknown;
   /** Agent names available, one per `agent-definitions/<name>.md`. */
   readonly agentNames: readonly string[];
@@ -167,7 +199,7 @@ function triggerAgent(agent: string): string {
 }
 
 /**
- * Every way this config.json is inconsistent with the deliverable around it.
+ * Every way this config.yaml is inconsistent with the deliverable around it.
  *
  * Returns all of them rather than the first, so one pull request reports
  * everything an agent has to fix instead of one thing per round trip.
@@ -177,36 +209,63 @@ export function configProblems(facts: DeliverableFacts): string[] {
   const { config, agentNames, workflowFiles } = facts;
 
   if (!isRecord(config)) {
-    return ["`config.json` must be a JSON object."];
+    return ["`config.yaml` must be a YAML mapping."];
   }
 
   // ── keys nothing reads ────────────────────────────────────────────────────
   //
-  // The failure this catches is total silence. A misspelled `governed_path` is
-  // not an error anywhere: the reader asks for `governed_paths`, gets undefined,
-  // takes the default, and the setting the author wrote has no effect at all.
+  // The failure this catches is total silence. A misspelled `merge.governed_path`
+  // is not an error anywhere: the reader asks for `merge.governed_paths`, gets
+  // undefined, takes the default, and the setting the author wrote has no effect
+  // at all.
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
-    problems.push(`\`${key}\` in config.json is not a setting Atoma reads. Check the spelling.`);
+    problems.push(`\`${key}\` in config.yaml is not a setting Atoma reads. Check the spelling.`);
+  }
+
+  // ── two arms, and exactly one of them ─────────────────────────────────────
+  //
+  // `atoma_runs` and `your_workflow` are alternatives, and the structure says so by
+  // putting them side by side. Saying it again here is what turns "both are set"
+  // from a precedence puzzle -- which one wins, and does the reader remember? --
+  // into a sentence naming the one to delete.
+  for (const section of ["checks", "deploy"] as const) {
+    const value = config[section];
+    if (!isRecord(value)) continue;
+    if (value.atoma_runs !== undefined && value.your_workflow !== undefined) {
+      problems.push(
+        "`" +
+          section +
+          "` sets both `atoma_runs` and `your_workflow`. They are alternatives: " +
+          "`your_workflow` dispatches a workflow of your own and nothing reads " +
+          "`atoma_runs`. Remove whichever you did not mean.",
+      );
+    }
   }
 
   // ── the resolvers, run early ──────────────────────────────────────────────
-  problems.push(...resolveMergeGates(config.merge_gates).problems);
+  const merge = isRecord(config.merge) ? config.merge : {};
+  problems.push(...resolveMergeGates(merge.gates).problems);
 
   // `deploy` and `checks` are read for their SHAPE only, which is not the same as
-  // taking direction from them. Letting an adopter's pipeline decide is ruled out
-  // configure this validation — running their commands, deciding what to check
-  // from their config. Asking whether `deploy.targets` is a well-formed array of
-  // targets is this deliverable validating itself, and the alternative is what
-  // happens today: `resolveDeployTargets` reports it after the merge, from the
-  // deploy run, where nobody is watching.
-  const deploy = isRecord(config.deploy) ? config.deploy : {};
-  problems.push(...resolveDeployTargets(deploy.targets).problems);
+  // taking direction from them. Letting an adopter's pipeline configure this
+  // validation — running their commands, deciding what to check from their config
+  // — is ruled out. Asking whether `deploy.atoma_runs.targets` is a well-formed
+  // array of targets is this deliverable validating itself, and the alternative is
+  // what happens today: `resolveDeployTargets` reports it after the merge, from
+  // the deploy run, where nobody is watching.
+  //
+  // `checks` and `deploy` carry theirs inside `atoma_runs` -- the arm that declares
+  // what Atoma runs also declares what that run may reach. A project naming its own
+  // workflow hands that workflow its own secrets. `tools` has no arms: the servers
+  // are always Atoma's.
+  const deployRuns = arm(config.deploy);
+  problems.push(...resolveDeployTargets(deployRuns.targets).problems);
 
-  const checks = isRecord(config.checks) ? config.checks : {};
+  const checkRuns = arm(config.checks);
   const tools = isRecord(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(checks.secrets, SECRET_DESTINATIONS.checks).problems);
-  problems.push(...resolveDeclaredSecrets(deploy.secrets, SECRET_DESTINATIONS.deploy).problems);
+  problems.push(...resolveDeclaredSecrets(checkRuns.secrets, SECRET_DESTINATIONS.checks).problems);
+  problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
 
   // ── a name that resolves to two things ────────────────────────────────────
   //
@@ -238,16 +297,18 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // no agent scheduled after it.
   if (workflowFiles.length > 0) {
     const present = new Set(workflowFiles);
-    const workflows = isRecord(config.workflows) ? config.workflows : {};
-    for (const [kind, fallback] of [
-      ["ci", DEFAULT_CI_WORKFLOW],
-      ["cd", DEFAULT_CD_WORKFLOW],
+    // The other arm of `checks` and `deploy`, not a section of its own: a project
+    // either hands Atoma its commands or hands it a workflow.
+    for (const [section, fallback] of [
+      ["checks", DEFAULT_CI_WORKFLOW],
+      ["deploy", DEFAULT_CD_WORKFLOW],
     ] as const) {
-      const configured = typeof workflows[kind] === "string" ? (workflows[kind] as string).trim() : "";
+      const named = isRecord(config[section]) ? (config[section] as Record<string, unknown>).your_workflow : undefined;
+      const configured = typeof named === "string" ? named.trim() : "";
       const effective = configured || fallback;
       if (!present.has(effective)) {
         problems.push(
-          `\`workflows.${kind}\` resolves to '${effective}', which is not a file in .github/workflows/. ` +
+          `\`${section}.your_workflow\` resolves to '${effective}', which is not a file in .github/workflows/. ` +
             (configured ? "Check the name." : "The shipped default is missing from this repository."),
         );
       }
@@ -258,10 +319,13 @@ export function configProblems(facts: DeliverableFacts): string[] {
   //
   // A label configured as "" is applied as "" and matched as "", so a filter on it
   // finds nothing and the count that gates a parent's dispatch never reaches zero.
-  if (isRecord(config.labels)) {
-    for (const [key, value] of Object.entries(config.labels)) {
+  // They live under `chain`, with the rest of the vocabulary one run leaves for
+  // the next to read.
+  const chain = isRecord(config.chain) ? config.chain : {};
+  if (isRecord(chain.labels)) {
+    for (const [key, value] of Object.entries(chain.labels)) {
       if (typeof value !== "string" || value.trim() === "") {
-        problems.push(`\`labels.${key}\` must be a non-empty label name.`);
+        problems.push(`\`chain.labels.${key}\` must be a non-empty label name.`);
       }
     }
   }

@@ -121,7 +121,7 @@ describe("when the chain has to stop", () => {
 describe("resolving the configured limit", () => {
   test("a usable value is taken", () => {
     expect(resolveHandoffLimit(12)).toBe(12);
-    expect(resolveHandoffLimit("12"), "config.json read as unknown").toBe(12);
+    expect(resolveHandoffLimit("12"), "config.yaml read as unknown").toBe(12);
     expect(resolveHandoffLimit(7.9), "floored rather than refused").toBe(7);
   });
 

@@ -5,7 +5,7 @@
  * A step's `env:` is a static YAML map, so a workflow generated upstream can
  * only reference secrets whose names were known when it was generated. Reaching
  * one through a COMPUTED key — `secrets[fromJSON(<names>)[i]]` — moves that
- * decision to run time, and config.json becomes where a project says which of
+ * decision to run time, and config.yaml becomes where a project says which of
  * its secrets a workflow may see. See `domain/declared-secrets.ts` for what was
  * measured before relying on this.
  *
@@ -40,7 +40,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * It reads the declaration from the DEFAULT BRANCH, not from the checkout. On a
  * pull request run the checkout is `refs/pull/N/head`, so reading it there would
  * let a pull request decide which of the repository's secrets are handed to the
- * run that reviews it — and `governed_paths` does not cover that, because it
+ * run that reviews it — and `merge.governed_paths` does not cover that, because it
  * blocks the merge and this happens before the merge.
  *
  * Only the declaration is treated this way. The commands a run executes still
@@ -54,7 +54,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * ## Why the fetch writes its own ref instead of using FETCH_HEAD
  *
  * This used to be `git fetch ... || true` followed by
- * `git show "FETCH_HEAD:.github/atoma/config.json"`. `actions/checkout` has
+ * `git show "FETCH_HEAD:.github/atoma/config.yaml"`. `actions/checkout` has
  * already written a FETCH_HEAD for the pull request's own ref by the time this
  * step runs, so a failed fetch did not reach the fall-back: the `git show`
  * succeeded against the pull request's own file, the run took its declaration
@@ -69,7 +69,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * replaced.
  */
 export function secretNamesStep(destination: SecretDestinationName): TypedOutputsStep<"names"> {
-  const trustedConfig = "$RUNNER_TEMP/atoma-declared-secrets.json";
+  const trustedConfig = "$RUNNER_TEMP/atoma-declared-secrets.yaml";
   return new TypedOutputsStep(
     {
       name: "Resolve which repository secrets may reach this run",
@@ -83,15 +83,15 @@ TRUSTED_CONFIG="${trustedConfig}"
 # failed fetch has nothing to fall back to. Shallow: one commit of one branch is
 # all this needs. \`+\` so a re-run overwrites rather than refusing.
 if git fetch --quiet --depth=1 origin "+\$DEFAULT_BRANCH:refs/atoma/trusted-config" 2>/dev/null \\
-  && git show "refs/atoma/trusted-config:.github/atoma/config.json" > "$TRUSTED_CONFIG" 2>/dev/null; then
+  && git show "refs/atoma/trusted-config:.github/atoma/config.yaml" > "$TRUSTED_CONFIG" 2>/dev/null; then
   echo "Read the credential declaration from \${DEFAULT_BRANCH}."
 else
-  # Either the branch has no config.json or the fetch failed, and this cannot
+  # Either the branch has no config.yaml or the fetch failed, and this cannot
   # tell which. It does not need to: both answers are "declare nothing", which is
   # the safe one. Naming both is the honest message -- asserting the first would
   # be asserting something this could not determine.
   echo '{}' > "$TRUSTED_CONFIG"
-  echo "::warning::Could not read .github/atoma/config.json from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
+  echo "::warning::Could not read .github/atoma/config.yaml from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
 fi
 
 ${scriptCommandWithArgs(readSecretNamesRef, { destination, config: trustedConfig })}
@@ -148,14 +148,14 @@ export function secretSlotEnv(): Record<string, string> {
  * Bash that puts the declared name back on each slot, for the top of a step
  * whose `env:` includes `secretSlotEnv()`.
  *
- * A declared name with an empty slot means config.json asks for a secret the
+ * A declared name with an empty slot means config.yaml asks for a secret the
  * repository does not have. That is a warning and not a failure: only whatever
  * needed that credential will fail, with the reason already in the log, and
  * failing the whole run would take the rest of the work with it.
  */
 export function renameSecretSlots(): string {
   return `# Credentials arrive in numbered slots because this file is generated and cannot
-# know what a project called its Slack token; config.json does, and the resolve
+# know what a project called its Slack token; config.yaml does, and the resolve
 # step above published that list. Put the declared name back on each slot before
 # anything that needs one runs.
 ATOMA_DECLARED_SECRETS="\${${SECRET_NAMES_VAR}:-[]}"
@@ -168,7 +168,7 @@ while [ "$slot" -lt "$ATOMA_DECLARED_COUNT" ]; do
     export "\${secret_name}=\${secret_value}"
     echo "Secret \${secret_name} is available to this run."
   else
-    echo "::warning::config.json declares secret \${secret_name}, but this repository has no secret by that name. Whatever needs it will fail."
+    echo "::warning::config.yaml declares secret \${secret_name}, but this repository has no secret by that name. Whatever needs it will fail."
   fi
   slot=$((slot + 1))
 done

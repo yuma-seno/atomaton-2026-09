@@ -29,8 +29,8 @@ describe("what a release says about itself", () => {
   });
 
   test("a path is recorded the same way whichever separator produced it", () => {
-    const manifest = buildManifest("v1", [".github\\atoma\\config.json"]);
-    expect(manifest.files).toContain(".github/atoma/config.json");
+    const manifest = buildManifest("v1", [".github\\atoma\\config.yaml"]);
+    expect(manifest.files).toContain(".github/atoma/config.yaml");
   });
 
   test("the same path listed twice is listed once", () => {
@@ -42,7 +42,7 @@ describe("what a release says about itself", () => {
 describe("what upstream no longer ships", () => {
   const manifest = buildManifest("v0.1.77", [
     ".github/workflows/atoma-runner.yml",
-    ".github/atoma/config.json",
+    ".github/atoma/config.yaml",
   ]);
 
   test("nothing, for a tree that matches", () => {

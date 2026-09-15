@@ -15,9 +15,10 @@
  * failure that exists only on the other machine.
  *
  * The workaround, which this repository was itself using, is to put the setup at
- * the front of `checks.commands` -- `bun install --frozen-lockfile` before the
- * tests -- and remember to keep it in step with `setup_commands`. Two statements
- * of one fact, either of which can be updated alone.
+ * the front of `checks.atoma_runs.commands` -- `bun install --frozen-lockfile`
+ * before the tests -- and remember to keep it in step with
+ * `environment.setup_commands`. Two statements of one fact, either of which can
+ * be updated alone.
  *
  * So the step is a function rather than three copies of four lines. A job that
  * runs a project's commands includes it; that is the whole rule.
@@ -28,11 +29,11 @@
  *
  *   the agent's run    the default branch. A pull request must not choose how the
  *                      agent reviewing it is set up.
- *   checks             the pull request's OWN config.json. That is what lets an
+ *   checks             the pull request's OWN config.yaml. That is what lets an
  *                      agent add a dependency and prove the addition works in the
  *                      same pull request, rather than waiting for a merge to find
  *                      out. It grants nothing new: this job already runs
- *                      `checks.commands` from that same branch.
+ *                      `checks.atoma_runs.commands` from that same branch.
  *   deployment         the tag or the default branch, both of them post-merge.
  *
  * ## No credentials

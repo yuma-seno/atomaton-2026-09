@@ -14,7 +14,7 @@ import { join, relative } from "node:path";
  * - a file the upstream release had **deleted** stayed in the tree. `unzip -o`
  *   overwrites and never removes, so there was no diff to notice it by. The old
  *   `conventions.md` said to "look for orphans under `.github/atoma/` yourself".
- * - the preserve list lived in a person's memory. `config.json` was restored every
+ * - the preserve list lived in a person's memory. `config.yaml` was restored every
  *   time because it was remembered, not because anything checked.
  *
  * `self/` mirrors `.github/`, so the deploy became `rm -rf .github`, extract, copy
@@ -29,7 +29,7 @@ import { join, relative } from "node:path";
  * An overlay entry needs no release to take effect -- it is a copy, not a build --
  * so a change to `self/X` belongs in the same pull request as the identical change
  * to `.github/X`. This is what turns "remember to change both" into a failing
- * check, and it is why an agent improving `config.json` cannot half-apply it.
+ * check, and it is why an agent improving `config.yaml` cannot half-apply it.
  *
  * ## Why there is no "every file in `.github/` is accounted for" test
  *
@@ -49,7 +49,7 @@ import { join, relative } from "node:path";
  *
  * The one case it did cover on its own -- a file added to `.github/` with no
  * counterpart in `self/`, which the next deploy would silently remove -- is already
- * in front of a person. `.github/**` is in `governed_paths`, so any pull request
+ * in front of a person. `.github/**` is in `merge.governed_paths`, so any pull request
  * touching it carries the blocker "this pull request changes how agents themselves
  * run" and cannot be merged by an agent at all.
  *
@@ -111,11 +111,11 @@ describe("`self/` and `.github/` hold the same overlay", () => {
    * and it would look like a working customisation right up to the release that
    * changed the shipped copy.
    *
-   * `config.json` is the deliberate exception and the only one: the release
+   * `config.yaml` is the deliberate exception and the only one: the release
    * carries an example, every adopter replaces it, and this repository is an
    * adopter.
    */
-  test("the overlay does not shadow the deliverable, except config.json", () => {
+  test("the overlay does not shadow the deliverable, except config.yaml", () => {
     // Unlike the membership test this replaced, comparing against `dist/` is right
     // here: the question is whether what `src/` ships TODAY is also overridden in
     // `self/`, and `dist/` is exactly that. No lag is involved.
@@ -125,7 +125,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
     }
     const shadowed = filesUnder(OVERLAY)
       .filter((file) => existsSync(join(BUILT, file)))
-      .filter((file) => file !== "atoma/config.json");
+      .filter((file) => file !== "atoma/config.yaml");
     expect(
       shadowed,
       `the deliverable ships these too, so ${OVERLAY}/ silently overrides them. If the intent is ` +

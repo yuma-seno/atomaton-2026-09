@@ -70,7 +70,7 @@ describe("the corpus", () => {
       corpusFrom([
         "src/b.ts",
         "src/a.ts",
-        ".github/atoma/config.json",
+        ".github/atoma/config.yaml",
         "bun.lock",
         "docs/readme.md",
         "",

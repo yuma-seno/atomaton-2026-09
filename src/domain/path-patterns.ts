@@ -8,16 +8,17 @@
  * gate at all, because they believe they have one.
  *
  * So the form is small AND checked. `pathPatternProblem` rejects anything this
- * matcher cannot honour, and both callers -- `merge_gates` and `governed_paths`
- * -- report that as a configuration problem rather than matching zero files and
- * carrying on. A pattern that cannot work says so at the moment it is read.
+ * matcher cannot honour, and both callers -- `merge.gates` and
+ * `merge.governed_paths` -- report that as a configuration problem rather than
+ * matching zero files and carrying on. A pattern that cannot work says so at the
+ * moment it is read.
  *
- * `governed_paths` was not checked for a while, and the header here claimed it
+ * `merge.governed_paths` was not checked for a while, and the header here claimed it
  * was. That is the worse half of the same mistake: a gate over the agent's own
  * limits, silently matching nothing, under a comment saying it could not.
  *
  * Extracted from `merge-readiness.ts`, where `governedPathsIn` had the matcher
- * inline. `merge_gates` needed the same one, and two copies of a security-shaped
+ * inline. `merge.gates` needed the same one, and two copies of a security-shaped
  * comparison is exactly the arrangement that drifts.
  */
 

@@ -136,17 +136,23 @@ describe("reconcile_github_session.ts", () => {
     ]);
   });
 
-  test("removes policy-excluded events instead of marking them deleted", () => {
+  /**
+   * An event still present on GitHub but no longer reaching the agent was removed
+   * rather than tombstoned. The only thing that could make that happen was the
+   * per-agent `shared_context` policy, which is gone — see the note at the foot of
+   * this file. What remains is the case the reconciler still has to get right: an
+   * event that vanished from GitHub between two runs is marked deleted, because
+   * the agent has already seen it and silence would read as never having happened.
+   */
+  test("an event that disappeared from GitHub is tombstoned, not dropped", () => {
     const events = [
       { id: "pr-1", event_type: "pr_opened", content: "PR body", author: "alice", created_at: "2026-05-27T09:00:00Z" },
       { id: "pr-1-diff", event_type: "pr_diff", content: "diff", author: "github", created_at: "2026-05-27T09:01:00Z" },
     ];
     const first = reconcileGithubSession({ messages: [] }, events, "reviewer").mergedSession;
-    const second = reconcileGithubSession(first, events, "reviewer", {
-      agents: { reviewer: { shared_context: { exclude_event_types: ["pr_diff"] } } },
-    }).mergedSession;
+    const second = reconcileGithubSession(first, [events[0]!], "reviewer").mergedSession;
 
-    expect(second.messages!.map((message) => message.content)).toEqual(["PR body"]);
+    expect(second.messages!.map((message) => message.content)).toEqual(["PR body", "[Deleted GitHub pr_diff]"]);
   });
 
   test("stores the processed snapshot even when no result comment is posted", () => {
@@ -293,24 +299,30 @@ describe("reconcile_github_session.ts", () => {
     ]);
   });
 
-  test("applies the agent's configured shared_context include/exclude policy", () => {
+  /**
+   * Two tests here used to configure a per-agent `shared_context` include/exclude
+   * policy and assert it filtered by event type. The policy was read from
+   * `agents.<name>.shared_context` in the config, and no config has ever had an
+   * `agents` key — the validator reports one as a setting Atoma does not read. So
+   * the filter was reachable only from a test, and the events it dropped were
+   * dropped for nobody.
+   *
+   * What replaces them is the behaviour that was actually load-bearing all along:
+   * every event type reaches every agent, and the only two things removed are the
+   * agent's own comments and notifications tagged out of LLM context — both of
+   * which are covered by the tests above this one.
+   */
+  test("every event type reaches the agent, there being no policy that could drop one", () => {
     const events = [
       { id: "pr-1", event_type: "pr_opened", content: "PR body", author: "alice", created_at: "2026-05-27T12:00:00Z" },
       { id: "pr-1-diff", event_type: "pr_diff", content: "diff", author: "github", created_at: "2026-05-27T12:01:00Z" },
       { id: 401, event_type: "pr_review", content: "needs work", author: "bob", created_at: "2026-05-27T12:02:00Z" },
     ];
-    const config = {
-      agents: {
-        "test-writer": {
-          shared_context: { include_event_types: ["pr_opened", "pr_review"], exclude_event_types: ["pr_diff"] },
-        },
-      },
-    };
 
-    const { mergedSession, eventCount } = reconcileGithubSession({ messages: [] }, events, "test-writer", config);
+    const { mergedSession, eventCount } = reconcileGithubSession({ messages: [] }, events, "test-writer");
 
     const keptTypes = mergedSession.messages?.map((message) => message.atoma_metadata?.event_type);
-    expect(eventCount).toBe(2);
-    expect(keptTypes).toEqual(["pr_opened", "pr_review"]);
+    expect(eventCount).toBe(3);
+    expect(keptTypes).toEqual(["pr_opened", "pr_diff", "pr_review"]);
   });
 });

@@ -222,7 +222,7 @@ describe("generated workflows", () => {
    * Three properties, and each one is a way the check could be present and useless.
    *
    * It must be unconditional. The validation has to run independently of
-   * `config.json`'s `checks.commands` — an adopter's `atoma-check.yml` runs nothing
+   * `config.yaml`'s `checks.atoma_runs.commands` — an adopter's `atoma-check.yml` runs nothing
    * at all until they configure it, and whatever they put there is their pipeline.
    * An `if:` on this step would put our own integrity check back under their
    * control.
@@ -681,7 +681,7 @@ describe("generated workflows", () => {
   // seconds elapsed) looks nothing like a code change.
   //
   // A computed key is allowed, and is the whole reason a project can declare a
-  // tool credential in config.json without editing generated YAML. If the slots
+  // tool credential in config.yaml without editing generated YAML. If the slots
   // ever stopped being keyed off the resolve step, credentials would silently
   // stop arriving and only the tool needing one would fail.
   test("reaches declared credentials by a computed key, never by dumping the secrets context", () => {
@@ -729,7 +729,7 @@ describe("generated workflows", () => {
 
   // On a pull request run the checkout is `refs/pull/N/head`, so a declaration
   // read from the working tree would let a pull request choose which of the
-  // repository's secrets it is handed. `governed_paths` does not cover it: that
+  // repository's secrets it is handed. `merge.governed_paths` does not cover it: that
   // blocks the merge, and the run happens first. The declaration therefore comes
   // from the default branch, and this pins that in the generated YAML -- the
   // failure mode of losing it is silent.
@@ -760,11 +760,11 @@ describe("generated workflows", () => {
       // property that is pinned now.
       expect(step?.run, `${file} must not read the declaration from FETCH_HEAD`).not.toContain("FETCH_HEAD:");
       expect(step?.run, `${file} must read the declaration from a ref it fetched`).toContain(
-        'git show "refs/atoma/trusted-config:.github/atoma/config.json"',
+        'git show "refs/atoma/trusted-config:.github/atoma/config.yaml"',
       );
       // Outside the workspace, so the checkout cannot have brought the file.
       expect(step?.run, `${file} must not trust a path the checkout controls`).toContain(
-        "$RUNNER_TEMP/atoma-declared-secrets.json",
+        "$RUNNER_TEMP/atoma-declared-secrets.yaml",
       );
     }
   });
@@ -783,7 +783,7 @@ describe("generated workflows", () => {
 
     // Without this a person's pull request gets no check at all: an agent's is
     // dispatched, and `pull_request` never fires for a GITHUB_TOKEN-opened one.
-    // Since this is what `workflows.ci` defaults to, the merge is then refused
+    // Since this is what `checks.your_workflow` defaults to, the merge is then refused
     // for a required check that nothing ever ran.
     expect(check.on?.pull_request, "atoma-check must fire for a person's pull request").toBeDefined();
 
@@ -979,7 +979,7 @@ describe("generated workflows", () => {
 
   /**
    * The two jobs that run a project's own commands take their runner from
-   * `config.json`, and the job that reads it does not.
+   * `config.yaml`, and the job that reads it does not.
    *
    * `runs-on` accepts no expression that can read a file, so the value has to be a
    * job output before the real job starts. That is why there is an extra job, and
@@ -987,7 +987,7 @@ describe("generated workflows", () => {
    * configured runner is, so it cannot itself be on it.
    *
    * This was once `ubuntu-latest` hardcoded in eleven files, unreachable from
-   * `config.json` -- and unfixable by an agent, because the fix is in
+   * `config.yaml` -- and unfixable by an agent, because the fix is in
    * `.github/workflows/**`, the one place `GITHUB_TOKEN` cannot write.
    */
   test("the jobs that run a project's commands take their runner from configuration", () => {

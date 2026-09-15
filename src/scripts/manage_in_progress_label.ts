@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * manage_in_progress_label.ts — Add or remove the config.json-configured
+ * manage_in_progress_label.ts — Add or remove the config.yaml-configured
  * "in_progress" label on an issue/PR (works for PR numbers too, since
  * GitHub treats every PR as an issue under the hood). Best-effort: never
  * fails the calling step, only logs a warning (matching the previous

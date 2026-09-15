@@ -2,7 +2,7 @@
 #
 # release.sh — publish the deliverable as a release asset.
 #
-# The deployment this project declares in `deploy.targets`. Everything a release
+# The deployment this project declares in `deploy.atoma_runs.targets`. Everything a release
 # does is here, in a file an agent can write, rather than in a workflow file it
 # cannot — which is the whole reason the pipeline moved into configuration.
 #

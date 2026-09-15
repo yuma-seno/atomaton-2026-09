@@ -75,7 +75,7 @@ describe("resolveMergeGates", () => {
 
   test("a gate with no conditions would stop every merge, and is refused", () => {
     const { problems } = resolveMergeGates([{ reason: "everything", when: {} }]);
-    expect(problems.join(" ")).toContain("merge_policy");
+    expect(problems.join(" ")).toContain("merge.policy");
   });
 
   test("an empty condition list is a mistake rather than a no-op", () => {
@@ -113,7 +113,7 @@ describe("matchMergeGates", () => {
     expect(matches[0]?.evidence).toEqual(["db/migrations/003_add_users.sql"]);
   });
 
-  // The whole reason `governed_paths` was not enough: editing an existing
+  // The whole reason `merge.governed_paths` was not enough: editing an existing
   // migration is not adding one, and a path glob cannot tell them apart.
   test("editing an existing migration does not apply an added-only gate", () => {
     const matches = matchMergeGates(
@@ -131,7 +131,7 @@ describe("matchMergeGates", () => {
     expect(matchMergeGates([], facts({ changedFiles: [file("db/migrations/x.sql", "added")] }))).toEqual([]);
   });
 
-  test("files_changed is the union, and covers what governed_paths would", () => {
+  test("files_changed is the union, and covers what merge.governed_paths would", () => {
     const { gates: any_change } = resolveMergeGates([
       { reason: "touched", when: { files_changed: ["db/migrations/**"] } },
     ]);

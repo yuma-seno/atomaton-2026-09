@@ -81,7 +81,7 @@ export function collect(env: Record<string, string | undefined>): Record<string,
     if (value) out[name] = value;
     else {
       console.error(
-        `::warning::config.json declares ${name}, but this repository has no secret by that name. Whatever needs it will fail.`,
+        `::warning::config.yaml declares ${name}, but this repository has no secret by that name. Whatever needs it will fail.`,
       );
     }
   });
@@ -110,7 +110,7 @@ function main(): void {
   writeFileSync(values.out, JSON.stringify(credentials), { mode: 0o600 });
 
   // Names only, never values. Which credentials a run carries is already public
-  // in config.json, and saying so is what makes a missing one diagnosable.
+  // in config.yaml, and saying so is what makes a missing one diagnosable.
   console.error(
     `Wrote ${Object.keys(credentials).length} credential(s) for this run: ${Object.keys(credentials).join(", ")}`,
   );

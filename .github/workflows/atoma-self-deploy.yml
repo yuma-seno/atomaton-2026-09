@@ -33,7 +33,7 @@
 # `ATOMA_SELF_DEPLOY_TOKEN` is a PAT with the `workflow` scope, set as a secret in
 # THIS repository only. It never reaches an agent: it appears in this file and
 # nowhere else, and `atoma-runner.yml` does not name it -- `atoma` gives a tool
-# server only the credentials that server's own `tools.yaml` entry declares.
+# server only the credentials that server's own entry under `tools.servers` declares.
 #
 # A PAT is acceptable here and not inside Atoma because the thing holding it is a
 # person pressing a button, not a model. The rule -- a pull request may not
@@ -42,7 +42,7 @@
 #
 # ## What it does not do
 #
-# It does not merge. `.github/**` is in `governed_paths`, so the pull request needs
+# It does not merge. `.github/**` is in `merge.governed_paths`, so the pull request needs
 # a person. That is the intended shape: this removes the tedium of preparing the
 # deploy, not the review of it.
 name: Atoma Self Deploy
@@ -201,7 +201,7 @@ jobs:
             echo
             echo "So a file the release no longer contains is **gone from the diff**, rather than sitting in the tree with nothing to notice it by. That is what \`self/\` bought."
             echo
-            echo "\`.github/**\` is in \`governed_paths\`, so this needs a person to merge. That is the point: this removes the tedium of preparing the deploy, not the review of it."
+            echo "\`.github/**\` is in \`merge.governed_paths\`, so this needs a person to merge. That is the point: this removes the tedium of preparing the deploy, not the review of it."
           } > /tmp/body.md
 
           EXISTING=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')

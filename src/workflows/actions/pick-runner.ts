@@ -8,18 +8,18 @@
  *
  * It runs on `ubuntu-latest` unconditionally, and must: it is the job that finds out
  * what the configured runner is, so it cannot itself be on it. It does nothing but
- * read `config.json`, so the platform is irrelevant to what it produces.
+ * read `config.yaml`, so the platform is irrelevant to what it produces.
  *
  * A function rather than two copies, for the reason `environment-setup.ts` gives:
  * two jobs need this and a second copy is a second thing to keep in step.
  *
  * ## Why the checkout, and why the machinery root
  *
- * `config.json` has to be read from somewhere. `atoma-check` reads the pull
+ * `config.yaml` has to be read from somewhere. `atoma-check` reads the pull
  * request's OWN configuration on purpose -- that is what lets an agent change the
  * runner and prove the change in the same pull request, exactly as
- * `environment-setup.ts` argues for `setup_commands`. It grants nothing new: the job
- * already runs that branch's `checks.commands`.
+ * `environment-setup.ts` argues for `environment.setup_commands`. It grants
+ * nothing new: the job already runs that branch's `checks.atoma_runs.commands`.
  */
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./base.ts";

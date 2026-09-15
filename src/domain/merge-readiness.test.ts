@@ -127,7 +127,7 @@ describe("decideMergeReadiness", () => {
     expect(kinds(signals({ isDraft: true, mergeStateStatus: "DRAFT" }))).toEqual(["draft"]);
   });
 
-  // `merge_policy` bounds what an agent decides on its own, and what it was meant
+  // `merge.policy` bounds what an agent decides on its own, and what it was meant
   // to bound is the agent's own work. Merging a person's pull request for them
   // takes the decision away, and does it before they have read the review.
   describe("a person's pull request", () => {
@@ -193,7 +193,7 @@ describe("decideMergeReadiness", () => {
   // The rule is about the head commit, not about the merge. A blocker that stops
   // the agent merging leaves the commit exactly as it is, so the missing check is
   // still needed -- by whoever ends up doing the merge. This used to require
-  // `checks-missing` to be the ONLY blocker, and since `merge_policy` defaults to
+  // `checks-missing` to be the ONLY blocker, and since `merge.policy` defaults to
   // "manual" and adds a blocker to every pull request, the recovery path could
   // never fire on a default-configured project at all.
   test("a dispatch is still requested when the other blockers leave the commit alone", () => {
@@ -257,13 +257,13 @@ describe("decideMergeReadiness", () => {
   // configuration.
   test("touching a generated workflow says where CI actually gets configured", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atoma-check.yml"] }));
-    expect(blockers[0]?.detail).toContain("checks.commands");
-    expect(blockers[0]?.detail).toContain("config.json");
+    expect(blockers[0]?.detail).toContain("checks.atoma_runs.commands");
+    expect(blockers[0]?.detail).toContain("config.yaml");
   });
 
   test("a governed change elsewhere gets no advice about CI", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atoma/agent-definitions/x.md"] }));
-    expect(blockers[0]?.detail).not.toContain("checks.commands");
+    expect(blockers[0]?.detail).not.toContain("checks.atoma_runs.commands");
   });
 
   test("the blocker names a few paths rather than every one", () => {
@@ -284,10 +284,10 @@ describe("decideMergeReadiness", () => {
 
 describe("governedPathsIn", () => {
   test("claims everything under a named directory", () => {
-    const files = [".github/workflows/ci.yml", ".github/atoma/config.json", "src/index.ts"];
+    const files = [".github/workflows/ci.yml", ".github/atoma/config.yaml", "src/index.ts"];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual([
       ".github/workflows/ci.yml",
-      ".github/atoma/config.json",
+      ".github/atoma/config.yaml",
     ]);
   });
 
@@ -334,7 +334,7 @@ describe("governedPathsIn", () => {
   });
 });
 
-// `governed_paths` is Atoma's own gate; these are the project's. Same outcome —
+// `merge.governed_paths` is Atoma's own gate; these are the project's. Same outcome —
 // the agent reviews and reports, a person merges — reached from a condition
 // nothing here could have guessed.
 describe("declared merge gates", () => {
@@ -380,7 +380,7 @@ describe("declared merge gates", () => {
   // exists to stop would be merging.
   test("a gate that cannot be evaluated blocks", () => {
     const { ready, blockers } = decideMergeReadiness(
-      signals({ gateProblems: ["`merge_gates[0]`: unknown condition `file_added`."] }),
+      signals({ gateProblems: ["`merge.gates[0]`: unknown condition `file_added`."] }),
     );
     expect(ready).toBe(false);
     expect(blockers.map((b) => b.kind)).toEqual(["gate-config-invalid"]);

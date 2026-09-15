@@ -3,26 +3,40 @@ import ts from "typescript";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { configProblems, knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
 import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/merge-gates.ts";
+import type { AtomaConfig } from "../../src/lib/types.ts";
 
-describe("config.json", () => {
-  test("is valid and matches expected shape", async () => {
-    const c = await Bun.file("src/atoma/config.json").json();
+/**
+ * The shipped template's config.
+ *
+ * Read with `Bun.YAML.parse`, which is what `lib/config.ts` reads it with: a file
+ * this test accepts has to be a file the readers accept, and a second parser here
+ * could disagree with the one that runs. Typed as the interface plus an index
+ * signature so a test can also ask about a key the interface does NOT have.
+ */
+function shippedConfig(): AtomaConfig & Record<string, unknown> {
+  return Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
+}
+
+describe("config.yaml", () => {
+  test("is valid and matches expected shape", () => {
+    const c = shippedConfig();
     // Asserted absent, not merely unused: a run is bounded by its time now, and the
     // runner reads that from the job it is inside rather than from here. A key that
     // nothing reads and that the schema no longer recognises would be reported to an
     // adopter as a typo the moment they touched their config.
     expect(c.agents).toBeUndefined();
-    expect(c.merge_policy).toBe("auto");
-    expect(c.labels).toBeDefined();
+    expect(c.merge?.policy).toBe("manual");
+    expect(c.chain?.labels).toBeDefined();
   });
 
   // Gates are the project's own conditions, so the template ships none. A
   // default `db/migrations/**` would be a guess about somebody else's repository,
-  // and a wrong one would block their merges on day one.
-  test("the shipped template declares no merge gates", async () => {
-    const c = await Bun.file("src/atoma/config.json").json();
-    expect(c.merge_gates).toBeUndefined();
-    expect(resolveMergeGates(c.merge_gates)).toEqual({ gates: [], problems: [] });
+  // and a wrong one would block their merges on day one. Present and empty rather
+  // than absent, because YAML can carry the comment saying what the key is for.
+  test("the shipped template declares no merge gates", () => {
+    const c = shippedConfig();
+    expect(c.merge?.gates).toEqual([]);
+    expect(resolveMergeGates(c.merge?.gates)).toEqual({ gates: [], problems: [] });
   });
 });
 
@@ -30,7 +44,7 @@ describe("config.json", () => {
 // people writing the same words. A condition added in code and left out of the
 // docs is unfindable; one documented and never implemented is worse, because
 // someone writes it, it is rejected as unknown, and the docs said it existed.
-describe("merge_gates documentation", () => {
+describe("merge.gates documentation", () => {
   // The resolver's own list, not a copy of it. A copy meant adding a condition and
   // forgetting this array left it undocumented while both tests below still passed.
   const CONDITIONS = CONDITION_KEYS;
@@ -62,7 +76,7 @@ describe("merge_gates documentation", () => {
 });
 
 /**
- * config.json's recognised keys, in the type and at run time.
+ * config.yaml's recognised keys, in the type and at run time.
  *
  * `AtomaConfig` in `lib/types.ts` is the definition and `CONFIG_SCHEMA` in
  * `domain/deliverable-integrity.ts` is the runtime mirror, because an interface is
@@ -81,7 +95,7 @@ describe("merge_gates documentation", () => {
  * the schema is reported to an adopter as a typo, for a setting the code reads. One
  * added to the schema and not the type is accepted and read by nothing.
  */
-describe("config.json's recognised keys", () => {
+describe("config.yaml's recognised keys", () => {
   /** `Record<string, X>`'s value type, or undefined when `type` is not one. */
   function recordValueType(type: ts.TypeNode | undefined, source: ts.SourceFile): ts.TypeNode | undefined {
     if (!type || !ts.isTypeReferenceNode(type)) return undefined;
@@ -136,8 +150,8 @@ describe("config.json's recognised keys", () => {
    * The keys a person can actually set: the leaves of the schema, minus the levels
    * where any name is legal.
    *
-   * A parent is not settable on its own — writing `"checks": {}` configures nothing
-   * — and `labels.*` is not a key at all, it is permission to invent one. So
+   * A parent is not settable on its own — writing `checks: {}` configures nothing
+   * — and `chain.labels.*` is not a key at all, it is permission to invent one. So
    * neither belongs in a list an adopter reads.
    */
   function settableKeys(): string[] {
@@ -148,38 +162,64 @@ describe("config.json's recognised keys", () => {
       .sort();
   }
 
-  /** The first backticked token of each bullet in the `config.json` contract section. */
-  function documentedKeys(): string[] {
-    const docs = readFileSync("docs/customization.md", "utf8").replace(/\r\n/g, "\n");
-    const start = docs.indexOf("## `config.json` contract");
-    expect(start, "the config.json contract section is gone from docs/customization.md").toBeGreaterThan(-1);
-    // Bounded at the next heading of any level: the subsections after it carry
-    // bullet lists of their own, and those are not config keys.
-    const offset = docs.slice(start + 1).search(/\n#{2,3} /);
-    const section = docs.slice(start, offset === -1 ? undefined : start + 1 + offset);
-
-    const keys: string[] = [];
-    for (const line of section.split("\n")) {
-      const match = /^- `([^`]+)`/.exec(line);
-      // `<name>` is how the docs write a level where any name is legal, and `*` is
-      // how the schema writes it. One bullet, one key: a bullet may go on to
-      // mention the fields an entry takes, and those are not top-level keys.
-      if (match?.[1]) keys.push(match[1].replace("<name>", "*"));
-    }
-    return keys.sort();
+  /**
+   * Every backticked token in the configuration reference.
+   *
+   * The reference is prose, not a list: a key is documented in the section it
+   * belongs to, by its full dotted path or by its leaf name under a heading that
+   * supplies the rest. So this collects the tokens and the two tests below ask
+   * different questions of them, rather than demanding one flat bullet list the
+   * page would be worse for carrying.
+   */
+  function documentedTokens(): Set<string> {
+    const docs = readFileSync("docs/configuration.md", "utf8");
+    return new Set([...docs.matchAll(/`([^`\n]+)`/g)].map((match) => match[1]!));
   }
 
   /**
-   * The list an adopter writes config.json from, held to the schema that judges it.
+   * Every settable key is written down somewhere a person can find it.
    *
-   * A fourth copy of the same fact lived here — the interface, the runtime schema,
-   * the readers in `lib/config.ts`, and this list — and the drift is worse than
-   * useless in one specific direction: a key documented but not read is one an
-   * adopter writes, and `validate_deliverable.ts` then fails their pull request for
-   * following the documentation.
+   * `checks.atoma_runs.runs_on`, `deploy.atoma_runs.targets` and the three
+   * `chain.labels` entries were each settable and each undocumented when this
+   * test was written -- five keys an adopter could only find by reading the
+   * validator's schema.
    */
-  test("the customization guide lists every settable key, and no others", () => {
-    expect(documentedKeys()).toEqual(settableKeys());
+  test("the configuration reference documents every settable key", () => {
+    const tokens = documentedTokens();
+    const undocumented = settableKeys().filter(
+      (key) => !tokens.has(key) && !tokens.has(key.split(".").pop()!),
+    );
+    expect(undocumented, "these keys are settable and documented nowhere").toEqual([]);
+  });
+
+  /**
+   * The reverse, and the direction that does real damage: a key documented but not
+   * read is one an adopter writes, and `validate_deliverable.ts` then fails their
+   * pull request for following the documentation. This page said `checks.secrets`
+   * and `deploy.secrets` when both had moved under `atoma_runs`.
+   *
+   * Only dotted paths are policed. A bare leaf name in prose -- `policy`, `gates`
+   * -- is a word as often as it is a key, and a test that cannot tell the two apart
+   * would be answered by removing backticks from the docs.
+   */
+  test("every config path the reference names is one the schema recognises", () => {
+    const all = knownConfigKeys();
+    const tops = new Set(all.filter((key) => !key.includes(".")));
+    const settable = new Set(settableKeys());
+
+    const named = [...documentedTokens()].filter(
+      (token) => token.includes(".") && tops.has(token.split(".")[0]!),
+    );
+    expect(named.length, "the reference names config paths at all").toBeGreaterThan(0);
+
+    const unrecognised = named.filter((token) => {
+      if (all.includes(token)) return false;
+      // A path reaching into a settable key's own value -- `merge.gates[].when.labels`
+      // is inside the array `merge.gates` holds, and the schema stops at the array.
+      // A path reaching past a key with children of its own is a typo for one of them.
+      return ![...settable].some((key) => token.startsWith(key) && ".[".includes(token[key.length] ?? ""));
+    });
+    expect(unrecognised, "documented, but rejected by the validator").toEqual([]);
   });
 
   // The walk above finds nothing if the interface is renamed or the file moves, and
@@ -190,11 +230,10 @@ describe("config.json's recognised keys", () => {
 
   // Every key the shipped config sets has to be one the schema recognises, or the
   // template validates as broken on the first adoption.
-  test("the shipped config.json declares only recognised keys", async () => {
-    const config = await Bun.file("src/atoma/config.json").json();
+  test("the shipped config.yaml declares only recognised keys", () => {
     expect(
       configProblems({
-        config,
+        config: shippedConfig(),
         agentNames: readdirSync("src/atoma/agent-definitions")
           .filter((file) => file.endsWith(".md"))
           .map((file) => file.slice(0, -".md".length)),
@@ -207,17 +246,14 @@ describe("config.json's recognised keys", () => {
 /**
  * The template ships one check, and it has to be one every adopter can run.
  *
- * `checks.commands` was empty, which `run_checks.ts` reports as "this check verified
- * nothing" -- true, and the first hour of an adoption is a poor time to learn it. A
- * credential is a credential in every language, so a secret scan is the one verification
- * a template can hand a project it knows nothing about. Everything beside it in that
- * list is the project's own and only the project can write it.
+ * `checks.atoma_runs.commands` was empty, which `run_checks.ts` reports as "this check
+ * verified nothing" -- true, and the first hour of an adoption is a poor time to learn it.
+ * A credential is a credential in every language, so a secret scan is the one verification
+ * a template can hand a project it knows nothing about. Everything beside it in that list
+ * is the project's own and only the project can write it.
  */
 describe("the default checks a project inherits", () => {
-  const config = JSON.parse(readFileSync("src/atoma/config.json", "utf8")) as {
-    checks?: { commands?: string[] };
-  };
-  const commands = config.checks?.commands ?? [];
+  const commands = shippedConfig().checks?.atoma_runs?.commands ?? [];
 
   test("there is at least one, so an adoption does not start verifying nothing", () => {
     expect(commands.length).toBeGreaterThan(0);

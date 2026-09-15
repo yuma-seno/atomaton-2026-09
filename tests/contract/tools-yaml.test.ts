@@ -18,8 +18,13 @@ import { dirname, join } from "node:path";
  * it to a plain `bun run`, and the test that pinned the container is now the test
  * that keeps one from coming back.
  */
-const SOURCE = "src/atoma/tools/tools.yaml";
+// One file now, and it is written rather than kept: `build-dist.ts` generates it
+// from `tools.servers` in config.yaml. There used to be a source copy beside the
+// deployed one and both were checked, because a hand-edited source could disagree
+// with what shipped. A generator cannot disagree with itself, so what is worth
+// checking is the thing atoma is actually handed.
 const DEPLOYED = "dist/.github/atoma/tools/tools.yaml";
+const SOURCE = DEPLOYED;
 
 interface ToolEntry {
   command?: string;
@@ -50,7 +55,7 @@ function servers(path: string): [string, ToolEntry][] {
 }
 
 describe("tools.yaml is valid YAML with the shape atoma expects", () => {
-  for (const path of [SOURCE, DEPLOYED]) {
+  for (const path of [DEPLOYED]) {
     test(`${path} parses`, () => {
       expect(servers(path).length).toBeGreaterThan(4);
     });
@@ -131,7 +136,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
     expect(advertised, "shell.ts must still declare a max for timeout_seconds").not.toBeNull();
     const seconds = Number(advertised![1]);
 
-    for (const path of [SOURCE, DEPLOYED]) {
+    for (const path of [DEPLOYED]) {
       const declared = parse(path).shell?.request_timeout_secs;
       expect(declared, `${path}: shell must declare request_timeout_secs`).toBeDefined();
       expect(
@@ -152,7 +157,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
    * is what this value covers.
    */
   test("the search server allows for loading its model", () => {
-    for (const path of [SOURCE, DEPLOYED]) {
+    for (const path of [DEPLOYED]) {
       const declared = parse(path).search?.request_timeout_secs ?? 0;
       expect(
         declared,
@@ -178,5 +183,52 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
         `${name} raises request_timeout_secs; if its work genuinely takes minutes, add it here and say why`,
       ).toBe(true);
     }
+  });
+});
+
+/**
+ * The generated file is handed to a binary that refuses what it cannot parse.
+ *
+ * `toolsFileFrom` passes every key through except `settings`, which is deliberate:
+ * a key a later core release adds works the day it ships without the generator
+ * learning it. The cost of that is the other direction — a key this project
+ * invents and forgets to strip reaches the core as an unknown one, and the symptom
+ * is that no server starts at all.
+ *
+ * The field list here comes from `atoma/src/domain/tool.rs`. It has to be updated
+ * by hand when the core gains a field, and a failure here is the reminder.
+ */
+describe("the generated tools file says nothing the core has not declared", () => {
+  const CORE_SERVER_KEYS = new Set([
+    "command",
+    "args",
+    "env",
+    "url",
+    "headers",
+    "hooks",
+    "max_output_chars",
+    "request_timeout_secs",
+  ]);
+  const CORE_HOOK_KEYS = new Set(["before_tool", "after_tool", "tool_allowlist", "tool_denylist"]);
+
+  test("every key it emits is one atoma reads", () => {
+    const generated = parse(DEPLOYED);
+    const unknown: string[] = [];
+    for (const [name, entry] of Object.entries(generated)) {
+      const record = entry as Record<string, unknown>;
+      if (name === RESERVED) {
+        for (const key of Object.keys(record)) if (!CORE_HOOK_KEYS.has(key)) unknown.push(`${name}.${key}`);
+        continue;
+      }
+      for (const key of Object.keys(record)) if (!CORE_SERVER_KEYS.has(key)) unknown.push(`${name}.${key}`);
+      const hooks = (record.hooks ?? {}) as Record<string, unknown>;
+      for (const key of Object.keys(hooks)) if (!CORE_HOOK_KEYS.has(key)) unknown.push(`${name}.hooks.${key}`);
+    }
+    expect(unknown, "atoma refuses a tools file with a key it does not know").toEqual([]);
+  });
+
+  /** The one key this project reserves must not reach the core. */
+  test("settings is not in it", () => {
+    expect(readFileSync(DEPLOYED, "utf8")).not.toContain("settings");
   });
 });

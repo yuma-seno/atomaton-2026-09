@@ -25,7 +25,7 @@
  *
  * It cannot install a system package the default branch does not already ask for.
  * The commands come from there, so a package the agent decided it needs is not in
- * them yet -- that change goes through `setup_commands`, which is a governed path
+ * them yet -- that change goes through `environment.setup_commands`, which is a governed path
  * and needs a person. An agent that reloads hoping to get `libfoo-dev` gets the
  * same environment back and has spent a run finding out.
  *
@@ -87,7 +87,7 @@ export function reloadRefusal(soFar: number, limit: number): string | undefined 
     `unbounded chain of them is an unbounded chain of runs. ` +
     `Report what you found instead -- say which dependency or tool is missing and what you were trying to do -- ` +
     `and a person can decide. If the answer is a system package, it belongs in ` +
-    `\`environment.setup_commands\` in .github/atoma/config.json, which needs a human merge either way.`
+    `\`environment.setup_commands\` in .github/atoma/config.yaml, which needs a human merge either way.`
   );
 }
 

@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { CONFIG_FILE } from "../domain/machinery-layout.ts";
 import { parseGithubOutput, scriptPath } from "./testing/harness.ts";
 import { declarationIn } from "./read_secret_names.ts";
 
@@ -10,14 +11,15 @@ import { declarationIn } from "./read_secret_names.ts";
  * Run the script against a config file it is handed.
  *
  * Deliberately not `makeConfigDir`: this script must not read
- * `.github/atoma/config.json` from the working directory, and a harness that
+ * `.github/atoma/config.yaml` from the working directory, and a harness that
  * puts one there would hide a regression that reintroduced it.
  */
 function run(config: Record<string, unknown> | null, destination = "tools") {
   const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
-  const configPath = join(dir, "trusted-config.json");
+  const configPath = join(dir, "trusted-config.yaml");
   const outputPath = join(dir, "github_output");
-  if (config !== null) writeFileSync(configPath, JSON.stringify(config));
+  // YAML, like the file the workflow materialises from the default branch.
+  if (config !== null) writeFileSync(configPath, Bun.YAML.stringify(config));
   writeFileSync(outputPath, "");
   try {
     const r = spawnSync(
@@ -32,12 +34,19 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
+  // `checks` and `deploy` carry their list inside `atoma_runs`, the arm Atoma
+  // runs itself; `tools` has no arms, so its list stays at the top of the section.
   test("picks the destination's own list", () => {
-    const config = JSON.stringify({
-      tools: { secrets: ["A"] },
-      checks: { secrets: ["B"] },
-      deploy: { secrets: ["C"] },
-    });
+    const config = `
+tools:
+  secrets: [A]
+checks:
+  atoma_runs:
+    secrets: [B]
+deploy:
+  atoma_runs:
+    secrets: [C]
+`;
     expect(declarationIn(config, "tools")).toEqual(["A"]);
     expect(declarationIn(config, "checks")).toEqual(["B"]);
     expect(declarationIn(config, "deploy")).toEqual(["C"]);
@@ -45,6 +54,12 @@ describe("declarationIn", () => {
 
   test("an absent section declares nothing", () => {
     expect(declarationIn("{}", "tools")).toBeUndefined();
+  });
+
+  // The other arm: a project that names its own workflow gives that workflow its
+  // secrets itself, so there is nothing here for Atoma's step to be handed.
+  test("a section on the your_workflow arm declares nothing", () => {
+    expect(declarationIn("checks:\n  your_workflow: ci.yml\n", "checks")).toBeUndefined();
   });
 });
 
@@ -60,8 +75,8 @@ describe("read_secret_names.ts", () => {
   test("reads only the destination it was asked for", () => {
     const config = {
       tools: { secrets: ["SLACK_TOKEN"] },
-      checks: { secrets: ["NPM_TOKEN"] },
-      deploy: { secrets: ["AWS_ROLE_ARN"] },
+      checks: { atoma_runs: { secrets: ["NPM_TOKEN"] } },
+      deploy: { atoma_runs: { secrets: ["AWS_ROLE_ARN"] } },
     };
     expect(JSON.parse(run(config, "tools").outputs.names!)).toEqual(["SLACK_TOKEN"]);
     expect(JSON.parse(run(config, "checks").outputs.names!)).toEqual(["NPM_TOKEN"]);
@@ -122,9 +137,11 @@ describe("read_secret_names.ts", () => {
     const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
     const outputPath = join(dir, "github_output");
     writeFileSync(outputPath, "");
-    // A config.json in the working directory, to catch a fallback that reaches
+    // A config where the working tree keeps one -- `CONFIG_FILE`, so this stays
+    // the path a fallback would actually take -- to catch a fallback that reaches
     // for it: this must be ignored, not used.
-    writeFileSync(join(dir, "config.json"), JSON.stringify({ tools: { secrets: ["SHOULD_NOT_APPEAR"] } }));
+    mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });
+    writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify({ tools: { secrets: ["SHOULD_NOT_APPEAR"] } }));
     try {
       const r = spawnSync("bun", ["run", scriptPath("read_secret_names.ts"), "--destination", "tools"], {
         encoding: "utf8",

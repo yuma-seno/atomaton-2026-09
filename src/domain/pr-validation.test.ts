@@ -145,7 +145,7 @@ describe("a deliverable that cannot start a run", () => {
   // The count belongs in the summary; the problems themselves travel in the
   // comment. `summary` is also a step output, which is one line by construction.
   test("the summary names the count and stays one line", () => {
-    const outcome = decideWith([...problems, "labels.launched must be a non-empty label name."]);
+    const outcome = decideWith([...problems, "chain.labels.launched must be a non-empty label name."]);
     expect(outcome.summary).toContain("(2 problems)");
     expect(outcome.summary).not.toContain("\n");
   });

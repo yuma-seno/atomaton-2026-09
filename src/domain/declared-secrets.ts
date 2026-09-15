@@ -11,7 +11,7 @@
  * The way out is to reach the secret through a COMPUTED key,
  * `secrets[fromJSON(...)[i]]`, filling a fixed number of anonymous slots whose
  * meaning is decided at run time by whatever this module returns. The workflow
- * stops naming credentials; config.json names them instead.
+ * stops naming credentials; config.yaml names them instead.
  *
  * Two things were measured before building on this, because either would have
  * sunk it. GitHub's malicious-workflow detector blocks `toJSON(secrets)` — a run
@@ -24,21 +24,21 @@
  *
  * ## One mechanism, three destinations
  *
- * `tools.secrets`, `checks.secrets` and `deploy.secrets` are separate lists
- * because they arrive in separate workflows, in separate jobs, in separate
- * processes. The nesting is the boundary and not a filing convention: only
- * `tools.secrets` enters the agent's own environment, so a prompt injection
+ * `tools.secrets`, `checks.atoma_runs.secrets` and `deploy.atoma_runs.secrets`
+ * are separate lists because they arrive in separate workflows, in separate jobs,
+ * in separate processes. The nesting is the boundary and not a filing convention:
+ * only `tools.secrets` enters the agent's own environment, so a prompt injection
  * carried in an issue body reaches those and no deployment credential. It could
- * still propose a command that reads one — but that is a change to config.json,
+ * still propose a command that reads one — but that is a change to config.yaml,
  * which is governed, so a person sees it first.
  *
  * Collapsing these into one list would put every credential in every
  * destination while still looking like a boundary, which is worse than having
  * no boundary at all.
  *
- * The declaration lives in config.json rather than in a repository variable
+ * The declaration lives in config.yaml rather than in a repository variable
  * because it is the most security-relevant setting this project has. In
- * config.json it is versioned, it shows up in a diff, and it passes the
+ * config.yaml it is versioned, it shows up in a diff, and it passes the
  * governance gate that already covers `.github/**`. In repository settings it
  * would be invisible to everyone reviewing the repository — which is precisely
  * the audience for "what credentials can this reach".
@@ -72,7 +72,7 @@ const NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 /** A place credentials can be sent, and what it already calls its own variables. */
 export interface SecretDestination {
-  /** Dotted path in config.json, used in every message this produces. */
+  /** Dotted path in config.yaml, used in every message this produces. */
   readonly field: string;
   /**
    * Names the destination's own environment already uses.
@@ -176,7 +176,7 @@ export const TOOL_SECRETS: SecretDestination = {
 
 /** Mirrors the `env:` of the command step in `atoma-check.wac.ts`. */
 export const CHECK_SECRETS: SecretDestination = {
-  field: "checks.secrets",
+  field: "checks.atoma_runs.secrets",
   reserved: new Set(["GH_TOKEN"]),
 };
 
@@ -193,7 +193,7 @@ export const CHECK_SECRETS: SecretDestination = {
  * one would not leak anything, it would quietly redirect the deployment.
  */
 export const DEPLOY_SECRETS: SecretDestination = {
-  field: "deploy.secrets",
+  field: "deploy.atoma_runs.secrets",
   reserved: new Set([
     "ATOMA_DEPLOY_REF",
     "ATOMA_DEPLOY_TARGET",

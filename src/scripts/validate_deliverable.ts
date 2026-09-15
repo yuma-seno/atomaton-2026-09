@@ -13,7 +13,7 @@
  *
  * `tests/contract/agent-definitions.test.ts` does check that one rule, but
  * adopters never receive it: `build-dist.ts` excludes `*.test.ts` by design. And
- * `config.json`'s `checks.commands` ships empty, so an adopter's `atoma-check.yml`
+ * `config.yaml`'s `checks.atoma_runs.commands` ships empty, so an adopter's `atoma-check.yml`
  * runs nothing at all until they configure it — and whatever they put there is
  * their pipeline, not a place to hide this.
  *
@@ -26,7 +26,7 @@
  * names — with the same code a run uses. This calls it once per agent definition
  * instead of parsing YAML again in TypeScript.
  *
- * config.json is delivery's own format and the core has never heard of it. That
+ * config.yaml is delivery's own format and the core has never heard of it. That
  * half is `domain/deliverable-integrity.ts`, which likewise writes no new
  * validator: it runs the four resolvers that already exist, at pull-request time
  * instead of at merge, deploy or credential-handout time.
@@ -135,21 +135,21 @@ function collect(root: string, atoma: string): string[] {
   const atomaDir = join(root, ".github", "atoma");
   const agentDir = join(atomaDir, "agent-definitions");
   const toolsFile = join(atomaDir, "tools", "tools.yaml");
-  const configFile = join(atomaDir, "config.json");
+  const configFile = join(atomaDir, "config.yaml");
 
   const names = agentNames(agentDir);
   const problems: string[] = [];
 
-  // config.json first: it is the file every workflow reads, and a tree without one
+  // The config first: it is the file every workflow reads, and a tree without one
   // is a tree where nothing else is worth reporting in detail.
   if (!existsSync(configFile)) {
     problems.push(`${configFile} is missing. Every workflow reads it.`);
   } else {
     let config: unknown;
     try {
-      config = JSON.parse(readFileSync(configFile, "utf8"));
+      config = Bun.YAML.parse(readFileSync(configFile, "utf8"));
     } catch (error) {
-      problems.push(`${configFile} is not valid JSON: ${(error as Error).message}`);
+      problems.push(`${configFile} is not valid YAML: ${(error as Error).message}`);
     }
     if (config !== undefined) {
       problems.push(

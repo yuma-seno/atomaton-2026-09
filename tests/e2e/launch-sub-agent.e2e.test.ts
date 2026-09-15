@@ -72,7 +72,7 @@ You are a test orchestrator agent.
         outSessionPath: join(dir, "session.json"),
         env: {
           ...fakeGh.env,
-          // dispatchSubAgent reads .github/atoma/config.json relative to this
+          // dispatchSubAgent reads .github/atoma/config.yaml relative to this
           // test's cwd (the repository root).
           OPENAI_BASE_URL: mock.url,
           OPENAI_API_KEY: "dummy-test-key",
@@ -87,7 +87,7 @@ You are a test orchestrator agent.
 
       // Prove the REAL dispatch chain actually ran: a comment was posted
       // mentioning the dispatched agent, the sub-issue got labeled
-      // "launched" (proving get_config_value.ts's own real config.json
+      // "launched" (proving get_config_value.ts's own real config.yaml
       // lookup ran), and the runner workflow was dispatched for the right
       // agent/issue -- none of this is hardcoded by this test.
       const calls = fakeGh.calls();

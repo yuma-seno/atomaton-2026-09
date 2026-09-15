@@ -101,7 +101,7 @@ the moment it merges. Two breakages reached the running system exactly that way.
 
 Dispatch **Atoma Self Deploy** (`self/workflows/atoma-self-deploy.yml`) from the
 Actions tab. It opens a pull request and merges nothing. `.github/**` is in
-`governed_paths`, so a person reviews it.
+`merge.governed_paths`, so a person reviews it.
 
 What it does:
 
@@ -113,7 +113,7 @@ cp -r self/. .github/     # this repository's own, at the same paths
 
 `.github/` is therefore exactly those two sources, with nothing kept alive by
 remembering to. Before `self/` existed this was a `cp -r` followed by
-`git checkout -- .github/atoma/config.json`, and a file the template had removed
+`git checkout -- .github/atoma/config.yaml`, and a file the template had removed
 stayed in the tree with no diff to notice it by.
 
 It needs `ATOMA_SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because
@@ -132,5 +132,5 @@ self-deploy overwrites it from `self/` and the change disappears without a diff.
 
 A file added to `.github/` that is in no release and not in `self/` is not checked
 for, because the next deploy removes it anyway and because `.github/**` is in
-`governed_paths` — no agent can merge a change there, so a person reads it first.
+`merge.governed_paths` — no agent can merge a change there, so a person reads it first.
 
