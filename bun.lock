@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "atoma-autonomous-delivery",
+      "name": "atomaton",
       "devDependencies": {
         "@github-actions-workflow-ts/actions": "^2.5.0",
         "@github-actions-workflow-ts/cli": "^2.5.0",

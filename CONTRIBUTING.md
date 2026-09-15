@@ -102,7 +102,7 @@ the bypass list empty.
 **From a shell** — if you already have an admin-scoped `gh` login:
 
 ```bash
-gh api --method POST repos/yuma-seno/atoma-autonomous-delivery/rulesets \
+gh api --method POST repos/yuma-seno/atomaton/rulesets \
   --input .github/atoma/rulesets/main.json
 ```
 

@@ -19,7 +19,7 @@ archive holds `.github/`, so the files land where they belong:
 ```bash
 cd /path/to/your-repo
 curl -fsSL -o atoma-delivery.zip \
-  https://github.com/yuma-seno/atoma-autonomous-delivery/releases/latest/download/atoma-delivery.zip
+  https://github.com/yuma-seno/atomaton/releases/latest/download/atoma-delivery.zip
 unzip -o atoma-delivery.zip
 rm atoma-delivery.zip
 ```
@@ -31,7 +31,7 @@ you adopted and diff it later — see
 [Upgrading an adopted repository](docs/customization.md#upgrading-an-adopted-repository):
 
 ```bash
-gh release download v0.1.1 -R yuma-seno/atoma-autonomous-delivery -p atoma-delivery.zip
+gh release download v0.1.1 -R yuma-seno/atomaton -p atoma-delivery.zip
 ```
 
 ## Preflight checklist
@@ -126,7 +126,7 @@ flowchart TD
   at most three times. **There is currently no working cap on agent-to-agent
   handoffs** — one is written but cannot fire, and there is no token or cost
   ceiling at all. See
-  [#456](https://github.com/yuma-seno/atoma-autonomous-delivery/issues/456); this
+  [#456](https://github.com/yuma-seno/atomaton/issues/456); this
   line claimed a cap of five until that was measured.
 - Session serialization per issue/PR is guarded by the `atoma/in-progress` label and workflow concurrency group.
 - Every tool server runs as one dedicated OS user with no sudo, so no tool sees a different filesystem or `$HOME` than another. The provider API key is never in a tool server; the servers shipped here protect their own credentials; `GH_TOKEN` and any credential you route to a THIRD-PARTY server are readable by the shell tool. That is a deliberate trade -- see [What a tool can and cannot be protected from](docs/customization.md#what-a-tool-can-and-cannot-be-protected-from).
