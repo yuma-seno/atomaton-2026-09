@@ -150,7 +150,7 @@ jq -r .version .github/atoma-release.json
 
 **What did upstream delete?** Extracting never deletes, so a file the template
 dropped stays in your tree — and that is not cosmetic. Two workflows were removed
-in v0.1.73 because work should start only when somebody asks; keeping them keeps
+in v0.1.71 because work should start only when somebody asks; keeping them keeps
 the triggers. The manifest is what makes them findable:
 
 ```bash
@@ -476,12 +476,6 @@ Agents are told to treat the runner as already provisioned and never to spend
 iterations installing or configuring tooling themselves, so anything they need at
 run time belongs here. The template ships it empty on purpose: it is
 language- and framework-agnostic, and only you know what your project needs.
-
-(This guidance previously lived in an `environment.description` field inside the
-config. Nothing ever read it, and a value no code opens is invisible to the
-machinery and to the agents alike — a field is not a place to write prose. The
-file is YAML now, so a comment beside a key can say in a line what the key is for;
-anything longer is documentation, and lives in the documentation.)
 
 ### Choose the branch agents work from
 
@@ -1100,8 +1094,13 @@ This file is passed to Atoma with `--template` on every runner invocation.
 - Skills live under `.github/atoma/skills/**/*.md`.
 - Tool servers are declared under `tools.servers` in `.github/atoma/config.yaml`,
   one entry per server: `command`, `args`, `env`, `hooks`,
-  `request_timeout_secs`. `.github/atoma/tools/tools.yaml` is written from that
-  section when the template is built and is not edited.
+  `request_timeout_secs`, and `settings` — the last being this project's own,
+  stripped by the generator so it never reaches the core.
+- File-wide hooks are `tools.watch`, beside `tools.servers` rather than inside
+  any one of them. The generator writes them into the tools file under `hooks`,
+  the name the core reserves there.
+- `.github/atoma/tools/tools.yaml` is written from that section when the
+  template is built and is not edited.
 - Tool scripts and MCP servers live under `.github/atoma/tools/scripts/`.
 
 Dynamic skill behavior:
@@ -1253,8 +1252,9 @@ in two GitHub tools, and nothing anywhere else.
 **What is not covered.** `filesystem*` is a third-party server
 (`@modelcontextprotocol/server-filesystem`), and a server's `hooks` can allow or
 deny a tool but not touch its output — so `read_file` on a large file has no cap
-this project can impose. Two of that server's heaviest tools, `directory_tree` and
-`search_files`, are on its denylist for that reason. For a large file, have the
+this project can impose. That server's heaviest tool, `directory_tree`, is on its denylist for that
+reason. `search_files` sat beside it and was let back in once atoma v0.1.21
+capped every tool result: what kept it out was unbounded output, not what it does. For a large file, have the
 agent read a range with `shell_execute` (`sed -n`, `head`) instead.
 
 ### How long your tool has to answer

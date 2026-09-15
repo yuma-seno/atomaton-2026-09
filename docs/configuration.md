@@ -189,11 +189,14 @@ it at all. The `env` entry here decides which server reaches it. Both steps are
 needed and neither substitutes for the other; see docs/customization.md, "Give a
 tool a credential".
 
-## hooks
+## `tools.watch`
 
-Hooks that apply to EVERY server below, run before each server's own.
+Hooks that apply to EVERY server, run before each server's own.
 
-`hooks` is a reserved key at this level -- everything else here is a server. The
+It is called `watch` in the config so that it does not sit beside the per-server
+`hooks` meaning something narrower. The generator writes it into the tools file
+under `hooks`, which is the name the core reserves at that level -- so a server
+may not be called `hooks`, and the build refuses one that is. The
 file-wide form exists because what is worth watching is usually the run rather than
 a tool: how much has been written where, how long a search has gone on. Attached to
 one server, such a check only watches the agent while it happens to be using that
