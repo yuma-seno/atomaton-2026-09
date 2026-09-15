@@ -94,7 +94,6 @@ against](#what-a-pull-request-is-checked-against).
 - `deploy.secrets`
 - `deploy.runs_on`
 - `tools.secrets`
-- `auto_triggers` — a list, each entry with `event`, `agent`, optional `condition`
 
 `labels` also accepts names of your own beyond the three above.
 
@@ -389,8 +388,8 @@ new workflow run or a lost session does not reset it.
 Five is the default. It is chosen against a repository where a person intervenes
 often — the longest chain measured was three — so **running autonomously you will
 want a larger number**, and wanting closer supervision a smaller one. `0` means the
-default rather than "no handoffs"; to stop automatic work entirely, remove the
-`auto_triggers` entries, which says so plainly.
+default rather than "no handoffs"; `1` is how you say that an agent finishes its
+own turn and hands off to nobody.
 
 **An issue and a pull request are counted separately.** A chain that opens a pull
 request starts again from zero, because opening one is progress — the limit is for
@@ -446,9 +445,10 @@ question, or investigated and reported. `0` means the default.
 Nothing starts from a GitHub event on its own. Opening a pull request starts nobody;
 pushing to one starts nobody; leaving a review starts nobody.
 
-**This changed.** There were once four `auto_triggers` entries that started a
-reviewer on `pull_request.opened`, `synchronize` and `ready_for_review`, and an
-engineer on a `changes_requested` review. Two rules to learn instead of one — and
+**This changed.** There was once an `auto_triggers` setting, with four entries that
+started a reviewer on `pull_request.opened`, `synchronize` and `ready_for_review`,
+and an engineer on a `changes_requested` review. Two rules to learn instead of one
+— and
 the event-driven half was invisible in a way that mattered: GitHub raises no
 workflow event for anything its own token did, so those triggers fired only for a
 **person's** pull request. An agent's went through a different path entirely. One
@@ -473,21 +473,6 @@ So the machinery checks and says so, on the pull request:
 
 Addressed to whoever the run resolves as the person to notify.
 
-#### `auto_triggers`
-
-The one entry left is the slash-command path:
-
-```json
-{
-  "auto_triggers": [
-    { "event": "issue_comment.created", "agent": "$dispatch_agent", "condition": "atoma:dispatch" }
-  ]
-}
-```
-
-Add an entry if you want an event to start an agent anyway. It is your repository —
-but weigh it against the rule above, because a second way for work to start is a
-second thing every reader has to know.
 
 ### Run checks or deployment on a different machine
 
@@ -727,12 +712,12 @@ What it checks:
   imitation of it.
 - `config.json` uses only keys Atoma reads — see [the contract
   above](#configjson-contract).
-- `auto_triggers`, `merge_gates`, `deploy.targets` and the three `secrets` lists
-  parse. These were already validated, but at merge time, at deploy time, and when
+- `merge_gates`, `deploy.targets` and the three `secrets` lists parse. These were
+  already validated, but at merge time, at deploy time, and when
   a credential was handed out. Nothing new is being judged; it is being judged
   earlier.
-- Names resolve to files: an agent an `auto_triggers` entry routes to, an agent
-  `agents.<name>` configures, the workflow `workflows.ci` and `workflows.cd` name.
+- Names resolve to files: an agent `agents.<name>` configures, the workflow
+  `workflows.ci` and `workflows.cd` name.
 
 What it does not check is anything that needs a run to find out. Whether your
 commands pass, whether a deployment works, whether a model answers — that is CI's
@@ -1494,8 +1479,8 @@ that is the machinery you already have: triggers, the in-progress label, session
 persistence, review, merge gates. Nothing needs a schedule-only execution path.
 
 It also puts the cost where you can see it. An issue is free. Whether it becomes
-an agent run is then an ordinary decision — `auto_triggers`, a label, someone's
-comment — rather than something a cron expression decided months ago and nobody
+an agent run is then an ordinary decision — a label, someone's comment — rather
+than something a cron expression decided months ago and nobody
 has looked at since.
 
 **The part that will catch you.** An issue created with `GITHUB_TOKEN` raises no

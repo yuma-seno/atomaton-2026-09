@@ -45,7 +45,7 @@ function log(message: string): void {
  *
  * The name is a parameter now. It used to come from
  * `getTriggerAgent("pull_request.opened", "reviewer")` -- reading which agent an
- * `auto_triggers` entry routed that event to, and falling back to the literal
+ * `auto_triggers` entry routed that event to (that setting is gone), and falling back to the literal
  * `"reviewer"`.
  *
  * That coupling was invisible from either end. The trigger fired only for a

@@ -34,13 +34,6 @@
     "sub_issue": "atoma/sub-issue",
     "launched": "atoma/launched"
   },
-  "auto_triggers": [
-    {
-      "event": "issue_comment.created",
-      "agent": "$dispatch_agent",
-      "condition": "atoma:dispatch"
-    }
-  ],
   "governed_paths": [
     ".github/**",
     "scripts/**"

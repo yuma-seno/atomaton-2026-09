@@ -3,7 +3,9 @@
  * script and MCP server in this repo.
  */
 
-// `AutoTrigger` belongs to `domain/auto-triggers.ts`, which owns the rules that
+// `AutoTrigger` was re-exported from here. It and its module are gone: nothing read
+// the setting at run time. See `AtomaConfig` below for what it used to mean.
+// `AutoTrigger` belonged to `domain/auto-triggers.ts`, which owned the rules that
 // give `condition` its meaning. It used to be declared here, in a file with no
 // way to evaluate it — so the type listed three condition values while the
 // matcher implemented two, and nothing connected the two lists.
@@ -11,10 +13,6 @@
 // Re-exported so the many callers that import their config types from one place
 // keep working. `domain/` is the definition; this is a doorway to it, not a
 // second copy.
-import type { AutoTrigger } from "../domain/auto-triggers.ts";
-
-export type { AutoTrigger };
-
 export interface AtomaConfig {
   merge_policy: "auto" | "manual" | string;
   /**
@@ -178,7 +176,7 @@ export interface AtomaConfig {
      * often — the longest chain measured is three — so a repository running
      * autonomously will want a larger number, and one that wants tighter
      * supervision a smaller one. `0` means the default rather than "no handoffs";
-     * turn `auto_triggers` off to say that.
+     * set it to `1` to say that.
      */
     agent_handoffs?: number;
     /**
@@ -240,7 +238,6 @@ export interface AtomaConfig {
     launched?: string;
     [key: string]: string | undefined;
   };
-  auto_triggers?: AutoTrigger[];
 }
 
 /** Minimal shape of `gh issue view --json author` (NOT the REST `.user.type` shape). */

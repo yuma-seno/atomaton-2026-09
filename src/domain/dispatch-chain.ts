@@ -125,7 +125,7 @@ export function handoffLimitReached(handoffs: number, limit: number): boolean {
  * every other limit in this project: `infra::timeouts` in atoma made that the rule
  * for timeouts after three call sites took `0` literally, and a reader who learns
  * it in one place should not be surprised in another. A repository that wants no
- * automatic handoffs at all turns `auto_triggers` off, which says so.
+ * automatic handoffs at all is `1`, which says so.
  */
 export function resolveHandoffLimit(configured: unknown): number {
   const value = typeof configured === "number" ? configured : Number(configured);

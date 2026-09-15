@@ -17,7 +17,11 @@ describe("skill catalog", () => {
     const names = new Set<string>();
     for (const file of files) {
       const document = readFileSync(file, "utf8");
-      const match = document.match(/^---\n([\s\S]*?)\n---\n([\s\S]+)$/);
+      // `\r?` on every newline: a Windows checkout has CRLF line endings, and without
+      // it this matched nothing at all -- so the test failed for anyone working on
+      // Windows and passed in CI, which is the least useful place for a check to
+      // disagree with the person it is checking.
+      const match = document.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]+)$/);
       expect(match, `${file} must have YAML frontmatter and a body`).not.toBeNull();
       const metadata = Bun.YAML.parse(match![1]!) as { name?: string; description?: string };
       expect(metadata.name?.trim(), `${file} name`).toBeTruthy();
