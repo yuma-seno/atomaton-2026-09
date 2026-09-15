@@ -147,7 +147,7 @@ function classifyShellAct(command) {
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;

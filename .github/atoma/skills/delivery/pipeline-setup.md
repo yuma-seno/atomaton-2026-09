@@ -1,6 +1,6 @@
 ---
 name: delivery/pipeline-setup
-description: Load when this repository has no automated verification or deployment and the work needs one — written into config.json rather than into workflow files.
+description: Load when this repository has no automated verification or deployment and the work needs one — written into config.yaml rather than into workflow files.
 ---
 
 # Setting up verification and deployment
@@ -18,39 +18,40 @@ API alike. There is no permission that grants it. Do not try, and do not ask a
 person to paste a workflow file for you.
 
 Everything a pipeline actually *does* is a command, and commands go in
-`.github/atoma/config.json`, which you can write. Two workflows that already ship
+`.github/atoma/config.yaml`, which you can write. Two workflows that already ship
 run them.
 
 ## The environment
 
 What the project needs *installed* is separate from what verifies it:
 
-```json
-{
-  "environment": {
-    "setup_commands": ["bun install --frozen-lockfile"]
-  }
-}
+```yaml
+environment:
+  setup_commands:
+    - bun install --frozen-lockfile
 ```
 
 Write it here once and every job runs it: the agent's own shell, the checks, and
 the deployment. That is the point of the separate block. Putting `bun install` at
-the front of `checks.commands` instead looks equivalent and is not — the agent's
-shell then has the dependencies and CI installs them again, or the reverse, and the
-two environments drift. A test that passes for the agent and fails in CI comes back
-to an engineer as a defect that does not reproduce.
+the front of `checks.atoma_runs.commands` instead looks equivalent and is not —
+the agent's shell then has the dependencies and CI installs them again, or the
+reverse, and the two environments drift. A test that passes for the agent and
+fails in CI comes back to an engineer as a defect that does not reproduce.
 
 System packages belong here too, and only here. An agent cannot install one during
 a run.
 
 ## Verification
 
-```json
-{
-  "checks": {
-    "commands": ["bun run typecheck", "bun test"]
-  }
-}
+`checks` has two arms and takes exactly one. Fill in `atoma_runs` and the shipped
+workflow runs your commands:
+
+```yaml
+checks:
+  atoma_runs:
+    commands:
+      - bun run typecheck
+      - bun test
 ```
 
 They run in order in `atoma-check.yml`, after the environment setup above, and the
@@ -59,21 +60,28 @@ Whatever a contributor would type to check the project locally is what belongs
 here — read the README, the package manifest's scripts, and any CONTRIBUTING
 file before writing this, rather than guessing a stack.
 
-**If `workflows.ci` already names a workflow, that one is correct.** A repository
-with its own CI has it for reasons that are not in front of you. Leave both
-alone.
+**If `checks.your_workflow` already names a workflow, that one is correct.** A
+repository with its own CI has it for reasons that are not in front of you. Leave
+both alone, and in particular do not add `atoma_runs` beside it: a section
+carrying both arms is reported as a configuration error rather than resolved by a
+precedence rule, so the change comes back rejected instead of half-applied.
 
 ## Deployment
 
-```json
-{
-  "deploy": {
-    "targets": [
-      { "name": "staging", "on": "merge", "commands": ["./scripts/deploy.sh staging"] },
-      { "name": "production", "on": "tag", "tags": ["v*"], "commands": ["./scripts/deploy.sh prod"] }
-    ]
-  }
-}
+The same two arms, and the same rule — `deploy.atoma_runs.targets`, or
+`deploy.your_workflow`, never both.
+
+```yaml
+deploy:
+  atoma_runs:
+    targets:
+      - name: staging
+        on: merge
+        commands: ["./scripts/deploy.sh staging"]
+      - name: production
+        on: tag
+        tags: ["v*"]
+        commands: ["./scripts/deploy.sh prod"]
 ```
 
 `on` is `merge` (after a pull request lands), `tag` (a pushed tag matching
@@ -85,36 +93,49 @@ name whatever its trigger, which is what makes a `manual` rollback target useful
 
 ## Credentials
 
-Never write a credential into config.json, a command, or `tools.yaml`. Those are
-committed in plain text.
+Never write a credential into `config.yaml` or into a command. Both are committed
+in plain text.
 
 A secret is added to the repository by a person, and then *named* in the list for
 the place that needs it:
 
-```json
-{
-  "checks": { "secrets": ["NPM_TOKEN"] },
-  "deploy": { "secrets": ["AWS_ROLE_ARN"] }
-}
+```yaml
+checks:
+  atoma_runs:
+    secrets: ["NPM_TOKEN"]
+deploy:
+  atoma_runs:
+    secrets: ["AWS_ROLE_ARN"]
 ```
 
-It arrives as an environment variable under that name. The three lists are
-separate on purpose and must not be merged: each reaches only its own workflow.
+It arrives as an environment variable under that name. The three lists —
+`checks.atoma_runs.secrets`, `deploy.atoma_runs.secrets` and `tools.secrets` —
+are separate on purpose and must not be merged: each reaches only its own
+destination, and the nesting is what says so.
 
 **`tools.secrets` needs a second step, and the others do not.** Naming a secret
 there authorises the run to hold it; it does not deliver it to any tool. The tool
-that needs it must also name it in `tools.yaml`:
+that needs it must also name it in its own `env`, under `tools.servers` in the
+same file:
 
 ```yaml
-slack:
-  env:
-    SLACK_TOKEN: "${SLACK_TOKEN}"
+tools:
+  secrets: ["SLACK_TOKEN"]
+  servers:
+    slack:
+      env:
+        SLACK_TOKEN: "${SLACK_TOKEN}"
 ```
 
 A reference, never a value. Every tool that does not name it — including `shell` —
 cannot see it, and that is deliberate rather than a gap to fix. If a tool reports
-a missing credential, check whether its `tools.yaml` entry declares it before
+a missing credential, check whether its `tools.servers` entry declares it before
 concluding anything else is wrong.
+
+`tools/tools.yaml` is not where this goes. That file is **generated** from
+`tools.servers` when the deliverable is built, so an edit made there is discarded
+by the next build — and the credential stops arriving without anything reporting
+why.
 
 `checks` and `deploy` need no routing step: their commands run in a workflow of
 their own rather than beside an agent.
@@ -164,7 +185,7 @@ report it.
 
 ## Finishing
 
-Changing `.github/atoma/config.json` is a governed change: you may write it and
+Changing `.github/atoma/config.yaml` is a governed change: you may write it and
 open the pull request, and a person merges it. That is expected, not an
 obstruction. Say plainly in the pull request what will now run, on which events,
 and which secrets a person still has to add.

@@ -36,15 +36,20 @@ yourself.
   on; a consumer in another file is exactly what they cannot see.
 - If a search is not possible, the removal is unverified. Say so and return it.
 
-### `tools.yaml` or an agent definition changed
+### `tools.servers` or an agent definition changed
 
 Read **all** of `.github/atoma/agent-definitions/*.md`, not just the one in the
-diff. Every name under an agent's `mcp_servers` must exist as a top-level key in
-`tools.yaml`, and the union across all agents must be covered. Adding a server
-is safe; removing or renaming one is not.
+diff. Every name under an agent's `mcp_servers` must exist as a key under
+`tools.servers` in `.github/atoma/config.yaml`, and the union across all agents
+must be covered. Adding a server is safe; removing or renaming one is not.
 
-If `tools.yaml` spawns a command that is not `bun`, that binary has to be
-installed by the runner. Confirm the package appears in `mcp-packages.json`.
+If a server under `tools.servers` spawns a command that is not `bun`, that binary
+has to be installed by the runner. Confirm the package appears in
+`mcp-packages.json`.
+
+`tools/tools.yaml` is generated from that section when the deliverable is built.
+A diff that edits it directly is a defect whatever it says, because the next build
+overwrites it — require the change in `tools.servers` instead.
 
 ### Generated output touched
 

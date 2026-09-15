@@ -33,13 +33,13 @@ function resolveDeployTargets(raw) {
   if (raw === undefined || raw === null)
     return { targets: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.targets` must be an array."] };
+    return { targets: [], problems: ["`deploy.atoma_runs.targets` must be an array."] };
   }
   const problems = [];
   const targets = [];
   const seen = new Set;
   raw.forEach((entry, index) => {
-    const where = `\`deploy.targets[${index}]\``;
+    const where = `\`deploy.atoma_runs.targets[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;
@@ -128,7 +128,7 @@ var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
@@ -145,12 +145,12 @@ function configPath() {
 var cached;
 function loadConfig() {
   if (!cached) {
-    cached = JSON.parse(readFileSync(configPath(), "utf8"));
+    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
   }
   return cached;
 }
 function getDeployTargets() {
-  return resolveDeployTargets(loadConfig().deploy?.targets);
+  return resolveDeployTargets(loadConfig().deploy?.atoma_runs?.targets);
 }
 
 // src/scripts/lib/script-ref.ts
@@ -189,7 +189,7 @@ function main() {
   const { targets, problems } = getDeployTargets();
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.json: ${problem}`);
+      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
     }
     process.exit(1);
   }

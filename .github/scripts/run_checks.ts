@@ -18,7 +18,7 @@ var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
 var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.json`;
+var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
@@ -35,12 +35,12 @@ function configPath() {
 var cached;
 function loadConfig() {
   if (!cached) {
-    cached = JSON.parse(readFileSync(configPath(), "utf8"));
+    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
   }
   return cached;
 }
 function getCheckCommands() {
-  return loadConfig().checks?.commands?.filter((command) => command.trim() !== "") ?? [];
+  return loadConfig().checks?.atoma_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
 }
 
 // src/scripts/lib/script-ref.ts
@@ -56,7 +56,7 @@ var ref = defineScript(import.meta.url);
 function main() {
   const commands = getCheckCommands();
   if (commands.length === 0) {
-    console.log("::warning::This check verified nothing: `checks.commands` in .github/atoma/config.json is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `workflows.ci` at a workflow of your own.");
+    console.log("::warning::This check verified nothing: `checks.atoma_runs.commands` in .github/atoma/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.");
     return;
   }
   console.log(`Running ${commands.length} check command(s).`);
