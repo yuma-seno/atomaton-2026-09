@@ -13,9 +13,11 @@ The deliverable:
 - `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
-- `scripts/`: this project's own pipeline. `scan-secrets.sh` and `release.sh` are
-  what `checks.commands` and `deploy.targets` name, and they are the reason there
-  are no hand-written workflows left. Governed, like `.github/`.
+- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.targets`
+  names, and they are the reason there are no hand-written workflows left.
+  Governed, like `.github/`. The secret scan used to live here too and now ships to
+  every adopter as `.github/scripts/scan_secrets.ts`; this repository runs the
+  shipped one, so a defect in it fails here before it reaches anybody else.
 
 This repository's own:
 

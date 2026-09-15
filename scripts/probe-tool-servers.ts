@@ -3,7 +3,7 @@
  * probe-tool-servers.ts — do the tool servers actually start, at the layout a run
  * uses?
  *
- * `atoma-check` is scan-secrets → typecheck → synth → test, and **not one of those
+ * `atoma-check` is scan_secrets → typecheck → synth → test, and **not one of those
  * starts a tool server as a process.** Four defects of one shape landed in a
  * single day, all green in CI, all found only after deploying: the worst was a path
  * where moving the machinery out of the work tree put `node_modules` out of reach
