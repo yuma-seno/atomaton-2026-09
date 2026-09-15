@@ -3091,6 +3091,45 @@
     "runs": []
   },
   {
+    "path": "sessions/issue-706/engineer.json",
+    "agent": "engineer",
+    "messages": 396,
+    "calls": 207,
+    "failed": 7,
+    "refused": 17,
+    "skills": [
+      "engineering/tdd",
+      "project/conventions"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "github__get_issue": 3,
+      "filesystem__read_multiple_files": 6,
+      "github__get_issue_comments": 1,
+      "search__search_code": 19,
+      "filesystem__search_files": 2,
+      "filesystem__list_directory": 6,
+      "filesystem__read_text_file": 14,
+      "read_text_file": 1,
+      "shell__shell_execute": 153
+    },
+    "acts": {
+      "search": 116,
+      "other": 10,
+      "open": 22,
+      "edit": 5
+    },
+    "runs": [
+      {
+        "ended": "2026-09-15T17:13:44Z",
+        "ended_because": "failed",
+        "messages": 396,
+        "seconds": 2144,
+        "started": "2026-09-15T16:38:00Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-71-orchestrator.json",
     "agent": "orchestrator",
     "messages": 23,
