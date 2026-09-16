@@ -49,12 +49,30 @@
  * Not part of the deliverable -- this repository's own CI, like probe-dumpable.sh.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
 
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
 const MACHINERY = `${RUNNER_TEMP}/atoma-machinery`;
-const TOOLS_FILE = `${MACHINERY}/.github/atoma/tools/tools.yaml`;
+const CONFIG_FILE = `${MACHINERY}/.github/atoma/config.yaml`;
+const HOOK_BASE = `${MACHINERY}/.github/atoma/tools`;
+
+/**
+ * Where this probe writes the tools file, the way a run does.
+ *
+ * There is no tools file in the machinery tree to read: it stopped shipping when it
+ * became a per-run artifact, and this probe exists to measure the layout a run
+ * actually uses — so it has to build the same input a run builds, from the same
+ * config, rather than read one somebody left behind.
+ */
+const TOOLS_FILE = `${RUNNER_TEMP}/probe-tools.yaml`;
 const RUNNER_WAC = "src/workflows/atoma-runner.wac.ts";
+
+/** Write the tools file this machinery's config describes, as `write_tools_file.ts` would. */
+function writeToolsFile(): void {
+  const config = Bun.YAML.parse(readFileSync(CONFIG_FILE, "utf8")) as { tools?: ToolsSection };
+  writeFileSync(TOOLS_FILE, Bun.YAML.stringify(toolsFileFrom(config.tools, HOOK_BASE), null, 2));
+}
 
 function say(what: string): void {
   process.stdout.write(`\n=== ${what} ===\n`);
@@ -174,6 +192,9 @@ async function probe(): Promise<number> {
 
   // ── every server the tools file declares ────────────────────────────────────
   say("3. the servers a run would start");
+  // Written first, because a run writes it first. Reading one from the tree would be
+  // measuring an artifact of an older release rather than what this config produces.
+  writeToolsFile();
   const toolsYaml = Bun.YAML.parse(await Bun.file(TOOLS_FILE).text()) as Record<string, unknown>;
   // `hooks` is the one key at this level that is not a server: atoma reserves it for
   // hooks that apply to every server. Asking for it as one aborts the whole probe with
