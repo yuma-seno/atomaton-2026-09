@@ -110,9 +110,8 @@ var CI_RETRY_TAG = numericTag("ci-retry");
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
-var SCRIPTS_RUNTIME_ROOT = ".github/scripts";
 function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
+  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
 // src/scripts/guard_comment_during_run.ts
