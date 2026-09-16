@@ -31,7 +31,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 63,358 | 877,552 | 5,399,337 | 5,399,337 | 7,901,557 |
-| messages per session | 13 | 1,404 | 1,404 | 1,404 | 1,859 |
+| messages per session | 13 | 1,406 | 1,406 | 1,406 | 1,861 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -85,12 +85,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 9 sessions.
 
-**28,022,153 tokens** over 163 runs that reported them, **97.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**28,014,141 tokens** over 162 runs that reported them, **97.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,231 | 264,849 | 5,399,337 | 6,403,430 | 28,022,153 |
-| messages per session | 13 | 1,404 | 1,404 | 1,404 | 1,859 |
+| tokens per run | 24,564 | 264,849 | 5,399,337 | 6,403,430 | 28,014,141 |
+| messages per session | 13 | 1,406 | 1,406 | 1,406 | 1,861 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -149,7 +149,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,622 | 298,686 | 5,399,337 | 39,737,697 | 122,848,315 |
-| messages per session | 13 | 1,404 | 1,404 | 1,404 | 1,859 |
+| messages per session | 13 | 1,406 | 1,406 | 1,406 | 1,861 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -208,7 +208,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,622 | 298,686 | 5,399,337 | 39,737,697 | 122,848,315 |
-| messages per session | 10 | 96 | 457 | 1,404 | 14,658 |
+| messages per session | 10 | 96 | 457 | 1,406 | 14,660 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
