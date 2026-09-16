@@ -10,6 +10,7 @@ filesystem:
   hooks:
     tool_denylist:
       - filesystem__directory_tree
+    after_tool: ./scripts/hooks/note_file_opened.ts
 filesystem_readonly:
   command: mcp-server-filesystem
   args:
@@ -23,6 +24,7 @@ filesystem_readonly:
       - filesystem_readonly__read_media_file
       - filesystem_readonly__list_directory
       - filesystem_readonly__get_file_info
+    after_tool: ./scripts/hooks/note_file_opened.ts
 shell:
   command: bun
   args:
