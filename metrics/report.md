@@ -10,17 +10,17 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 15 | 26.7% | 55 | 2,144 |
-| Last 30 days | 15 | 26.7% | 55 | 2,144 |
-| Last year | 15 | 26.7% | 55 | 2,144 |
-| All time | 15 | 26.7% | 55 | 2,144 |
+| Last 7 days | 16 | 31.3% | 61 | 2,144 |
+| Last 30 days | 16 | 31.3% | 61 | 2,144 |
+| Last year | 16 | 31.3% | 61 | 2,144 |
+| All time | 16 | 31.3% | 61 | 2,144 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
 | `completed` | 11 |
-| `failed` | 4 |
+| `failed` | 5 |
 
 ## Last 7 days
 
@@ -31,7 +31,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 53,712 | 438,539 | 877,552 | 877,552 | 2,237,371 |
-| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
+| messages per session | 13 | 1,312 | 1,312 | 1,312 | 1,767 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -42,12 +42,12 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 670 | 7 | 38 | 1% |
-| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `shell__shell_execute` | 734 | 4 | 22 | 0.5% |
+| `filesystem__read_text_file` | 56 | 1 | 0 | 1.8% |
 | `search__search_code` | 26 | 0 | 0 | 0% |
 | `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
+| `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
-| `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
 | `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
@@ -67,11 +67,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 470 | 70.1% |
-| `other` | 88 | 13.1% |
-| `open` | 78 | 11.6% |
-| `verify` | 18 | 2.7% |
-| `edit` | 16 | 2.4% |
+| `search` | 520 | 70.8% |
+| `open` | 90 | 12.3% |
+| `other` | 90 | 12.3% |
+| `verify` | 18 | 2.5% |
+| `edit` | 16 | 2.2% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -90,7 +90,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 23,251 | 213,927 | 2,281,321 | 6,403,430 | 22,685,610 |
-| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
+| messages per session | 13 | 1,312 | 1,312 | 1,312 | 1,767 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -101,12 +101,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 670 | 7 | 38 | 1% |
-| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `shell__shell_execute` | 734 | 4 | 22 | 0.5% |
+| `filesystem__read_text_file` | 56 | 1 | 0 | 1.8% |
 | `search__search_code` | 26 | 0 | 0 | 0% |
 | `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
+| `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
-| `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
 | `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
@@ -126,11 +126,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 470 | 70.1% |
-| `other` | 88 | 13.1% |
-| `open` | 78 | 11.6% |
-| `verify` | 18 | 2.7% |
-| `edit` | 16 | 2.4% |
+| `search` | 520 | 70.8% |
+| `open` | 90 | 12.3% |
+| `other` | 90 | 12.3% |
+| `verify` | 18 | 2.5% |
+| `edit` | 16 | 2.2% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -149,7 +149,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
+| messages per session | 13 | 1,312 | 1,312 | 1,312 | 1,767 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -160,12 +160,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 670 | 7 | 38 | 1% |
-| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `shell__shell_execute` | 734 | 4 | 22 | 0.5% |
+| `filesystem__read_text_file` | 56 | 1 | 0 | 1.8% |
 | `search__search_code` | 26 | 0 | 0 | 0% |
 | `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
+| `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
-| `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
 | `github__get_issue` | 5 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 4 | 0 | 0 | 0% |
@@ -185,11 +185,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 470 | 70.1% |
-| `other` | 88 | 13.1% |
-| `open` | 78 | 11.6% |
-| `verify` | 18 | 2.7% |
-| `edit` | 16 | 2.4% |
+| `search` | 520 | 70.8% |
+| `open` | 90 | 12.3% |
+| `other` | 90 | 12.3% |
+| `verify` | 18 | 2.5% |
+| `edit` | 16 | 2.2% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -208,7 +208,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 10 | 96 | 457 | 1,171 | 14,425 |
+| messages per session | 10 | 96 | 457 | 1,312 | 14,566 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -220,9 +220,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 2,935 | 626 | 170 | 21.3% |
+| `shell__shell_execute` | 2,999 | 623 | 154 | 20.8% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 566 | 43 | 24 | 7.6% |
+| `filesystem__read_text_file` | 572 | 43 | 24 | 7.5% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
 | `filesystem__list_directory` | 255 | 6 | 0 | 2.4% |
 | `github__check_merge_readiness` | 223 | 2 | 0 | 0.9% |
@@ -237,7 +237,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__get_pr` | 68 | 10 | 0 | 14.7% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 59 | 6 | 0 | 10.2% |
-| `filesystem__read_multiple_files` | 55 | 0 | 0 | 0% |
+| `filesystem__read_multiple_files` | 56 | 0 | 0 | 0% |
 | `github__get_check_runs` | 53 | 6 | 0 | 11.3% |
 | `github__create_pr` | 52 | 24 | 0 | 46.2% |
 | `filesystem__search_files` | 49 | 0 | 43 | 0% |
@@ -297,10 +297,10 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,277 | 43.5% |
-| `other` | 1,074 | 36.6% |
-| `open` | 337 | 11.5% |
-| `verify` | 167 | 5.7% |
+| `search` | 1,327 | 44.2% |
+| `other` | 1,076 | 35.9% |
+| `open` | 349 | 11.6% |
+| `verify` | 167 | 5.6% |
 | `edit` | 80 | 2.7% |
 
 | skill | loads | share |
@@ -321,7 +321,7 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-16 | `shell` | 1 | 1 | [atoma-shell] exec: grep -rn "warning\\|::warning" .github/scripts/resolve_runner.ts \| head; echo "--- the deployed copy' |
+| 2026-09-16 | `shell` | 1 | 1 | [atoma-shell] exec: grep -rn "warning" .github/atoma/tools/scripts/mcp/github.ts \| grep "atoma_runs\\|runs_on\\|checks\."  |
 | 2026-09-16 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
 | 2026-09-16 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
 | 2026-09-16 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
