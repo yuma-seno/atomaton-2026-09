@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { SHIPPED_SERVERS } from "../../src/domain/shipped-servers.ts";
 import type { Session } from "../../src/lib/session.ts";
 import {
   SECRET_NAMES_VAR,
@@ -898,14 +899,12 @@ describe("generated workflows", () => {
   // review it. The filesystem servers are the deliberate exception -- their `.`
   // argument IS the workspace, which is what they exist to read.
   test("the tool servers are read from the machinery, and the workspace only where intended", () => {
-    // From the config: the generated tools file is written per run into the runner's
-    // temp directory and does not ship, so `tools.servers` is where these arguments
-    // are declared and the only place left to check them.
-    const config = Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as {
-      tools?: { servers?: Record<string, { args?: unknown }> };
-    };
-    const servers = Object.entries(config.tools?.servers ?? {});
-    expect(servers.length, "config.yaml must declare some servers").toBeGreaterThan(0);
+    // From the shipped set. These arguments were in `config.yaml` while the eight
+    // servers lived there; they are machinery, they moved to `shipped-servers.ts`, and
+    // the generated tools file is written per run into the runner's temp directory. So
+    // the constant is where a server's argv is declared and the only place to check it.
+    const servers = Object.entries(SHIPPED_SERVERS);
+    expect(servers.length, "Atoma must ship some servers").toBeGreaterThan(0);
 
     for (const [name, server] of servers) {
       for (const arg of Array.isArray(server.args) ? server.args : []) {

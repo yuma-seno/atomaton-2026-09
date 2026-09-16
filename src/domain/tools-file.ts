@@ -35,6 +35,7 @@
  * reads, so the loss of a short relative path costs nothing.
  */
 import { isAbsolute, join } from "node:path";
+import { SHIPPED_SERVERS, SHIPPED_WATCH } from "./shipped-servers.ts";
 
 /** A server entry as the config carries it: the core's own keys, plus `settings`. */
 export interface ConfiguredServer {
@@ -57,11 +58,59 @@ export interface ToolsSection {
  */
 export function toolsFileFrom(tools: ToolsSection | undefined, hookBase: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (tools?.watch && Object.keys(tools.watch).length > 0) out.hooks = absoluteHooks(tools.watch, hookBase);
-  for (const [name, server] of Object.entries(tools?.servers ?? {})) {
+
+  const watch = mergedWatch(tools?.watch);
+  if (Object.keys(watch).length > 0) out.hooks = absoluteHooks(watch, hookBase);
+
+  for (const [name, server] of Object.entries(mergedServers(tools?.servers))) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord(forTheCore.hooks)) forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
     out[name] = forTheCore;
+  }
+  return out;
+}
+
+/**
+ * The shipped servers, with the project's own merged over them.
+ *
+ * A name the shipped set does not have is an addition. A name it does have is an
+ * override, field by field: a project raising `request_timeout_secs` on `shell`, or
+ * routing a credential to `github` through `env`, says only that, and inherits the
+ * rest. Replacing the whole entry would make the smallest change require copying an
+ * argv the project has no reason to know.
+ *
+ * One level deep, and deliberately: `hooks` is replaced rather than merged into,
+ * because a project narrowing `filesystem`'s `tool_allowlist` means the list it wrote
+ * and not the union — a union could only ever widen, which is the wrong direction for
+ * something whose purpose is to restrict.
+ */
+function mergedServers(configured: Record<string, ConfiguredServer> | undefined): Record<string, ConfiguredServer> {
+  const out: Record<string, ConfiguredServer> = {};
+  for (const [name, server] of Object.entries(SHIPPED_SERVERS)) out[name] = { ...server };
+  for (const [name, server] of Object.entries(configured ?? {})) {
+    out[name] = { ...(out[name] ?? {}), ...server };
+  }
+  return out;
+}
+
+/**
+ * The shipped file-wide hooks, with the project's appended.
+ *
+ * Appended, never replaced. These are the hooks that hold the run together --
+ * `workspace_guard` is how an agent finds out its scratch directory has outgrown what
+ * the next run will carry -- and a project adding an audit hook is not asking for that
+ * to stop. Order is the contract for `before_tool`, where the first refusal wins, so
+ * the machinery's rule is asked first.
+ *
+ * Written as a list, which the core has accepted since v0.1.33. Its `Hooks` always
+ * held one; only the tools file's shape was singular.
+ */
+function mergedWatch(configured: Record<string, unknown> | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, scripts] of Object.entries(SHIPPED_WATCH)) out[key] = [...scripts];
+  for (const [key, added] of Object.entries(configured ?? {})) {
+    const theirs = Array.isArray(added) ? added : [added];
+    out[key] = [...((out[key] as unknown[]) ?? []), ...theirs];
   }
   return out;
 }
@@ -80,20 +129,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * `tool_denylist` hold tool-name globs, and rewriting those as paths would turn a
  * pattern into a filename the core then refuses to find.
  *
- * An already-absolute path is left alone, so an adopter who names one gets what they
- * asked for rather than a path joined onto a path.
+ * Either spelling, because the file-wide block is a list (the machinery's hooks plus
+ * whatever the project appended) while a server's own is usually one script. Both
+ * reach the core, which has accepted both since v0.1.33.
  */
 function absoluteHooks(hooks: Record<string, unknown>, base: string): Record<string, unknown> {
   const out: Record<string, unknown> = { ...hooks };
   for (const key of HOOK_SCRIPT_KEYS) {
-    const script = out[key];
-    if (typeof script !== "string" || script.length === 0) continue;
-    if (isAbsolute(script)) continue;
-    // Posix separators: this is written for a Linux runner, and a Windows-style
-    // separator would reach the core as part of the filename.
-    out[key] = join(base, script).split("\\").join("/");
+    const declared = out[key];
+    if (Array.isArray(declared)) {
+      out[key] = declared.map((script) => absolutePath(script, base));
+    } else if (typeof declared === "string") {
+      out[key] = absolutePath(declared, base);
+    }
   }
   return out;
+}
+
+/**
+ * One hook path, against `base`.
+ *
+ * An already-absolute path is left alone, so an adopter who names one gets what they
+ * asked for rather than a path joined onto a path. Anything that is not a string is
+ * returned untouched: this resolves paths, and reporting that one is the wrong type
+ * belongs to the core, which says so with the file in front of it.
+ */
+function absolutePath(script: unknown, base: string): unknown {
+  if (typeof script !== "string" || script.length === 0) return script;
+  if (isAbsolute(script)) return script;
+  // Posix separators: this is written for a Linux runner, and a Windows-style
+  // separator would reach the core as part of the filename.
+  return join(base, script).split("\\").join("/");
 }
 
 /**

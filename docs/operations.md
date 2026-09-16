@@ -332,10 +332,11 @@ narrower question that only has one right answer.
 
 What it checks:
 
-- Every `mcp_servers` name in every agent definition exists in the tools file
-  `tools.servers` generates, along with `knows_about` targets and `extra_body`
-  keys. This part runs `atoma validate`, so it is the same resolution a run
-  performs rather than an imitation of it.
+- Every `mcp_servers` name in every agent definition exists in the tools file the
+  run would write — the servers Atoma ships, plus whatever `tools.servers` adds —
+  along with `knows_about` targets and `extra_body` keys. This part runs
+  `atoma validate`, so it is the same resolution a run performs rather than an
+  imitation of it.
 - `config.yaml` uses only keys Atoma reads.
 - `checks` and `deploy` each declare one arm. `atoma_runs` and `your_workflow`
   together are reported here rather than resolved by a precedence rule.
@@ -355,14 +356,18 @@ file it is handed, and aborts before a single tool server starts if one is
 missing. Nothing objected at merge time, so the failure landed on whoever
 triggered the *next* run — which had already happened once here: an agent looked
 at its own tool surface, concluded a server was unused, removed it, and broke a
-different agent that depended on it.
+different agent that depended on it. A shipped server can no longer be removed
+that way, which is why they are not in `config.yaml`; a name can still be
+mistyped, and a server a project added itself can still be deleted or renamed
+while an agent still names it.
 
 **Where those names come from.** There is no tools file in your repository to
-open. It is written from `tools.servers` in `config.yaml` at the start of each
-run, into the runner's temp directory, so `tools.servers` is the list a name is
-resolved against — and the check above writes one the same way, from the pull
-request's own config, so what it resolves against is what that pull request would
-actually run with.
+open. It is written at the start of each run into the runner's temp directory,
+from the servers Atoma ships and whatever `tools.servers` in `config.yaml` adds or
+overrides. So a name resolves if it is one of the shipped eight or one you added;
+when it is neither, `atoma` says so and lists the servers that do exist. The check
+above writes a tools file the same way, from the pull request's own config, so
+what it resolves against is what that pull request would actually run with.
 
 **What you see when it fails.** The required check goes red, the problems are
 listed in a comment on the pull request, and the engineer is dispatched to fix
