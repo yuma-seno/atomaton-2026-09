@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { toolDefaults } from "../../src/domain/shipped-servers.ts";
+import { SCRIPTS_DIR } from "../../src/domain/machinery-layout.ts";
 import type { Session } from "../../src/lib/session.ts";
 import {
   SECRET_NAMES_VAR,
@@ -1074,5 +1075,41 @@ describe("generated workflows", () => {
       });
     }
     expect(offenders, "env: values that only a shell would expand").toEqual([]);
+  });
+  /**
+   * Every script a workflow runs is where the build puts it.
+   *
+   * `script-ref.ts` held its own copy of the deployed scripts directory, so when the
+   * scripts moved under `.github/atoma-runtime/` the build wrote them to the new path
+   * and the eight generated workflows went on naming the old one. Deployed, the first
+   * script a run tried was not there -- and the deploy diff had shown the files being
+   * renamed, beside workflows that did not follow them.
+   *
+   * Two literals of one fact, again. This holds the generated YAML to the constant.
+   */
+  test("every script a workflow runs is under the deployed scripts directory", () => {
+    const workflows = readdirSync("dist/.github/workflows").filter((f) => f.endsWith(".yml"));
+    expect(workflows.length, "there are workflows to check").toBeGreaterThan(0);
+
+    let named = 0;
+    for (const file of workflows) {
+      // Comment lines are skipped. A generated workflow carries the reasoning that
+      // was written beside the step, and that prose names scripts by their short
+      // path on purpose -- `scripts/write_tools_file.ts` reads better in a sentence
+      // than the deployed path does, and it is not an invocation.
+      const yaml = readFileSync(`dist/.github/workflows/${file}`, "utf8")
+        .split(/\r?\n/)
+        .filter((line) => !line.trim().startsWith("#"))
+        .join("\n");
+      for (const match of yaml.matchAll(/[\w./${}:-]*\/([a-z_]+\.ts)/g)) {
+        const path = match[0];
+        // Only the scripts this repository ships as workflow glue. A tool server or a
+        // hook is named from the tools file, not from here.
+        if (!existsSync(`src/scripts/${match[1]}`)) continue;
+        named += 1;
+        expect(path, `${file} runs ${match[1]} from outside ${SCRIPTS_DIR}/`).toContain(`${SCRIPTS_DIR}/`);
+      }
+    }
+    expect(named, "the workflows name some scripts at all").toBeGreaterThan(0);
   });
 });
