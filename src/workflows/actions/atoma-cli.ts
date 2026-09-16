@@ -33,7 +33,7 @@ import { TypedOutputsStep } from "./base.ts";
  * v0.1.12 adds the same coupling for `args`: it expands `${NAME}` there, from the
  * environment, which is how a tool server is read from the machinery checkout
  * rather than from the pull request under review. To v0.1.11 an `args` entry
- * carrying `${ATOMA_MACHINERY_ROOT:-.}` is a literal path that does not exist, so
+ * carrying `${ATOMATON_MACHINERY_ROOT:-.}` is a literal path that does not exist, so
  * this pin and `tools.servers` move together here too.
  *
  * v0.1.13 is a third coupling, and this one is with the repository's SECRETS.

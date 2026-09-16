@@ -8,7 +8,7 @@ import {
   checkoutAtomaSourceStep,
   installAtomaCliStep,
 } from "./actions/atoma-cli.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import {
   AGENT_DEFINITIONS_DIR,
   CONFIG_FILE as CONFIG_FILE_PATH,
@@ -101,8 +101,8 @@ const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt it
 // places to move the pin, and the pin is coupled to `tools.servers`, to
 // `agent-definitions/*.md` and to the repository's secrets.
 
-// Deployed-repo-relative paths into the `.github/atoma/` content tree (see
-// src/atoma/ -- config.yaml and agent-definitions/; tools/tools.yaml is written
+// Deployed-repo-relative paths into the `.github/atomaton/` content tree (see
+// src/atomaton/ -- config.yaml and agent-definitions/; tools/tools.yaml is written
 // into the deployed tree from config.yaml's `tools.servers` at build time).
 // Referenced from three separate steps below (prepare/run/dispatch-next);
 // centralized here so they can't drift from each other by typo.
@@ -155,7 +155,7 @@ const MACHINERY_DIR = "atoma-machinery";
 const MACHINERY_ABS = "\${RUNNER_TEMP}/atoma-machinery";
 
 /** The same directory, as shell -- the job exports it so every step agrees. */
-const MACHINERY = "${ATOMA_MACHINERY_ROOT}";
+const MACHINERY = "${ATOMATON_MACHINERY_ROOT}";
 
 // Six literals used to sit here, and five other files spelled the same strings
 // for themselves. See `domain/machinery-layout.ts` for why they are constants at
@@ -179,7 +179,7 @@ const TOOL_DEFAULTS_PATH = TOOL_DEFAULTS_FILE;
  * server, the servers this project ships protect their own credentials, and a
  * credential routed to a third-party server is readable by the shell.
  */
-const TOOL_USER = "atoma-tools";
+const TOOL_USER = "atomaton-tools";
 
 /**
  * Where that user's caches go.
@@ -254,7 +254,7 @@ const RUN_DIR = "\${RUNNER_TEMP}/atoma-run";
  *
  * `RUN_DIR` is shell syntax. That is right everywhere it is used inside a `run:` block
  * and wrong in an `env:` mapping -- Actions substitutes `${{ }}` there and leaves
- * `${RUNNER_TEMP}` as literal characters. `ATOMA_OPS_LOG` was set that way, so every tool
+ * `${RUNNER_TEMP}` as literal characters. `ATOMATON_OPS_LOG` was set that way, so every tool
  * that logged an operation tried to write into a directory literally named
  * `${RUNNER_TEMP}`, failed with ENOENT, and wrote nothing at all.
  *
@@ -642,17 +642,17 @@ const runAgentStep = new TypedOutputsStep(
       // Whether ISSUE_NUMBER is an issue or a pull request. `commit_and_push`
       // creates a branch on an issue run and never on a pull request run, where
       // the checkout is already the branch under review.
-      ATOMA_RUN_TYPE: "${{ inputs.type }}",
+      ATOMATON_RUN_TYPE: "${{ inputs.type }}",
       // The tally this run arrived with. `atoma_env__reload_environment` reads it to
       // decide whether it may rebuild again -- and a contract test requires every
       // `process.env` a tool server reads to appear in AGENT_ENV, because a missing
       // one reads as zero and silently buys extra reloads.
-      ATOMA_RELOAD_COUNT: "${{ inputs.reload_count }}",
+      ATOMATON_RELOAD_COUNT: "${{ inputs.reload_count }}",
       ISSUE_NOTIFY: notifyStep.outputs.notify,
       // Structured JSON-lines log every MCP tool mutation/dispatch decision
       // is written to (see lib/ops-log.ts) -- read back below to determine
       // chain_continues, and generally useful as a per-run audit trail.
-      ATOMA_OPS_LOG: `${RUN_DIR_EXPR}/atoma_ops.log`,
+      ATOMATON_OPS_LOG: `${RUN_DIR_EXPR}/atoma_ops.log`,
       // Repository variables, not secrets: which provider to use and which host
       // to reach. The `_IN` suffix keeps them out of the names Atoma reads until
       // the script has checked they are non-empty, so an unset variable cannot
@@ -670,7 +670,7 @@ export AGENT
 # Exported because the invocation below passes each one explicitly to \`env\`, and a
 # step's \`env:\` block is present in the shell's environment already -- this makes
 # the dependency visible rather than implicit.
-export GITHUB_RUN_ID ISSUE_NUMBER ISSUE_NOTIFY ATOMA_RUN_TYPE ATOMA_OPS_LOG
+export GITHUB_RUN_ID ISSUE_NUMBER ISSUE_NOTIFY ATOMATON_RUN_TYPE ATOMATON_OPS_LOG
 
 # The tools file is written now, from the config, rather than shipped. See
 # \`scripts/write_tools_file.ts\` for what shipping a generated file cost.
@@ -723,14 +723,14 @@ AGENT_ENV=(
   HOME="$HOME"
   PATH="$PATH"
   AGENT="$AGENT"
-  ATOMA_MACHINERY_ROOT="$ATOMA_MACHINERY_ROOT"
+  ATOMATON_MACHINERY_ROOT="$ATOMATON_MACHINERY_ROOT"
   GITHUB_REPOSITORY="$GITHUB_REPOSITORY"
   BRANCH="\${BRANCH:-}"
   ISSUE_NUMBER="$ISSUE_NUMBER"
   ISSUE_NOTIFY="$ISSUE_NOTIFY"
-  ATOMA_RUN_TYPE="$ATOMA_RUN_TYPE"
-  ATOMA_RELOAD_COUNT="$ATOMA_RELOAD_COUNT"
-  ATOMA_OPS_LOG="$ATOMA_OPS_LOG"
+  ATOMATON_RUN_TYPE="$ATOMATON_RUN_TYPE"
+  ATOMATON_RELOAD_COUNT="$ATOMATON_RELOAD_COUNT"
+  ATOMATON_OPS_LOG="$ATOMATON_OPS_LOG"
   # Caches, because $HOME is read-only to this user. CARGO_HOME is not a cache
   # directory -- redirecting it also hides ~/.cargo/config.toml -- but cargo has no
   # separate cache variable, and a project needing that config can commit
@@ -1181,8 +1181,8 @@ const runJob = new NormalJob("run", {
     group: "atoma-${{ inputs.type }}-${{ inputs.number }}",
     "cancel-in-progress": false,
   },
-  permissions: ATOMA_WORKFLOW_PERMISSIONS,
-  // `ATOMA_MACHINERY_ROOT` is deliberately NOT a job-level `env:` any more. It used
+  permissions: ATOMATON_WORKFLOW_PERMISSIONS,
+  // `ATOMATON_MACHINERY_ROOT` is deliberately NOT a job-level `env:` any more. It used
   // to be, set to the relative `atoma-machinery`, and the step that moves the
   // machinery out of the work tree then wrote the absolute path to `$GITHUB_ENV`.
   //
@@ -1229,14 +1229,14 @@ echo "this run's files: ${RUN_DIR}"
   // problem. See MACHINERY_ABS.
   //
   // Rewriting the variable rather than the paths that use it: every step reads
-  // `${ATOMA_MACHINERY_ROOT}`, including the agent step, which passes it through to
+  // `${ATOMATON_MACHINERY_ROOT}`, including the agent step, which passes it through to
   // the tool servers. One assignment moves all of them.
   new TypedOutputsStep({
     name: "Move the machinery out of the work tree",
     shell: "bash",
     run: `rm -rf "${MACHINERY_ABS}"
 mv "${MACHINERY_DIR}" "${MACHINERY_ABS}"
-echo "ATOMA_MACHINERY_ROOT=${MACHINERY_ABS}" >> "$GITHUB_ENV"
+echo "ATOMATON_MACHINERY_ROOT=${MACHINERY_ABS}" >> "$GITHUB_ENV"
 echo "machinery moved to ${MACHINERY_ABS}; the work tree holds only the repository"
 `,
   }),
@@ -1436,7 +1436,7 @@ fi
   // No separate "install MCP server dependencies" step needed: build-dist.ts
   // bundles every script (via Bun.build) with all its imports -- including
   // npm dependencies like @modelcontextprotocol/sdk -- inlined
-  // into a single self-contained file, so the deployed `.github/atoma/tools/scripts/**`
+  // into a single self-contained file, so the deployed `.github/atomaton/tools/scripts/**`
   // needs no package.json/node_modules/bun install at all.
   environmentSetupStep(),
   new TypedOutputsStep({
@@ -1591,7 +1591,7 @@ sudo setfacl -R -d -m "u:$(id -un):rwX" "${RUN_DIR}"
 # \`rX\` rather than \`rwX\`: read everywhere, execute only where execute is already
 # set for somebody. "Make tool hooks executable" ran earlier, so the hooks get it
 # and the ordinary files do not. Nothing here is the agent's to modify.
-sudo setfacl -R -m "u:${TOOL_USER}:rX" "$ATOMA_MACHINERY_ROOT"
+sudo setfacl -R -m "u:${TOOL_USER}:rX" "$ATOMATON_MACHINERY_ROOT"
 
 # And the libraries the servers import, which sit beside the machinery for module
 # resolution to find. Read-only for the same reason.

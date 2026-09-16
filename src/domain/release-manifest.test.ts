@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { buildManifest, MANIFEST_PATH, noLongerShipped } from "./release-manifest.ts";
+import { RELEASE_MANIFEST } from "./machinery-layout.ts";
+import { buildManifest, noLongerShipped } from "./release-manifest.ts";
 
 describe("what a release says about itself", () => {
   test("it carries the version, so an adopted tree can answer which one it is", () => {
@@ -12,10 +13,10 @@ describe("what a release says about itself", () => {
    * somebody is looking for.
    */
   test("the list is sorted", () => {
-    const manifest = buildManifest("v1", [".github/workflows/b.yml", ".github/atoma/a.json"]);
+    const manifest = buildManifest("v1", [".github/workflows/b.yml", ".github/atomaton/a.json"]);
     expect(manifest.files).toEqual([
-      ".github/atoma-release.json",
-      ".github/atoma/a.json",
+      ".github/atomaton-release.json",
+      ".github/atomaton/a.json",
       ".github/workflows/b.yml",
     ]);
   });
@@ -25,12 +26,12 @@ describe("what a release says about itself", () => {
    * in the tree and not in the list, and concludes upstream deleted it.
    */
   test("the manifest names itself", () => {
-    expect(buildManifest("v1", []).files).toContain(MANIFEST_PATH);
+    expect(buildManifest("v1", []).files).toContain(RELEASE_MANIFEST);
   });
 
   test("a path is recorded the same way whichever separator produced it", () => {
-    const manifest = buildManifest("v1", [".github\\atoma\\config.yaml"]);
-    expect(manifest.files).toContain(".github/atoma/config.yaml");
+    const manifest = buildManifest("v1", [".github\\atomaton\\config.yaml"]);
+    expect(manifest.files).toContain(".github/atomaton/config.yaml");
   });
 
   test("the same path listed twice is listed once", () => {
@@ -42,7 +43,7 @@ describe("what a release says about itself", () => {
 describe("what upstream no longer ships", () => {
   const manifest = buildManifest("v0.1.77", [
     ".github/workflows/atoma-runner.yml",
-    ".github/atoma/config.yaml",
+    ".github/atomaton/config.yaml",
   ]);
 
   test("nothing, for a tree that matches", () => {
@@ -60,9 +61,9 @@ describe("what upstream no longer ships", () => {
   });
 
   test("several, sorted", () => {
-    const tree = [...manifest.files, ".github/workflows/z.yml", ".github/atoma/old.md"];
+    const tree = [...manifest.files, ".github/workflows/z.yml", ".github/atomaton/old.md"];
     expect(noLongerShipped(manifest, tree)).toEqual([
-      ".github/atoma/old.md",
+      ".github/atomaton/old.md",
       ".github/workflows/z.yml",
     ]);
   });

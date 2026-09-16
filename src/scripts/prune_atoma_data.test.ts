@@ -64,10 +64,10 @@ function run(rules: FakeGhRule[]) {
     rules,
     cwd: repo,
     // git work happens in the temp repository above; `config.yaml` is read from the
-    // real checkout, which is what `ATOMA_MACHINERY_ROOT` exists to separate. Without
+    // real checkout, which is what `ATOMATON_MACHINERY_ROOT` exists to separate. Without
     // it the label lookup reads the temp directory and throws on a file that is not
     // there -- the script's own resolution, exercised rather than stubbed.
-    env: { ATOMA_MACHINERY_ROOT: process.cwd() },
+    env: { ATOMATON_MACHINERY_ROOT: process.cwd() },
   });
 }
 

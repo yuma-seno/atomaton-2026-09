@@ -17,8 +17,8 @@
  * # Why it is safe to ship something editable
  *
  * The rule is not "an adopter must be unable to break this" — they can delete
- * `mcp/github.ts` too. It is that `.github/atoma/` is theirs and everything else is
- * not, which `.github/atoma-runtime/` says by being a different directory. And a
+ * `mcp/github.ts` too. It is that `.github/atomaton/` is theirs and everything else is
+ * not, which `.github/atomaton-runtime/` says by being a different directory. And a
  * broken defaults file is caught: `validate_deliverable.ts` writes the tools file
  * from it on every pull request and hands it to `atoma validate`, so the failure is a
  * red check rather than a dead run.
@@ -26,13 +26,14 @@
  * # Why `description` is here at all
  *
  * The config used to show a reader what these are, badly — as
- * `bun run ${ATOMA_MACHINERY_ROOT}/...`, which is how a server starts rather than
+ * `bun run ${ATOMATON_MACHINERY_ROOT}/...`, which is how a server starts rather than
  * what it is for. The description now sits beside the definition, which is what YAML
  * was chosen for, and the generator strips it exactly as it strips `settings`.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { TOOL_DEFAULTS_FILE } from "./machinery-layout.ts";
 import type { ConfiguredServer } from "./tools-file.ts";
 
 /** A server as `defaults.yaml` carries it: the core's keys, plus this project's own. */
@@ -56,7 +57,7 @@ export interface ToolDefaults {
  *
  * **This default is correct in `src/` only.** The earlier version of this comment
  * claimed the two layouts happened to agree -- that `<runtime>/scripts/` to
- * `<runtime>/tools/` was the same step as `src/domain/` to `src/atoma-runtime/tools/`
+ * `<runtime>/tools/` was the same step as `src/domain/` to `src/atomaton-runtime/tools/`
  * -- and they do not. Bundling flattens `src/domain/` into the script that imports
  * it, so `import.meta.url` in a deployed tree is the SCRIPT's location, and `..`
  * from `<runtime>/scripts/` is `<runtime>`, which already ends in `atoma-runtime`.
@@ -68,7 +69,13 @@ export interface ToolDefaults {
  * and the build, which do run from `src/`.
  */
 function defaultPath(): string {
-  return join(dirname(fileURLToPath(import.meta.url)), "..", "atoma-runtime", "tools", "defaults.yaml");
+  // `.github/atomaton-runtime/tools/defaults.yaml` deployed is
+  // `src/atomaton-runtime/tools/defaults.yaml` here: the same path under a
+  // different root. Taken from the constant rather than rebuilt from segments,
+  // because a name broken into `join(..., "atomaton-runtime", "tools", ...)` is
+  // invisible to a search for the path and survives a rename unchanged.
+  const belowRoot = TOOL_DEFAULTS_FILE.slice(TOOL_DEFAULTS_FILE.indexOf("/") + 1);
+  return join(dirname(fileURLToPath(import.meta.url)), "..", ...belowRoot.split("/"));
 }
 
 let cached: ToolDefaults | undefined;

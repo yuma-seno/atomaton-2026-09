@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Print a dotted-path value from .github/atoma/config.yaml.
+ * Print a dotted-path value from .github/atomaton/config.yaml.
  *
  * Thin CLI wrapper around lib/config.ts's loadConfig(), invoked as a
  * workflow step (via `scriptCommand` from atoma-runner.wac.ts). Every

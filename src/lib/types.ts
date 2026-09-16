@@ -14,7 +14,7 @@
 // keep working. `domain/` is the definition; this is a doorway to it, not a
 // second copy.
 /**
- * `.github/atoma/config.yaml`, as the readers in `lib/config.ts` see it.
+ * `.github/atomaton/config.yaml`, as the readers in `lib/config.ts` see it.
  *
  * Grouped by who consumes the value. Every field is optional because a project
  * that declares nothing still runs -- the readers carry the defaults, in one place

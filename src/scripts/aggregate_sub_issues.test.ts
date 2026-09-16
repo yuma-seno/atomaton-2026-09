@@ -7,7 +7,7 @@ import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 describe("aggregate_sub_issues.ts", () => {
   test("posts a progress comment and returns early when siblings remain open", () => {
     // Needs BOTH a real git repo (the gitRun("config", ...) calls at the top
-    // of main() need one) AND a .github/atoma/config.yaml (the nested
+    // of main() need one) AND a .github/atomaton/config.yaml (the nested
     // check_open_siblings.ts call inherits this same cwd and reads config.yaml
     // via getLabel()) in the SAME directory.
     const dir = makeConfigDir({});

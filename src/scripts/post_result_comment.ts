@@ -337,7 +337,7 @@ function main(): void {
 
   // `atoma_output.txt` is empty whenever the run ended via a session-ending
   // tool call (launch_sub_agent, request_close_issue, create_pr -- see
-  // src/atoma/tools/scripts/mcp/{atoma,github}.ts's `_meta.session_ends`):
+  // src/atomaton/tools/scripts/mcp/{atoma,github}.ts's `_meta.session_ends`):
   // atoma's own inference loop stops immediately in that case, before the
   // model ever gets a further turn to produce text. Each of those tools
   // already posts its OWN dedicated, meaningful comment (e.g. "Launched

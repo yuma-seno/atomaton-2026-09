@@ -1,5 +1,5 @@
 /**
- * deliverable-integrity.test.ts — the rules that decide whether a `.github/atoma/`
+ * deliverable-integrity.test.ts — the rules that decide whether a `.github/atomaton/`
  * can start a run.
  *
  * Every case here is a name that resolves to nothing, or a setting that would be

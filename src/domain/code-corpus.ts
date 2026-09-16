@@ -11,7 +11,7 @@
  *
  * # Why the exclusions are what they are
  *
- * `.github/atoma/**` and `.github/atoma-runtime/**` are the DEPLOYED tree, generated
+ * `.github/atomaton/**` and `.github/atomaton-runtime/**` are the DEPLOYED tree, generated
  * from `src/` by `build-dist.ts`. Excluding them serves both kinds of repository for
  * different reasons: in this one they are a second copy of `src/`, so a search would
  * return the copy; in an adopter's, they are Atoma's implementation, so a question
@@ -28,6 +28,21 @@
  * index from nothing takes 275ms — which is why there is no cache either.
  */
 
+import { RUNTIME_ROOT, USER_ROOT } from "./machinery-layout.ts";
+
+/**
+ * The deployed roots, as patterns built from the layout rather than written out
+ * again.
+ *
+ * They WERE written out, as escaped regexes -- the one spelling of a path that a
+ * search for that path does not find. Renaming the layout left this list excluding
+ * a directory that no longer exists and indexing the one that replaced it, and the
+ * only symptom would have been a code search quietly answering out of generated files.
+ */
+const DEPLOYED_ROOTS = [USER_ROOT, RUNTIME_ROOT].map(
+  (root) => new RegExp(`^${root.replaceAll(".", String.raw`\.`)}/`),
+);
+
 /** Extensions worth reading as text. */
 const INDEXED = /\.(ts|tsx|js|jsx|mjs|cjs|rs|py|go|rb|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|bash|sql|md|mdx|yaml|yml|toml|json|jsonc)$/i;
 
@@ -39,8 +54,7 @@ const INDEXED = /\.(ts|tsx|js|jsx|mjs|cjs|rs|py|go|rb|java|kt|swift|c|h|cc|cpp|h
  */
 const EXCLUDED = [
   // The deployed machinery. See the module comment.
-  /^\.github\/atoma\//,
-  /^\.github\/atoma-runtime\//,
+  ...DEPLOYED_ROOTS,
   /^\.github\/workflows\/.*\.yml$/,
   // Generated output, whatever a project calls it.
   /(^|\/)(dist|build|out|coverage|vendor|node_modules|target|\.next|__pycache__)\//,

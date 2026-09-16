@@ -277,7 +277,7 @@ describe("generated workflows", () => {
    * question as "reachable by a server".
    */
   test("every environment variable a tool server reads is passed to the agent", () => {
-    const roots = ["src/atoma-runtime/tools", "src/lib", "src/domain"];
+    const roots = ["src/atomaton-runtime/tools", "src/lib", "src/domain"];
     const files: string[] = [];
     const walk = (directory: string): void => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -304,7 +304,7 @@ describe("generated workflows", () => {
      * it must be passed — an entry here is a claim that the code works without it.
      */
     const NOT_PASSED = new Map([
-      ["ATOMA_DISPATCH_WORKFLOW", "an override nothing sets; the reader has a default"],
+      ["ATOMATON_DISPATCH_WORKFLOW", "an override nothing sets; the reader has a default"],
     ]);
 
     const runner = readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8");
@@ -538,12 +538,12 @@ describe("generated workflows", () => {
     // relying on the env file winning, and a run where it did not would break every
     // path in every step at once -- looking like a bad release rather than a
     // precedence question.
-    expect(job?.env?.ATOMA_MACHINERY_ROOT, "must not also be a job-level env").toBeUndefined();
+    expect(job?.env?.ATOMATON_MACHINERY_ROOT, "must not also be a job-level env").toBeUndefined();
 
-    const setter = steps.findIndex((step) => /ATOMA_MACHINERY_ROOT=[^\n]*>>\s*"?\$GITHUB_ENV/.test(step.run ?? ""));
-    expect(setter, "the step that sets ATOMA_MACHINERY_ROOT").toBeGreaterThanOrEqual(0);
+    const setter = steps.findIndex((step) => /ATOMATON_MACHINERY_ROOT=[^\n]*>>\s*"?\$GITHUB_ENV/.test(step.run ?? ""));
+    expect(setter, "the step that sets ATOMATON_MACHINERY_ROOT").toBeGreaterThanOrEqual(0);
 
-    const assignment = /ATOMA_MACHINERY_ROOT=([^\s"]+)/.exec(steps[setter]?.run ?? "");
+    const assignment = /ATOMATON_MACHINERY_ROOT=([^\s"]+)/.exec(steps[setter]?.run ?? "");
     const value = assignment?.[1] ?? "";
     expect(value, "an absolute path outside the work tree, not a relative one").toMatch(/^\$\{RUNNER_TEMP\}\//);
 
@@ -552,8 +552,8 @@ describe("generated workflows", () => {
     for (const [index, step] of steps.entries()) {
       if (index >= setter) continue;
       expect(
-        /\$\{?ATOMA_MACHINERY_ROOT/.test(step.run ?? ""),
-        `"${step.name ?? "?"}" reads ATOMA_MACHINERY_ROOT before step ${setter} sets it`,
+        /\$\{?ATOMATON_MACHINERY_ROOT/.test(step.run ?? ""),
+        `"${step.name ?? "?"}" reads ATOMATON_MACHINERY_ROOT before step ${setter} sets it`,
       ).toBe(false);
     }
 
@@ -589,7 +589,7 @@ describe("generated workflows", () => {
     const ops = /"op":"\(([a-z_|]+)\)"/.exec(grep ?? "")?.[1]?.split("|") ?? [];
     expect(ops.length, "and must name at least one op").toBeGreaterThan(0);
 
-    const github = readFileSync("src/atoma-runtime/tools/mcp/github.ts", "utf8");
+    const github = readFileSync("src/atomaton-runtime/tools/mcp/github.ts", "utf8");
     for (const op of ops) {
       expect(github, `nothing writes an ops-log entry for "${op}"`).toContain(`logOp("${op}"`);
     }
@@ -664,7 +664,7 @@ describe("generated workflows", () => {
       const workflow = Bun.YAML.parse(readFileSync(join(directory, name), "utf8")) as WorkflowDocument;
       for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
         const steps = job.steps ?? [];
-        const firstScript = steps.findIndex((step) => step.run?.includes(".github/atoma-runtime/scripts/"));
+        const firstScript = steps.findIndex((step) => step.run?.includes(".github/atomaton-runtime/scripts/"));
         if (firstScript === -1) continue;
 
         const checkout = steps.findIndex((step) => step.uses?.startsWith("actions/checkout@"));
@@ -749,7 +749,7 @@ describe("generated workflows", () => {
         .find((candidate) => candidate.id === "secret-names");
       expect(step, `${file} secret-names step`).toBeDefined();
 
-      expect(step?.env?.ATOMA_DEFAULT_BRANCH, file).toBe("${{ github.event.repository.default_branch }}");
+      expect(step?.env?.ATOMATON_DEFAULT_BRANCH, file).toBe("${{ github.event.repository.default_branch }}");
 
       // Read back from a ref this step fetched itself, and never from FETCH_HEAD.
       //
@@ -762,7 +762,7 @@ describe("generated workflows", () => {
       // property that is pinned now.
       expect(step?.run, `${file} must not read the declaration from FETCH_HEAD`).not.toContain("FETCH_HEAD:");
       expect(step?.run, `${file} must read the declaration from a ref it fetched`).toContain(
-        'git show "refs/atoma/trusted-config:.github/atoma/config.yaml"',
+        'git show "refs/atomaton/trusted-config:.github/atomaton/config.yaml"',
       );
       // Outside the workspace, so the checkout cannot have brought the file.
       expect(step?.run, `${file} must not trust a path the checkout controls`).toContain(
@@ -867,9 +867,9 @@ describe("generated workflows", () => {
     // environment. It was a job-level `env:` until the machinery moved out of the
     // work tree -- see "the machinery ends up outside the work tree" below for why
     // there is now exactly one source rather than a job default plus an override.
-    const setter = steps.find((step) => /ATOMA_MACHINERY_ROOT=[^\n]*>>\s*"?\$GITHUB_ENV/.test(step.run ?? ""));
+    const setter = steps.find((step) => /ATOMATON_MACHINERY_ROOT=[^\n]*>>\s*"?\$GITHUB_ENV/.test(step.run ?? ""));
     expect(setter, "one step must set the machinery root").toBeDefined();
-    expect(job?.env?.ATOMA_MACHINERY_ROOT, "and it must not also be a job default").toBeUndefined();
+    expect(job?.env?.ATOMATON_MACHINERY_ROOT, "and it must not also be a job default").toBeUndefined();
 
     // And what it points at is a checkout of the default branch, not of the pull
     // request. The checkout still lands in the work tree -- `actions/checkout`
@@ -879,7 +879,7 @@ describe("generated workflows", () => {
     expect(machineryCheckout?.with?.ref).toContain("default_branch");
     expect(setter?.run, "the setter must be what moves that checkout").toContain("mv \"atoma-machinery\"");
 
-    // Nothing runs a script from the workspace. A bare `.github/atoma-runtime/scripts/` would
+    // Nothing runs a script from the workspace. A bare `.github/atomaton-runtime/scripts/` would
     // be the pull request's copy.
     for (const step of steps) {
       const run = step.run ?? "";
@@ -891,7 +891,7 @@ describe("generated workflows", () => {
     const agent = steps.find((step) => step.name === "Run agent");
     for (const flag of ["--agent-def", "--template", "--skills-dir"]) {
       const line = (agent?.run ?? "").split("\n").find((l) => l.includes(flag)) ?? "";
-      expect(line, `${flag} must resolve inside the machinery root`).toContain("ATOMA_MACHINERY_ROOT");
+      expect(line, `${flag} must resolve inside the machinery root`).toContain("ATOMATON_MACHINERY_ROOT");
     }
   });
 
@@ -911,7 +911,7 @@ describe("generated workflows", () => {
       for (const arg of Array.isArray(server.args) ? server.args : []) {
         if (typeof arg === "string" && arg.includes("tools/scripts/")) {
           expect(arg, `${name}: a server shipped here must be read from the machinery root`).toContain(
-            "ATOMA_MACHINERY_ROOT",
+            "ATOMATON_MACHINERY_ROOT",
           );
         }
       }
@@ -922,12 +922,12 @@ describe("generated workflows", () => {
     const workflow = readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8");
     // The deployed path, not the bare filename: the install step also names the
     // file in prose when it is absent, and a message is not a read.
-    for (const path of [".github/atoma-runtime/tools/packages.json", ".github/atoma-runtime/tools/hooks"]) {
+    for (const path of [".github/atomaton-runtime/tools/packages.json", ".github/atomaton-runtime/tools/hooks"]) {
       const reads = workflow.split(/\r?\n/).filter((l) => l.includes(path));
       expect(reads.length, `${path} must still be referenced at all`).toBeGreaterThan(0);
       for (const line of reads) {
         expect(line, `${path} must be read from the machinery root`).toMatch(
-          /ATOMA_MACHINERY_ROOT|atoma-machinery/,
+          /ATOMATON_MACHINERY_ROOT|atoma-machinery/,
         );
       }
     }
@@ -944,7 +944,7 @@ describe("generated workflows", () => {
     };
     type WorkflowDocument = { jobs?: Record<string, unknown> };
 
-    const ruleset = JSON.parse(readFileSync("dist/.github/atoma/rulesets/main.json", "utf8")) as Ruleset;
+    const ruleset = JSON.parse(readFileSync("dist/.github/atomaton/rulesets/main.json", "utf8")) as Ruleset;
     const contexts = (ruleset.rules ?? [])
       .filter((rule) => rule.type === "required_status_checks")
       .flatMap((rule) => rule.parameters?.required_status_checks ?? [])
@@ -1036,7 +1036,7 @@ describe("generated workflows", () => {
   /**
    * A shell variable in an `env:` mapping is six literal characters.
    *
-   * Actions substitutes `${{ }}` there and nothing else, so `ATOMA_OPS_LOG:
+   * Actions substitutes `${{ }}` there and nothing else, so `ATOMATON_OPS_LOG:
    * ${RUNNER_TEMP}/atoma-run/atoma_ops.log` set the variable to that text. Every tool
    * that logged an operation then tried to write into a directory literally named
    * `${RUNNER_TEMP}`, failed with ENOENT, and wrote nothing -- for every run between the
@@ -1080,7 +1080,7 @@ describe("generated workflows", () => {
    * Every script a workflow runs is where the build puts it.
    *
    * `script-ref.ts` held its own copy of the deployed scripts directory, so when the
-   * scripts moved under `.github/atoma-runtime/` the build wrote them to the new path
+   * scripts moved under `.github/atomaton-runtime/` the build wrote them to the new path
    * and the eight generated workflows went on naming the old one. Deployed, the first
    * script a run tried was not there -- and the deploy diff had shown the files being
    * renamed, beside workflows that did not follow them.

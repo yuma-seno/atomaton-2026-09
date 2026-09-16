@@ -55,15 +55,15 @@ const runStep = new TypedOutputsStep({
     // Reserved against `deploy.atoma_runs.secrets`, so a project cannot shadow it.
     GH_TOKEN: "${{ github.token }}",
     ...secretSlotEnv(),
-    ATOMA_DEPLOY_REF: "${{ github.ref }}",
-    ATOMA_DEPLOY_TRIGGER: "${{ inputs.trigger }}",
-    ATOMA_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
+    ATOMATON_DEPLOY_REF: "${{ github.ref }}",
+    ATOMATON_DEPLOY_TRIGGER: "${{ inputs.trigger }}",
+    ATOMATON_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
   },
   run: `${renameSecretSlots()}
 ${scriptCommandWithArgs(runDeployRef, {
-  ref: "${ATOMA_DEPLOY_REF}",
-  trigger: "${ATOMA_DEPLOY_TRIGGER}",
-  target: "${ATOMA_DEPLOY_TARGET_INPUT}",
+  ref: "${ATOMATON_DEPLOY_REF}",
+  trigger: "${ATOMATON_DEPLOY_TRIGGER}",
+  target: "${ATOMATON_DEPLOY_TARGET_INPUT}",
 })}
 `,
 });

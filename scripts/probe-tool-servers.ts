@@ -54,8 +54,8 @@ import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
 
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
 const MACHINERY = `${RUNNER_TEMP}/atoma-machinery`;
-const CONFIG_FILE = `${MACHINERY}/.github/atoma/config.yaml`;
-const HOOK_BASE = `${MACHINERY}/.github/atoma-runtime/tools`;
+const CONFIG_FILE = `${MACHINERY}/.github/atomaton/config.yaml`;
+const HOOK_BASE = `${MACHINERY}/.github/atomaton-runtime/tools`;
 
 /**
  * Where this probe writes the tools file, the way a run does.
@@ -162,10 +162,10 @@ async function probe(): Promise<number> {
   // The runner sets these on every run rather than trusting the checkout: the mode
   // is decided wherever the repository was committed from. `before_tool` is
   // fail-closed, so a hook that cannot start denies the tool outright.
-  await Bun.$`chmod -R +x ${MACHINERY}/.github/atoma-runtime/tools/hooks`.quiet().nothrow();
+  await Bun.$`chmod -R +x ${MACHINERY}/.github/atomaton-runtime/tools/hooks`.quiet().nothrow();
   result("machinery_at", MACHINERY);
 
-  const packages = (await Bun.file(`${MACHINERY}/.github/atoma-runtime/tools/packages.json`).json()) as {
+  const packages = (await Bun.file(`${MACHINERY}/.github/atomaton-runtime/tools/packages.json`).json()) as {
     npm?: string[];
     bun?: string[];
   };
@@ -243,7 +243,7 @@ async function probe(): Promise<number> {
     {
       env: {
         ...process.env,
-        ATOMA_MACHINERY_ROOT: MACHINERY,
+        ATOMATON_MACHINERY_ROOT: MACHINERY,
         OPENAI_API_KEY: "probe-key",
         OPENAI_BASE_URL: `http://127.0.0.1:${llm.port}`,
         ATOMA_PROVIDER: "openai",

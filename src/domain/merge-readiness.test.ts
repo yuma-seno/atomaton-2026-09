@@ -262,7 +262,7 @@ describe("decideMergeReadiness", () => {
   });
 
   test("a governed change elsewhere gets no advice about CI", () => {
-    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atoma/agent-definitions/x.md"] }));
+    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atomaton/agent-definitions/x.md"] }));
     expect(blockers[0]?.detail).not.toContain("checks.atoma_runs.commands");
   });
 
@@ -284,10 +284,10 @@ describe("decideMergeReadiness", () => {
 
 describe("governedPathsIn", () => {
   test("claims everything under a named directory", () => {
-    const files = [".github/workflows/ci.yml", ".github/atoma/config.yaml", "src/index.ts"];
+    const files = [".github/workflows/ci.yml", ".github/atomaton/config.yaml", "src/index.ts"];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual([
       ".github/workflows/ci.yml",
-      ".github/atoma/config.yaml",
+      ".github/atomaton/config.yaml",
     ]);
   });
 
@@ -298,16 +298,16 @@ describe("governedPathsIn", () => {
   // already obey it.
   test("covers the runner's own control scripts", () => {
     const files = [
-      ".github/atoma-runtime/scripts/decide_guard_release.ts",
-      ".github/atoma-runtime/scripts/manage_dispatch_loop.ts",
-      ".github/atoma-runtime/scripts/save_agent_session.ts",
+      ".github/atomaton-runtime/scripts/decide_guard_release.ts",
+      ".github/atomaton-runtime/scripts/manage_dispatch_loop.ts",
+      ".github/atomaton-runtime/scripts/save_agent_session.ts",
     ];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual(files);
   });
 
   // A project that wants the old, narrower behaviour can still name parts.
   test("a project can narrow the default back to particular directories", () => {
-    expect(governedPathsIn([".github/atoma-runtime/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
+    expect(governedPathsIn([".github/atomaton-runtime/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
       ".github/workflows/ci.yml",
     ]);
   });
@@ -319,9 +319,9 @@ describe("governedPathsIn", () => {
   // The default names an adopter's deployed tree. A template repository develops
   // the same files under `src/`, where they are ordinary source until deployed.
   test("the default covers the deployed tree, not a template's source", () => {
-    expect(governedPathsIn(["src/atoma/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
-    expect(governedPathsIn(["src/atoma/agent-definitions/engineer.md"], ["src/atoma/**"])).toEqual([
-      "src/atoma/agent-definitions/engineer.md",
+    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
+    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], ["src/atomaton/**"])).toEqual([
+      "src/atomaton/agent-definitions/engineer.md",
     ]);
   });
 

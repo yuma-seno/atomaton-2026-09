@@ -55,7 +55,7 @@ You have succeeded when `Atoma Entry` routes to `atoma-runner`, the issue carrie
 | know why it is built this way | [Environment-Driven Development](docs/edd.md) — the idea the whole system is an argument for |
 | change the template itself | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-Paths are conventions rather than settings, and `.github/atoma/README.md` — which
+Paths are conventions rather than settings, and `.github/atomaton/README.md` — which
 ships with the deliverable — says what each one holds and why.
 
 ## What this costs you, and what bounds it

@@ -82,7 +82,7 @@ function main(): void {
   const { targets, problems } = getDeployTargets();
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
+      console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
     }
     process.exit(1);
   }
@@ -109,7 +109,7 @@ function main(): void {
         stderr: "inherit",
         // Lets a command tell which deployment it is running under without the
         // target having to repeat its own name in every line.
-        env: { ...process.env, ATOMA_DEPLOY_TARGET: target.name },
+        env: { ...process.env, ATOMATON_DEPLOY_TARGET: target.name },
       });
       if (result.exitCode !== 0) {
         console.log("::endgroup::");

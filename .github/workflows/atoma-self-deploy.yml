@@ -1,11 +1,11 @@
-# Atoma Self Deploy — apply a release of this repository's own deliverable to its
+# Atomaton Self Deploy — apply a release of this repository's own deliverable to its
 # own `.github/`, as a pull request, on a button press.
 #
 # ## Why this file is hand-written and lives in `self/`
 #
 # Every other workflow under `.github/workflows/` is generated from
 # `src/workflows/` and shipped to adopters in `atoma-delivery.zip`. This one is
-# neither. It is deliberately outside Atoma's machinery:
+# neither. It is deliberately outside Atomaton's machinery:
 #
 #   - it is not in the deliverable, so no adopter receives a workflow naming a
 #     secret they do not have
@@ -35,7 +35,7 @@
 # nowhere else, and `atoma-runner.yml` does not name it -- `atoma` gives a tool
 # server only the credentials that server's own entry under `tools.servers` declares.
 #
-# A PAT is acceptable here and not inside Atoma because the thing holding it is a
+# A PAT is acceptable here and not inside Atomaton because the thing holding it is a
 # person pressing a button, not a model. The rule -- a pull request may not
 # decide its own execution environment -- is not crossed, because nothing an agent
 # produces reaches this token.
@@ -45,7 +45,7 @@
 # It does not merge. `.github/**` is in `merge.governed_paths`, so the pull request needs
 # a person. That is the intended shape: this removes the tedium of preparing the
 # deploy, not the review of it.
-name: Atoma Self Deploy
+name: Atomaton Self Deploy
 
 on:
   workflow_dispatch:

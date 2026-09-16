@@ -1,7 +1,7 @@
 import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./actions/base.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
@@ -28,7 +28,7 @@ import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scrip
 //
 // It also checks the deliverable the pull request would merge, before asking CI to
 // run at all. An agent editing its own tool surface is ordinary work, and until now
-// it could merge a `.github/atoma/` that stops the next run from starting: atoma
+// it could merge a `.github/atomaton/` that stops the next run from starting: atoma
 // resolves every name in an agent's `mcp_servers` against tools.yaml and aborts
 // before a single server starts, so the failure landed on whoever triggered the
 // next run rather than on this pull request. See `scripts/validate_deliverable.ts`.
@@ -147,7 +147,7 @@ export const atomaValidatePr = new Workflow("atoma-validate-pr", {
     },
   } as unknown as GWT.Workflow["on"],
   permissions: {
-    ...ATOMA_WORKFLOW_PERMISSIONS,
+    ...ATOMATON_WORKFLOW_PERMISSIONS,
     // Writing the mirrored check run. Without this the pull request can never
     // satisfy a required status check -- see validate_pull_request.ts.
     checks: "write",
@@ -168,7 +168,7 @@ export const atomaValidatePr = new Workflow("atoma-validate-pr", {
         group: "atoma-validate-${{ inputs.number }}",
         "cancel-in-progress": true,
       },
-      permissions: { ...ATOMA_WORKFLOW_PERMISSIONS, checks: "write" },
+      permissions: { ...ATOMATON_WORKFLOW_PERMISSIONS, checks: "write" },
     },
     [
       new ActionsCheckoutV4({ name: "Checkout repository" }),

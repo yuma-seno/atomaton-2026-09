@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { CONFIG_FILE } from "../../src/domain/machinery-layout.ts";
 
 /**
  * `self/` and `.github/` do not drift apart.
@@ -13,7 +14,7 @@ import { join, relative } from "node:path";
  *
  * - a file the upstream release had **deleted** stayed in the tree. `unzip -o`
  *   overwrites and never removes, so there was no diff to notice it by. The old
- *   `conventions.md` said to "look for orphans under `.github/atoma/` yourself".
+ *   `conventions.md` said to "look for orphans under `.github/atomaton/` yourself".
  * - the preserve list lived in a person's memory. `config.yaml` was restored every
  *   time because it was remembered, not because anything checked.
  *
@@ -59,6 +60,13 @@ import { join, relative } from "node:path";
 const OVERLAY = "self";
 const DEPLOYED = ".github";
 const BUILT = "dist/.github";
+
+/**
+ * The one path `self/` is allowed to shadow, as a path under `.github/` rather
+ * than as a second spelling of it. It was spelled out, and renaming the layout
+ * turned the deliberate exception into a violation of the rule it exempts.
+ */
+const OVERRIDABLE = relative(DEPLOYED, CONFIG_FILE).replaceAll("\\", "/");
 
 function filesUnder(root: string): string[] {
   if (!existsSync(root)) return [];
@@ -125,7 +133,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
     }
     const shadowed = filesUnder(OVERLAY)
       .filter((file) => existsSync(join(BUILT, file)))
-      .filter((file) => file !== "atoma/config.yaml");
+      .filter((file) => file !== OVERRIDABLE);
     expect(
       shadowed,
       `the deliverable ships these too, so ${OVERLAY}/ silently overrides them. If the intent is ` +

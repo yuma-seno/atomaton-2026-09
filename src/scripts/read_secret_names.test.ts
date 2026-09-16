@@ -11,7 +11,7 @@ import { declarationIn } from "./read_secret_names.ts";
  * Run the script against a config file it is handed.
  *
  * Deliberately not `makeConfigDir`: this script must not read
- * `.github/atoma/config.yaml` from the working directory, and a harness that
+ * `.github/atomaton/config.yaml` from the working directory, and a harness that
  * puts one there would hide a regression that reintroduced it.
  */
 function run(config: Record<string, unknown> | null, destination = "tools") {

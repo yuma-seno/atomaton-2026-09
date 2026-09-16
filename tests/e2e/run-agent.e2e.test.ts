@@ -3,7 +3,7 @@
  * running its real inference loop and real MCP client, driven against:
  *   - a local mock OpenAI-compatible HTTP server (mock-llm-server.ts) that
  *     returns scripted responses, so no real LLM API call is made;
- *   - the REAL, compiled `dist/.github/atoma-runtime/tools/mcp/github.ts`
+ *   - the REAL, compiled `dist/.github/atomaton-runtime/tools/mcp/github.ts`
  *     MCP server, spawned exactly like production does (via `bun run`),
  *     communicating over real stdio JSON-RPC;
  *   - a fake `gh` CLI stub (fake-gh.ts, reusing src/scripts/testing/bin/gh)
@@ -29,10 +29,10 @@ import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
 
-const GITHUB_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/github.ts");
-const SHELL_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/shell.ts");
-const PROMPT_TEMPLATE = join(REPO_ROOT, "dist/.github/atoma/prompt-template.md");
-const SKILLS_DIR = join(REPO_ROOT, "dist/.github/atoma/skills");
+const GITHUB_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atomaton-runtime/tools/mcp/github.ts");
+const SHELL_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atomaton-runtime/tools/mcp/shell.ts");
+const PROMPT_TEMPLATE = join(REPO_ROOT, "dist/.github/atomaton/prompt-template.md");
+const SKILLS_DIR = join(REPO_ROOT, "dist/.github/atomaton/skills");
 
 describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/github.ts", () => {
   test("agent executes a command through the real shell MCP server", async () => {
@@ -146,7 +146,7 @@ You are a test agent.
         env: {
           ...fakeGh.env,
           GITHUB_REPOSITORY: "owner/repo",
-          ATOMA_OPS_LOG: join(dir, "ops.log"),
+          ATOMATON_OPS_LOG: join(dir, "ops.log"),
           OPENAI_BASE_URL: mock.url,
           OPENAI_API_KEY: "dummy-test-key",
           ATOMA_PROVIDER: "openai",

@@ -1,8 +1,8 @@
 /**
- * config.ts — shared helper for reading .github/atoma/config.yaml. The one
+ * config.ts — shared helper for reading .github/atomaton/config.yaml. The one
  * canonical copy used by every script and MCP server in this repo.
  *
- * Resolved against `ATOMA_MACHINERY_ROOT` when that is set, and against the
+ * Resolved against `ATOMATON_MACHINERY_ROOT` when that is set, and against the
  * working directory otherwise -- see `configPath()` for why a runner sets it.
  */
 import { readFileSync } from "node:fs";
@@ -21,7 +21,7 @@ import { CONFIG_FILE } from "../domain/machinery-layout.ts";
 /**
  * Where this project's configuration is read from.
  *
- * `ATOMA_MACHINERY_ROOT` is set by `atoma-runner` to a checkout of the default
+ * `ATOMATON_MACHINERY_ROOT` is set by `atoma-runner` to a checkout of the default
  * branch, and unset everywhere else. The difference matters on a pull request
  * run: that workspace is the pull request's own head, so reading configuration
  * from it would let a pull request decide how the run reviewing it behaves --
@@ -31,7 +31,7 @@ import { CONFIG_FILE } from "../domain/machinery-layout.ts";
  * wants and what this did before.
  */
 function configPath(): string {
-  const root = process.env.ATOMA_MACHINERY_ROOT?.trim();
+  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
   return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
 }
 
@@ -188,7 +188,7 @@ export function getMergeGates(): MergeGatesResolution {
 // `configPath()` above now sends every other setting to the default branch too on
 // a runner, which makes the two consistent -- but not interchangeable. That one
 // resolves a path it was handed; this one resolves one from the environment. The
-// separation is what keeps a missing `ATOMA_MACHINERY_ROOT` from silently
+// separation is what keeps a missing `ATOMATON_MACHINERY_ROOT` from silently
 // downgrading a credential decision to the working tree.
 
 /**
@@ -220,7 +220,7 @@ export function getDeployTargets(): DeployTargetsResolution {
  * project configuration: versioned, reviewable in a pull request, and one fewer
  * thing to remember when setting a repository up. That only works because
  * config.yaml is yours — the documented upgrade deliberately does not overwrite
- * it, unlike everything else under `.github/atoma/`.
+ * it, unlike everything else under `.github/atomaton/`.
  */
 export function getWorkflowName(kind: "ci" | "cd", fallback = ""): string {
   // `checks.your_workflow` and `deploy.your_workflow` are the other arm of those two

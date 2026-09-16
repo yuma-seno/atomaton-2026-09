@@ -72,7 +72,7 @@
  *
  * `--deliverable-report` names the file `validate_deliverable.ts` wrote for this
  * pull request. A non-empty one means the pull request would merge a
- * `.github/atoma/` that cannot start a run, and this script then writes the failing
+ * `.github/atomaton/` that cannot start a run, and this script then writes the failing
  * checks and hands it back WITHOUT dispatching CI — there is nothing to learn from
  * running a pipeline against a deliverable that cannot be loaded.
  *
@@ -198,7 +198,7 @@ function reportFailure(
  * Dispatch CI and wait for it, returning what it concluded.
  *
  * A function rather than the body of `main`, so the one caller that must NOT run it
- * — a pull request whose own `.github/atoma/` is broken — can skip it by not
+ * — a pull request whose own `.github/atomaton/` is broken — can skip it by not
  * calling it, instead of by an early return that would also skip writing the
  * checks and the comment.
  *
@@ -332,7 +332,7 @@ function main(): void {
     // decision, so it reads as a warning where the case above reads as a notice.
     log(
       `::warning::${baseRef} requires no status checks, so CI results gate nothing here. ` +
-        "Import .github/atoma/rulesets/main.json if that was not intended.",
+        "Import .github/atomaton/rulesets/main.json if that was not intended.",
     );
   }
 

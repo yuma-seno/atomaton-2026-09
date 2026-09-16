@@ -3,7 +3,7 @@ import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { dispatchToAtomaRunner } from "./atoma-runner.wac.ts";
@@ -51,7 +51,7 @@ const parseCommandStep = new TypedOutputsStep(
     if: PARSE_ALLOWED,
     shell: "bash",
     env: {
-      ATOMA_COMMENT_BODY: githubEvent<IssueCommentCreatedEvent>((e) => e.comment.body),
+      ATOMATON_COMMENT_BODY: githubEvent<IssueCommentCreatedEvent>((e) => e.comment.body),
     },
     run: `${scriptCommand(parseCommentCommandRef)}\n`,
   },
@@ -199,7 +199,7 @@ export const atomaManualComment = new Workflow("atoma-manual-comment", {
   on: {
     issue_comment: { types: ["created"] },
   },
-  permissions: ATOMA_WORKFLOW_PERMISSIONS,
+  permissions: ATOMATON_WORKFLOW_PERMISSIONS,
 }).addJobs(
   startJob(
     "parse",

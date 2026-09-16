@@ -11,7 +11,7 @@
  * The question was asked properly and answered no. Every constraint this system
  * relies on is shaped around a ROOT rather than around individual files:
  *
- *   - `setfacl -R` grants the tool user read on `ATOMA_MACHINERY_ROOT`. A path
+ *   - `setfacl -R` grants the tool user read on `ATOMATON_MACHINERY_ROOT`. A path
  *     outside it is unreadable to the servers, and the symptom is "no server
  *     started" rather than "that path was wrong".
  *   - `merge.governed_paths` defaults to `.github/**`, which is what keeps a change to a
@@ -36,7 +36,7 @@
  *
  * They were in six, independently re-derived: the workflow generator, the config
  * reader, the secret slots, the bundler, the metrics report and the test harness
- * each spelled `.github/atoma/...` for themselves. Nothing failed, because they
+ * each spelled `.github/atomaton/...` for themselves. Nothing failed, because they
  * agreed — which is exactly how a set of literals stays wrong once one of them
  * moves.
  *
@@ -50,7 +50,7 @@
  * The directory an adopter edits. Nothing else in `.github/` is theirs.
  *
  * That sentence is the whole layout, and it was not true until this constant split
- * in two. `.github/atoma/` used to hold the tool servers' implementations and their
+ * in two. `.github/atomaton/` used to hold the tool servers' implementations and their
  * package list beside the config, the agent definitions and the skills -- so the rule
  * a reader needed was "this folder is yours, except these parts", which is not a rule
  * anybody keeps.
@@ -59,26 +59,26 @@
  * template, the skills, and the ruleset it applies by hand. Every one of those
  * degrades when it is edited badly -- a worse-informed agent, not a dead run.
  */
-export const USER_ROOT = ".github/atoma";
+export const USER_ROOT = ".github/atomaton";
 
 /**
  * What Atoma runs, and what a project does not touch.
  *
  * The MCP servers, the hooks, the default tool declarations, and the scripts the
  * workflows invoke. Separate from [`USER_ROOT`] so that "everything outside
- * `.github/atoma/` is ours" has no exceptions -- `.github/workflows/` is the only
+ * `.github/atomaton/` is ours" has no exceptions -- `.github/workflows/` is the only
  * other directory, and GitHub decides where that lives.
  *
  * Deleting something here breaks a run rather than degrading one. That is the line:
  * hide what breaks, show what degrades.
  */
-export const RUNTIME_ROOT = ".github/atoma-runtime";
+export const RUNTIME_ROOT = ".github/atomaton-runtime";
 
 /**
  * The one path that cannot come from configuration, named here rather than left
  * as the literal nobody mentions.
  *
- * `secret-slots.ts` reads it with `git show refs/atoma/trusted-config:<this>` —
+ * `secret-slots.ts` reads it with `git show refs/atomaton/trusted-config:<this>` —
  * out of the default branch's object store, before any file exists on disk.
  * That read is a security boundary: it is what stops a pull request declaring
  * which credentials it may reach.
@@ -137,7 +137,7 @@ export const TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 /**
  * Packages the SHIPPED tool servers need, installed before a run.
  *
- * Here rather than in `.github/atoma/` because both entries exist for a shipped
+ * Here rather than in `.github/atomaton/` because both entries exist for a shipped
  * server -- `@modelcontextprotocol/server-filesystem` is what `filesystem` runs, and
  * `@huggingface/transformers` is what `search` reranks with. Neither is a project's
  * decision, and a project that adds a server of its own declares what it needs in
@@ -160,10 +160,10 @@ export const RULESETS_DIR = `${USER_ROOT}/rulesets`;
  * share is the thing the layout is sorted by -- neither is a project's to edit.
  *
  * It was `.github/scripts/`, which made the rule "everything outside
- * `.github/atoma/` is ours" need a second clause naming a second directory. One
+ * `.github/atomaton/` is ours" need a second clause naming a second directory. One
  * root for the runtime is what lets the rule be a sentence.
  */
 export const SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
 /** What the deployed release is, written by the deploy and read to decide whether an upgrade is due. */
-export const RELEASE_MANIFEST = ".github/atoma-release.json";
+export const RELEASE_MANIFEST = ".github/atomaton-release.json";

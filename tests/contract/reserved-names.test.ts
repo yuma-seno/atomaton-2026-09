@@ -40,7 +40,7 @@ function carrierEnvKeys(workflow: string, job: string, stepName: string): string
 /**
  * The slots are the transport for declared secrets, not names a project competes
  * with -- `renameSecretSlots()` renames each to whatever `config.yaml` asked for
- * before the command runs. `ATOMA_SECRET_NAMES` carries the list itself.
+ * before the command runs. `ATOMATON_SECRET_NAMES` carries the list itself.
  */
 function isSecretTransport(name: string): boolean {
   return name.startsWith(SECRET_SLOT_PREFIX) || name === SECRET_NAMES_VAR;

@@ -16,7 +16,7 @@ The deliverable:
 - `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atoma_runs.targets`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
-  every adopter as `.github/atoma-runtime/scripts/scan_secrets.ts`; this repository
+  every adopter as `.github/atomaton-runtime/scripts/scan_secrets.ts`; this repository
   runs the shipped one, so a defect in it fails here before it reaches anybody else.
 
 This repository's own:
@@ -42,7 +42,7 @@ When changing template behavior, treat `src/` as canonical.
 
 ## Branch protection
 
-What may reach `main` is declared in `.github/atoma/rulesets/main.json`: no direct
+What may reach `main` is declared in `.github/atomaton/rulesets/main.json`: no direct
 pushes, no force-pushes, no branch deletion, and a pull request that cannot merge
 until the `atoma-check` job passes.
 
@@ -57,7 +57,7 @@ in `atoma-check.yml`, and the two are joined by nothing else.
 of the ruleset is applied by hand, so renaming either side means applying it again:
 
 ```bash
-gh api -X PUT repos/{owner}/{repo}/rulesets/{id} --input .github/atoma/rulesets/main.json
+gh api -X PUT repos/{owner}/{repo}/rulesets/{id} --input .github/atomaton/rulesets/main.json
 ```
 
 **Nothing needs a bypass.** No workflow writes to `main` — the release deployment
@@ -93,7 +93,7 @@ from it, so there is no tag to push and nothing that can disagree. Releasing is 
 ordinary reviewed change rather than a separate act of remembering.
 
 That script is this project's one `deploy.atoma_runs.targets` entry, declared `on: merge` in
-`.github/atoma/config.yaml`. It runs after every merge and is idempotent: it reads
+`.github/atomaton/config.yaml`. It runs after every merge and is idempotent: it reads
 the declared version, finds a release already exists for it, and stops before
 installing anything. Only a merge that changes the version reaches the build,
 where it packages `dist/` as `atoma-delivery.zip` with `.github/` at the archive
@@ -208,7 +208,7 @@ What each command proves:
 - `test:e2e`: end-to-end checks in `tests/e2e`.
 
 `test:e2e` runs against the built tree, so `bun run synth` has to come first — it
-reads `dist/.github/atoma-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
+reads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
 not have until you build it.
 
 ## Generated-file discipline
@@ -232,7 +232,7 @@ not have until you build it.
 
 - Describe behavior changes from an adopter perspective.
 - Include exact commands you ran and outcomes.
-- Do not include `.github/atoma`; it is upgraded deliberately, not per pull
+- Do not include `.github/atomaton`; it is upgraded deliberately, not per pull
   request. `dist/` cannot appear at all — it is gitignored.
 - Avoid unrelated refactors in the same PR.
 - If you changed workflow dispatch semantics, call out backward compatibility impact explicitly.

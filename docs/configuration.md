@@ -1,8 +1,8 @@
 # Configuration
 
-For somebody who has Atoma running and wants to know exactly what a setting does.
+For somebody who has Atomaton running and wants to know exactly what a setting does.
 
-Everything this project declares lives in one file, `.github/atoma/config.yaml`,
+Everything this project declares lives in one file, `.github/atomaton/config.yaml`,
 and everything one agent declares lives in that agent's definition. This page is
 the long form for both: what each setting is for, and the measurements behind the
 numbers that have one. It is the reference, so every settable key is here. If you
@@ -12,26 +12,26 @@ The file itself carries a line or two per key — enough to know what you are
 looking at while editing. Anything longer is here, so that the config stays
 scannable and a reason is written once rather than in two places that can drift.
 
-Paths are not settings. `.github/atoma/README.md` says why.
+Paths are not settings. `.github/atomaton/README.md` says why.
 
 ## What you edit, and what is generated
 
 In your adopted repository, `.github/` is the runtime copy that the workflows
-execute. Edit your copied `.github/atoma/` files directly — `config.yaml` for
+execute. Edit your copied `.github/atomaton/` files directly — `config.yaml` for
 every setting, and the agent definitions, the skills and the prompt template for
 the rest. In this template repository the same files are hand-authored under
 `src/`, and `dist/.github/` is generated output that `bun run synth` builds and a
 release publishes as `atoma-delivery.zip`.
 
 What you receive has **two roots**, and which one a file is under is the whole
-rule. `.github/atoma/` is yours: the config, the agent definitions, the prompt
-template, the skills, the rulesets. `.github/atoma-runtime/` is Atoma's: the tool
+rule. `.github/atomaton/` is yours: the config, the agent definitions, the prompt
+template, the skills, the rulesets. `.github/atomaton-runtime/` is Atomaton's: the tool
 servers, their hooks, the defaults they start from, the packages they need, and the
 scripts the workflows run. Nothing in it is a setting, and an edit there is gone at
 the next upgrade — which is why it is a directory of its own rather than a corner of
 yours. `.github/workflows/` is generated as well; GitHub decides where that lives.
 
-`config.yaml` is **yours**. Everything else under `.github/atoma/` is generated and
+`config.yaml` is **yours**. Everything else under `.github/atomaton/` is generated and
 is replaced when you upgrade the template; this file is not, so edits to it
 survive. A setting that describes one agent rather than the delivery system belongs
 in that agent's definition instead — that file is Atoma's own contract, validated
@@ -45,10 +45,10 @@ kinds of file, and only you can say which of your edits are deliberate:
 
 | Path | Yours to edit? |
 | --- | --- |
-| `.github/atoma-runtime/**`, `.github/workflows/**` | No — generated, replace wholesale |
-| `.github/atoma/config.yaml` | Yes — every setting lives here on purpose |
-| `.github/atoma/skills/project/**` | Yes — your own skills, the template ships none |
-| `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `rulesets/**` | Both — the template ships defaults it also expects you to tune |
+| `.github/atomaton-runtime/**`, `.github/workflows/**` | No — generated, replace wholesale |
+| `.github/atomaton/config.yaml` | Yes — every setting lives here on purpose |
+| `.github/atomaton/skills/project/**` | Yes — your own skills, the template ships none |
+| `.github/atomaton/agent-definitions/**`, `skills/**`, `prompt-template.md`, `rulesets/**` | Both — the template ships defaults it also expects you to tune |
 
 That last row is the awkward one, and no script can resolve it: a difference there
 is either an improvement you have not taken yet or a change you made on purpose,
@@ -56,7 +56,7 @@ and the files look identical either way.
 
 The file `atoma --tools-file` reads is in none of these rows, because you do not
 receive it. Each run writes it into the runner's temp directory — the servers
-Atoma ships, plus whatever `tools.servers` in `config.yaml` adds or overrides —
+Atomaton ships, plus whatever `tools.servers` in `config.yaml` adds or overrides —
 and throws it away with the runner. It used to ship, generated once when the
 deliverable was built, which left an adopted repository holding a config and a
 file generated from it with nothing on its side able to regenerate one from the
@@ -66,14 +66,14 @@ validate` resolved `mcp_servers` against that shipped file, which did not have i
 Writing the file per run is what removed the second copy.
 
 Extracting a release never deletes, so if you adopted before that change your tree
-still has a `.github/atoma/tools/tools.yaml`. Nothing reads it. Delete it.
+still has a `.github/atomaton/tools/tools.yaml`. Nothing reads it. Delete it.
 
 The same applies to the move that produced the two roots. Everything that used to
-be under `.github/scripts/` and `.github/atoma/tools/` now ships under
-`.github/atoma-runtime/`, and the old copies are left where they are by an upgrade
+be under `.github/scripts/` and `.github/atomaton/tools/` now ships under
+`.github/atomaton-runtime/`, and the old copies are left where they are by an upgrade
 that only unpacks. Nothing runs them — a workflow names the new path — so delete
 them once you have upgraded, before somebody reads a stale script as the one in
-use. The manifest in `.github/atoma-release.json` lists what the release does
+use. The manifest in `.github/atomaton-release.json` lists what the release does
 contain; [docs/recipes.md](recipes.md), under "Move to a newer release", has the
 command that compares the two.
 
@@ -84,7 +84,7 @@ The procedure — treat it as vendoring, and let git do the merge — is in
 
 **A key that is not a setting is read by nothing** — so a typo silently does
 nothing, which is why the pull request that introduces one now fails. One level
-accepts names of your own: `chain.labels` takes more than the three Atoma reads,
+accepts names of your own: `chain.labels` takes more than the three Atomaton reads,
 so a misspelling there is not caught by this.
 
 The recognised set is held to the code by this template's own
@@ -101,7 +101,7 @@ following the documentation — which is exactly what happened while this migrat
 was under way, with two credential lists described at the wrong depth.
 
 What you get in an adopted repository is the same check, runnable before you push:
-`bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .`. See
+`bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .`. See
 [docs/recipes.md](recipes.md), under "Check your config before pushing".
 
 ## How the keys are grouped
@@ -218,7 +218,7 @@ fails. "GitHub was busy" must not read as "this pull request added a credential"
 
 ### The pipeline as commands
 
-You can point Atoma at workflows you wrote, as below. Or you can write no
+You can point Atomaton at workflows you wrote, as below. Or you can write no
 workflow at all and describe the pipeline as commands:
 
 ```yaml
@@ -264,7 +264,7 @@ explicit dispatch, not an event — but your own merges will not, and
 **Credentials** go in the list belonging to whatever needs them —
 `checks.atoma_runs.secrets` or `deploy.atoma_runs.secrets`, alongside
 `tools.secrets`. Add the secret to the repository first; these name it, they do
-not create it. Inside a deployment, `$ATOMA_DEPLOY_TARGET` holds the target's
+not create it. Inside a deployment, `$ATOMATON_DEPLOY_TARGET` holds the target's
 name. `atoma-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
 login works and is worth preferring over storing a long-lived key at all.
 
@@ -299,7 +299,7 @@ deploy:
 A string is one runner label. A list is the set of labels one runner must have —
 which is how a self-hosted runner is addressed. Unset takes `ubuntu-latest`.
 
-It sits inside `atoma_runs` because the machine is a property of the step Atoma
+It sits inside `atoma_runs` because the machine is a property of the step Atomaton
 runs: a project that names `your_workflow` instead declares its runner in that
 workflow, where the rest of its pipeline already is.
 
@@ -324,7 +324,7 @@ deploy:
   your_workflow: deploy.yml
 ```
 
-`checks.your_workflow` is the workflow Atoma runs against an agent's pull request
+`checks.your_workflow` is the workflow Atomaton runs against an agent's pull request
 before anyone reviews it. Defaults to `atoma-check.yml`. Name yours here, exactly
 as the file is called, or the dispatch fails silently and every merge is refused
 for a missing check.
@@ -345,7 +345,7 @@ are alternatives: declaring both fails the pull request's check, naming the
 section, rather than resolving by a precedence rule — so a `commands` list left
 behind is reported instead of sitting there reading as live.
 
-A workflow Atoma is to start must accept `workflow_dispatch`, and a workflow that
+A workflow Atomaton is to start must accept `workflow_dispatch`, and a workflow that
 reads the pull request from the event payload gets nothing on a dispatched run.
 Both are in [docs/setup.md](setup.md) and [docs/recipes.md](recipes.md)
 respectively.
@@ -362,7 +362,7 @@ Every member composes: any one of them firing puts the merge in a person's hands
 - `gates` — conditional escalations, each carrying the reason a person is being
   asked.
 
-What GitHub enforces is separate and lives in `.github/atoma/rulesets/main.json`,
+What GitHub enforces is separate and lives in `.github/atomaton/rulesets/main.json`,
 in GitHub's own import format. On a repository where branch rules are unavailable
 — they are a paid feature on a private one — GitHub refuses nothing and these
 settings are the whole of the gate.
@@ -390,7 +390,7 @@ person reading the diff.
 
 The whole directory rather than the parts of it that obviously matter. An earlier
 default named four subdirectories and left out the scripts directory — today
-`.github/atoma-runtime/scripts/**` — which is where the runner's own control logic
+`.github/atomaton-runtime/scripts/**` — which is where the runner's own control logic
 lives; nothing decided that, the list was simply written before the directory
 existed. A list of the paths that count has to be revisited every time the tree
 grows, and gives no sign when it has not been. This move is the proof: the runtime
@@ -423,7 +423,7 @@ declared, and the declaration is in a file this gate already covers — see
 
 ### `merge.gates`
 
-`merge.governed_paths` covers Atoma's own machinery. Your project has its own
+`merge.governed_paths` covers Atomaton's own machinery. Your project has its own
 things that should not land unread — a database migration, a change to a pricing
 table, a release note — and they are not describable as a path alone. "Anything under
 `db/migrations/`" is sayable; "only when a migration is **added**" is not.
@@ -545,7 +545,7 @@ What you see when either limit fires, and how to resume, is in
 ## `tools`
 
 What an agent can reach. This section is **additive**: the servers a run starts
-with are Atoma's own, and what you write here is added to them.
+with are Atomaton's own, and what you write here is added to them.
 
 ### The servers every run starts with
 
@@ -557,11 +557,11 @@ with are Atoma's own, and what you write here is added to them.
 | `github` | Issues, pull requests, comments, and every Git mutation. |
 | `web` | Fetches a URL. Searching the web is a skill, not a tool. |
 | `search` | Ranked search over this repository's issues and code. |
-| `atoma` | Atoma's own operations: sub-issues, handoffs, stopping a run. |
+| `atoma` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
 | `atoma_env` | Rebuilding the run's environment, and nothing else. |
 
 They are not in your `config.yaml`. They ship as data, in
-`.github/atoma-runtime/tools/defaults.yaml`, and are written into the file `atoma`
+`.github/atomaton-runtime/tools/defaults.yaml`, and are written into the file `atoma`
 is handed at the start of every run — see
 [How it reaches the core](#how-it-reaches-the-core) below. Each one has a section
 of its own under [The tool servers](#the-tool-servers).
@@ -648,7 +648,7 @@ commands run in a workflow of their own rather than beside an agent — a secret
 named in `checks.atoma_runs.secrets` is in that job's environment and there is no
 server to route it to.
 
-The bottom row reads the same whether the server is one of yours or one Atoma
+The bottom row reads the same whether the server is one of yours or one Atomaton
 ships. For a shipped name, an entry carrying `env` and nothing else is an override
 of that one field, so the credential arrives without your having to copy the
 server's command or hooks.
@@ -683,7 +683,7 @@ fail — with the reason already in the log.
 
 ### `tools.servers`
 
-Servers of your own, and overrides of the ones Atoma ships. It starts empty, and
+Servers of your own, and overrides of the ones Atomaton ships. It starts empty, and
 what you write is **added to** the shipped set rather than standing in for it.
 
 One entry per server: `command`, `args`, `env`, `hooks`, `request_timeout_secs`,
@@ -692,10 +692,10 @@ it never reaches the core. Everything else is the core's own tools-file format,
 one level in, and is passed through untouched, so a key a later core release adds
 works the day it ships.
 
-**A name Atoma does not ship is added.** It needs a whole entry, starting with a
+**A name Atomaton does not ship is added.** It needs a whole entry, starting with a
 `command`, because nothing else knows how to start it.
 
-**A name Atoma does ship is an override, merged field by field.** Write only what
+**A name Atomaton does ship is an override, merged field by field.** Write only what
 you are changing:
 
 ```yaml
@@ -724,11 +724,11 @@ The file the core is handed is written from the shipped set and this section at
 the start of each run, into the runner's temp directory, and does not exist in
 your repository — so there is no second list to keep in step, and no file to edit
 instead of this one. The shipped entries it starts from are readable, in
-`.github/atoma-runtime/tools/defaults.yaml`, and the servers those entries run are
-beside them under `.github/atoma-runtime/tools/mcp/`.
+`.github/atomaton-runtime/tools/defaults.yaml`, and the servers those entries run are
+beside them under `.github/atomaton-runtime/tools/mcp/`.
 
 A hook path in a server's `hooks` is written relative to
-`.github/atoma-runtime/tools/`, which is how the shipped entries name theirs —
+`.github/atomaton-runtime/tools/`, which is how the shipped entries name theirs —
 `./hooks/shell_guard.ts`. The core resolves a relative hook path against the
 directory the tools file is *in*, and that directory is now a temp directory, so
 the generator resolves each path against the machinery checkout before writing it.
@@ -817,7 +817,7 @@ different version installed by your `environment.setup_commands` cannot break a
 tool server. `tools.packages.pip` is for a server that ships as a Python package.
 
 **The shipped servers' packages are not here.** They are in the deliverable, at
-`.github/atoma-runtime/tools/packages.json`, because they are not a project's
+`.github/atomaton-runtime/tools/packages.json`, because they are not a project's
 decision: `@modelcontextprotocol/server-filesystem` is the program `filesystem`
 runs, and `@huggingface/transformers` is what `search` reranks with. Neither
 server can be removed, so neither package can be, and a list you edit that
@@ -840,7 +840,7 @@ for checks and for deploys alike.
 
 `tools.watch` holds hooks that apply to every server, beside `tools.servers`
 rather than inside any one of them. It is additive in the same way the servers
-are: Atoma ships its own file-wide hooks, and yours are **appended** to them
+are: Atomaton ships its own file-wide hooks, and yours are **appended** to them
 rather than replacing them.
 
 ```yaml
@@ -849,13 +849,13 @@ tools:
     before_tool: ../../atoma/hooks/my_check.ts
 ```
 
-A hook of your own is a file of your own, so it belongs under `.github/atoma/`.
+A hook of your own is a file of your own, so it belongs under `.github/atomaton/`.
 The path is resolved the same way a server's is — against
-`.github/atoma-runtime/tools/`, where the shipped hooks are — which is why one of
+`.github/atomaton-runtime/tools/`, where the shipped hooks are — which is why one of
 yours climbs out of that directory, or is written absolute.
 
 A hook level takes one path or a list of them, and the generator writes the
-combined list — Atoma's first, then yours — into the tools file under `hooks`,
+combined list — Atomaton's first, then yours — into the tools file under `hooks`,
 the name the core reserves there. A list per level is what the core has accepted
 since v0.1.33; before that a tools file could name only one hook at a level, which
 is why a shipped hook and a project's own could not both exist. The appendix below
@@ -865,7 +865,7 @@ says why a file-wide hook is usually the right shape.
 
 # Agent definitions
 
-One Markdown file per agent under `.github/atoma/agent-definitions/`, with the
+One Markdown file per agent under `.github/atomaton/agent-definitions/`, with the
 settings in its frontmatter. This is Atoma's own contract rather than this
 project's, which is why a setting that describes one agent belongs here and not in
 `config.yaml`: a definition stays portable because it describes an agent, not a
@@ -873,7 +873,7 @@ delivery pipeline.
 
 ## `model`
 
-The model that agent runs on. Edit `.github/atoma/agent-definitions/<agent>.md`
+The model that agent runs on. Edit `.github/atomaton/agent-definitions/<agent>.md`
 and update the frontmatter `model` field.
 
 ## `vision`
@@ -959,10 +959,10 @@ reason.
 
 ## The prompt template, and the skills
 
-`.github/atoma/prompt-template.md` is what every agent is told, whichever one it
+`.github/atomaton/prompt-template.md` is what every agent is told, whichever one it
 is. It is passed to Atoma with `--template` on every runner invocation.
 
-Skills live under `.github/atoma/skills/**/*.md`. The template ships none under
+Skills live under `.github/atomaton/skills/**/*.md`. The template ships none under
 `skills/project/`, which is yours outright.
 
 ---
@@ -971,14 +971,14 @@ Skills live under `.github/atoma/skills/**/*.md`. The template ships none under
 
 What follows was written beside these servers while they were entries in
 `config.yaml`, and is kept in full. The entries themselves are now in
-`.github/atoma-runtime/tools/defaults.yaml`; the reasoning stayed on this page,
+`.github/atomaton-runtime/tools/defaults.yaml`; the reasoning stayed on this page,
 because a reader deciding whether an agent should have `search` is reading here
 and not there.
 
 ## The set as a whole
 
 The servers a run starts must cover the union of `mcp_servers` across
-.github/atoma/agent-definitions/*.md. The shipped set covers every name the three
+.github/atomaton/agent-definitions/*.md. The shipped set covers every name the three
 shipped agents use. A name that is neither shipped nor added under
 `tools.servers` aborts the run before any MCP server starts ("Tool 'X' not found
 in tools file"), and atoma lists the servers that do exist beside that error.
@@ -995,9 +995,9 @@ else -- atoma removes every credential it knows about from a server's environmen
 before applying that block, so `env: {}` means "this server gets no credentials",
 and that is the point rather than an oversight.
 
-`args` paths carry `${ATOMA_MACHINERY_ROOT:-.}` for a different reason, and it is
+`args` paths carry `${ATOMATON_MACHINERY_ROOT:-.}` for a different reason, and it is
 not about secrets. On a pull request run the workspace IS the pull request, so a
-server read from `.github/atoma-runtime/tools/mcp/...` would be the pull request's
+server read from `.github/atomaton-runtime/tools/mcp/...` would be the pull request's
 own copy -- letting it replace the code of the tools that review it. The prefix
 points at a checkout of the default branch instead, and falls back to `.` where
 no such checkout exists, such as a hand-run `atoma`.
@@ -1016,7 +1016,7 @@ it landed on the right script by sitting still. It is not that any more: the
 tools file is written per run into the runner's temp directory, and a relative
 path would now follow the output rather than the script. So the generator
 resolves every hook path as it writes, against
-`${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/` -- the same default-branch
+`${ATOMATON_MACHINERY_ROOT}/.github/atomaton-runtime/tools/` -- the same default-branch
 checkout the `args` prefix points at. The hook still gets there without being
 asked; what carries it is a resolved path rather than a fixed location.
 
@@ -1037,7 +1037,7 @@ needed and neither substitutes for the other; see [docs/recipes.md](recipes.md),
 
 ## `tools.watch`
 
-Hooks that apply to EVERY server, run before each server's own. Atoma ships one,
+Hooks that apply to EVERY server, run before each server's own. Atomaton ships one,
 `workspace_guard.ts`; `tools.watch` in the config is what a project appends to it,
 and the machinery's run first, because order is the contract for `before_tool`
 where the first refusal wins.
@@ -1127,7 +1127,7 @@ _(no comment)_
 
 Searches this repository's issues by meaning. Imports
 `@huggingface/transformers`, which the runner installs from the `bun` list in
-`.github/atoma-runtime/tools/packages.json` rather than receiving in the bundle —
+`.github/atomaton-runtime/tools/packages.json` rather than receiving in the bundle —
 see build-dist.ts for why that one cannot be inlined.
 Shells out to `gh`, so it needs the run's GitHub token. Declared rather
 than inherited: atoma strips credentials from a server that does not name

@@ -29,7 +29,7 @@ export const CI_RETRY_LIMIT = 3;
  * `failed`                CI is red and the engineer gets another attempt.
  * `no-conclusion`         the run timed out, was cancelled, or could not be found.
  * `retries-exhausted`     red again after `CI_RETRY_LIMIT` attempts; stop.
- * `deliverable-invalid`   the pull request would merge a `.github/atoma/` that
+ * `deliverable-invalid`   the pull request would merge a `.github/atomaton/` that
  *                        cannot start a run, so CI was never dispatched.
  */
 export type ValidationVerdict = "passed" | "failed" | "no-conclusion" | "retries-exhausted" | "deliverable-invalid";
@@ -85,7 +85,7 @@ export interface ValidationInput {
   /** How many times this pull request has already been handed back. */
   priorRetries?: number;
   /**
-   * Ways the pull request's own `.github/atoma/` is inconsistent, from
+   * Ways the pull request's own `.github/atomaton/` is inconsistent, from
    * `validate_deliverable.ts`. Empty is the normal case.
    *
    * Non-empty means CI was never dispatched, and the `conclusion` field is
@@ -120,7 +120,7 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
   //
   // The engineer can act on it because the run that carries it reads its
   // machinery from the default branch, not from this pull request: a broken
-  // `.github/atoma/` here does not stop the agent sent to fix it.
+  // `.github/atomaton/` here does not stop the agent sent to fix it.
   const deliverableProblems = input.deliverableProblems ?? [];
   if (deliverableProblems.length > 0) {
     const count = `${deliverableProblems.length} problem${deliverableProblems.length === 1 ? "" : "s"}`;
@@ -138,7 +138,7 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
       verdict: "deliverable-invalid",
       checks: failing,
       nextAgent: engineerAgent,
-      summary: `.github/atoma/ is not internally consistent (${count}), so CI was not run.`,
+      summary: `.github/atomaton/ is not internally consistent (${count}), so CI was not run.`,
     };
   }
 

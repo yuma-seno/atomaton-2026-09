@@ -25,7 +25,7 @@
  *
  * ## What each job reads
  *
- * `ATOMA_MACHINERY_ROOT` decides, and it differs on purpose:
+ * `ATOMATON_MACHINERY_ROOT` decides, and it differs on purpose:
  *
  *   the agent's run    the default branch. A pull request must not choose how the
  *                      agent reviewing it is set up.

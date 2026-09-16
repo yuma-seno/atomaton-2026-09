@@ -34,7 +34,7 @@ import { fileURLToPath } from "node:url";
  * Where `build-dist.ts` places scripts inside a deployed `.github/`.
  *
  * Imported rather than written out. It was the literal `.github/scripts`, and when
- * the scripts moved under `.github/atoma-runtime/` the build put them in the new
+ * the scripts moved under `.github/atomaton-runtime/` the build put them in the new
  * place while every generated workflow went on naming the old one -- so a deployed
  * run could not find the first script it tried, and nothing had said a word. The
  * deploy diff even showed the files being renamed, beside workflows that did not

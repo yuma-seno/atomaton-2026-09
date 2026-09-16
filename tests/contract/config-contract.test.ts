@@ -15,7 +15,7 @@ import type { AtomaConfig } from "../../src/lib/types.ts";
  * signature so a test can also ask about a key the interface does NOT have.
  */
 function shippedConfig(): AtomaConfig & Record<string, unknown> {
-  return Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
+  return Bun.YAML.parse(readFileSync("src/atomaton/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
 }
 
 describe("config.yaml", () => {
@@ -69,7 +69,7 @@ describe("merge.gates documentation", () => {
   });
 
   test("the reviewer knows what to do with the blockers a gate produces", () => {
-    const reviewer = readFileSync("src/atoma/agent-definitions/reviewer.md", "utf8");
+    const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
     for (const kind of ["merge-gate", "gate-config-invalid"]) {
       expect(reviewer, `${kind} must be in the reviewer's blocker table`).toContain(`\`${kind}\``);
     }
@@ -290,7 +290,7 @@ describe("config.yaml's recognised keys", () => {
     expect(
       configProblems({
         config: shippedConfig(),
-        agentNames: readdirSync("src/atoma/agent-definitions")
+        agentNames: readdirSync("src/atomaton/agent-definitions")
           .filter((file) => file.endsWith(".md"))
           .map((file) => file.slice(0, -".md".length)),
         workflowFiles: readdirSync("dist/.github/workflows"),
@@ -325,7 +325,7 @@ describe("the default checks a project inherits", () => {
    * The path is built from `SCRIPTS_DIR` rather than written out again.
    *
    * It was a literal `.github/scripts/`, and when the scripts moved under
-   * `.github/atoma-runtime/` the shipped default check went on naming a directory
+   * `.github/atomaton-runtime/` the shipped default check went on naming a directory
    * that no longer exists -- in the one command every adopter inherits, and in this
    * repository's own pipeline. This test stayed green throughout, because a stale
    * pattern matched a stale path and agreed with it. Its failure message had already
@@ -340,7 +340,7 @@ describe("the default checks a project inherits", () => {
       expect(named, `${command} names no script under ${SCRIPTS_DIR}/`).not.toBeNull();
       expect(existsSync(`src/scripts/${named![1]}`), `src/scripts/${named![1]} must exist`).toBe(true);
       expect(command, "the machinery root indirection every other invocation uses").toContain(
-        "${ATOMA_MACHINERY_ROOT:-.}",
+        "${ATOMATON_MACHINERY_ROOT:-.}",
       );
     }
   });

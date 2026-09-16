@@ -1,5 +1,5 @@
 /**
- * deliverable-integrity.ts — whether the `.github/atoma/` a pull request would
+ * deliverable-integrity.ts — whether the `.github/atomaton/` a pull request would
  * merge is internally consistent, decided from its content and nothing else.
  *
  * ## What this is for
@@ -287,7 +287,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // directory was not there, and reporting every agent as missing would bury the
   // one problem that matters under noise.
   if (agentNames.length === 0) {
-    problems.push("No agent definitions were found. `.github/atoma/agent-definitions/*.md` is empty or missing.");
+    problems.push("No agent definitions were found. `.github/atomaton/agent-definitions/*.md` is empty or missing.");
   }
 
   // ── the two workflows a dispatch names ────────────────────────────────────

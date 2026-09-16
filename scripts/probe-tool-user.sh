@@ -29,7 +29,7 @@ say() { printf '\n=== %s ===\n' "$1"; }
 result() { printf 'RESULT %s=%s\n' "$1" "$2"; }
 yn() { if "$@" >/dev/null 2>&1; then echo yes; else echo no; fi; }
 
-U=atoma-tools
+U=atomaton-tools
 WS="$HOME/work/probe-repo/probe-repo"
 CACHE=/tmp/atoma-tool-cache
 

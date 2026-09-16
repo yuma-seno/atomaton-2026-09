@@ -8,12 +8,12 @@
  * with no compiler link between them, free to silently drift apart (e.g. one
  * file's permissions getting tightened/loosened without the others noticing).
  * `atoma-pr-merged` is the one legitimate exception (`pull-requests: "read"`,
- * it only ever reads PR metadata) -- spread `ATOMA_WORKFLOW_PERMISSIONS` and
+ * it only ever reads PR metadata) -- spread `ATOMATON_WORKFLOW_PERMISSIONS` and
  * override just that key there, rather than duplicating the whole object.
  */
 import type { GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 
-export const ATOMA_WORKFLOW_PERMISSIONS: GWT.PermissionsEvent = {
+export const ATOMATON_WORKFLOW_PERMISSIONS: GWT.PermissionsEvent = {
   actions: "write",
   issues: "write",
   "pull-requests": "write",

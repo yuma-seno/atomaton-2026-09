@@ -1,7 +1,7 @@
 /**
  * harness.ts — shared test helpers for spawning src/scripts/*.ts with a fake
  * `gh` CLI (testing/bin/gh) and/or an isolated config.yaml, so a script that
- * shells out to `gh` or reads `.github/atoma/config.yaml` can be tested without
+ * shells out to `gh` or reads `.github/atomaton/config.yaml` can be tested without
  * touching the real GitHub API or this repository's own shared config.
  *
  * Everything here is used from more than one test file. When the scripts' tests
@@ -39,7 +39,7 @@ export interface RunWithFakeGhResult {
  *
  * A test spawns a child with `...process.env` so it inherits PATH, HOME and the rest
  * of what a program needs. That is right until an agent runs the suite: the runner
- * sets `ATOMA_RUN_TYPE`, `ISSUE_NUMBER` and `ATOMA_MACHINERY_ROOT` in the environment
+ * sets `ATOMATON_RUN_TYPE`, `ISSUE_NUMBER` and `ATOMATON_MACHINERY_ROOT` in the environment
  * the agent works in, and they flow straight into every child a test starts. Seventeen
  * tests failed that way in one run -- `run_checks` reading a machinery root that was
  * not the fixture, a github tool defaulting a number the test meant to leave out --
@@ -59,7 +59,7 @@ export interface RunWithFakeGhResult {
 export function hermeticEnv(): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
-    if (key.startsWith("ATOMA_") || key === "ISSUE_NUMBER" || key.startsWith("FAKE_GH_")) continue;
+    if (key.startsWith("ATOMA_") || key.startsWith("ATOMATON_") || key === "ISSUE_NUMBER" || key.startsWith("FAKE_GH_")) continue;
     out[key] = value;
   }
   return out;
@@ -102,7 +102,7 @@ export function runWithFakeGh(
 }
 
 /**
- * Creates a fresh temp directory containing `.github/atoma/config.yaml`
+ * Creates a fresh temp directory containing `.github/atomaton/config.yaml`
  * with the given content, for scripts that read config via `lib/config.ts`
  * (which always resolves that path relative to `cwd`). Caller is
  * responsible for `rmSync(dir, { recursive: true, force: true })`.

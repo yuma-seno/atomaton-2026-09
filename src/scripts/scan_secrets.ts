@@ -47,7 +47,7 @@ function branchRange(): string | undefined {
   // A pull request sets GITHUB_BASE_REF; a dispatch -- the agent path -- does
   // not, and falls back to the default branch, which is where their branches
   // start.
-  const base = (process.env.GITHUB_BASE_REF || process.env.ATOMA_BASE_BRANCH || "main").trim();
+  const base = (process.env.GITHUB_BASE_REF || process.env.ATOMATON_BASE_BRANCH || "main").trim();
   if (gitRun("fetch", "--quiet", "origin", base).code !== 0) {
     log(`could not fetch ${base}; scanning nothing rather than guessing at a range`);
     return undefined;

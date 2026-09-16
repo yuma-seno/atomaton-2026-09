@@ -3,7 +3,7 @@ import type { IssuesOpenedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { dispatchToAtomaRunner } from "./atoma-runner.wac.ts";
@@ -35,7 +35,7 @@ export const atomaEntry = new Workflow("atoma-entry", {
   on: {
     issues: { types: ["opened"] },
   },
-  permissions: ATOMA_WORKFLOW_PERMISSIONS,
+  permissions: ATOMATON_WORKFLOW_PERMISSIONS,
 }).addJobs(
   startJob(
     "route",

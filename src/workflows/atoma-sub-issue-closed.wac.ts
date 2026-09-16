@@ -3,7 +3,7 @@ import type { IssuesClosedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ref as dispatchIfSiblingsDoneRef } from "../scripts/dispatch_if_siblings_done.ts";
@@ -60,7 +60,7 @@ export const atomaSubIssueClosed = new Workflow("atoma-sub-issue-closed", {
   on: {
     issues: { types: ["closed"] },
   },
-  permissions: ATOMA_WORKFLOW_PERMISSIONS,
+  permissions: ATOMATON_WORKFLOW_PERMISSIONS,
 }).addJobs(
   startJob(
     "check",

@@ -183,7 +183,7 @@ export function stackedPrBase(repo: string): string | undefined {
  * and treating it as an issue moves work off the branch under review.
  */
 function runIssueNumber(): number | undefined {
-  if (process.env.ATOMA_RUN_TYPE !== "issue") return undefined;
+  if (process.env.ATOMATON_RUN_TYPE !== "issue") return undefined;
   const issue = Number((process.env.ISSUE_NUMBER ?? "").trim());
   return Number.isInteger(issue) && issue > 0 ? issue : undefined;
 }

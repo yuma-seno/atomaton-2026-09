@@ -278,7 +278,7 @@ function tokensReported(repo: string): TokenRecord[] {
 
 /** The tools and skills the repository offers, so the report can name what is unused. */
 function declared(): { tools: string[]; skills: string[] } {
-  const root = process.env.ATOMA_MACHINERY_ROOT?.trim() || ".";
+  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   const tools: string[] = [];
   const skills: string[] = [];
   try {

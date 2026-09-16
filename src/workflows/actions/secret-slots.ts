@@ -54,7 +54,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * ## Why the fetch writes its own ref instead of using FETCH_HEAD
  *
  * This used to be `git fetch ... || true` followed by
- * `git show "FETCH_HEAD:.github/atoma/config.yaml"`. `actions/checkout` has
+ * `git show "FETCH_HEAD:.github/atomaton/config.yaml"`. `actions/checkout` has
  * already written a FETCH_HEAD for the pull request's own ref by the time this
  * step runs, so a failed fetch did not reach the fall-back: the `git show`
  * succeeded against the pull request's own file, the run took its declaration
@@ -75,15 +75,15 @@ export function secretNamesStep(destination: SecretDestinationName): TypedOutput
       name: "Resolve which repository secrets may reach this run",
       id: SECRET_NAMES_STEP_ID,
       shell: "bash",
-      env: { ATOMA_DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}" },
-      run: `DEFAULT_BRANCH="\${ATOMA_DEFAULT_BRANCH:-main}"
+      env: { ATOMATON_DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}" },
+      run: `DEFAULT_BRANCH="\${ATOMATON_DEFAULT_BRANCH:-main}"
 TRUSTED_CONFIG="${trustedConfig}"
 
 # Fetched into a ref this line owns, and read back from that same ref, so a
 # failed fetch has nothing to fall back to. Shallow: one commit of one branch is
 # all this needs. \`+\` so a re-run overwrites rather than refusing.
-if git fetch --quiet --depth=1 origin "+\$DEFAULT_BRANCH:refs/atoma/trusted-config" 2>/dev/null \\
-  && git show "refs/atoma/trusted-config:.github/atoma/config.yaml" > "$TRUSTED_CONFIG" 2>/dev/null; then
+if git fetch --quiet --depth=1 origin "+\$DEFAULT_BRANCH:refs/atomaton/trusted-config" 2>/dev/null \\
+  && git show "refs/atomaton/trusted-config:.github/atomaton/config.yaml" > "$TRUSTED_CONFIG" 2>/dev/null; then
   echo "Read the credential declaration from \${DEFAULT_BRANCH}."
 else
   # Either the branch has no config.yaml or the fetch failed, and this cannot
@@ -91,7 +91,7 @@ else
   # the safe one. Naming both is the honest message -- asserting the first would
   # be asserting something this could not determine.
   echo '{}' > "$TRUSTED_CONFIG"
-  echo "::warning::Could not read .github/atoma/config.yaml from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
+  echo "::warning::Could not read .github/atomaton/config.yaml from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
 fi
 
 ${scriptCommandWithArgs(readSecretNamesRef, { destination, config: trustedConfig })}
@@ -158,11 +158,11 @@ export function renameSecretSlots(): string {
 # know what a project called its Slack token; config.yaml does, and the resolve
 # step above published that list. Put the declared name back on each slot before
 # anything that needs one runs.
-ATOMA_DECLARED_SECRETS="\${${SECRET_NAMES_VAR}:-[]}"
-ATOMA_DECLARED_COUNT=$(echo "$ATOMA_DECLARED_SECRETS" | jq -r 'length')
+ATOMATON_DECLARED_SECRETS="\${${SECRET_NAMES_VAR}:-[]}"
+ATOMATON_DECLARED_COUNT=$(echo "$ATOMATON_DECLARED_SECRETS" | jq -r 'length')
 slot=0
-while [ "$slot" -lt "$ATOMA_DECLARED_COUNT" ]; do
-  secret_name=$(echo "$ATOMA_DECLARED_SECRETS" | jq -r ".[\${slot}]")
+while [ "$slot" -lt "$ATOMATON_DECLARED_COUNT" ]; do
+  secret_name=$(echo "$ATOMATON_DECLARED_SECRETS" | jq -r ".[\${slot}]")
   eval "secret_value=\\\${${SECRET_SLOT_PREFIX}\${slot}:-}"
   if [ -n "$secret_value" ]; then
     export "\${secret_name}=\${secret_value}"

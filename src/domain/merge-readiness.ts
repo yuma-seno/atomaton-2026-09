@@ -5,7 +5,7 @@
  * The verdict comes from the repository's own branch protection, not from an
  * opinion held here. GitHub computes `mergeStateStatus` against whatever the
  * active ruleset requires, and the ruleset is a reviewed file
- * (`.github/atoma/rulesets/*.json`), so changing what "mergeable" means is a change to
+ * (`.github/atomaton/rulesets/*.json`), so changing what "mergeable" means is a change to
  * that file — this module and the tools built on it follow automatically, with no
  * second definition to keep in step.
  *
@@ -410,7 +410,7 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
         // name the place it does live rather than only refusing the merge.
         (signals.governancePaths.some(isGeneratedWorkflow)
           ? ". If the intent was to change what CI or deployment does, that belongs in " +
-            "`.github/atoma/config.yaml` (`checks.atoma_runs.commands`, `deploy.atoma_runs.targets`) rather than in a " +
+            "`.github/atomaton/config.yaml` (`checks.atoma_runs.commands`, `deploy.atoma_runs.targets`) rather than in a " +
             "workflow file — an agent can write config and cannot write a workflow. If this is an " +
             "upgrade of the generated deliverable, it is exactly what a person should be merging"
           : ""),

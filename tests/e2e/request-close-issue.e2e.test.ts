@@ -2,7 +2,7 @@
  * request-close-issue.e2e.test.ts — real end-to-end test for the
  * `atoma__request_close_issue` tool's human-authored-issue path: the actual
  * `atoma` binary, its real inference loop and real MCP client, against the
- * REAL, compiled `dist/.github/atoma-runtime/tools/mcp/atoma.ts` MCP server,
+ * REAL, compiled `dist/.github/atomaton-runtime/tools/mcp/atoma.ts` MCP server,
  * with a fake `gh` CLI so the real chain (mcp/atoma.ts ->
  * concludeIssue -> lib/notify.ts's resolveNotify() -> gh) runs
  * without touching the real GitHub API.
@@ -22,7 +22,7 @@ import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
 
-const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/atoma.ts");
+const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atomaton-runtime/tools/mcp/atoma.ts");
 
 describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atoma.ts", () => {
   test("agent calls atoma__request_close_issue for a human-authored issue", async () => {

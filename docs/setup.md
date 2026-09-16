@@ -34,7 +34,7 @@ each reads are in [docs/configuration.md](configuration.md).
 
 ## 4. Put your install and build commands in `environment.setup_commands`
 
-In `.github/atoma/config.yaml`:
+In `.github/atomaton/config.yaml`:
 
 ```yaml
 environment:
@@ -58,7 +58,7 @@ work off your default branch, and it is worth keeping. It applies to agents exac
 as it applies to you — nothing here asks you to exempt them. Three things make it
 work.
 
-### Apply `.github/atoma/rulesets/main.json` by hand
+### Apply `.github/atomaton/rulesets/main.json` by hand
 
 A ruleset is **not** read from the repository. It is a server-side setting, and the
 file that ships with the deliverable is this project's convention: the reviewed
@@ -74,13 +74,13 @@ check would block nothing.
 **From the web UI** — easiest, and needs nothing installed:
 
 > Settings > Rules > Rulesets > *New ruleset* > **Import a ruleset**, then upload
-> `.github/atoma/rulesets/main.json`.
+> `.github/atomaton/rulesets/main.json`.
 
 **From a shell** — if you already have an admin-scoped `gh` login:
 
 ```bash
 gh api --method POST repos/{owner}/{repo}/rulesets \
-  --input .github/atoma/rulesets/main.json
+  --input .github/atomaton/rulesets/main.json
 ```
 
 If the import option is unavailable, create it through the form instead and set:
@@ -120,7 +120,7 @@ written for `pull_request` alone — cannot be filled on an agent's pull request
 Either drop them from the ruleset's required list or give them a `workflow_dispatch`
 trigger too.
 
-Keep the two names in step. `.github/atoma/rulesets/main.json` ships requiring the
+Keep the two names in step. `.github/atomaton/rulesets/main.json` ships requiring the
 context `atoma-check`, which is the job name in `atoma-check.yml`; renaming one side
 without the other does not fail a pull request — it leaves it waiting forever on a
 check that will never report, and re-running nothing fixes it.

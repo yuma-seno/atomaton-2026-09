@@ -34,7 +34,7 @@ line you edit.
 
 ### Run an agent on a different model
 
-Edit `.github/atoma/agent-definitions/<agent>.md` and change the frontmatter `model`
+Edit `.github/atomaton/agent-definitions/<agent>.md` and change the frontmatter `model`
 field.
 
 Revisit `extra_body` at the same time — the endpoint names it lists are per-model.
@@ -221,7 +221,7 @@ is destructive, is [docs/operations.md](operations.md).
 ### Check your config before pushing it
 
 ```bash
-bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .
+bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .
 ```
 
 The same check that runs as the required check on an agent's pull request, against a
@@ -403,7 +403,7 @@ has how, and what a server must do when a call is abandoned.
 ### Change or remove web fetching and search
 
 Searching is a skill rather than a tool.
-`.github/atoma/skills/research/web-search.md` tells agents to fetch a search engine's
+`.github/atomaton/skills/research/web-search.md` tells agents to fetch a search engine's
 results page and read the links out of it. The endpoint lives in that file on purpose:
 
 - To use a different service — one with an API key, or your own instance — edit the
@@ -431,18 +431,18 @@ gh release download v0.1.115 -R yuma-seno/atomaton -p atoma-delivery.zip
 unzip -o atoma-delivery.zip   # the archive holds .github/, so run this at the repo root
 rm atoma-delivery.zip
 git diff .github/            # every difference is now a decision
-git checkout -- .github/atoma/config.yaml    # for anything you meant to keep
+git checkout -- .github/atomaton/config.yaml    # for anything you meant to keep
 ```
 
 Name the version rather than taking `latest`, and read the upstream changes between
 yours and the next one (`gh release view`, or compare the two tags) rather than
 rediscovering them in a diff.
 
-**Which release do I have?** `.github/atoma-release.json` says. It ships with the
+**Which release do I have?** `.github/atomaton-release.json` says. It ships with the
 release and records the version and every path the release contains:
 
 ```bash
-jq -r .version .github/atoma-release.json
+jq -r .version .github/atomaton-release.json
 ```
 
 **What did upstream delete?** Extracting never deletes, so a file the template dropped
@@ -456,7 +456,7 @@ manifest is what makes them findable:
 # into rm.
 comm -23 \
   <(git ls-files '.github/*' | sort) \
-  <(jq -r '.files[]' .github/atoma-release.json | sort)
+  <(jq -r '.files[]' .github/atomaton-release.json | sort)
 ```
 
 Read it rather than acting on it: your own workflows and your own project skills are

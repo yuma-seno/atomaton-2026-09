@@ -55,10 +55,10 @@
 export const SECRET_SLOTS = 10;
 
 /** Environment variable each slot arrives under, before it is renamed. */
-export const SECRET_SLOT_PREFIX = "ATOMA_SECRET_";
+export const SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
 
 /** Carries the resolved names into the job so the slots can be renamed. */
-export const SECRET_NAMES_VAR = "ATOMA_SECRET_NAMES";
+export const SECRET_NAMES_VAR = "ATOMATON_SECRET_NAMES";
 
 /**
  * Shape GitHub accepts for a secret name, minus lowercase.
@@ -137,14 +137,14 @@ export const TOOL_SECRETS: SecretDestination = {
   reserved: new Set([
     ...RUN_CREDENTIALS,
     "AGENT",
-    "ATOMA_OPS_LOG",
+    "ATOMATON_OPS_LOG",
     "ATOMA_PROVIDER",
     // How many times this work has already rebuilt its environment. A declared
     // secret shadowing it would set the tally the reload tool reads -- and a
     // smaller number buys extra reloads, each of which resets the run's own time
     // budget. Shadowing this is a way to remove that limit.
-    "ATOMA_RELOAD_COUNT",
-    "ATOMA_RUN_TYPE",
+    "ATOMATON_RELOAD_COUNT",
+    "ATOMATON_RUN_TYPE",
     "GITHUB_RUN_ID",
     "ISSUE_NOTIFY",
     "ISSUE_NUMBER",
@@ -183,22 +183,22 @@ export const CHECK_SECRETS: SecretDestination = {
 /**
  * The deploy job's own variables, from two places.
  *
- * `atoma-deploy.wac.ts` puts `GH_TOKEN` and the three `ATOMA_DEPLOY_*` inputs in
- * the command step's `env:`, and `run_deploy.ts` sets `ATOMA_DEPLOY_TARGET` per
+ * `atoma-deploy.wac.ts` puts `GH_TOKEN` and the three `ATOMATON_DEPLOY_*` inputs in
+ * the command step's `env:`, and `run_deploy.ts` sets `ATOMATON_DEPLOY_TARGET` per
  * command as it runs them. Both belong here: the declared slots are `export`ed
  * into that same shell before the command runs, so either could be replaced.
  *
- * The three inputs matter more than they look. `ATOMA_DEPLOY_REF` and
- * `ATOMA_DEPLOY_TRIGGER` are what select which targets a run deploys — declaring
+ * The three inputs matter more than they look. `ATOMATON_DEPLOY_REF` and
+ * `ATOMATON_DEPLOY_TRIGGER` are what select which targets a run deploys — declaring
  * one would not leak anything, it would quietly redirect the deployment.
  */
 export const DEPLOY_SECRETS: SecretDestination = {
   field: "deploy.atoma_runs.secrets",
   reserved: new Set([
-    "ATOMA_DEPLOY_REF",
-    "ATOMA_DEPLOY_TARGET",
-    "ATOMA_DEPLOY_TARGET_INPUT",
-    "ATOMA_DEPLOY_TRIGGER",
+    "ATOMATON_DEPLOY_REF",
+    "ATOMATON_DEPLOY_TARGET",
+    "ATOMATON_DEPLOY_TARGET_INPUT",
+    "ATOMATON_DEPLOY_TRIGGER",
     "GH_TOKEN",
   ]),
 };

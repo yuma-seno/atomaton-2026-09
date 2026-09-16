@@ -3,7 +3,7 @@ import type { PullRequestClosedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw } from "./actions/github-context.ts";
-import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
+import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ref as resolveOrchestratorParentRef } from "../scripts/resolve_orchestrator_parent.ts";
@@ -91,7 +91,7 @@ export const atomaPrMerged = new Workflow("atoma-pr-merged", {
   on: {
     pull_request_target: { types: ["closed"] },
   },
-  permissions: { ...ATOMA_WORKFLOW_PERMISSIONS, "pull-requests": "read" },
+  permissions: { ...ATOMATON_WORKFLOW_PERMISSIONS, "pull-requests": "read" },
 }).addJobs([
   parseJob,
   resolveParentJob,

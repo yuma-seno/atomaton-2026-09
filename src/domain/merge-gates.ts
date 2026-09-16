@@ -28,7 +28,7 @@
  * than from the pull request under review, and arbitrary code on the path that
  * decides whether that code may merge. Configuration has none of those. It is
  * read from `config.yaml`, which `loadConfig()` already resolves under
- * `ATOMA_MACHINERY_ROOT`, so a pull request cannot weaken the gate judging it --
+ * `ATOMATON_MACHINERY_ROOT`, so a pull request cannot weaken the gate judging it --
  * for free, with nothing to plumb.
  *
  * So: conditions now, and a script escape hatch left unbuilt until a real case

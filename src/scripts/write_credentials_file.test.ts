@@ -12,7 +12,7 @@ describe("collect", () => {
       collect({
         OPENAI_API_KEY: "sk-x",
         GH_TOKEN: "ghs-y",
-        ATOMA_SECRET_NAMES: "[]",
+        ATOMATON_SECRET_NAMES: "[]",
       }),
     ).toEqual({ OPENAI_API_KEY: "sk-x", GH_TOKEN: "ghs-y" });
   });
@@ -23,7 +23,7 @@ describe("collect", () => {
       OPENAI_API_KEY: "sk-x",
       SOME_OTHER_SECRET: "should-not-travel",
       PATH: "/usr/bin",
-      ATOMA_SECRET_NAMES: "[]",
+      ATOMATON_SECRET_NAMES: "[]",
     });
     expect(Object.keys(out)).toEqual(["OPENAI_API_KEY"]);
   });
@@ -31,9 +31,9 @@ describe("collect", () => {
   test("puts a declared credential under its own name", () => {
     expect(
       collect({
-        ATOMA_SECRET_NAMES: '["SLACK_TOKEN","JIRA_API_TOKEN"]',
-        ATOMA_SECRET_0: "xoxb-1",
-        ATOMA_SECRET_1: "jira-2",
+        ATOMATON_SECRET_NAMES: '["SLACK_TOKEN","JIRA_API_TOKEN"]',
+        ATOMATON_SECRET_0: "xoxb-1",
+        ATOMATON_SECRET_1: "jira-2",
       }),
     ).toEqual({ SLACK_TOKEN: "xoxb-1", JIRA_API_TOKEN: "jira-2" });
   });
@@ -41,21 +41,21 @@ describe("collect", () => {
   // An unset repository secret arrives as an empty string. Writing it would tell
   // atoma's provider detection that a provider is configured when it is not.
   test("omits an empty value rather than writing it", () => {
-    const out = collect({ OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "sk-ant", ATOMA_SECRET_NAMES: "[]" });
+    const out = collect({ OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "sk-ant", ATOMATON_SECRET_NAMES: "[]" });
     expect(out).toEqual({ ANTHROPIC_API_KEY: "sk-ant" });
   });
 
   test("warns about a declared credential the repository does not have", () => {
-    const out = collect({ ATOMA_SECRET_NAMES: '["MISSING_TOKEN"]' });
+    const out = collect({ ATOMATON_SECRET_NAMES: '["MISSING_TOKEN"]' });
     expect(out).toEqual({});
   });
 
   test("survives a names value that is not JSON", () => {
-    expect(collect({ OPENAI_API_KEY: "sk-x", ATOMA_SECRET_NAMES: "not json" })).toEqual({ OPENAI_API_KEY: "sk-x" });
+    expect(collect({ OPENAI_API_KEY: "sk-x", ATOMATON_SECRET_NAMES: "not json" })).toEqual({ OPENAI_API_KEY: "sk-x" });
   });
 
   test("includes the Copilot token, so that provider works through this path", () => {
-    expect(collect({ ATOMA_COPILOT_TOKEN: "ghu-x", ATOMA_SECRET_NAMES: "[]" })).toHaveProperty("ATOMA_COPILOT_TOKEN");
+    expect(collect({ ATOMA_COPILOT_TOKEN: "ghu-x", ATOMATON_SECRET_NAMES: "[]" })).toHaveProperty("ATOMA_COPILOT_TOKEN");
   });
 });
 
@@ -70,8 +70,8 @@ describe("write_credentials_file.ts", () => {
           ...process.env,
           OPENAI_API_KEY: "sk-test",
           GH_TOKEN: "ghs-test",
-          ATOMA_SECRET_NAMES: '["SLACK_TOKEN"]',
-          ATOMA_SECRET_0: "xoxb-test",
+          ATOMATON_SECRET_NAMES: '["SLACK_TOKEN"]',
+          ATOMATON_SECRET_0: "xoxb-test",
         },
       });
       expect(r.status).toBe(0);

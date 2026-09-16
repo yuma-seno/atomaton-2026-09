@@ -92,7 +92,7 @@ describe("run_deploy.ts", () => {
   test("names the target to the commands it runs", () => {
     const r = run(["--target", "staging"], {
       deploy: {
-        atoma_runs: { targets: [{ name: "staging", on: "merge", commands: ["echo target=$ATOMA_DEPLOY_TARGET"] }] },
+        atoma_runs: { targets: [{ name: "staging", on: "merge", commands: ["echo target=$ATOMATON_DEPLOY_TARGET"] }] },
       },
     });
     expect(r.stdout).toContain("target=staging");

@@ -3,7 +3,7 @@ import { reservedServerNames, toolsFileFrom } from "./tools-file.ts";
 import { toolDefaults } from "./shipped-servers.ts";
 
 /** The `tools/` directory relative hook paths are written against. */
-const HOOK_BASE = "/m/.github/atoma/tools";
+const HOOK_BASE = "/m/.github/atomaton/tools";
 
 /** The file a project that has configured nothing gets. */
 const shipped = () => toolsFileFrom(undefined, HOOK_BASE);

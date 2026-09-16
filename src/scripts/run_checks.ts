@@ -32,7 +32,7 @@ function main(): void {
   const commands = getCheckCommands();
   if (commands.length === 0) {
     console.log(
-      "::warning::This check verified nothing: `checks.atoma_runs.commands` in .github/atoma/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.",
+      "::warning::This check verified nothing: `checks.atoma_runs.commands` in .github/atomaton/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.",
     );
     return;
   }

@@ -11,7 +11,7 @@
  *
  * ## Why this reads a file it is handed, and not the checkout
  *
- * Every other script here reads `.github/atoma/config.yaml` through
+ * Every other script here reads `.github/atomaton/config.yaml` through
  * `lib/config.ts`, which resolves it against the working tree. This one must
  * not. On a pull request run the working tree is the pull request's own head --
  * `atoma-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
@@ -70,7 +70,7 @@ export const ref = defineScript<ReadSecretNamesArgs>(import.meta.url);
 export function declarationIn(configText: string, destination: SecretDestinationName): unknown {
   // Parsed here rather than through `lib/config.ts` on purpose: this text comes
   // from the default branch's object store, not from a file on disk, and the
-  // separation is what keeps a missing ATOMA_MACHINERY_ROOT from downgrading a
+  // separation is what keeps a missing ATOMATON_MACHINERY_ROOT from downgrading a
   // credential decision to the working tree.
   const config = Bun.YAML.parse(configText) as {
     tools?: { secrets?: unknown };
@@ -111,7 +111,7 @@ function main(): void {
 
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
+      console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
     }
     process.exit(1);
   }

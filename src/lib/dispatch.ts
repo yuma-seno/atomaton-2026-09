@@ -27,7 +27,7 @@ import { logDispatch } from "./ops-log.ts";
 
 /** The reusable workflow every agent run enters through. */
 function runnerWorkflow(): string {
-  return process.env.ATOMA_DISPATCH_WORKFLOW || "atoma-runner.yml";
+  return process.env.ATOMATON_DISPATCH_WORKFLOW || "atoma-runner.yml";
 }
 
 export interface RunnerDispatch {

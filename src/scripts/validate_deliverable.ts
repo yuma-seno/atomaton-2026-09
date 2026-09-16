@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * validate_deliverable.ts — checks that a tree's `.github/atoma/` is internally
+ * validate_deliverable.ts — checks that a tree's `.github/atomaton/` is internally
  * consistent, before a pull request that changes it can merge.
  *
  * ## The gap this closes
@@ -35,7 +35,7 @@
  *
  * `--root` is the tree to validate, and on a pull request it is a checkout of the
  * pull request's HEAD — the content that would merge. This script itself comes
- * from the default branch. The pull request's `.github/atoma/` is data here and
+ * from the default branch. The pull request's `.github/atomaton/` is data here and
  * never code: nothing under `--root` is executed, and the atoma binary is
  * downloaded by the workflow rather than taken from the tree being checked.
  *
@@ -126,8 +126,8 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
  * Write the tools file this tree's config describes, and return its path.
  *
  * Both halves come from the tree under review: the project's own `tools.servers`
- * from `.github/atoma/config.yaml`, and the shipped servers from
- * `.github/atoma-runtime/tools/defaults.yaml`. The hook base is that same runtime
+ * from `.github/atomaton/config.yaml`, and the shipped servers from
+ * `.github/atomaton-runtime/tools/defaults.yaml`. The hook base is that same runtime
  * directory, so the paths the core then checks for existence point at the scripts
  * this pull request would deploy — which is the thing being validated.
  *
@@ -136,8 +136,8 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
  * being judged, and a pull request must not be able to redirect the judging.
  */
 function writeToolsFileFor(root: string): string {
-  const atomaDir = join(root, ".github", "atoma");
-  const runtimeTools = join(root, ".github", "atoma-runtime", "tools");
+  const atomaDir = join(root, ".github", "atomaton");
+  const runtimeTools = join(root, ".github", "atomaton-runtime", "tools");
 
   const config = Bun.YAML.parse(readFileSync(join(atomaDir, "config.yaml"), "utf8")) as {
     tools?: ToolsSection;
@@ -175,7 +175,7 @@ function workflowFiles(workflowDir: string): string[] {
 function collect(root: string, atoma: string): string[] {
   if (!existsSync(root)) throw new CannotCheck(`--root ${root} does not exist`);
 
-  const atomaDir = join(root, ".github", "atoma");
+  const atomaDir = join(root, ".github", "atomaton");
   const agentDir = join(atomaDir, "agent-definitions");
   const configFile = join(atomaDir, "config.yaml");
 
