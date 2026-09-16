@@ -298,16 +298,16 @@ describe("governedPathsIn", () => {
   // already obey it.
   test("covers the runner's own control scripts", () => {
     const files = [
-      ".github/scripts/decide_guard_release.ts",
-      ".github/scripts/manage_dispatch_loop.ts",
-      ".github/scripts/save_agent_session.ts",
+      ".github/atoma-runtime/scripts/decide_guard_release.ts",
+      ".github/atoma-runtime/scripts/manage_dispatch_loop.ts",
+      ".github/atoma-runtime/scripts/save_agent_session.ts",
     ];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual(files);
   });
 
   // A project that wants the old, narrower behaviour can still name parts.
   test("a project can narrow the default back to particular directories", () => {
-    expect(governedPathsIn([".github/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
+    expect(governedPathsIn([".github/atoma-runtime/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
       ".github/workflows/ci.yml",
     ]);
   });

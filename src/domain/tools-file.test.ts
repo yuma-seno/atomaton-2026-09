@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { reservedServerNames, toolsFileFrom } from "./tools-file.ts";
-import { SHIPPED_SERVERS, SHIPPED_WATCH } from "./shipped-servers.ts";
+import { toolDefaults } from "./shipped-servers.ts";
 
 /** The `tools/` directory relative hook paths are written against. */
 const HOOK_BASE = "/m/.github/atoma/tools";
@@ -16,7 +16,7 @@ const shipped = () => toolsFileFrom(undefined, HOOK_BASE);
 describe("what every run starts with", () => {
   test("the shipped servers are there with no config at all", () => {
     const out = shipped();
-    for (const name of Object.keys(SHIPPED_SERVERS)) {
+    for (const name of Object.keys(toolDefaults().servers)) {
       expect(out[name], `${name} must be in every tools file`).toBeDefined();
     }
   });
@@ -30,12 +30,12 @@ describe("what every run starts with", () => {
    */
   test("a project cannot remove one by writing an empty servers map", () => {
     const out = toolsFileFrom({ servers: {} }, HOOK_BASE);
-    expect(Object.keys(out).filter((k) => k !== "hooks").sort()).toEqual(Object.keys(SHIPPED_SERVERS).sort());
+    expect(Object.keys(out).filter((k) => k !== "hooks").sort()).toEqual(Object.keys(toolDefaults().servers).sort());
   });
 
   test("the file-wide hooks are there too", () => {
     const out = shipped();
-    for (const key of Object.keys(SHIPPED_WATCH)) {
+    for (const key of Object.keys(toolDefaults().watch)) {
       expect((out.hooks as Record<string, unknown>)[key], `hooks.${key}`).toBeDefined();
     }
   });
@@ -56,13 +56,13 @@ describe("what a project adds", () => {
     const out = toolsFileFrom({ servers: { shell: { request_timeout_secs: 7200 } } }, HOOK_BASE);
     const entry = out.shell as Record<string, unknown>;
     expect(entry.request_timeout_secs, "what they said").toBe(7200);
-    expect(entry.command, "and what they did not").toBe(SHIPPED_SERVERS.shell!.command);
+    expect(entry.command, "and what they did not").toBe(toolDefaults().servers.shell!.command);
   });
 
   test("their file-wide hook is appended to the machinery's, not instead of it", () => {
     const out = toolsFileFrom({ watch: { after_tool: "./scripts/hooks/mine.ts" } }, HOOK_BASE);
     const after = (out.hooks as Record<string, string[]>).after_tool!;
-    expect(after.length, "both are there").toBe(SHIPPED_WATCH.after_tool!.length + 1);
+    expect(after.length, "both are there").toBe(toolDefaults().watch.after_tool!.length + 1);
     expect(after.at(-1), "theirs runs last").toBe(`${HOOK_BASE}/scripts/hooks/mine.ts`);
   });
 

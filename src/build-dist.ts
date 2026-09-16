@@ -1,15 +1,18 @@
 #!/usr/bin/env bun
 /**
- * build-dist.ts — Bundles every deployable entry-point script (via
- * `Bun.build`) from its `src/` source into the mirrored `dist/.github/`
- * location:
- *   - `src/scripts/**` (this repo's own workflow-automation glue, invoked
- *     directly from a `*.wac.ts` file's `run:` step) -> `dist/.github/scripts/`.
- *   - `src/atoma/tools/scripts/**` (Atoma's own MCP servers, `before_tool`
- *     hook, and the one-shot scripts they use) -> `dist/.github/atoma/tools/scripts/`.
- *   - Atoma's static, non-code content (`config.yaml`, `prompt-template.md`,
- *     `mcp-packages.json`, agent definitions, recursive skill Markdown, and the
- *     rulesets) -> `dist/.github/atoma/`, copied verbatim (nothing to bundle).
+ * build-dist.ts — Bundles every deployable entry-point script from its `src/`
+ * source into the deployed tree it mirrors.
+ *
+ * The deployed tree has two roots, and which one a thing lands in is the whole
+ * layout: `.github/atoma/` is the adopter's, `.github/atoma-runtime/` is ours.
+ *
+ *   - `src/scripts/**` (the glue a `*.wac.ts` file's `run:` step invokes)
+ *     -> `dist/.github/atoma-runtime/scripts/`.
+ *   - `src/atoma-runtime/tools/**` (the MCP servers and hooks `atoma` starts)
+ *     -> `dist/.github/atoma-runtime/tools/`, with `defaults.yaml` and
+ *     `packages.json` copied beside them.
+ *   - `src/atoma/**` (config, prompt template, agent definitions, skills,
+ *     rulesets) -> `dist/.github/atoma/`, copied verbatim.
  *
  * The tools file the core reads is NOT built here and does not ship: it is
  * written per run by `scripts/write_tools_file.ts`, from the config. A generated
@@ -18,7 +21,7 @@
  *
  * Every entry point is bundled with ALL of its imports inlined -- including
  * the shared `src/lib/**` kernel (so `src/scripts/**` and
- * `src/atoma/tools/scripts/**` can freely import shared code without any
+ * `src/atoma-runtime/tools/**` can freely import shared code without any
  * hand-duplicated files between them) and npm dependencies like
  * `@modelcontextprotocol/sdk` (so the deployed output needs no
  * `node_modules`/`package.json`/`bun install` step at all -- verified: a
@@ -49,7 +52,7 @@ import { buildManifest, MANIFEST_PATH } from "./domain/release-manifest.ts";
  * call, which is the worst of both.
  *
  * Anything added here has to be installed by the runner before an agent starts
- * — see `mcp-packages.json`'s `bun` list and the workflow step that reads it.
+ * — see `atoma-runtime/tools/packages.json`'s `bun` list and the step that reads it.
  */
 const RUNTIME_INSTALLED = ["@huggingface/transformers"];
 
@@ -114,7 +117,7 @@ function copyStaticAtomaContent(): void {
   // `deployment-contract.test.ts` keeps this list in step with `src/atoma/`.
   // README.md is here for the same reason the rest is: an adopter who opens this
   // directory should find out what each path means without leaving it.
-  const filesCopiedVerbatim = ["README.md", "config.yaml", "mcp-packages.json", "prompt-template.md"];
+  const filesCopiedVerbatim = ["README.md", "config.yaml", "prompt-template.md"];
 
   // A file dropped from that list, or renamed, is still sitting in `dist/` from
   // the last build -- `cpSync` adds and never removes. It then ships: the release
@@ -130,10 +133,7 @@ function copyStaticAtomaContent(): void {
   //
   // The subdirectories of `atoma/` itself are replaced wholesale below, so files at
   // these two levels are all that can be orphaned.
-  const sweep: Array<[string, readonly string[]]> = [
-    [distAtomaDir, filesCopiedVerbatim],
-    [join(distAtomaDir, "tools"), []],
-  ];
+  const sweep: Array<[string, readonly string[]]> = [[distAtomaDir, filesCopiedVerbatim]];
   for (const [dir, keep] of sweep) {
     if (!existsSync(dir)) continue;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -154,6 +154,17 @@ function copyStaticAtomaContent(): void {
   // also ships, and a ruleset written by hand against a remembered job name is
   // the failure `generated-workflows.test.ts` exists to prevent.
   copyDirectoryFresh(join(srcAtomaDir, "rulesets"), join(distAtomaDir, "rulesets"));
+
+  // The runtime's own data, beside the scripts that read it and outside the directory
+  // an adopter edits. `defaults.yaml` is read by `write_tools_file.ts` at the start of
+  // every run and by `validate_deliverable.ts` on every pull request; `packages.json`
+  // is what the install step reads. Neither is a copy of anything in `.github/atoma/`.
+  const srcRuntimeTools = join(SRC_DIR, "atoma-runtime", "tools");
+  const distRuntimeTools = join(DIST_GITHUB_DIR, "atoma-runtime", "tools");
+  mkdirSync(distRuntimeTools, { recursive: true });
+  for (const file of ["defaults.yaml", "packages.json"]) {
+    cpSync(join(srcRuntimeTools, file), join(distRuntimeTools, file));
+  }
   // The tools file is NOT built here and does NOT ship. `write_tools_file.ts` writes
   // it per run, from the config, into the runner's temp directory.
   //
@@ -198,10 +209,14 @@ function writeManifest(): void {
 }
 
 async function main(): Promise<void> {
-  await bundleTree(join(SRC_DIR, "scripts"), join(DIST_GITHUB_DIR, "scripts"), new Set(["lib", "testing"]));
   await bundleTree(
-    join(SRC_DIR, "atoma", "tools", "scripts"),
-    join(DIST_GITHUB_DIR, "atoma", "tools", "scripts"),
+    join(SRC_DIR, "scripts"),
+    join(DIST_GITHUB_DIR, "atoma-runtime", "scripts"),
+    new Set(["lib", "testing"]),
+  );
+  await bundleTree(
+    join(SRC_DIR, "atoma-runtime", "tools"),
+    join(DIST_GITHUB_DIR, "atoma-runtime", "tools"),
     new Set(["lib"]),
   );
   copyStaticAtomaContent();

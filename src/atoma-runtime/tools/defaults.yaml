@@ -1,0 +1,106 @@
+# The tool servers every run starts with, and the hooks that watch all of them.
+#
+# Not yours to edit: this file is replaced wholesale on upgrade, and removing a
+# server takes a capability from every agent that names it. It is here to be READ —
+# so that overriding one in .github/atoma/config.yaml means seeing what you are
+# overriding.
+#
+# Same schema as `tools.servers` there. A name you write with the same spelling
+# overrides this entry field by field; a name that is not here is added.
+# `description` is this project's own and never reaches the core.
+
+watch:
+  after_tool:
+    - ./hooks/workspace_guard.ts
+servers:
+  filesystem:
+    description: Reads and writes files in the work tree.
+    command: mcp-server-filesystem
+    args:
+      - "."
+    env:
+      {}
+    hooks:
+      tool_denylist:
+        - filesystem__directory_tree
+      after_tool: ./hooks/note_file_opened.ts
+  filesystem_readonly:
+    description: "Reads files and nothing else, for agents that must not write."
+    command: mcp-server-filesystem
+    args:
+      - "."
+    env:
+      {}
+    hooks:
+      tool_allowlist:
+        - filesystem_readonly__read_file
+        - filesystem_readonly__read_multiple_files
+        - filesystem_readonly__read_media_file
+        - filesystem_readonly__list_directory
+        - filesystem_readonly__get_file_info
+      after_tool: ./hooks/note_file_opened.ts
+  shell:
+    description: "Runs one foreground command. Guarded, and holds no credentials of its own."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/shell.ts"
+    env:
+      {}
+    request_timeout_secs: 3600
+    hooks:
+      before_tool: ./hooks/shell_guard.ts
+  github:
+    description: "Issues, pull requests, comments, and every Git mutation."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/github.ts"
+    env:
+      GH_TOKEN: "${GH_TOKEN}"
+    hooks:
+      {}
+  web:
+    description: "Fetches a URL. Searching the web is a skill, not a tool."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/web.ts"
+    env:
+      {}
+    hooks:
+      {}
+  search:
+    description: "Ranked search over this repository's issues and code."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/search.ts"
+    env:
+      GH_TOKEN: "${GH_TOKEN}"
+    request_timeout_secs: 300
+    hooks:
+      {}
+    settings:
+      reranker_model: onnx-community/bge-reranker-v2-m3-ONNX
+  atoma:
+    description: "Atoma's own operations: sub-issues, handoffs, stopping a run."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/atoma.ts"
+    env:
+      GH_TOKEN: "${GH_TOKEN}"
+    hooks:
+      {}
+  atoma_env:
+    description: "Rebuilding the run's environment, and nothing else."
+    command: bun
+    args:
+      - run
+      - "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/tools/mcp/atoma.ts"
+    env:
+      GH_TOKEN: "${GH_TOKEN}"
+    hooks:
+      tool_allowlist:
+        - atoma_env__reload_environment

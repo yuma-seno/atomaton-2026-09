@@ -1,8 +1,8 @@
-import { gh } from "../../../../lib/gh.ts";
-import { isAgentName } from "../../../../lib/agent-name.ts";
-import { getLabel } from "../../../../lib/config.ts";
-import { dispatchRunner } from "../../../../lib/dispatch.ts";
-import { LLM_CONTEXT_TAG } from "../../../../lib/tags.ts";
+import { gh } from "../../../lib/gh.ts";
+import { isAgentName } from "../../../lib/agent-name.ts";
+import { getLabel } from "../../../lib/config.ts";
+import { dispatchRunner } from "../../../lib/dispatch.ts";
+import { LLM_CONTEXT_TAG } from "../../../lib/tags.ts";
 
 export interface DispatchSubAgentResult {
   issue: number;

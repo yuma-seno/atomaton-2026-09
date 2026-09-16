@@ -35,7 +35,7 @@
  * and must never turn into a failure of it.
  */
 import { writeFileSync } from "node:fs";
-import { toolOpens } from "../../../../domain/search-streak.ts";
+import { toolOpens } from "../../../domain/search-streak.ts";
 import { streakFile } from "../lib/search-streak-file.ts";
 
 async function main(): Promise<void> {

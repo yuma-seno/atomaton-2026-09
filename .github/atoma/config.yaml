@@ -30,7 +30,13 @@ checks:
   atoma_runs:
     # In order, stopping at the first failure.
     commands:
-      - "bun run \"${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/scan_secrets.ts\""
+      # The SOURCE, not the deployed copy. This repository builds the deliverable,
+      # so `.github/` here is the last release and lags every change by a deploy.
+      # A pull request that moves a script would otherwise fail its own check for
+      # naming a path that is correct and not yet deployed. An adopter has no such
+      # gap -- their tree is one release, whole -- so the shipped default in
+      # src/atoma/config.yaml names the deployed path and this one does not.
+      - "bun run src/scripts/scan_secrets.ts"
       - "bun run typecheck"
       - "bun run synth"
       - "bun run test"

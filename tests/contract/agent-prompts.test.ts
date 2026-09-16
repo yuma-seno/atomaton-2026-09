@@ -148,7 +148,7 @@ describe("agent prompt contracts", () => {
    * workspace exists to remove.
    */
   test("the scratch workspace is named identically wherever an agent reads about it", () => {
-    for (const file of ["src/atoma/prompt-template.md", "src/atoma/tools/scripts/mcp/shell.ts"]) {
+    for (const file of ["src/atoma/prompt-template.md", "src/atoma-runtime/tools/mcp/shell.ts"]) {
       const text = readFileSync(file, "utf8");
       expect(text, `${file} must name the workspace`).toContain(WORKSPACE_PATH);
       // Both halves. "This survives" alone invites leaving working files in the
@@ -166,7 +166,7 @@ describe("agent prompt contracts", () => {
    * indistinguishable in the one place a model is looking.
    */
   test("the workspace is never named through a variable", () => {
-    for (const file of ["src/atoma/prompt-template.md", "src/atoma/tools/scripts/mcp/shell.ts"]) {
+    for (const file of ["src/atoma/prompt-template.md", "src/atoma-runtime/tools/mcp/shell.ts"]) {
       expect(readFileSync(file, "utf8"), `${file}`).not.toContain("ATOMA_WORKSPACE");
     }
   });

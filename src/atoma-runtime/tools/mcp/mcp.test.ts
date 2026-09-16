@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 // The servers are spawned with the ambient environment, and inside an Atoma run that
 // includes the run's own `ATOMA_RUN_TYPE` and `ISSUE_NUMBER`. See `hermeticEnv`.
-import { hermeticEnv } from "../../../../scripts/testing/harness.ts";
+import { hermeticEnv } from "../../../scripts/testing/harness.ts";
 
-const SCRIPTS_DIR = join(process.cwd(), "src/atoma/tools/scripts/mcp");
+const SCRIPTS_DIR = join(process.cwd(), "src/atoma-runtime/tools/mcp");
 const FAKE_GH_BIN_DIR = join(process.cwd(), "src/scripts/testing/bin");
 
 /**

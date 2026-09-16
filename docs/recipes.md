@@ -221,7 +221,7 @@ is destructive, is [docs/operations.md](operations.md).
 ### Check your config before pushing it
 
 ```bash
-bun run .github/scripts/validate_deliverable.ts --root .
+bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .
 ```
 
 The same check that runs as the required check on an agent's pull request, against a
@@ -339,6 +339,12 @@ to one Atoma ships — `github`, `search`, `web` and the rest — is the same st
 shorter entry: the server's name and an `env` alone. An entry for a shipped name is
 merged into it field by field, so naming `env` changes only the environment and leaves
 the command, the hooks and the timeout as they ship.
+
+A server of your own also has to exist on the runner. `mcp-server-slack` is a program,
+and nothing installs it unless you say so: name its package in `tools.packages`, which
+is where a project declares what a server it added needs. The shipped servers' own
+packages are in the deliverable and are not repeated there. See
+[docs/configuration.md](configuration.md), under `tools.packages`.
 
 Steps 2 and 3 are two keys in the same file, which does not make them one step:
 authorising a credential does not deliver it. `checks` and `deploy` need no third step at

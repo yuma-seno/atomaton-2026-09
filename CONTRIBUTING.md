@@ -16,8 +16,8 @@ The deliverable:
 - `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atoma_runs.targets`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
-  every adopter as `.github/scripts/scan_secrets.ts`; this repository runs the
-  shipped one, so a defect in it fails here before it reaches anybody else.
+  every adopter as `.github/atoma-runtime/scripts/scan_secrets.ts`; this repository
+  runs the shipped one, so a defect in it fails here before it reaches anybody else.
 
 This repository's own:
 
@@ -208,7 +208,7 @@ What each command proves:
 - `test:e2e`: end-to-end checks in `tests/e2e`.
 
 `test:e2e` runs against the built tree, so `bun run synth` has to come first — it
-reads `dist/.github/atoma/tools/scripts/mcp/*.ts`, which an untracked `dist/` does
+reads `dist/.github/atoma-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
 not have until you build it.
 
 ## Generated-file discipline
@@ -221,7 +221,7 @@ not have until you build it.
 - `dist/.github/*` is generated: never hand-edit it.
 - `.github/*` is *deployed*, not generated on merge. It is a release plus `self/`
   copied over it, rebuilt by [Atoma Self Deploy](#applying-a-release-to-this-repository).
-  So a change to `src/atoma/` does not reach the live agents until someone
+  So a change under `src/` does not reach the live agents until someone
   dispatches that, and CI does not reject a diff that touches `.github/`.
 - What is genuinely yours to edit lives in `self/`, not in `.github/`. Edit both,
   identically, in one pull request — `tests/contract/self-overlay.test.ts` requires

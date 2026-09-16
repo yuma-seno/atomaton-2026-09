@@ -3,7 +3,7 @@
  * running its real inference loop and real MCP client, driven against:
  *   - a local mock OpenAI-compatible HTTP server (mock-llm-server.ts) that
  *     returns scripted responses, so no real LLM API call is made;
- *   - the REAL, compiled `dist/.github/atoma/tools/scripts/mcp/github.ts`
+ *   - the REAL, compiled `dist/.github/atoma-runtime/tools/mcp/github.ts`
  *     MCP server, spawned exactly like production does (via `bun run`),
  *     communicating over real stdio JSON-RPC;
  *   - a fake `gh` CLI stub (fake-gh.ts, reusing src/scripts/testing/bin/gh)
@@ -29,8 +29,8 @@ import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
 
-const GITHUB_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma/tools/scripts/mcp/github.ts");
-const SHELL_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma/tools/scripts/mcp/shell.ts");
+const GITHUB_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/github.ts");
+const SHELL_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/shell.ts");
 const PROMPT_TEMPLATE = join(REPO_ROOT, "dist/.github/atoma/prompt-template.md");
 const SKILLS_DIR = join(REPO_ROOT, "dist/.github/atoma/skills");
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { SHIPPED_SERVERS } from "../../src/domain/shipped-servers.ts";
+import { toolDefaults } from "../../src/domain/shipped-servers.ts";
 import type { Session } from "../../src/lib/session.ts";
 import {
   SECRET_NAMES_VAR,
@@ -276,7 +276,7 @@ describe("generated workflows", () => {
    * question as "reachable by a server".
    */
   test("every environment variable a tool server reads is passed to the agent", () => {
-    const roots = ["src/atoma/tools/scripts", "src/lib", "src/domain"];
+    const roots = ["src/atoma-runtime/tools", "src/lib", "src/domain"];
     const files: string[] = [];
     const walk = (directory: string): void => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -588,7 +588,7 @@ describe("generated workflows", () => {
     const ops = /"op":"\(([a-z_|]+)\)"/.exec(grep ?? "")?.[1]?.split("|") ?? [];
     expect(ops.length, "and must name at least one op").toBeGreaterThan(0);
 
-    const github = readFileSync("src/atoma/tools/scripts/mcp/github.ts", "utf8");
+    const github = readFileSync("src/atoma-runtime/tools/mcp/github.ts", "utf8");
     for (const op of ops) {
       expect(github, `nothing writes an ops-log entry for "${op}"`).toContain(`logOp("${op}"`);
     }
@@ -663,7 +663,7 @@ describe("generated workflows", () => {
       const workflow = Bun.YAML.parse(readFileSync(join(directory, name), "utf8")) as WorkflowDocument;
       for (const [jobName, job] of Object.entries(workflow.jobs ?? {})) {
         const steps = job.steps ?? [];
-        const firstScript = steps.findIndex((step) => step.run?.includes(".github/scripts/"));
+        const firstScript = steps.findIndex((step) => step.run?.includes(".github/atoma-runtime/scripts/"));
         if (firstScript === -1) continue;
 
         const checkout = steps.findIndex((step) => step.uses?.startsWith("actions/checkout@"));
@@ -878,7 +878,7 @@ describe("generated workflows", () => {
     expect(machineryCheckout?.with?.ref).toContain("default_branch");
     expect(setter?.run, "the setter must be what moves that checkout").toContain("mv \"atoma-machinery\"");
 
-    // Nothing runs a script from the workspace. A bare `.github/scripts/` would
+    // Nothing runs a script from the workspace. A bare `.github/atoma-runtime/scripts/` would
     // be the pull request's copy.
     for (const step of steps) {
       const run = step.run ?? "";
@@ -903,7 +903,7 @@ describe("generated workflows", () => {
     // servers lived there; they are machinery, they moved to `shipped-servers.ts`, and
     // the generated tools file is written per run into the runner's temp directory. So
     // the constant is where a server's argv is declared and the only place to check it.
-    const servers = Object.entries(SHIPPED_SERVERS);
+    const servers = Object.entries(toolDefaults().servers);
     expect(servers.length, "Atoma must ship some servers").toBeGreaterThan(0);
 
     for (const [name, server] of servers) {
@@ -921,7 +921,7 @@ describe("generated workflows", () => {
     const workflow = readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8");
     // The deployed path, not the bare filename: the install step also names the
     // file in prose when it is absent, and a message is not a read.
-    for (const path of [".github/atoma/mcp-packages.json", ".github/atoma/tools/scripts/hooks"]) {
+    for (const path of [".github/atoma-runtime/tools/packages.json", ".github/atoma-runtime/tools/hooks"]) {
       const reads = workflow.split(/\r?\n/).filter((l) => l.includes(path));
       expect(reads.length, `${path} must still be referenced at all`).toBeGreaterThan(0);
       for (const line of reads) {

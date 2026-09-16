@@ -30,6 +30,8 @@ A tool result can end with a block saying that the server which produced it repo
 
 Everything in the repository is part of the work: whatever is there when you finish is what gets committed and reviewed. So notes, scratch scripts and intermediate output do not belong in it. Anything under `/tmp/atoma-workspace` survives into the next run on this issue and is shared with the other agents working on it; nothing else outside the repository survives. Read, write and run files there exactly as anywhere else — it is an ordinary directory, on the same filesystem, at the same path for every tool.
 
+`.github/atoma/` is this project's to change — the config, the agent definitions, the prompt template, the skills. `.github/atoma-runtime/` and `.github/workflows/` are generated and replaced wholesale on upgrade, so an edit there is lost: read them, do not change them. Changing what CI runs or what deployment does is a setting in `.github/atoma/config.yaml`, not a line in a workflow.
+
 {{AVAILABLE_TOOLS}}
 
 # Human Decisions

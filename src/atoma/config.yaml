@@ -29,7 +29,7 @@ checks:
   atoma_runs:
     # In order, stopping at the first failure.
     commands:
-      - bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/scan_secrets.ts"
+      - bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/scan_secrets.ts"
     # Repository secrets this step may reach, by name.
     secrets: []
     runs_on: ubuntu-latest

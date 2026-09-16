@@ -378,7 +378,7 @@ default branch rather than from the pull request.
 You can run the same check yourself, against a checkout or a worktree:
 
 ```bash
-bun run .github/scripts/validate_deliverable.ts --root .
+bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .
 ```
 
 ## Checks, deployment, and the jobs you will see
@@ -595,7 +595,7 @@ of the run, so the agent still has a turn in which to say what it found.
 | Parent orchestrator not re-invoked after sub-issue completion | Sibling sub-issues still open, or aggregation already handled by another path | Check sibling labels/tags and parent comments for aggregation marker. A sibling is only counted while it carries both `atoma/sub-issue` and `atoma/launched` |
 | Comment disappeared during run | Guard deleted human comment while in-progress label active | Repost comment after current run ends |
 | Draft pull request will not merge | PR is in draft and reviewer reports a `draft` blocker by design | Author marks the PR ready for review |
-| Required check goes red and your CI never ran | The `.github/atoma/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/scripts/validate_deliverable.ts --root .` |
+| Required check goes red and your CI never ran | The `.github/atoma/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .` |
 | Agent's pull request shows a check stuck at `action_required` | GitHub holds `pull_request` runs for pull requests opened with `GITHUB_TOKEN` | Expected; the merge does not depend on it, and the pull request settles at `UNSTABLE`, which a ruleset permits. Approve it to clear the display, but never delete the run — that breaks the commit's check rollup in a way no re-run repairs, and the pull request becomes permanently unmergeable |
 | Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atoma cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
 | Agent reports a missing dependency instead of installing it | `atoma_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [configuration.md](configuration.md#environment) only if the rebuilds were making progress |

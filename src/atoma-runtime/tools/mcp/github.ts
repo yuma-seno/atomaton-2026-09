@@ -14,32 +14,32 @@
  * in-process (resolveNotify/dispatchOrchestratorIfSubIssueReady/etc.);
  * always `console.error()` (`log()` below) for logging.
  */
-import { gh, ghGraphql, gitRun, nothingToCommit } from "../../../../lib/gh.ts";
-import { getBaseBranch, getLabel } from "../../../../lib/config.ts";
-import { resolveNotify } from "../../../../lib/notify.ts";
+import { gh, ghGraphql, gitRun, nothingToCommit } from "../../../lib/gh.ts";
+import { getBaseBranch, getLabel } from "../../../lib/config.ts";
+import { resolveNotify } from "../../../lib/notify.ts";
 import {
   describeGateResult,
   dispatchOrchestratorIfSubIssueReady,
   needsAttention,
   type DispatchGateResult,
-} from "../../../../lib/aggregation.ts";
-import { logOp } from "../../../../lib/ops-log.ts";
-import { report } from "../../../../lib/mcp-report.ts";
-import { knownParticipants } from "../../../../lib/participants.ts";
-import { escapedMentionNotice, escapeUnknownMentions } from "../../../../domain/mention.ts";
-import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG, PARENT_TAG } from "../../../../lib/tags.ts";
-import { closingKeywordRefusal, closingReferences } from "../../../../domain/issue-links.ts";
-import type { GhIssueAuthor } from "../../../../lib/types.ts";
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, z, type McpToolResult } from "../../../../lib/mcp-tool.ts";
-import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../../domain/tool-output.ts";
-import { decidePostMergeHandoff } from "../../../../domain/handoff.ts";
-import { isAttended, unattendedNotice } from "../../../../domain/unattended-pull-request.ts";
-import { branchForCommit, resolveBranch, stackedPrBase } from "../../../../lib/branch-placement.ts";
-import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../../lib/dispatch-targets.ts";
-import { issueLinks } from "../../../../lib/issue-links.ts";
-import { decideMergeReadiness, formatBlockers } from "../../../../domain/merge-readiness.ts";
-import { gatherMergeSignals } from "../../../../lib/merge-signals.ts";
-import { selectCommentRange } from "../../../../domain/comment-range.ts";
+} from "../../../lib/aggregation.ts";
+import { logOp } from "../../../lib/ops-log.ts";
+import { report } from "../../../lib/mcp-report.ts";
+import { knownParticipants } from "../../../lib/participants.ts";
+import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/mention.ts";
+import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG, PARENT_TAG } from "../../../lib/tags.ts";
+import { closingKeywordRefusal, closingReferences } from "../../../domain/issue-links.ts";
+import type { GhIssueAuthor } from "../../../lib/types.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
+import { decidePostMergeHandoff } from "../../../domain/handoff.ts";
+import { isAttended, unattendedNotice } from "../../../domain/unattended-pull-request.ts";
+import { branchForCommit, resolveBranch, stackedPrBase } from "../../../lib/branch-placement.ts";
+import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../lib/dispatch-targets.ts";
+import { issueLinks } from "../../../lib/issue-links.ts";
+import { decideMergeReadiness, formatBlockers } from "../../../domain/merge-readiness.ts";
+import { gatherMergeSignals } from "../../../lib/merge-signals.ts";
+import { selectCommentRange } from "../../../domain/comment-range.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 function log(msg: string): void {
