@@ -176,7 +176,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/resolve_issue_branch.ts" --repo "${{ github.repository }}" --issue "${{ inputs.number }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/resolve_issue_branch.ts" --repo "${{ github.repository }}" --issue "${{ inputs.number }}"
       - name: Check out the branch this run starts from
         if: inputs.type == 'issue'
         shell: bash
@@ -184,7 +184,7 @@ jobs:
           BRANCH_NAME: ${{ steps.issue-branch.outputs.branch }}
         run: |
           if [ -z "${BRANCH_NAME}" ]; then
-            BRANCH_NAME=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/get_config_value.ts" "base_branch" "")
+            BRANCH_NAME=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/get_config_value.ts" "base_branch" "")
             [ -n "${BRANCH_NAME}" ] || exit 0
           else
             echo "BRANCH=${BRANCH_NAME}" >> $GITHUB_ENV
@@ -212,7 +212,7 @@ jobs:
 
           # Merged here rather than in a script, so the jq below reads one shape.
           MERGED_PKGS="${RUNNER_TEMP}/atoma-run/packages.json"
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/merge_tool_packages.ts" --shipped "$MCP_PKGS_FILE" --config "$PROJECT_CONFIG" --out "$MERGED_PKGS"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/merge_tool_packages.ts" --shipped "$MCP_PKGS_FILE" --config "$PROJECT_CONFIG" --out "$MERGED_PKGS"
           MCP_PKGS_FILE="$MERGED_PKGS"
 
           # Executables a tool server is started by name, installed globally.
@@ -274,7 +274,7 @@ jobs:
         id: reranker
         shell: bash
         run: |
-          MODEL=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/get_config_value.ts" "tools.servers.search.settings.reranker_model" "onnx-community/bge-reranker-v2-m3-ONNX")
+          MODEL=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/get_config_value.ts" "tools.servers.search.settings.reranker_model" "onnx-community/bge-reranker-v2-m3-ONNX")
           echo "reranker: ${MODEL}"
           echo "cache_key=atoma-reranker-$(echo "${MODEL}" | tr '/:' '--')" >> "$GITHUB_OUTPUT"
       - name: Cache the reranker model
@@ -292,7 +292,7 @@ jobs:
       - name: Run configured environment setup
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/run_environment_setup.ts"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/run_environment_setup.ts"
       - name: Configure git identity
         shell: bash
         run: |
@@ -308,7 +308,7 @@ jobs:
         run: |
           EFFECTIVE="$NOTIFY"
           if [ -z "$EFFECTIVE" ]; then
-            EFFECTIVE=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/resolve_notify.ts" --repo "${GITHUB_REPOSITORY}" --number "${NUMBER}")
+            EFFECTIVE=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/resolve_notify.ts" --repo "${GITHUB_REPOSITORY}" --number "${NUMBER}")
             [ -n "$EFFECTIVE" ] && echo "Resolved notify fallback: ${EFFECTIVE}"
           fi
           echo "notify=${EFFECTIVE}" >> "$GITHUB_OUTPUT"
@@ -319,26 +319,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/fetch_events.ts" --type "${{ inputs.type }}" --number "${{ inputs.number }}" --out "${RUNNER_TEMP}/atoma-run/events.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/fetch_events.ts" --type "${{ inputs.type }}" --number "${{ inputs.number }}" --out "${RUNNER_TEMP}/atoma-run/events.json"
       - name: Restore agent session from atoma-data
         id: restore-session
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/restore_agent_session.ts" --type "${{ steps.fetch.outputs.resolved_type }}" --number "${{ steps.fetch.outputs.resolved_number }}" --agent "${{ inputs.agent }}" --out "${RUNNER_TEMP}/atoma-run/session.json" --session-mode "${{ inputs.session_mode }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/restore_agent_session.ts" --type "${{ steps.fetch.outputs.resolved_type }}" --number "${{ steps.fetch.outputs.resolved_number }}" --agent "${{ inputs.agent }}" --out "${RUNNER_TEMP}/atoma-run/session.json" --session-mode "${{ inputs.session_mode }}"
       - name: Restore the agent's workspace
         id: workspace
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/restore_workspace.ts" --type "${{ inputs.type }}" --number "${{ inputs.number }}" --dest "/tmp/atoma-workspace" --repo "${{ github.repository }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/restore_workspace.ts" --type "${{ inputs.type }}" --number "${{ inputs.number }}" --dest "/tmp/atoma-workspace" --repo "${{ github.repository }}"
       - name: Merge GitHub context into session
         id: context
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/reconcile_github_session.ts" --events "${RUNNER_TEMP}/atoma-run/events.json" --agent-name "${{ inputs.agent }}" --agent-def "${ATOMA_MACHINERY_ROOT}/.github/atoma/agent-definitions/${{ inputs.agent }}.md" --session "${RUNNER_TEMP}/atoma-run/session.json" --out "${RUNNER_TEMP}/atoma-run/session.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/reconcile_github_session.ts" --events "${RUNNER_TEMP}/atoma-run/events.json" --agent-name "${{ inputs.agent }}" --agent-def "${ATOMA_MACHINERY_ROOT}/.github/atoma/agent-definitions/${{ inputs.agent }}.md" --session "${RUNNER_TEMP}/atoma-run/session.json" --out "${RUNNER_TEMP}/atoma-run/session.json"
       - name: Add atoma/in-progress label
         if: steps.context.outputs.new_event_count != '0'
         shell: bash
@@ -346,7 +346,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/manage_in_progress_label.ts" --action "add" --number "${NUMBER}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/manage_in_progress_label.ts" --action "add" --number "${NUMBER}"
       - name: Post reviewer-start comment
         if: steps.context.outputs.new_event_count != '0' && inputs.agent == 'reviewer' && inputs.type == 'pr'
         shell: bash
@@ -532,7 +532,7 @@ jobs:
             echo "::warning::Could not read .github/atoma/config.yaml from ${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
           fi
 
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/read_secret_names.ts" --destination "tools" --config "$RUNNER_TEMP/atoma-declared-secrets.yaml"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/read_secret_names.ts" --destination "tools" --config "$RUNNER_TEMP/atoma-declared-secrets.yaml"
       - name: Collect this run's credentials into a file
         shell: bash
         env:
@@ -554,7 +554,7 @@ jobs:
           ATOMA_SECRET_9: ${{ secrets[fromJSON(steps.secret-names.outputs.names || '[]')[9]] }}
           ATOMA_SECRET_NAMES: ${{ steps.secret-names.outputs.names }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_credentials_file.ts" --out "$RUNNER_TEMP/atoma-credentials/credentials.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/write_credentials_file.ts" --out "$RUNNER_TEMP/atoma-credentials/credentials.json"
           # Handed to the user atoma runs as, which reads it and deletes it before starting
           # any server. Handed over rather than opened up: it holds every credential the run
           # supplies, and this step's own user keeps none of them afterwards.
@@ -567,7 +567,7 @@ jobs:
           NUMBER: ${{ inputs.number }}
         run: |
           SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          nohup bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/watch_for_stop.ts" --number "${NUMBER}" --stop-file "${RUNNER_TEMP}/atoma-run/stop-requested" --since "${SINCE}" > "${RUNNER_TEMP}/atoma-run/stop-watch.log" 2>&1 &
+          nohup bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/watch_for_stop.ts" --number "${NUMBER}" --stop-file "${RUNNER_TEMP}/atoma-run/stop-requested" --since "${SINCE}" > "${RUNNER_TEMP}/atoma-run/stop-watch.log" 2>&1 &
           echo $! > "${RUNNER_TEMP}/atoma-run/stop-watch.pid"
           echo "watching #${NUMBER} for /stop since ${SINCE}"
       - name: Run agent
@@ -605,7 +605,7 @@ jobs:
           #
           # `--hook-base` is the machinery's `tools/` directory, because that is where the
           # hook scripts are. The output goes to the run directory and is thrown away with it.
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools"
           TOOLS_ARG="--tools-file ${RUNNER_TEMP}/atoma-run/tools.yaml"
 
           # Settings, not credentials. These two are repository VARIABLES -- which provider
@@ -729,7 +729,7 @@ jobs:
             echo "${RESULT_EOF}"
           } >> "$GITHUB_OUTPUT"
 
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/extract_directive.ts" --output-file "${RUNNER_TEMP}/atoma-run/atoma_output.txt" --def-dir "${ATOMA_MACHINERY_ROOT}/.github/atoma/agent-definitions"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/extract_directive.ts" --output-file "${RUNNER_TEMP}/atoma-run/atoma_output.txt" --def-dir "${ATOMA_MACHINERY_ROOT}/.github/atoma/agent-definitions"
 
           # Detect whether a tool call already triggered an automatic follow-up
           # dispatch during this run (atoma__launch_sub_agent, github__create_pr ->
@@ -785,22 +785,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atoma-run/session.json" --output "${RUNNER_TEMP}/atoma-run/atoma_output.txt" --logs-file "${RUNNER_TEMP}/atoma-run/atoma_logs.txt"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atoma-run/session.json" --output "${RUNNER_TEMP}/atoma-run/atoma_output.txt" --logs-file "${RUNNER_TEMP}/atoma-run/atoma_logs.txt"
       - name: Record run metadata
         if: steps.atoma.outcome == 'success' && steps.post-result.outputs.comment_id != ''
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/record_run_metadata.ts" --session "${RUNNER_TEMP}/atoma-run/session.json" --comment-id "${{ steps.post-result.outputs.comment_id }}" --agent "${{ inputs.agent }}" --snapshot-hash "${{ steps.context.outputs.context_snapshot_hash }}" --event-count "${{ steps.context.outputs.context_event_count }}" --type "${{ steps.fetch.outputs.resolved_type }}" --resolved-number "${{ steps.fetch.outputs.resolved_number }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/record_run_metadata.ts" --session "${RUNNER_TEMP}/atoma-run/session.json" --comment-id "${{ steps.post-result.outputs.comment_id }}" --agent "${{ inputs.agent }}" --snapshot-hash "${{ steps.context.outputs.context_snapshot_hash }}" --event-count "${{ steps.context.outputs.context_event_count }}" --type "${{ steps.fetch.outputs.resolved_type }}" --resolved-number "${{ steps.fetch.outputs.resolved_number }}"
       - name: Save session to atoma-data branch
         if: always() && steps.atoma.outcome != 'skipped'
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/save_agent_session.ts" --session "${RUNNER_TEMP}/atoma-run/session.json" --type "${{ steps.fetch.outputs.resolved_type }}" --number "${{ steps.fetch.outputs.resolved_number }}" --agent "${{ inputs.agent }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/save_agent_session.ts" --session "${RUNNER_TEMP}/atoma-run/session.json" --type "${{ steps.fetch.outputs.resolved_type }}" --number "${{ steps.fetch.outputs.resolved_number }}" --agent "${{ inputs.agent }}"
       - name: Save the agent's workspace
         if: steps.atoma.outcome == 'success'
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/save_workspace.ts" --root-issue "${{ steps.workspace.outputs.root_issue }}" --source "/tmp/atoma-workspace" --agent "${{ inputs.agent }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/save_workspace.ts" --root-issue "${{ steps.workspace.outputs.root_issue }}" --source "/tmp/atoma-workspace" --agent "${{ inputs.agent }}"
       - name: Write the metrics report
         if: always()
         shell: bash
@@ -808,7 +808,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_metrics_report.ts"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/write_metrics_report.ts"
       - name: Report failure
         if: always() && job.status != 'success'
         shell: bash
@@ -819,7 +819,7 @@ jobs:
           NOTIFY: ${{ steps.notify.outputs.notify }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/report_run_failure.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --run-url "${RUN_URL}" --logs-file "${RUNNER_TEMP}/atoma-run/atoma_logs.txt"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/report_run_failure.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --run-url "${RUN_URL}" --logs-file "${RUNNER_TEMP}/atoma-run/atoma_logs.txt"
       - name: Check for uncommitted changes
         id: dirty
         if: steps.atoma.outcome == 'success'
@@ -832,7 +832,7 @@ jobs:
         if: steps.dirty.outputs.has_changes == 'true'
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/inject_uncommitted_notice.ts" --session "${RUNNER_TEMP}/atoma-run/session.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/inject_uncommitted_notice.ts" --session "${RUNNER_TEMP}/atoma-run/session.json"
       - name: Notify that the run reached its limit
         if: steps.atoma.outputs.limit_reached == 'true'
         shell: bash
@@ -842,7 +842,7 @@ jobs:
           NOTIFY: ${{ steps.notify.outputs.notify }}
           AGENT: ${{ inputs.agent }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/notify_limit_reached.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --session "${RUNNER_TEMP}/atoma-run/session.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/notify_limit_reached.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --session "${RUNNER_TEMP}/atoma-run/session.json"
       - name: Manage auto-dispatch loop control
         id: loop-control
         if: steps.atoma.outcome == 'success'
@@ -850,13 +850,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/manage_dispatch_loop.ts" --number "${{ inputs.number }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/manage_dispatch_loop.ts" --number "${{ inputs.number }}"
       - name: Decide whether to release the in-progress guard
         id: decide-guard-release
         if: always()
         shell: bash
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/decide_guard_release.ts" --outcome "${{ steps.atoma.outcome }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/decide_guard_release.ts" --outcome "${{ steps.atoma.outcome }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}"
       - name: Remove atoma/in-progress label on completion
         if: always() && steps.decide-guard-release.outputs.should_release == 'true'
         shell: bash
@@ -864,7 +864,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/manage_in_progress_label.ts" --action "remove" --number "${NUMBER}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/manage_in_progress_label.ts" --action "remove" --number "${NUMBER}"
       - name: Dispatch next agent
         if: steps.atoma.outcome == 'success' && steps.atoma.outputs.directive != '' && steps.atoma.outputs.limit_reached != 'true' && steps.atoma.outputs.stop_requested != 'true' && steps.loop-control.outputs.loop_limit_reached != 'true'
         shell: bash

@@ -48,7 +48,7 @@ jobs:
         env:
           ATOMA_COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/parse_comment_command.ts"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/parse_comment_command.ts"
       - name: 'Guard: reject comment while atoma/in-progress'
         id: guard
         if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop'
@@ -59,7 +59,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           COMMENTER: ${{ github.event.comment.user.login }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/guard_comment_during_run.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/guard_comment_during_run.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
       - name: Resolve target context
         id: target
         shell: bash
@@ -84,7 +84,7 @@ jobs:
           COMMENT_ID: ${{ github.event.comment.id }}
           COMMENTER: ${{ github.event.comment.user.login }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/request_stop.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/request_stop.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
       - name: Resolve the agent to resume
         id: resume
         if: steps.command.outputs.control == 'resume'
@@ -93,7 +93,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/resolve_resume_agent.ts" --number "${NUMBER}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/resolve_resume_agent.ts" --number "${NUMBER}"
       - name: Decide what to dispatch
         id: dispatch
         shell: bash

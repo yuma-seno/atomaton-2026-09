@@ -86,7 +86,7 @@ jobs:
         shell: bash
         run: |
           STATUS=0
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/validate_deliverable.ts" --root "pr-head" --report "${RUNNER_TEMP}/atoma-deliverable-problems.txt" || STATUS=$?
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/validate_deliverable.ts" --root "pr-head" --report "${RUNNER_TEMP}/atoma-deliverable-problems.txt" || STATUS=$?
           if [ "$STATUS" -gt 1 ]; then
             echo "::error::the deliverable could not be validated; see the log above"
             exit 1
@@ -95,7 +95,7 @@ jobs:
         id: cfg
         shell: bash
         run: |
-          WORKFLOW=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/get_config_value.ts" "checks.your_workflow" "atoma-check.yml")
+          WORKFLOW=$(bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/get_config_value.ts" "checks.your_workflow" "atoma-check.yml")
           echo "workflow=${WORKFLOW}" >> "$GITHUB_OUTPUT"
       - name: Run CI and write its result where the ruleset looks
         id: validate
@@ -103,7 +103,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/validate_pull_request.ts" --repo "${{ github.repository }}" --number "${{ inputs.number }}" --branch "${{ inputs.branch }}" --workflow "${{ steps.cfg.outputs.workflow }}" --reviewer "${{ inputs.reviewer }}" --engineer "${{ inputs.engineer }}" --deliverable-report "${RUNNER_TEMP}/atoma-deliverable-problems.txt"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/validate_pull_request.ts" --repo "${{ github.repository }}" --number "${{ inputs.number }}" --branch "${{ inputs.branch }}" --workflow "${{ steps.cfg.outputs.workflow }}" --reviewer "${{ inputs.reviewer }}" --engineer "${{ inputs.engineer }}" --deliverable-report "${RUNNER_TEMP}/atoma-deliverable-problems.txt"
       - name: Dispatch the agent the result calls for
         if: steps.validate.outputs.next_agent != ''
         shell: bash
