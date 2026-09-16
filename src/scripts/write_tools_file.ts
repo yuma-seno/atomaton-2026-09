@@ -51,6 +51,9 @@ export interface WriteToolsFileArgs {
   config: string;
   out: string;
   "hook-base": string;
+  /** The shipped `tools/defaults.yaml`. Passed rather than derived -- see
+   * `domain/shipped-servers.ts` for the layout the derivation got wrong. */
+  defaults: string;
 }
 
 export const ref = defineScript<WriteToolsFileArgs>(import.meta.url);
@@ -58,11 +61,18 @@ export const ref = defineScript<WriteToolsFileArgs>(import.meta.url);
 function main(): void {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
-    options: { config: { type: "string" }, out: { type: "string" }, "hook-base": { type: "string" } },
+    options: {
+      config: { type: "string" },
+      out: { type: "string" },
+      "hook-base": { type: "string" },
+      defaults: { type: "string" },
+    },
   });
 
-  if (!values.config || !values.out || !values["hook-base"]) {
-    console.error("usage: write_tools_file.ts --config config.yaml --out tools.yaml --hook-base DIR");
+  if (!values.config || !values.out || !values["hook-base"] || !values.defaults) {
+    console.error(
+      "usage: write_tools_file.ts --config config.yaml --defaults defaults.yaml --out tools.yaml --hook-base DIR",
+    );
     process.exit(2);
   }
 
@@ -88,7 +98,7 @@ function main(): void {
     process.exit(1);
   }
 
-  const file = toolsFileFrom(tools, values["hook-base"]);
+  const file = toolsFileFrom(tools, values["hook-base"], values.defaults);
   mkdirSync(dirname(values.out), { recursive: true });
   writeFileSync(
     values.out,

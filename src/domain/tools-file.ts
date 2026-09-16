@@ -35,7 +35,7 @@
  * reads, so the loss of a short relative path costs nothing.
  */
 import { isAbsolute, join } from "node:path";
-import { toolDefaults } from "./shipped-servers.ts";
+import { toolDefaults, type ToolDefaults } from "./shipped-servers.ts";
 
 /** A server entry as the config carries it: the core's own keys, plus `settings`. */
 export interface ConfiguredServer {
@@ -56,13 +56,18 @@ export interface ToolsSection {
  * first, because it applies to everything below it, then the servers in the order
  * the config declared them.
  */
-export function toolsFileFrom(tools: ToolsSection | undefined, hookBase: string): Record<string, unknown> {
+export function toolsFileFrom(
+  tools: ToolsSection | undefined,
+  hookBase: string,
+  defaultsPath?: string,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
 
-  const watch = mergedWatch(tools?.watch);
+  const defaults = toolDefaults(defaultsPath);
+  const watch = mergedWatch(tools?.watch, defaults);
   if (Object.keys(watch).length > 0) out.hooks = absoluteHooks(watch, hookBase);
 
-  for (const [name, server] of Object.entries(mergedServers(tools?.servers))) {
+  for (const [name, server] of Object.entries(mergedServers(tools?.servers, defaults))) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord(forTheCore.hooks)) forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
     out[name] = forTheCore;
@@ -84,9 +89,12 @@ export function toolsFileFrom(tools: ToolsSection | undefined, hookBase: string)
  * and not the union — a union could only ever widen, which is the wrong direction for
  * something whose purpose is to restrict.
  */
-function mergedServers(configured: Record<string, ConfiguredServer> | undefined): Record<string, ConfiguredServer> {
+function mergedServers(
+  configured: Record<string, ConfiguredServer> | undefined,
+  defaults: ToolDefaults,
+): Record<string, ConfiguredServer> {
   const out: Record<string, ConfiguredServer> = {};
-  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+  for (const [name, server] of Object.entries(defaults.servers)) {
     // `description` is this project's own, like `settings`: it exists so the
     // defaults file can say what a server is for, and the core has never heard of it.
     const { description: _ours, ...rest } = server;
@@ -110,9 +118,9 @@ function mergedServers(configured: Record<string, ConfiguredServer> | undefined)
  * Written as a list, which the core has accepted since v0.1.33. Its `Hooks` always
  * held one; only the tools file's shape was singular.
  */
-function mergedWatch(configured: Record<string, unknown> | undefined): Record<string, unknown> {
+function mergedWatch(configured: Record<string, unknown> | undefined, defaults: ToolDefaults): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const [key, scripts] of Object.entries(toolDefaults().watch)) out[key] = [...scripts];
+  for (const [key, scripts] of Object.entries(defaults.watch)) out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
     out[key] = [...((out[key] as unknown[]) ?? []), ...theirs];
