@@ -2,8 +2,9 @@
 // @bun
 
 // src/scripts/validate_deliverable.ts
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { join as join2 } from "path";
 import { parseArgs } from "util";
 
 // src/domain/control-commands.ts
@@ -466,6 +467,52 @@ function configProblems(facts) {
   return problems;
 }
 
+// src/domain/generated-file-hint.ts
+var EDITABLE_SOURCE = "`tools.servers` in .github/atoma/config.yaml";
+function withEditableSource(problem) {
+  if (problem.includes("tools.yaml")) {
+    return `${problem} \u2014 that file is generated from ${EDITABLE_SOURCE} and is rewritten on ` + "every build, so an edit to it is lost. Change the config.";
+  }
+  if (problem.startsWith("Hook script not found")) {
+    return `${problem} \u2014 hook paths are resolved against .github/atoma/tools/, and are ` + `declared in ${EDITABLE_SOURCE} (per server) or \`tools.watch\` (file-wide).`;
+  }
+  return problem;
+}
+
+// src/domain/tools-file.ts
+import { isAbsolute, join } from "path";
+function toolsFileFrom(tools, hookBase) {
+  const out = {};
+  if (tools?.watch && Object.keys(tools.watch).length > 0)
+    out.hooks = absoluteHooks(tools.watch, hookBase);
+  for (const [name, server] of Object.entries(tools?.servers ?? {})) {
+    const { settings: _delivery, ...forTheCore } = server;
+    if (isRecord4(forTheCore.hooks))
+      forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
+    out[name] = forTheCore;
+  }
+  return out;
+}
+var HOOK_SCRIPT_KEYS = ["before_tool", "after_tool"];
+function isRecord4(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function absoluteHooks(hooks, base) {
+  const out = { ...hooks };
+  for (const key of HOOK_SCRIPT_KEYS) {
+    const script = out[key];
+    if (typeof script !== "string" || script.length === 0)
+      continue;
+    if (isAbsolute(script))
+      continue;
+    out[key] = join(base, script).split("\\").join("/");
+  }
+  return out;
+}
+function reservedServerNames(tools) {
+  return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
+}
+
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
@@ -498,8 +545,18 @@ function validateAgentDefinition(atoma, agentDef, toolsFile, label) {
   const found = validatorProblems(`${stdout}
 ${stderr}`);
   if (found.length > 0)
-    return found.map((problem) => `${label}: ${problem}`);
+    return found.map((problem) => `${label}: ${withEditableSource(problem)}`);
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
+}
+function writeToolsFileFor(atomaDir) {
+  const config = Bun.YAML.parse(readFileSync(join2(atomaDir, "config.yaml"), "utf8"));
+  const collisions = reservedServerNames(config.tools);
+  if (collisions.length > 0) {
+    throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} \u2014 reserved by the core`);
+  }
+  const out = join2(mkdtempSync(join2(tmpdir(), "atoma-validate-")), "tools.yaml");
+  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join2(atomaDir, "tools")), null, 2));
+  return out;
 }
 function agentNames(agentDir) {
   if (!existsSync(agentDir))
@@ -514,10 +571,9 @@ function workflowFiles(workflowDir) {
 function collect(root, atoma) {
   if (!existsSync(root))
     throw new CannotCheck(`--root ${root} does not exist`);
-  const atomaDir = join(root, ".github", "atoma");
-  const agentDir = join(atomaDir, "agent-definitions");
-  const toolsFile = join(atomaDir, "tools", "tools.yaml");
-  const configFile = join(atomaDir, "config.yaml");
+  const atomaDir = join2(root, ".github", "atoma");
+  const agentDir = join2(atomaDir, "agent-definitions");
+  const configFile = join2(atomaDir, "config.yaml");
   const names = agentNames(agentDir);
   const problems = [];
   if (!existsSync(configFile)) {
@@ -533,17 +589,20 @@ function collect(root, atoma) {
       problems.push(...configProblems({
         config,
         agentNames: names,
-        workflowFiles: workflowFiles(join(root, ".github", "workflows"))
+        workflowFiles: workflowFiles(join2(root, ".github", "workflows"))
       }));
     }
   }
   if (names.length > 0) {
-    if (!existsSync(toolsFile)) {
-      problems.push(`${toolsFile} is missing, so every \`mcp_servers\` entry names a server that cannot resolve.`);
-    } else {
-      for (const name of names) {
-        problems.push(...validateAgentDefinition(atoma, join(agentDir, `${name}.md`), toolsFile, `${name}.md`));
-      }
+    let toolsFile;
+    try {
+      toolsFile = writeToolsFileFor(atomaDir);
+    } catch (error) {
+      problems.push(`could not write the tools file from config.yaml: ${error.message}`);
+      return problems;
+    }
+    for (const name of names) {
+      problems.push(...validateAgentDefinition(atoma, join2(agentDir, `${name}.md`), toolsFile, `${name}.md`));
     }
   }
   return problems;

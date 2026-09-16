@@ -54,8 +54,8 @@ var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
-var TOOL_HOOKS_DIR = `${MACHINERY_ROOT}/tools/scripts/hooks`;
+var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
 var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
 var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
 
@@ -74,6 +74,9 @@ function loadConfig() {
 function getRunsOn(field) {
   const config = loadConfig();
   return field === "checks" ? config.checks?.atoma_runs?.runs_on : config.deploy?.atoma_runs?.runs_on;
+}
+function runsOnPath(field) {
+  return `${field}.atoma_runs.runs_on`;
 }
 
 // src/scripts/lib/script-ref.ts
@@ -95,12 +98,12 @@ function main() {
   }
   const { labels, problems } = resolveRunsOn(getRunsOn(field));
   for (const problem of problems)
-    console.error(`::warning::${field}.${problem}`);
+    console.error(`::warning::${runsOnPath(field)}: ${problem}`);
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput)
     appendFileSync(githubOutput, `runs_on=${runsOnOutput(labels)}
 `);
-  console.error(`${field}.runs_on resolved to ${labels.join(", ")}`);
+  console.error(`${runsOnPath(field)} resolved to ${labels.join(", ")}`);
 }
 if (import.meta.main)
   main();

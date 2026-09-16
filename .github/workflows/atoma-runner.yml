@@ -586,10 +586,18 @@ jobs:
           # the dependency visible rather than implicit.
           export GITHUB_RUN_ID ISSUE_NUMBER ISSUE_NOTIFY ATOMA_RUN_TYPE ATOMA_OPS_LOG
 
-          TOOLS_ARG=""
-          if [ -f "${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/tools.yaml" ]; then
-            TOOLS_ARG="--tools-file ${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/tools.yaml"
-          fi
+          # The tools file is written now, from the config, rather than shipped. See
+          # `scripts/write_tools_file.ts` for what shipping a generated file cost.
+          #
+          # From the MACHINERY config, which is the default branch's: a tools file names a
+          # `command` for every server, so whoever writes it chooses what this run starts.
+          # Generating from the pull request's own config would let a pull request decide its
+          # own execution environment, which is the one rule none of this may cross.
+          #
+          # `--hook-base` is the machinery's `tools/` directory, because that is where the
+          # hook scripts are. The output goes to the run directory and is thrown away with it.
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma/tools"
+          TOOLS_ARG="--tools-file ${RUNNER_TEMP}/atoma-run/tools.yaml"
 
           # Settings, not credentials. These two are repository VARIABLES -- which provider
           # to use and which host to reach -- so they belong in the environment; the

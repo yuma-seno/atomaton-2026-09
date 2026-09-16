@@ -151,8 +151,8 @@ var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
-var TOOL_HOOKS_DIR = `${MACHINERY_ROOT}/tools/scripts/hooks`;
+var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
 var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
 var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
 
@@ -553,14 +553,10 @@ function declared() {
   const tools = [];
   const skills = [];
   try {
-    const yaml = readFileSync(`${root}/${TOOLS_FILE}`, "utf8");
-    for (const line of yaml.split(/\r?\n/)) {
-      const match = /^([A-Za-z_][A-Za-z0-9_-]*):\s*$/.exec(line);
-      if (match?.[1] && match[1] !== "hooks")
-        tools.push(match[1]);
-    }
+    const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8"));
+    tools.push(...Object.keys(config.tools?.servers ?? {}));
   } catch {
-    log("could not read tools.yaml; the report will not name unused tools");
+    log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
   const listed = gitRun("ls-files", `${root}/${SKILLS_DIR}`);
   for (const path of listed.stdout.split(`

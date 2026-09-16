@@ -47,9 +47,11 @@ If a server under `tools.servers` spawns a command that is not `bun`, that binar
 has to be installed by the runner. Confirm the package appears in
 `mcp-packages.json`.
 
-`tools/tools.yaml` is generated from that section when the deliverable is built.
-A diff that edits it directly is a defect whatever it says, because the next build
-overwrites it — require the change in `tools.servers` instead.
+`tools.servers` is the only list there is. No tools file ships: the one `atoma` is
+handed is written from that section at the start of each run and deleted with the
+runner. So a diff that adds a `tools/tools.yaml`, or edits one an older release
+left behind, is a defect whatever it says — nothing reads that file, and the
+change it was meant to make never happens. Require it in `tools.servers`.
 
 ### Generated output touched
 
