@@ -171,10 +171,28 @@ describe("config.yaml's recognised keys", () => {
    * different questions of them, rather than demanding one flat bullet list the
    * page would be worse for carrying.
    */
-  function documentedTokens(): Set<string> {
-    const docs = readFileSync("docs/configuration.md", "utf8");
+  function documentedTokens(file: string): Set<string> {
+    const docs = readFileSync(file, "utf8");
     return new Set([...docs.matchAll(/`([^`\n]+)`/g)].map((match) => match[1]!));
   }
+
+  /**
+   * Every page that names configuration keys to somebody who might write them.
+   *
+   * Only `docs/configuration.md` was held to the schema, and `docs/operations.md`
+   * spent that time telling operators the handoff cap was `limits.agent_handoffs`
+   * -- a namespace that has never existed. An adopter who followed it had their
+   * pull request failed by the validator for following the documentation, which is
+   * the exact failure this file exists to prevent. Coverage stopped one file short
+   * of the reader.
+   */
+  const PAGES_THAT_NAME_KEYS = [
+    "docs/configuration.md",
+    "docs/customization.md",
+    "docs/operations.md",
+    "README.md",
+    "CONTRIBUTING.md",
+  ];
 
   /**
    * Every settable key is written down somewhere a person can find it.
@@ -185,7 +203,7 @@ describe("config.yaml's recognised keys", () => {
    * validator's schema.
    */
   test("the configuration reference documents every settable key", () => {
-    const tokens = documentedTokens();
+    const tokens = documentedTokens("docs/configuration.md");
     const undocumented = settableKeys().filter(
       (key) => !tokens.has(key) && !tokens.has(key.split(".").pop()!),
     );
@@ -202,24 +220,43 @@ describe("config.yaml's recognised keys", () => {
    * -- is a word as often as it is a key, and a test that cannot tell the two apart
    * would be answered by removing backticks from the docs.
    */
-  test("every config path the reference names is one the schema recognises", () => {
+  test("every config path any page names is one the schema recognises", () => {
     const all = knownConfigKeys();
     const tops = new Set(all.filter((key) => !key.includes(".")));
     const settable = new Set(settableKeys());
 
-    const named = [...documentedTokens()].filter(
-      (token) => token.includes(".") && tops.has(token.split(".")[0]!),
-    );
-    expect(named.length, "the reference names config paths at all").toBeGreaterThan(0);
+    /**
+     * Dotted tokens on `file` that start with a top-level config key.
+     *
+     * Two shapes start with one by coincidence and are not paths: a filename
+     * (`tools.yaml` is the generated file, not something under `tools`), and a
+     * fragment of YAML quoted inline (`tools.servers.<name>.env: ${NAME}`), which
+     * carries a value and so contains a colon or a space. `<name>` is how the docs
+     * write a level where any name is legal, and `*` is how the schema writes it.
+     */
+    function configPathsNamedBy(file: string): string[] {
+      return [...documentedTokens(file)]
+        .filter((token) => !/[s:]/.test(token))
+        .filter((token) => !/.(ya?ml|json|md|ts|sh|lock)$/.test(token))
+        .map((token) => token.replaceAll("<name>", "*"))
+        .filter((token) => token.includes(".") && tops.has(token.split(".")[0]!));
+    }
 
-    const unrecognised = named.filter((token) => {
-      if (all.includes(token)) return false;
-      // A path reaching into a settable key's own value -- `merge.gates[].when.labels`
-      // is inside the array `merge.gates` holds, and the schema stops at the array.
-      // A path reaching past a key with children of its own is a typo for one of them.
-      return ![...settable].some((key) => token.startsWith(key) && ".[".includes(token[key.length] ?? ""));
-    });
-    expect(unrecognised, "documented, but rejected by the validator").toEqual([]);
+    let namedAnywhere = 0;
+    for (const file of PAGES_THAT_NAME_KEYS) {
+      const named = configPathsNamedBy(file);
+      namedAnywhere += named.length;
+
+      const unrecognised = named.filter((token) => {
+        if (all.includes(token)) return false;
+        // A path reaching into a settable key's own value -- `merge.gates[].when.labels`
+        // is inside the array `merge.gates` holds, and the schema stops at the array.
+        // A path reaching past a key with children of its own is a typo for one of them.
+        return ![...settable].some((key) => token.startsWith(key) && ".[".includes(token[key.length] ?? ""));
+      });
+      expect(unrecognised, `${file} names these, and the validator rejects them`).toEqual([]);
+    }
+    expect(namedAnywhere, "the documentation names config paths at all").toBeGreaterThan(0);
   });
 
   // The walk above finds nothing if the interface is renamed or the file moves, and

@@ -149,7 +149,7 @@ separate, and stopping work nobody asked to stop is the worse mistake.
 
 - Textual handoff is a standalone `/agent-name` line with the request on following lines; the name must have a definition in `agent-definitions/`, otherwise it is ignored and no dispatch happens.
 - `extract_directive.ts` scans the whole output and adopts the first matching directive.
-- Agent handoffs are counted from the target's own comments, not stored, and capped at `limits.agent_handoffs` (default 5). See `domain/dispatch-chain.ts`.
+- Agent handoffs are counted from the target's own comments, not stored, and capped at `chain.after_handoffs`. A second counter, `chain.after_runs_without_change`, stops a chain that is running but changing nothing. Both defaults are in [configuration.md](configuration.md#chain); neither is hardcoded here, so this page cannot go stale against them. See `domain/dispatch-chain.ts`.
 - `create_pr` dispatches `atoma-validate-pr.yml`, which runs the configured CI on the branch, writes the result as a check run, then dispatches the agent the result calls for — the reviewer NAMED IN THE CALL on green, the engineer on failure. No reviewer named means CI runs and nothing follows; `create_pr` then leaves a notice on the pull request saying nobody is scheduled.
 - PR merge path is the primary sub-issue aggregation trigger.
 - Manual issue-close path is fallback and skips when closure already came from merged PR.
@@ -163,7 +163,7 @@ separate, and stopping work nobody asked to stop is the worse mistake.
 | Agent exits immediately with provider error | Missing/invalid API credential or provider mismatch | Verify secrets and optional `ATOMA_PROVIDER` variable |
 | `More than one provider credential is set` | Two provider secrets exist, so the credentials do not decide which to use | Remove the one this repository does not use, or name the provider in `ATOMA_PROVIDER` |
 | `atoma/in-progress` label remains | Run chain still continuing or release step skipped by failure chain | Inspect `decide_guard_release` output and rerun after fixing upstream failure |
-| Repeated handoffs stop automatically | Auto-dispatch loop limit reached (5) | Manually trigger next agent via comment command |
+| Repeated handoffs stop automatically | One of the two chain limits fired — `chain.after_handoffs`, or `chain.after_runs_without_change` when runs stopped changing anything | Read `stop_reason`, which says which. Then trigger the next agent with a comment command |
 | Agent repeatedly reproduces stale or invalid tool behavior | Persisted conversation history is no longer useful | Run `/<agent> recover` on its own line, with any new instruction on following lines |
 | Manual command reports invalid syntax | Instruction text was placed on the `/agent` line, or an unsupported modifier was used | Use a standalone `/<agent>` line, or `/<agent> recover`; put instructions below it |
 | Parent orchestrator not re-invoked after sub-issue completion | Sibling sub-issues still open, or aggregation already handled by another path | Check sibling labels/tags and parent comments for aggregation marker |

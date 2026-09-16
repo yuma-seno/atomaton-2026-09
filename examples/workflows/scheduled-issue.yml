@@ -17,10 +17,11 @@
 # session persistence, review, merge gates. No schedule-only execution path.
 #
 # It is also the honest place for the cost. An issue is free. Whether it becomes
-# an agent run is then an ordinary decision -- `auto_triggers`, a label, a
-# person's comment -- rather than something a cron expression decided months ago.
+# an agent run is then an ordinary decision -- a person's comment, or an agent
+# asking for the next one -- rather than something a cron expression decided
+# months ago.
 #
-# ## Why this is not a setting in config.json
+# ## Why this is not a setting in config.yaml
 #
 # `on:` takes no expression, so a cron schedule cannot come from configuration.
 # The workaround -- a fixed daily cron that checks the date in a script -- was
