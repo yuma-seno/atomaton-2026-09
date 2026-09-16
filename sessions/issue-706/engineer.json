@@ -8,24 +8,24 @@
       "role": "user",
       "content": "Issue #706: resolve_runner の警告が存在しないキー（checks.runs_on）を指している\n\n## 症状\n\n`resolve_runner.ts` が出す警告が、存在しない設定キーを指しています。\n\n```\n::warning::checks.runs_on is empty; using ubuntu-latest\n```\n\n実際のキーは `checks.atoma_runs.runs_on` / `deploy.atoma_runs.runs_on` です（v0.1.114 の設定再構成で `atoma_runs` の下に入りました）。\n\n## なぜ直す価値があるか\n\n利用者はこの警告を読んで設定を直そうとします。メッセージが指すパスをそのまま書くと、`validate_deliverable` に「Atoma が読まない設定です」と弾かれます。**ドキュメントどおりに書いた PR が落ちる**のと同じ失敗で、#399 ではドキュメント側の同じ問題を 2 件直しました。\n\n## 原因\n\n`src/domain/runner-label.ts` の `resolveRunsOn` は裸の `runs_on ...` という文言を返します（`checks` と `deploy` の両方から呼ばれるので、どちらか分からないため意図的にそうなっています）。接頭辞は呼び出し側の `src/scripts/resolve_runner.ts:38` が付けており、そこが `${field}.` = `checks.` のままです。\n\n```ts\nfor (const problem of problems) console.error(`::warning::${field}.${problem}`);\n```\n\n## やること\n\n- 接頭辞を実際のパスに合わせる（`checks.atoma_runs.` / `deploy.atoma_runs.`）\n- 文字列連結で作らず、設定のパスを一箇所で持つ形にできるならそのほうが望ましい。同じ種類のずれが再発しない形を優先してください\n- `resolve_runner.ts` のテストで、警告が実在するキーを指していることを固定する\n\n## 範囲外\n\n`resolveRunsOn` 自体が裸の文言を返す設計は変えなくて構いません。呼び出し側がセクションを知っている、という今の分担は妥当です。\n",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-15T16:37:00Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_opened",
         "id": "issue-706",
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-15T16:37:00Z"
       }
     },
     {
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-15T16:37:07Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5684141725,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-15T16:37:07Z"
       }
     },
     {
@@ -3653,12 +3653,12 @@
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-16T00:45:22Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5690313991,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T00:45:22Z"
       }
     },
     {
@@ -6171,12 +6171,12 @@
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-16T00:58:41Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5690413131,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T00:58:41Z"
       }
     },
     {
@@ -10683,12 +10683,12 @@
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-16T01:33:21Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5690677767,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T01:33:21Z"
       }
     },
     {
@@ -11967,12 +11967,12 @@
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-16T06:36:30Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5693129215,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T06:36:30Z"
       }
     },
     {
@@ -12755,12 +12755,12 @@
       "role": "user",
       "content": "/engineer",
       "atoma_metadata": {
-        "author": "hws-yuma-seno",
-        "created_at": "2026-09-16T14:56:13Z",
+        "source": "github",
+        "layer": "github-context",
         "event_type": "issue_comment",
         "id": 5699563484,
-        "layer": "github-context",
-        "source": "github"
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T14:56:13Z"
       }
     },
     {
@@ -12801,14 +12801,38 @@
         "github_comment_id": 5699585837,
         "agent": "engineer"
       }
+    },
+    {
+      "role": "user",
+      "content": "/engineer",
+      "atoma_metadata": {
+        "source": "github",
+        "layer": "github-context",
+        "event_type": "issue_comment",
+        "id": 5701007838,
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T16:35:34Z"
+      }
+    },
+    {
+      "role": "user",
+      "content": "/engineer",
+      "atoma_metadata": {
+        "source": "github",
+        "layer": "github-context",
+        "event_type": "issue_comment",
+        "id": 5701459261,
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-16T17:09:25Z"
+      }
     }
   ],
   "metadata": {
     "github_context": {
       "agent": "engineer",
-      "event_count": 7,
+      "event_count": 9,
       "resolved_number": "706",
-      "snapshot_hash": "f091fa9cecf032f74704fd675d741f623c7405562401841782f82a8317ee4df1",
+      "snapshot_hash": "6f8a8d5c0aa6d70268a8b7ed595f1e386e1108dcd856ffeb5a4c4c147f7503b8",
       "type": "issue",
       "version": 1
     }
