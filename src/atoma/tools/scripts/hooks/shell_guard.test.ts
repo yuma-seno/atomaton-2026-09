@@ -95,6 +95,34 @@ describe("shell_guard.ts", () => {
       expect(run("bun test"), "running the tests is allowed").toContain('"allow":true');
       expect(run("grep -rn onemore src/"), "and did not clear the count").toContain('"allow":false');
     });
+
+    /**
+     * The same question asked ABOVE the limit, which is where it was answered wrongly.
+     *
+     * The refusal was returned for whatever the command happened to be, so once the
+     * streak was at the limit the agent could not run its tests, could not check
+     * `git status`, could not do anything that was neither a search nor an open. And
+     * a command that is neither does not move the streak, so the refusal came back
+     * word for word -- three of which is what the core stops a run for.
+     *
+     * Measured on #706: four consecutive refusals all reading "18 searches". Searches
+     * would have counted 18, 19, 20, 21.
+     */
+    test("past the limit, work that is not searching is still allowed", () => {
+      const run = ownRun();
+      for (let n = 0; n < MAX_SEARCHES_WITHOUT_OPENING; n += 1) run(`grep -rn p${n} src/`);
+      expect(run("grep -rn refused src/"), "the search itself is refused").toContain('"allow":false');
+
+      for (const command of ["bun test", "git status", "ls src/"]) {
+        expect(run(command), `${command} is not a search and must not be refused`).toContain(
+          '"allow":true',
+        );
+      }
+      // Still counted, so the refusal is waiting for an open rather than forgotten.
+      expect(run("grep -rn still src/"), "the count survived that work").toContain('"allow":false');
+      expect(run("sed -n '1,20p' src/foo.ts"), "and opening clears it").toContain('"allow":true');
+      expect(run("grep -rn afterwards src/"), "so searching resumes").toContain('"allow":true');
+    });
   });
 
   // The guard is a routing mechanism, not a boundary — see the file header. So

@@ -361,12 +361,26 @@ function writeStreak(file: string | undefined, streak: number): void {
  * The streak is written whichever way it goes, including on the refusal: it clears when
  * something is opened, which is the act being asked for. Clearing it here would let the
  * agent search on for another fifteen.
+ *
+ * **Only a search is refused.** This returned the refusal for whatever the command was,
+ * so once the streak was at the limit the agent could not run its tests, could not check
+ * `git status`, could not run anything that was neither a search nor an open. Worse, a
+ * command that is neither does not move the streak -- so the refusal came back word for
+ * word, and three of those is what `MAX_IDENTICAL_TOOL_FAILURES` stops the run for.
+ *
+ * Measured on #706 after the filesystem blind spot was closed: the streak cleared
+ * correctly on every read, and the run still died on four consecutive refusals all
+ * reading "18 searches". A search would have counted 18, 19, 20, 21. They were not
+ * searches. The rule exists to say "open something before searching again", and it was
+ * answering "open something" to an agent that had stopped searching and was trying to
+ * get on with the work.
  */
 function streakRefusal(command: string): string | undefined {
   const file = streakFile();
-  const streak = nextStreak(readStreak(file), classifyShellAct(command));
+  const act = classifyShellAct(command);
+  const streak = nextStreak(readStreak(file), act);
   writeStreak(file, streak);
-  return refusalReason(streak);
+  return act === "search" ? refusalReason(streak) : undefined;
 }
 
 async function main(): Promise<void> {
