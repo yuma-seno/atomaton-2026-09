@@ -151,7 +151,14 @@ async function probe(): Promise<number> {
   say("2. put the machinery where a run puts it");
   await Bun.$`rm -rf ${MACHINERY}`.quiet();
   await Bun.$`mkdir -p ${MACHINERY}`.quiet();
-  await Bun.$`cp -r .github ${MACHINERY}/.github`.quiet();
+  // From `dist/`, not from this repository's own `.github/`.
+  //
+  // They are the same tree after a deploy and NOT the same during a pull request:
+  // `.github/` is the last release, and `dist/` is what this change would ship. A
+  // probe reading `.github/` measures the layout that is already live, which is the
+  // one thing nobody needs measured -- and it fails for the wrong reason on any pull
+  // request that moves a file, as this one did when the machinery split in two.
+  await Bun.$`cp -r dist/.github ${MACHINERY}/.github`.quiet();
   // The runner sets these on every run rather than trusting the checkout: the mode
   // is decided wherever the repository was committed from. `before_tool` is
   // fail-closed, so a hook that cannot start denies the tool outright.
