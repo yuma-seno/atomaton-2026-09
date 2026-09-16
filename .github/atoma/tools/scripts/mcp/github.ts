@@ -7096,8 +7096,8 @@ var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
 var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
 var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
-var TOOL_HOOKS_DIR = `${MACHINERY_ROOT}/tools/scripts/hooks`;
+var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
 var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
 var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
 

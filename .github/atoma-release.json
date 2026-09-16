@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.116",
+  "version": "v0.1.117",
   "files": [
     ".github/atoma-release.json",
     ".github/atoma/README.md",
@@ -26,7 +26,6 @@
     ".github/atoma/tools/scripts/mcp/search.ts",
     ".github/atoma/tools/scripts/mcp/shell.ts",
     ".github/atoma/tools/scripts/mcp/web.ts",
-    ".github/atoma/tools/tools.yaml",
     ".github/scripts/aggregate_sub_issues.ts",
     ".github/scripts/check_sub_issue_closure.ts",
     ".github/scripts/decide_guard_release.ts",
@@ -69,6 +68,7 @@
     ".github/scripts/watch_for_stop.ts",
     ".github/scripts/write_credentials_file.ts",
     ".github/scripts/write_metrics_report.ts",
+    ".github/scripts/write_tools_file.ts",
     ".github/workflows/atoma-check.yml",
     ".github/workflows/atoma-deploy.yml",
     ".github/workflows/atoma-entry.yml",

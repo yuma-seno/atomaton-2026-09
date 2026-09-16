@@ -132,10 +132,11 @@ cannot see it, and that is deliberate rather than a gap to fix. If a tool report
 a missing credential, check whether its `tools.servers` entry declares it before
 concluding anything else is wrong.
 
-`tools/tools.yaml` is not where this goes. That file is **generated** from
-`tools.servers` when the deliverable is built, so an edit made there is discarded
-by the next build — and the credential stops arriving without anything reporting
-why.
+`config.yaml` is the only place this goes. There is no tools file in the
+repository: the one `atoma` is handed is written from `tools.servers` at the start
+of each run and deleted with the runner. If you find a `tools/tools.yaml` left
+behind by an older release, it is read by nothing — routing a credential through
+it produces a tool that never receives it, with nothing reporting why.
 
 `checks` and `deploy` need no routing step: their commands run in a workflow of
 their own rather than beside an agent.
