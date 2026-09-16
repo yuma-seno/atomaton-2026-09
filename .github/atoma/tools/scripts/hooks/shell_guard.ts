@@ -223,9 +223,10 @@ function writeStreak(file, streak) {
 }
 function streakRefusal(command) {
   const file = streakFile();
-  const streak = nextStreak(readStreak(file), classifyShellAct(command));
+  const act = classifyShellAct(command);
+  const streak = nextStreak(readStreak(file), act);
   writeStreak(file, streak);
-  return refusalReason(streak);
+  return act === "search" ? refusalReason(streak) : undefined;
 }
 async function main() {
   let data;
