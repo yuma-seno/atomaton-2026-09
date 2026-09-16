@@ -49,8 +49,8 @@ describe("merge.gates documentation", () => {
   // forgetting this array left it undocumented while both tests below still passed.
   const CONDITIONS = CONDITION_KEYS;
 
-  test("every condition the code accepts appears in the customization guide", () => {
-    const docs = readFileSync("docs/customization.md", "utf8");
+  test("every condition the code accepts appears in the configuration reference", () => {
+    const docs = readFileSync("docs/configuration.md", "utf8");
     for (const condition of CONDITIONS) {
       expect(docs, `${condition} must be documented`).toContain(`\`${condition}\``);
     }
@@ -188,7 +188,9 @@ describe("config.yaml's recognised keys", () => {
    */
   const PAGES_THAT_NAME_KEYS = [
     "docs/configuration.md",
-    "docs/customization.md",
+    "docs/setup.md",
+    "docs/recipes.md",
+    "docs/writing-a-tool.md",
     "docs/operations.md",
     "README.md",
     "CONTRIBUTING.md",
@@ -236,8 +238,8 @@ describe("config.yaml's recognised keys", () => {
      */
     function configPathsNamedBy(file: string): string[] {
       return [...documentedTokens(file)]
-        .filter((token) => !/[s:]/.test(token))
-        .filter((token) => !/.(ya?ml|json|md|ts|sh|lock)$/.test(token))
+        .filter((token) => !/[\s:]/.test(token))
+        .filter((token) => !/\.(ya?ml|json|md|ts|sh|lock)$/.test(token))
         .map((token) => token.replaceAll("<name>", "*"))
         .filter((token) => token.includes(".") && tops.has(token.split(".")[0]!));
     }
@@ -257,6 +259,22 @@ describe("config.yaml's recognised keys", () => {
       expect(unrecognised, `${file} names these, and the validator rejects them`).toEqual([]);
     }
     expect(namedAnywhere, "the documentation names config paths at all").toBeGreaterThan(0);
+
+    /**
+     * That the filters above did not quietly eat the thing being checked.
+     *
+     * They did once. `[\s:]` was written into this file with the backslash stripped,
+     * leaving `[s:]` -- which discards every token containing the letter `s`, and so
+     * most real config paths. The count above stayed positive, because `merge.policy`
+     * has no `s` in it, and the check sat inert while reading as green.
+     *
+     * A count cannot catch that. Naming paths that the broken filter would have
+     * dropped, and requiring them to survive, can.
+     */
+    const examined = new Set(PAGES_THAT_NAME_KEYS.flatMap(configPathsNamedBy));
+    for (const path of ["tools.secrets", "checks.atoma_runs.commands"]) {
+      expect(examined.has(path), `${path} is documented, so the filters must not drop it`).toBe(true);
+    }
   });
 
   // The walk above finds nothing if the interface is renamed or the file moves, and

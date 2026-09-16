@@ -72,8 +72,9 @@ chain:
 # is declared here rather than in a second file; the generator writes the part the
 # core reads. Most projects never edit past this line.
 tools:
-  # Repository secrets the servers may reach. Separate from `checks.secrets` and
-  # `deploy.secrets` because only these enter an agent's own environment.
+  # Repository secrets the servers may reach. Separate from the lists under
+  # `checks.atoma_runs` and `deploy.atoma_runs`: only these enter an agent's own
+  # environment.
   secrets: []
 
   # Applies to every server, before each server's own.
