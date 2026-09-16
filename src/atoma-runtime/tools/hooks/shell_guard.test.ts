@@ -3,9 +3,9 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MAX_SEARCHES_WITHOUT_OPENING } from "../../../../domain/search-streak.ts";
+import { MAX_SEARCHES_WITHOUT_OPENING } from "../../../domain/search-streak.ts";
 
-const SCRIPT = "src/atoma/tools/scripts/hooks/shell_guard.ts";
+const SCRIPT = "src/atoma-runtime/tools/hooks/shell_guard.ts";
 
 /** Run the guard the way the `before_tool` hook does: JSON on stdin. */
 function guard(args: Record<string, unknown>, env?: Record<string, string>): string {

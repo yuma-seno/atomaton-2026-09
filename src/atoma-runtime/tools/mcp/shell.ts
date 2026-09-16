@@ -11,10 +11,10 @@
  * cannot reach is in that file's `shell` entry, including the one exposure that is
  * accepted rather than closed.
  */
-import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../../../../lib/mcp-tool.ts";
-import { literalsFrom, redact } from "../../../../domain/redaction.ts";
-import { capText, TOOL_OUTPUT_BUDGET } from "../../../../domain/tool-output.ts";
-import { RUN_CREDENTIALS } from "../../../../domain/declared-secrets.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
+import { literalsFrom, redact } from "../../../domain/redaction.ts";
+import { capText, TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
+import { RUN_CREDENTIALS } from "../../../domain/declared-secrets.ts";
 
 /**
  * This server's diagnostics, prefixed like every other server's.

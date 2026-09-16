@@ -23,7 +23,7 @@
  *     and the new upstream copy lands beside it unread.
  *
  * And one of these can never be a setting whatever is decided about the rest:
- * `.github/scripts/` holds the programs that open the configuration. A file
+ * the scripts directory holds the programs that open the configuration. A file
  * cannot tell you where to find the thing that reads it.
  *
  * The core is configurable here and this is not, which looks like a contradiction
@@ -41,13 +41,38 @@
  * moves.
  *
  * `validate_deliverable.ts` is the deliberate exception and does not import this.
- * It validates a pull request's OWN `.github/atoma/`, which is data to it and
+ * It validates a pull request's OWN deployed tree, which is data to it and
  * never code; taking its paths from that tree would let a pull request redirect
  * the validation that is judging it.
  */
 
-/** The root every other path here is relative to, and the root the ACL and the governance gate are written against. */
-export const MACHINERY_ROOT = ".github/atoma";
+/**
+ * The directory an adopter edits. Nothing else in `.github/` is theirs.
+ *
+ * That sentence is the whole layout, and it was not true until this constant split
+ * in two. `.github/atoma/` used to hold the tool servers' implementations and their
+ * package list beside the config, the agent definitions and the skills -- so the rule
+ * a reader needed was "this folder is yours, except these parts", which is not a rule
+ * anybody keeps.
+ *
+ * What stayed is what a project tunes: the config, the agent definitions, the prompt
+ * template, the skills, and the ruleset it applies by hand. Every one of those
+ * degrades when it is edited badly -- a worse-informed agent, not a dead run.
+ */
+export const USER_ROOT = ".github/atoma";
+
+/**
+ * What Atoma runs, and what a project does not touch.
+ *
+ * The MCP servers, the hooks, the default tool declarations, and the scripts the
+ * workflows invoke. Separate from [`USER_ROOT`] so that "everything outside
+ * `.github/atoma/` is ours" has no exceptions -- `.github/workflows/` is the only
+ * other directory, and GitHub decides where that lives.
+ *
+ * Deleting something here breaks a run rather than degrading one. That is the line:
+ * hide what breaks, show what degrades.
+ */
+export const RUNTIME_ROOT = ".github/atoma-runtime";
 
 /**
  * The one path that cannot come from configuration, named here rather than left
@@ -58,16 +83,16 @@ export const MACHINERY_ROOT = ".github/atoma";
  * That read is a security boundary: it is what stops a pull request declaring
  * which credentials it may reach.
  */
-export const CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
+export const CONFIG_FILE = `${USER_ROOT}/config.yaml`;
 
 /** Agent definitions: one file per agent, frontmatter plus the role prompt. */
-export const AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
+export const AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
 
 /** The system prompt every agent's role prompt is placed into. */
-export const PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
+export const PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
 
 /** Skills: instructions loaded on demand, addressed by `<category>/<name>`. */
-export const SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
+export const SKILLS_DIR = `${USER_ROOT}/skills`;
 
 /**
  * Where the tool servers' own scripts and hooks live.
@@ -85,7 +110,20 @@ export const SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
  * This directory is still a real path, because the hook scripts are real files and
  * the generated file's hook paths are written against it.
  */
-export const TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
+export const TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+
+/**
+ * The servers a run starts with, and the packages they need, as data.
+ *
+ * Shipped rather than compiled in. It was a TypeScript constant for one release,
+ * which meant the only way to see what `github`'s `env` actually held was to grep a
+ * bundled script -- and the same definition was inlined into two of them.
+ *
+ * The same schema as `tools.servers` in the config, so there is one shape to learn
+ * and one merge to understand. A project's entry with the same name overrides this
+ * one field by field; a name that is not here is added.
+ */
+export const TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
 
 /**
  * Hook scripts.
@@ -94,21 +132,38 @@ export const TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
  * directory, so this constant exists for the steps that must grant access to the
  * directory rather than for anything that names it to `atoma`.
  */
-export const TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
+export const TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 
-/** npm packages the tool servers need, installed before a run and cached by this file's hash. */
-export const MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
+/**
+ * Packages the SHIPPED tool servers need, installed before a run.
+ *
+ * Here rather than in `.github/atoma/` because both entries exist for a shipped
+ * server -- `@modelcontextprotocol/server-filesystem` is what `filesystem` runs, and
+ * `@huggingface/transformers` is what `search` reranks with. Neither is a project's
+ * decision, and a project that adds a server of its own declares what it needs in
+ * `tools.packages`, beside the server itself.
+ *
+ * The install step hashes BOTH files for its cache key. Hashing one would let a
+ * project add a package, hit a cache keyed on the other, and get a runner without
+ * it -- with nothing saying why.
+ */
+export const TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 
 /** Branch rulesets, in GitHub's own import format rather than this project's. */
-export const RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
+export const RULESETS_DIR = `${USER_ROOT}/rulesets`;
 
 /**
  * The scripts the workflows run.
  *
- * Outside `MACHINERY_ROOT` because GitHub fixes `.github/workflows/`, and a
- * workflow step naming a script somewhere else would be naming a second root.
+ * Under [`RUNTIME_ROOT`] with the tool servers, though the two have different
+ * callers: these are started by GitHub Actions and those by `atoma`. What they
+ * share is the thing the layout is sorted by -- neither is a project's to edit.
+ *
+ * It was `.github/scripts/`, which made the rule "everything outside
+ * `.github/atoma/` is ours" need a second clause naming a second directory. One
+ * root for the runtime is what lets the rule be a sentence.
  */
-export const SCRIPTS_DIR = ".github/scripts";
+export const SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
 /** What the deployed release is, written by the deploy and read to decide whether an upgrade is due. */
 export const RELEASE_MANIFEST = ".github/atoma-release.json";

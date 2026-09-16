@@ -26,7 +26,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { SHIPPED_SERVERS } from "../../src/domain/shipped-servers.ts";
+import { toolDefaults } from "../../src/domain/shipped-servers.ts";
 
 const AGENT_DIR = join(process.cwd(), "src/atoma/agent-definitions");
 const CONFIG = join(process.cwd(), "src/atoma/config.yaml");
@@ -55,7 +55,7 @@ function declaredServers(): Set<string> {
   const config = Bun.YAML.parse(readFileSync(CONFIG, "utf8")) as {
     tools?: { servers?: Record<string, unknown> };
   };
-  return new Set([...Object.keys(SHIPPED_SERVERS), ...Object.keys(config.tools?.servers ?? {})]);
+  return new Set([...Object.keys(toolDefaults().servers), ...Object.keys(config.tools?.servers ?? {})]);
 }
 
 /** `mcp_servers` entries from one agent definition's YAML frontmatter. */

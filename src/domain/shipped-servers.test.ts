@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { SHIPPED_SERVERS, SHIPPED_WATCH, WHAT_EACH_IS_FOR } from "./shipped-servers.ts";
+import { toolDefaults, whatEachIsFor } from "./shipped-servers.ts";
 
 /**
  * The servers left the config an adopter reads, so the pages that list them are now
@@ -17,8 +17,8 @@ const PAGES = ["src/atoma/README.md", "docs/configuration.md"];
 
 describe("the servers Atoma ships", () => {
   test("every one has a line saying what it is for", () => {
-    for (const name of Object.keys(SHIPPED_SERVERS)) {
-      const what = WHAT_EACH_IS_FOR[name];
+    for (const name of Object.keys(toolDefaults().servers)) {
+      const what = whatEachIsFor()[name];
       expect(what, `${name} needs a description; it is the only thing a reader gets`).toBeTruthy();
       // Not the argv. The config used to "show" these as
       // `bun run ${ATOMA_MACHINERY_ROOT}/...`, which is how they are started rather
@@ -29,14 +29,14 @@ describe("the servers Atoma ships", () => {
   });
 
   test("nothing is described that is not shipped", () => {
-    for (const name of Object.keys(WHAT_EACH_IS_FOR)) {
-      expect(SHIPPED_SERVERS[name], `${name} is described but not shipped`).toBeDefined();
+    for (const name of Object.keys(whatEachIsFor())) {
+      expect(toolDefaults().servers[name], `${name} is described but not shipped`).toBeDefined();
     }
   });
 
   test.each(PAGES)("%s names every one of them", (page) => {
     const text = readFileSync(page, "utf8");
-    for (const name of Object.keys(SHIPPED_SERVERS)) {
+    for (const name of Object.keys(toolDefaults().servers)) {
       expect(
         text.includes(`\`${name}\``),
         `${page} does not name \`${name}\`. It is not in config.yaml any more, so a ` +
@@ -50,7 +50,7 @@ describe("the servers Atoma ships", () => {
    * moved out of the config, they cannot be removed, and something has to say so.
    */
   test("the file-wide hooks are described where the servers are", () => {
-    expect(Object.keys(SHIPPED_WATCH).length, "there is at least one").toBeGreaterThan(0);
+    expect(Object.keys(toolDefaults().watch).length, "there is at least one").toBeGreaterThan(0);
     const readme = readFileSync("src/atoma/README.md", "utf8");
     expect(readme, "the README says hooks of your own are added rather than replacing").toContain("tools.watch");
   });
@@ -61,7 +61,7 @@ describe("the servers Atoma ships", () => {
    * and expensive to find there.
    */
   test("each one says how to reach it", () => {
-    for (const [name, server] of Object.entries(SHIPPED_SERVERS)) {
+    for (const [name, server] of Object.entries(toolDefaults().servers)) {
       const reachable = typeof server.command === "string" || typeof server.url === "string";
       expect(reachable, `${name} names neither a command nor a url`).toBe(true);
     }

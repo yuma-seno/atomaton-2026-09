@@ -91,7 +91,7 @@ So:
 
 1. **Read what it says.** It is one or two lines and it names the thing.
 2. **Work out where the cause lives.** The tool's own implementation
-   (`.github/atoma/tools/`), the environment that runs it
+   (`.github/atoma-runtime/tools/`), the environment that runs it
    (`environment.setup_commands`, permissions on a cache directory), or your use
    of the tool. The three are usually distinguishable from the message.
 3. **Open an issue** -- `github__create_issue` with `sub_issue: false`, because a

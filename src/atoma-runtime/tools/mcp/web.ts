@@ -16,10 +16,10 @@
  * Bounds the response. A page with no limit can spend an entire context window
  * in one call.
  */
-import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../../lib/mcp-tool.ts";
-import { htmlToMarkdown } from "../../../../domain/html-to-markdown.ts";
-import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../../lib/issue-images.ts";
-import { TOOL_OUTPUT_BUDGET } from "../../../../domain/tool-output.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { htmlToMarkdown } from "../../../domain/html-to-markdown.ts";
+import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../lib/issue-images.ts";
+import { TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 /** Longest text returned from one fetch. */

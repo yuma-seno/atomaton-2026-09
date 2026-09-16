@@ -35,7 +35,7 @@
  * reads, so the loss of a short relative path costs nothing.
  */
 import { isAbsolute, join } from "node:path";
-import { SHIPPED_SERVERS, SHIPPED_WATCH } from "./shipped-servers.ts";
+import { toolDefaults } from "./shipped-servers.ts";
 
 /** A server entry as the config carries it: the core's own keys, plus `settings`. */
 export interface ConfiguredServer {
@@ -86,7 +86,12 @@ export function toolsFileFrom(tools: ToolsSection | undefined, hookBase: string)
  */
 function mergedServers(configured: Record<string, ConfiguredServer> | undefined): Record<string, ConfiguredServer> {
   const out: Record<string, ConfiguredServer> = {};
-  for (const [name, server] of Object.entries(SHIPPED_SERVERS)) out[name] = { ...server };
+  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+    // `description` is this project's own, like `settings`: it exists so the
+    // defaults file can say what a server is for, and the core has never heard of it.
+    const { description: _ours, ...rest } = server;
+    out[name] = { ...rest };
+  }
   for (const [name, server] of Object.entries(configured ?? {})) {
     out[name] = { ...(out[name] ?? {}), ...server };
   }
@@ -107,7 +112,7 @@ function mergedServers(configured: Record<string, ConfiguredServer> | undefined)
  */
 function mergedWatch(configured: Record<string, unknown> | undefined): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const [key, scripts] of Object.entries(SHIPPED_WATCH)) out[key] = [...scripts];
+  for (const [key, scripts] of Object.entries(toolDefaults().watch)) out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
     out[key] = [...((out[key] as unknown[]) ?? []), ...theirs];

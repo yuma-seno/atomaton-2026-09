@@ -107,6 +107,17 @@ export interface AtomaConfig {
     // disagree about what a known key is -- which a contract test catches, and which
     // would otherwise surface as an adopter's valid config being refused.
     servers?: Record<string, Record<string, unknown>>;
+    /**
+     * Packages a server of YOUR OWN needs, installed before a run.
+     *
+     * The shipped servers name theirs in the deliverable, beside their own
+     * declarations, because they are not a project's decision. This is the other
+     * half: a server you added under `servers` that is started by a binary, or that
+     * imports something the bundle cannot carry.
+     *
+     * Both lists are installed as one set, and both are hashed into the cache key.
+     */
+    packages?: { npm?: string[]; bun?: string[]; pip?: string[] };
   };
 }
 

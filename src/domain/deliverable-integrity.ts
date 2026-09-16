@@ -110,6 +110,7 @@ const CONFIG_SCHEMA: Section = {
         secrets: null,
         watch: { anyName: null },
         servers: { anyName: { anyName: null } },
+        packages: { children: { npm: null, bun: null, pip: null } },
       },
     },
   },

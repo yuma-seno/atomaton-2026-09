@@ -1,173 +1,94 @@
 /**
- * shipped-servers.ts — the tool servers every run starts with, and the hooks that
- * watch all of them.
+ * shipped-servers.ts — reading the tool servers every run starts with.
  *
- * # Why these are not in the config an adopter edits
+ * # Why they are a file rather than a constant
  *
- * They were, and they were 70% of it. Sixty-six of ninety-three lines, in the one
- * file `.github/atoma/README.md` declares is yours, describing programs that are as
- * much machinery as the scripts under `tools/scripts/`.
+ * They were a constant here for one release, and that was worse in three ways a
+ * reader feels. The only way to see what `github`'s `env` actually held was to grep a
+ * bundled script, because `src/domain/**` is inlined into whatever imports it — and
+ * the same definition ended up inside two of them. Overriding a shipped server in
+ * `config.yaml` meant overriding something you could not read. And a TypeScript
+ * object literal is a second spelling of a thing the config already spells in YAML.
  *
- * The line this sits on: **hide what breaks when it is edited wrong, show what
- * degrades.** A mistyped server name stops a run before a single tool starts, and a
- * deleted one takes a capability away from every agent that named it — the core
- * resolves `mcp_servers` against this list and aborts on the first miss. A skill or a
- * prompt template edited badly makes an agent less well-informed and the run
- * continues. Those two do not belong in the same file under the same label.
+ * `tools/defaults.yaml` ships instead, in the same schema as `tools.servers`. One
+ * shape to learn, one merge to understand, and the thing you are overriding is in
+ * front of you.
  *
- * # What an adopter can still do
+ * # Why it is safe to ship something editable
  *
- * Everything they could before, and nothing they could not:
+ * The rule is not "an adopter must be unable to break this" — they can delete
+ * `mcp/github.ts` too. It is that `.github/atoma/` is theirs and everything else is
+ * not, which `.github/atoma-runtime/` says by being a different directory. And a
+ * broken defaults file is caught: `validate_deliverable.ts` writes the tools file
+ * from it on every pull request and hands it to `atoma validate`, so the failure is a
+ * red check rather than a dead run.
  *
- *   - add a server — a name that is not here is theirs, and is merged in
- *   - override any field of one that is here — same name, deep-merged, theirs wins
- *   - add a file-wide hook — appended after these, never replacing them
+ * # Why `description` is here at all
  *
- * Deleting is the one operation that is gone, and it was never needed: the core
- * starts only the servers an agent's `mcp_servers` names, so one nobody names costs
- * nothing. A project that has finished with `web` removes it from the agents, which
- * is where the decision belongs.
- *
- * # The descriptions
- *
- * `WHAT_EACH_IS_FOR` exists because the config used to show a reader what these
- * are — badly, as `bun run ${ATOMA_MACHINERY_ROOT}/...`, which is the implementation
- * rather than the meaning. `docs/configuration.md` and `.github/atoma/README.md` are
- * built to carry the meaning instead, and `shipped-servers.test.ts` holds every
- * server here to having one.
+ * The config used to show a reader what these are, badly — as
+ * `bun run ${ATOMA_MACHINERY_ROOT}/...`, which is how a server starts rather than
+ * what it is for. The description now sits beside the definition, which is what YAML
+ * was chosen for, and the generator strips it exactly as it strips `settings`.
  */
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ConfiguredServer } from "./tools-file.ts";
 
-/** The servers a run starts with, in the order they are written into the tools file. */
-export const SHIPPED_SERVERS: Record<string, ConfiguredServer> = {
-    "filesystem": {
-      "command": "mcp-server-filesystem",
-      "args": [
-        "."
-      ],
-      "env": {},
-      "hooks": {
-        "tool_denylist": [
-          "filesystem__directory_tree"
-        ],
-        "after_tool": "./scripts/hooks/note_file_opened.ts"
-      }
-    },
-    "filesystem_readonly": {
-      "command": "mcp-server-filesystem",
-      "args": [
-        "."
-      ],
-      "env": {},
-      "hooks": {
-        "tool_allowlist": [
-          "filesystem_readonly__read_file",
-          "filesystem_readonly__read_multiple_files",
-          "filesystem_readonly__read_media_file",
-          "filesystem_readonly__list_directory",
-          "filesystem_readonly__get_file_info"
-        ],
-        "after_tool": "./scripts/hooks/note_file_opened.ts"
-      }
-    },
-    "shell": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/shell.ts"
-      ],
-      "env": {},
-      "request_timeout_secs": 3600,
-      "hooks": {
-        "before_tool": "./scripts/hooks/shell_guard.ts"
-      }
-    },
-    "github": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/github.ts"
-      ],
-      "env": {
-        "GH_TOKEN": "${GH_TOKEN}"
-      },
-      "hooks": {}
-    },
-    "web": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/web.ts"
-      ],
-      "env": {},
-      "hooks": {}
-    },
-    "search": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/search.ts"
-      ],
-      "env": {
-        "GH_TOKEN": "${GH_TOKEN}"
-      },
-      "request_timeout_secs": 300,
-      "hooks": {},
-      "settings": {
-        "reranker_model": "onnx-community/bge-reranker-v2-m3-ONNX"
-      }
-    },
-    "atoma": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-      ],
-      "env": {
-        "GH_TOKEN": "${GH_TOKEN}"
-      },
-      "hooks": {}
-    },
-    "atoma_env": {
-      "command": "bun",
-      "args": [
-        "run",
-        "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-      ],
-      "env": {
-        "GH_TOKEN": "${GH_TOKEN}"
-      },
-      "hooks": {
-        "tool_allowlist": [
-          "atoma_env__reload_environment"
-        ]
-      }
-    }
-  };
+/** A server as `defaults.yaml` carries it: the core's keys, plus this project's own. */
+export interface ShippedServer extends ConfiguredServer {
+  /** One line on what it is for. Stripped before the core sees it. */
+  description?: string;
+}
+
+export interface ToolDefaults {
+  watch: Record<string, string[]>;
+  servers: Record<string, ShippedServer>;
+}
 
 /**
- * Hooks that run after every call to every server, before that server's own.
+ * Where the defaults are read from.
  *
- * A list because an adopter appends theirs to it. `tools.watch` in the config is
- * additions only — these are not removable, for the reason the file header gives.
+ * Resolved from this module rather than from the working directory, because the
+ * readers run from three places: `bun test` at the repository root, `build-dist`
+ * against `src/`, and the bundled `write_tools_file.ts` inside a deployed tree. A
+ * relative path would be right for one of them.
+ *
+ * In a deployed tree the bundle sits at `<runtime>/scripts/` and the file at
+ * `<runtime>/tools/`, which is the same `../tools/defaults.yaml` step as from
+ * `src/domain/` to `src/atoma-runtime/tools/`. That is a coincidence of two layouts
+ * and not a thing to rely on, so `toolDefaultsPath` takes an override.
  */
-export const SHIPPED_WATCH: Record<string, string[]> = {
-  after_tool: ["./scripts/hooks/workspace_guard.ts"],
-};
+function defaultPath(): string {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "atoma-runtime", "tools", "defaults.yaml");
+}
+
+let cached: ToolDefaults | undefined;
 
 /**
- * One line per shipped server, for the pages that list them.
+ * The shipped servers and file-wide hooks.
  *
- * What it is for, not how it is started. A reader deciding whether to put `search` in
- * an agent's `mcp_servers` is not helped by its argv.
+ * Cached, because the generator asks for them once per server and a run reads the
+ * same file every time. `path` is for the callers that know better — the deployed
+ * bundle, and a test working against a fixture.
  */
-export const WHAT_EACH_IS_FOR: Record<string, string> = {
-  filesystem: "Reads and writes files in the work tree.",
-  filesystem_readonly: "Reads files and nothing else, for agents that must not write.",
-  shell: "Runs one foreground command. Guarded, and holds no credentials of its own.",
-  github: "Issues, pull requests, comments, and every Git mutation.",
-  web: "Fetches a URL. Searching the web is a skill, not a tool.",
-  search: "Ranked search over this repository's issues and code.",
-  atoma: "Atoma's own operations: sub-issues, handoffs, stopping a run.",
-  atoma_env: "Rebuilding the run's environment, and nothing else.",
-};
+export function toolDefaults(path = defaultPath()): ToolDefaults {
+  if (cached) return cached;
+  const parsed = Bun.YAML.parse(readFileSync(path, "utf8")) as Partial<ToolDefaults>;
+  cached = { watch: parsed.watch ?? {}, servers: parsed.servers ?? {} };
+  return cached;
+}
+
+/** Forget the cache. For tests that swap the file underneath. */
+export function forgetToolDefaults(): void {
+  cached = undefined;
+}
+
+/** One line per shipped server, for the pages that list them. */
+export function whatEachIsFor(defaults = toolDefaults()): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [name, server] of Object.entries(defaults.servers)) {
+    if (typeof server.description === "string") out[name] = server.description;
+  }
+  return out;
+}

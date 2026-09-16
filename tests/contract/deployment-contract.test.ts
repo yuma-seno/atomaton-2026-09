@@ -13,7 +13,7 @@
  * against `src/atoma/` and `build-dist.ts` rather than against any deployed
  * tree.
  *
- * This already happened: a PR added `.github/atoma/mcp-packages.json` by hand
+ * This already happened: a PR added a package list under `.github/atoma/` by hand
  * without adding it to `src/atoma/` or to build-dist.ts's copy list, while
  * switching tools.yaml to a binary that only that file installs.
  */
@@ -22,6 +22,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ATOMA_SRC = join(process.cwd(), "src/atoma");
+const RUNTIME_TOOLS = join(process.cwd(), "src/atoma-runtime/tools");
 const BUILD_DIST = join(process.cwd(), "src/build-dist.ts");
 
 /** Filenames in build-dist.ts's verbatim-copy list. */
@@ -69,13 +70,13 @@ describe("deployment contract", () => {
   // build-and-deploy machinery lives here under `tests/`, because it describes
   // the factory. Neither ever ships — build-dist.ts excludes `*.test.ts`.
   //
-  // So `tools/scripts/**` is exempt: `mcp.test.ts` and `shell_guard.test.ts`
+  // So `src/atoma-runtime/tools/**` is exempt: `mcp.test.ts` and `shell_guard.test.ts`
   // exercise MCP servers that adopters receive and run, and a template repo that
   // shipped an untested MCP server would be handing adopters untested code.
   test("the deliverable's content directories hold no test files", () => {
     const strays = walk(ATOMA_SRC)
       .filter((f) => /\.test\.ts$|\.spec\.ts$/.test(f))
-      .filter((f) => !f.startsWith("src/atoma/tools/scripts/"));
+      .filter((f) => !f.startsWith("src/atoma-runtime/tools/"));
     expect(strays, `move these out of src/atoma/: ${strays.join(", ")}`).toEqual([]);
   });
 
@@ -124,7 +125,7 @@ describe("deployment contract", () => {
     }
   });
 
-  test("mcp-packages.json declares the servers tools.yaml invokes by bare command", () => {
+  test("the shipped package list covers every server started by a bare command", () => {
     // A `command:` that is not `bun` is an external binary, and there are only
     // two ways one can exist on a runner: the MCP package step installs it from
     // mcp-packages.json, or the runner image already carries it.
@@ -140,19 +141,19 @@ describe("deployment contract", () => {
     // stale entry here is worse than none.
     const PROVIDED_BY_THE_RUNNER = new Map<string, string>([]);
 
-    // From `tools.servers` in the config, which is the only place these live now:
-    // the generated file is written per run into the runner's temp directory and
-    // does not ship, so there is no artifact here to read.
-    const config = Bun.YAML.parse(readFileSync(join(ATOMA_SRC, "config.yaml"), "utf8")) as {
-      tools?: { servers?: Record<string, { command?: unknown }> };
+    // From the shipped defaults, which is where a server's `command` lives now. A
+    // project's own servers are not checked here: this is about what the deliverable
+    // promises to install for the servers IT ships.
+    const defaults = Bun.YAML.parse(readFileSync(join(RUNTIME_TOOLS, "defaults.yaml"), "utf8")) as {
+      servers?: Record<string, { command?: unknown }>;
     };
-    const commands = Object.values(config.tools?.servers ?? {})
+    const commands = Object.values(defaults.servers ?? {})
       .map((server) => server.command)
       .filter((command): command is string => typeof command === "string");
     const external = [...new Set(commands.filter((c) => c !== "bun" && c !== "npx"))];
     const mustBeInstalled = external.filter((c) => !PROVIDED_BY_THE_RUNNER.has(c));
 
-    const packages = JSON.parse(readFileSync(join(ATOMA_SRC, "mcp-packages.json"), "utf8")) as {
+    const packages = JSON.parse(readFileSync(join(RUNTIME_TOOLS, "packages.json"), "utf8")) as {
       npm?: string[];
       pip?: string[];
     };

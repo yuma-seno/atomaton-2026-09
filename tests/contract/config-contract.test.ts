@@ -3,6 +3,7 @@ import ts from "typescript";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { configProblems, knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
 import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/merge-gates.ts";
+import { SCRIPTS_DIR } from "../../src/domain/machinery-layout.ts";
 import type { AtomaConfig } from "../../src/lib/types.ts";
 
 /**
@@ -320,10 +321,23 @@ describe("the default checks a project inherits", () => {
    * one every other invocation uses, so it also has to keep working when the machinery
    * is checked out somewhere else.
    */
+  /**
+   * The path is built from `SCRIPTS_DIR` rather than written out again.
+   *
+   * It was a literal `.github/scripts/`, and when the scripts moved under
+   * `.github/atoma-runtime/` the shipped default check went on naming a directory
+   * that no longer exists -- in the one command every adopter inherits, and in this
+   * repository's own pipeline. This test stayed green throughout, because a stale
+   * pattern matched a stale path and agreed with it. Its failure message had already
+   * been updated to say `atoma-runtime`, which is how close it came to noticing.
+   *
+   * Two literals of one fact is the shape; importing the constant is the fix.
+   */
   test("each one runs a script the deliverable actually ships", () => {
     for (const command of commands) {
-      const named = /\.github\/scripts\/([A-Za-z0-9_-]+\.ts)/.exec(command);
-      expect(named, `${command} should run a script under .github/scripts/`).not.toBeNull();
+      expect(command, `${command} should run a script under ${SCRIPTS_DIR}/`).toContain(`${SCRIPTS_DIR}/`);
+      const named = new RegExp(`${SCRIPTS_DIR.replaceAll("/", "\\/")}\\/([A-Za-z0-9_-]+\\.ts)`).exec(command);
+      expect(named, `${command} names no script under ${SCRIPTS_DIR}/`).not.toBeNull();
       expect(existsSync(`src/scripts/${named![1]}`), `src/scripts/${named![1]} must exist`).toBe(true);
       expect(command, "the machinery root indirection every other invocation uses").toContain(
         "${ATOMA_MACHINERY_ROOT:-.}",

@@ -11,7 +11,7 @@
  *
  * # Why the exclusions are what they are
  *
- * `.github/atoma/**` and `.github/scripts/**` are the DEPLOYED machinery, generated
+ * `.github/atoma/**` and `.github/atoma-runtime/**` are the DEPLOYED tree, generated
  * from `src/` by `build-dist.ts`. Excluding them serves both kinds of repository for
  * different reasons: in this one they are a second copy of `src/`, so a search would
  * return the copy; in an adopter's, they are Atoma's implementation, so a question
@@ -40,7 +40,7 @@ const INDEXED = /\.(ts|tsx|js|jsx|mjs|cjs|rs|py|go|rb|java|kt|swift|c|h|cc|cpp|h
 const EXCLUDED = [
   // The deployed machinery. See the module comment.
   /^\.github\/atoma\//,
-  /^\.github\/scripts\//,
+  /^\.github\/atoma-runtime\//,
   /^\.github\/workflows\/.*\.yml$/,
   // Generated output, whatever a project calls it.
   /(^|\/)(dist|build|out|coverage|vendor|node_modules|target|\.next|__pycache__)\//,

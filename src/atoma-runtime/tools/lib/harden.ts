@@ -45,8 +45,8 @@
  * from".
  */
 import { statSync } from "node:fs";
-import { classifyPathEntries, pathWithoutWorldWritable } from "../../../../domain/tool-hardening.ts";
-import { report } from "../../../../lib/mcp-report.ts";
+import { classifyPathEntries, pathWithoutWorldWritable } from "../../../domain/tool-hardening.ts";
+import { report } from "../../../lib/mcp-report.ts";
 
 const PR_SET_DUMPABLE = 4;
 const PR_GET_DUMPABLE = 3;

@@ -36,7 +36,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
-import { classifyShellAct, nextStreak, refusalReason } from "../../../../domain/search-streak.ts";
+import { classifyShellAct, nextStreak, refusalReason } from "../../../domain/search-streak.ts";
 import { streakFile } from "../lib/search-streak-file.ts";
 
 /**

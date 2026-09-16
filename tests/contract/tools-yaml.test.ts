@@ -33,7 +33,7 @@ import { toolsFileFrom, type ToolsSection } from "../../src/domain/tools-file.ts
  * real `src/atoma/tools`, so the hook paths below point at the actual scripts and
  * the existence check still means something.
  */
-const HOOK_BASE = join(process.cwd(), "src/atoma/tools");
+const HOOK_BASE = join(process.cwd(), "src/atoma-runtime/tools");
 const GENERATED = join(mkdtempSync(join(tmpdir(), "atoma-tools-")), "tools.yaml");
 writeFileSync(
   GENERATED,
@@ -161,7 +161,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
    * matters is the one the agent is told, and that is the one in the schema.
    */
   test("a tool that advertises a long timeout has a server entry that allows it", () => {
-    const source = readFileSync("src/atoma/tools/scripts/mcp/shell.ts", "utf8");
+    const source = readFileSync("src/atoma-runtime/tools/mcp/shell.ts", "utf8");
     const advertised = source.match(/timeout_seconds:[^\n]*?\.max\((\d+)\)/);
     expect(advertised, "shell.ts must still declare a max for timeout_seconds").not.toBeNull();
     const seconds = Number(advertised![1]);

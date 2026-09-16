@@ -24,8 +24,8 @@ describe("what the code search reads", () => {
    */
   test("the deployed machinery is not the project's source", () => {
     for (const path of [
-      ".github/atoma/tools/scripts/mcp/search.ts",
-      ".github/scripts/post_result_comment.ts",
+      ".github/atoma-runtime/tools/mcp/search.ts",
+      ".github/atoma-runtime/scripts/post_result_comment.ts",
       ".github/workflows/atoma-runner.yml",
     ]) {
       expect(shouldIndex(path), path).toBe(false);

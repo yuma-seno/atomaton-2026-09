@@ -55,7 +55,7 @@ import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
 const MACHINERY = `${RUNNER_TEMP}/atoma-machinery`;
 const CONFIG_FILE = `${MACHINERY}/.github/atoma/config.yaml`;
-const HOOK_BASE = `${MACHINERY}/.github/atoma/tools`;
+const HOOK_BASE = `${MACHINERY}/.github/atoma-runtime/tools`;
 
 /**
  * Where this probe writes the tools file, the way a run does.
@@ -155,10 +155,10 @@ async function probe(): Promise<number> {
   // The runner sets these on every run rather than trusting the checkout: the mode
   // is decided wherever the repository was committed from. `before_tool` is
   // fail-closed, so a hook that cannot start denies the tool outright.
-  await Bun.$`chmod -R +x ${MACHINERY}/.github/atoma/tools/scripts/hooks`.quiet().nothrow();
+  await Bun.$`chmod -R +x ${MACHINERY}/.github/atoma-runtime/tools/hooks`.quiet().nothrow();
   result("machinery_at", MACHINERY);
 
-  const packages = (await Bun.file(`${MACHINERY}/.github/atoma/mcp-packages.json`).json()) as {
+  const packages = (await Bun.file(`${MACHINERY}/.github/atoma-runtime/tools/packages.json`).json()) as {
     npm?: string[];
     bun?: string[];
   };

@@ -59,7 +59,9 @@ What that check cannot judge is the part to spend your reads on:
   field. One that pastes the whole shipped entry to change a single field is a
   defect worth returning: the pasted fields stop tracking the upstream ones.
 - A server that spawns a command which is not `bun` needs that binary installed by
-  the runner. Confirm the package appears in `mcp-packages.json`.
+  the runner. Confirm the package appears under `tools.packages` in the same
+  config. The shipped servers' packages are in the deliverable, not there, so a
+  diff that adds one of those to the config is the wrong half of the tree.
 
 No tools file ships: the one `atoma` is handed is written at the start of each run
 from the shipped servers plus `tools.servers`, and deleted with the runner. So a

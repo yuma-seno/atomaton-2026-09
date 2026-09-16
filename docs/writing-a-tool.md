@@ -5,10 +5,10 @@ template, or one for a repository of your own.
 
 Where a path below begins `src/` or `tests/`, it belongs to this template's own
 source tree. An adopted repository does not receive those directories. It receives
-`.github/scripts/**` and `.github/atoma/**`, and the servers under
-`.github/atoma/tools/scripts/mcp/` are bundles, with the helpers named here already
-inside them. What differs is the import, not the behaviour, and each place that
-matters says so.
+`.github/atoma/**`, which is its own, and `.github/atoma-runtime/**`, which is
+Atoma's — and the servers under `.github/atoma-runtime/tools/mcp/` are bundles,
+with the helpers named here already inside them. What differs is the import, not
+the behaviour, and each place that matters says so.
 
 ## Adding a tool without flooding the context
 
@@ -109,9 +109,16 @@ tools:
       request_timeout_secs: 600
 ```
 
-A server this template ships is declared in `src/domain/shipped-servers.ts`
-instead, and carries the same key there. Either way the value reaches the core
-through the tools file a run writes for itself.
+A server this template ships is declared in `src/atoma-runtime/tools/defaults.yaml`
+instead — `.github/atoma-runtime/tools/defaults.yaml` in an adopted repository —
+and carries the same key there, in the same schema. Either way the value reaches
+the core through the tools file a run writes for itself.
+
+A server of your own that is started by a program rather than by `bun` also needs
+that program installed: name it in `tools.packages`, beside the server. The shipped
+servers' packages are in the deliverable, in
+`.github/atoma-runtime/tools/packages.json`, because they are not a project's
+decision.
 
 **A timeout argument in your tool's own schema does not raise this.** That is the
 trap, and it is not hypothetical — it is how the shell server shipped. Its
@@ -182,13 +189,13 @@ warning: reranking failed (EACCES); these results are first-stage ordered, not r
 In one of the servers in this template, that is one call:
 
 ```ts
-import { report } from "../../../../lib/mcp-report.ts";
+import { report } from "../../../lib/mcp-report.ts";
 
 report("warning", "could not save the search index; every search from here rebuilds it");
 ```
 
 That import is this template's own source layout: `src/lib/mcp-report.ts`, reached
-from `src/atoma/tools/scripts/mcp/`. The servers an adopted repository receives are
+from `src/atoma-runtime/tools/mcp/`. The servers an adopted repository receives are
 bundles with the helper already inside them, so there is no file at that path to
 import — what the deliverable carries is the behaviour, not the module. For a
 server that is not built in this tree, see the protocol form at the end of this

@@ -2,7 +2,7 @@
  * launch-sub-agent.e2e.test.ts — real end-to-end test for the
  * `atoma__launch_sub_agent` tool: the actual `atoma` binary, its real
  * inference loop and real MCP client, driven against the REAL, compiled
- * `dist/.github/atoma/tools/scripts/mcp/atoma.ts` MCP server over real
+ * `dist/.github/atoma-runtime/tools/mcp/atoma.ts` MCP server over real
  * stdio JSON-RPC, with a fake `gh` CLI so the real dispatch chain
  * (mcp/atoma.ts -> dispatchSubAgent -> config/gh helpers)
  * runs without touching the real GitHub API or triggering a real
@@ -19,7 +19,7 @@ import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
 
-const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma/tools/scripts/mcp/atoma.ts");
+const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/atoma.ts");
 
 describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atoma.ts", () => {
   test("agent calls atoma__launch_sub_agent through the real MCP server", async () => {

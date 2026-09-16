@@ -25,8 +25,8 @@
  */
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { WORKSPACE_PATH } from "../../../../domain/workspace.ts";
-import { MAX_FILES, overLimitNotice, type WorkspaceUsage } from "../../../../domain/workspace-size.ts";
+import { WORKSPACE_PATH } from "../../../domain/workspace.ts";
+import { MAX_FILES, overLimitNotice, type WorkspaceUsage } from "../../../domain/workspace-size.ts";
 
 /**
  * Stop walking once this many files have been seen.

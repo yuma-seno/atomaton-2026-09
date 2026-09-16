@@ -12,7 +12,7 @@ import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import {
   AGENT_DEFINITIONS_DIR,
   CONFIG_FILE as CONFIG_FILE_PATH,
-  MCP_PACKAGES_FILE,
+  TOOL_PACKAGES_FILE,
   PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
   SKILLS_DIR as SKILLS_DIRECTORY,
   TOOLS_DIR,
@@ -38,6 +38,7 @@ import { WORKSPACE_PATH } from "../domain/workspace.ts";
 import { ref as fetchEventsRef } from "../scripts/fetch_events.ts";
 import { ref as restoreAgentSessionRef } from "../scripts/restore_agent_session.ts";
 import { ref as reconcileGithubSessionRef } from "../scripts/reconcile_github_session.ts";
+import { ref as mergeToolPackagesRef } from "../scripts/merge_tool_packages.ts";
 import { ref as writeToolsFileRef } from "../scripts/write_tools_file.ts";
 import { ref as extractDirectiveRef } from "../scripts/extract_directive.ts";
 import { ref as postResultCommentRef } from "../scripts/post_result_comment.ts";
@@ -1284,18 +1285,40 @@ git checkout -B "\${BRANCH_NAME}" "refs/remotes/origin/\${BRANCH_NAME}"
     name: "Cache MCP server package downloads",
     with: {
       path: "~/.npm",
-      key: "mcp-npm-${{ hashFiles('" + MACHINERY_DIR + "/" + MCP_PACKAGES_FILE + "') }}",
+      key:
+        "mcp-npm-${{ hashFiles('" +
+        MACHINERY_DIR +
+        "/" +
+        TOOL_PACKAGES_FILE +
+        "', '" +
+        MACHINERY_DIR +
+        "/" +
+        CONFIG_FILE_PATH +
+        "') }}",
       "restore-keys": "mcp-npm-",
     },
   }),
   new TypedOutputsStep({
     name: "Install MCP server packages",
     shell: "bash",
-    run: `MCP_PKGS_FILE="${MACHINERY}/${MCP_PACKAGES_FILE}"
+    run: `# Two lists: what the shipped servers need, and what a project declared
+# for a server of its own in \`tools.packages\`. Installed as one set, because a
+# runner does not care which half asked.
+MCP_PKGS_FILE="${MACHINERY}/${TOOL_PACKAGES_FILE}"
+PROJECT_CONFIG="${MACHINERY}/${CONFIG_FILE_PATH}"
 if [ ! -f "$MCP_PKGS_FILE" ]; then
-  echo "No mcp-packages.json found; skipping MCP package installation."
-  exit 0
+  echo "::error::$MCP_PKGS_FILE is missing. The shipped tool servers cannot be installed."
+  exit 1
 fi
+
+# Merged here rather than in a script, so the jq below reads one shape.
+MERGED_PKGS="${RUN_DIR}/packages.json"
+${scriptCommandWithArgs(mergeToolPackagesRef, {
+  shipped: "$MCP_PKGS_FILE",
+  config: "$PROJECT_CONFIG",
+  out: "$MERGED_PKGS",
+})}
+MCP_PKGS_FILE="$MERGED_PKGS"
 
 # Executables a tool server is started by name, installed globally.
 NPM_PKGS=$(jq -r '.npm[]? // empty' "$MCP_PKGS_FILE" 2>/dev/null || true)

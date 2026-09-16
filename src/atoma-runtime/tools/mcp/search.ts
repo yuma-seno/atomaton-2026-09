@@ -35,10 +35,10 @@
  * hazard rather than a theoretical one, and the description says so outright.
  */
 import { AutoTokenizer, AutoModelForSequenceClassification, env as transformersEnv } from "@huggingface/transformers";
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z } from "../../../../lib/mcp-tool.ts";
-import { report } from "../../../../lib/mcp-report.ts";
-import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../../domain/bm25.ts";
-import { corpusFrom } from "../../../../domain/code-corpus.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
+import { report } from "../../../lib/mcp-report.ts";
+import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../domain/bm25.ts";
+import { corpusFrom } from "../../../domain/code-corpus.ts";
 import {
   CANDIDATES as CODE_CANDIDATES,
   documentFor as codeDocumentFor,
@@ -50,11 +50,11 @@ import {
   unknownNamesNotice,
   unreachableQueryReason,
   type CodePassage,
-} from "../../../../domain/code-search.ts";
-import { getRerankerModel } from "../../../../lib/config.ts";
-import { MODEL_CACHE_DIR } from "../../../../domain/model-cache.ts";
+} from "../../../domain/code-search.ts";
+import { getRerankerModel } from "../../../lib/config.ts";
+import { MODEL_CACHE_DIR } from "../../../domain/model-cache.ts";
 import { readFileSync } from "node:fs";
-import { gitRun } from "../../../../lib/gh.ts";
+import { gitRun } from "../../../lib/gh.ts";
 import {
   INDEX_BRANCH,
   INDEX_PATH,
@@ -65,13 +65,13 @@ import {
   withDerived,
   type IndexedIssue,
   type IssueIndex,
-} from "../../../../lib/issue-index.ts";
+} from "../../../lib/issue-index.ts";
 // Named for sessions because that is what the branch was built to hold, but
 // both take a path and content and care about neither. The index is stored the
 // same way for the same reason: a runner has no other durable storage between
 // runs, and the push-retry loop already handles the races that sibling agents
 // cause.
-import { restoreFromBranch, saveAsOnlyCommit } from "../../../../scripts/lib/atoma-data.ts";
+import { restoreFromBranch, saveAsOnlyCommit } from "../../../scripts/lib/atoma-data.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "";

@@ -23,6 +23,14 @@ the rest. In this template repository the same files are hand-authored under
 `src/`, and `dist/.github/` is generated output that `bun run synth` builds and a
 release publishes as `atoma-delivery.zip`.
 
+What you receive has **two roots**, and which one a file is under is the whole
+rule. `.github/atoma/` is yours: the config, the agent definitions, the prompt
+template, the skills, the rulesets. `.github/atoma-runtime/` is Atoma's: the tool
+servers, their hooks, the defaults they start from, the packages they need, and the
+scripts the workflows run. Nothing in it is a setting, and an edit there is gone at
+the next upgrade — which is why it is a directory of its own rather than a corner of
+yours. `.github/workflows/` is generated as well; GitHub decides where that lives.
+
 `config.yaml` is **yours**. Everything else under `.github/atoma/` is generated and
 is replaced when you upgrade the template; this file is not, so edits to it
 survive. A setting that describes one agent rather than the delivery system belongs
@@ -37,10 +45,10 @@ kinds of file, and only you can say which of your edits are deliberate:
 
 | Path | Yours to edit? |
 | --- | --- |
-| `.github/scripts/**`, `.github/workflows/**`, `.github/atoma/tools/scripts/**` | No — generated, replace wholesale |
+| `.github/atoma-runtime/**`, `.github/workflows/**` | No — generated, replace wholesale |
 | `.github/atoma/config.yaml` | Yes — every setting lives here on purpose |
 | `.github/atoma/skills/project/**` | Yes — your own skills, the template ships none |
-| `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `mcp-packages.json` | Both — the template ships defaults it also expects you to tune |
+| `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `rulesets/**` | Both — the template ships defaults it also expects you to tune |
 
 That last row is the awkward one, and no script can resolve it: a difference there
 is either an improvement you have not taken yet or a change you made on purpose,
@@ -59,6 +67,15 @@ Writing the file per run is what removed the second copy.
 
 Extracting a release never deletes, so if you adopted before that change your tree
 still has a `.github/atoma/tools/tools.yaml`. Nothing reads it. Delete it.
+
+The same applies to the move that produced the two roots. Everything that used to
+be under `.github/scripts/` and `.github/atoma/tools/` now ships under
+`.github/atoma-runtime/`, and the old copies are left where they are by an upgrade
+that only unpacks. Nothing runs them — a workflow names the new path — so delete
+them once you have upgraded, before somebody reads a stale script as the one in
+use. The manifest in `.github/atoma-release.json` lists what the release does
+contain; [docs/recipes.md](recipes.md), under "Move to a newer release", has the
+command that compares the two.
 
 The procedure — treat it as vendoring, and let git do the merge — is in
 [docs/recipes.md](recipes.md), under "Move to a newer release".
@@ -84,7 +101,7 @@ following the documentation — which is exactly what happened while this migrat
 was under way, with two credential lists described at the wrong depth.
 
 What you get in an adopted repository is the same check, runnable before you push:
-`bun run .github/scripts/validate_deliverable.ts --root .`. See
+`bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .`. See
 [docs/recipes.md](recipes.md), under "Check your config before pushing".
 
 ## How the keys are grouped
@@ -372,10 +389,13 @@ body reaches exactly as far, and so does an ordinary mistake. Both stop at a
 person reading the diff.
 
 The whole directory rather than the parts of it that obviously matter. An earlier
-default named four subdirectories and left out `.github/scripts/**`, which is
-where the runner's own control logic lives — nothing decided that, the list was
-simply written before the directory existed. A list of the paths that count has
-to be revisited every time the tree grows, and gives no sign when it has not been.
+default named four subdirectories and left out the scripts directory — today
+`.github/atoma-runtime/scripts/**` — which is where the runner's own control logic
+lives; nothing decided that, the list was simply written before the directory
+existed. A list of the paths that count has to be revisited every time the tree
+grows, and gives no sign when it has not been. This move is the proof: the runtime
+changed directory, and a default naming subdirectories would have quietly stopped
+governing it.
 
 Narrow it, or extend it, with `merge.governed_paths`, which replaces the default:
 
@@ -540,10 +560,18 @@ with are Atoma's own, and what you write here is added to them.
 | `atoma` | Atoma's own operations: sub-issues, handoffs, stopping a run. |
 | `atoma_env` | Rebuilding the run's environment, and nothing else. |
 
-They are not in your `config.yaml`. They live in the template's
-`domain/shipped-servers.ts` and are written into the file `atoma` is handed at the
-start of every run — see [How it reaches the core](#how-it-reaches-the-core) below.
-Each one has a section of its own under [The tool servers](#the-tool-servers).
+They are not in your `config.yaml`. They ship as data, in
+`.github/atoma-runtime/tools/defaults.yaml`, and are written into the file `atoma`
+is handed at the start of every run — see
+[How it reaches the core](#how-it-reaches-the-core) below. Each one has a section
+of its own under [The tool servers](#the-tool-servers).
+
+That file is in the same schema as `tools.servers` below, and it is there to be
+**read**: overriding a shipped server means being able to see the entry you are
+overriding — its `command`, its `args`, what its `env` actually routes. It is not
+yours to edit, because it is under the runtime root and an upgrade replaces it. The
+`description:` on each entry is this project's own, stripped by the generator like
+`settings`, so the core never sees it.
 
 An agent receives the ones its own `mcp_servers` names and no others, so a server
 nobody names costs nothing. That is why there is no way to remove one: there is
@@ -695,14 +723,17 @@ decision per agent rather than per repository.
 The file the core is handed is written from the shipped set and this section at
 the start of each run, into the runner's temp directory, and does not exist in
 your repository — so there is no second list to keep in step, and no file to edit
-instead of this one. Tool scripts and MCP servers live under
-`.github/atoma/tools/scripts/`, which does ship.
+instead of this one. The shipped entries it starts from are readable, in
+`.github/atoma-runtime/tools/defaults.yaml`, and the servers those entries run are
+beside them under `.github/atoma-runtime/tools/mcp/`.
 
-A hook path in a server's `hooks` is written relative to `.github/atoma/tools/`,
-as `./scripts/hooks/...`. The core resolves a relative hook path against the
+A hook path in a server's `hooks` is written relative to
+`.github/atoma-runtime/tools/`, which is how the shipped entries name theirs —
+`./hooks/shell_guard.ts`. The core resolves a relative hook path against the
 directory the tools file is *in*, and that directory is now a temp directory, so
 the generator resolves each path against the machinery checkout before writing it.
-What you write stays short; what the core receives is absolute.
+What you write stays short; what the core receives is absolute. An absolute path is
+left as you wrote it, which is what a hook of your own kept somewhere else needs.
 
 A server may not be called `hooks`: that name is the core's own reserved key at
 the top level of a tools file, which is where `tools.watch` is written, and a
@@ -761,6 +792,50 @@ language. Any model the runner can load as a sequence-classification cross
 encoder works; the search still functions if it fails to load, falling back to
 the first stage's own order.
 
+### `tools.packages`
+
+What a server of **yours** needs installed on the runner before anything starts.
+A server you added under `tools.servers` is started by something, and unless that
+something is `bun` running a file in your repository, the runner has to be given
+it:
+
+```yaml
+tools:
+  packages:
+    npm: ["@acme/mcp-server-jira"]
+    bun: ["pdf-parse"]
+    pip: ["mcp-server-time"]
+```
+
+Three lists, because three things are being asked for. `tools.packages.npm` is for
+an **executable**: each name is installed globally and the global bin directory is
+put on `PATH`, which is what a `command:` naming a program rather than a path
+needs. `tools.packages.bun` is for a **library a server imports** rather than
+spawns — one that cannot be bundled because it reaches native code. Those are
+installed beside the machinery checkout rather than in your work tree, so a
+different version installed by your `environment.setup_commands` cannot break a
+tool server. `tools.packages.pip` is for a server that ships as a Python package.
+
+**The shipped servers' packages are not here.** They are in the deliverable, at
+`.github/atoma-runtime/tools/packages.json`, because they are not a project's
+decision: `@modelcontextprotocol/server-filesystem` is the program `filesystem`
+runs, and `@huggingface/transformers` is what `search` reranks with. Neither
+server can be removed, so neither package can be, and a list you edit that
+contains entries you must not delete is an invitation to delete one — which
+would show up as a tool server that will not start, a long way from the line
+that caused it.
+
+The two lists are installed as one set, deduplicated, the deliverable's first: the
+runner does not care which half asked for a package. **Both are hashed into the
+cache key** for the package download cache — the deliverable's `packages.json` and
+your `config.yaml` together. Hashing one would let you add a package here, hit a
+cache keyed on the file you did not touch, and get a runner without it, with
+nothing saying why.
+
+This key is for tool servers only. What your project's own code, tests and
+deployment need goes in `environment.setup_commands`, which runs for the agent,
+for checks and for deploys alike.
+
 ### File-wide hooks
 
 `tools.watch` holds hooks that apply to every server, beside `tools.servers`
@@ -771,8 +846,13 @@ rather than replacing them.
 ```yaml
 tools:
   watch:
-    before_tool: ./scripts/hooks/my_check.ts
+    before_tool: ../../atoma/hooks/my_check.ts
 ```
+
+A hook of your own is a file of your own, so it belongs under `.github/atoma/`.
+The path is resolved the same way a server's is — against
+`.github/atoma-runtime/tools/`, where the shipped hooks are — which is why one of
+yours climbs out of that directory, or is written absolute.
 
 A hook level takes one path or a list of them, and the generator writes the
 combined list — Atoma's first, then yours — into the tools file under `hooks`,
@@ -890,8 +970,8 @@ Skills live under `.github/atoma/skills/**/*.md`. The template ships none under
 # The tool servers
 
 What follows was written beside these servers while they were entries in
-`config.yaml`, and is kept in full. The entries themselves moved into the
-template's own `domain/shipped-servers.ts`; the reasoning stayed on this page,
+`config.yaml`, and is kept in full. The entries themselves are now in
+`.github/atoma-runtime/tools/defaults.yaml`; the reasoning stayed on this page,
 because a reader deciding whether an agent should have `search` is reading here
 and not there.
 
@@ -917,7 +997,7 @@ and that is the point rather than an oversight.
 
 `args` paths carry `${ATOMA_MACHINERY_ROOT:-.}` for a different reason, and it is
 not about secrets. On a pull request run the workspace IS the pull request, so a
-server read from `.github/atoma/tools/scripts/...` would be the pull request's
+server read from `.github/atoma-runtime/tools/mcp/...` would be the pull request's
 own copy -- letting it replace the code of the tools that review it. The prefix
 points at a checkout of the default branch instead, and falls back to `.` where
 no such checkout exists, such as a hand-run `atoma`.
@@ -931,12 +1011,12 @@ working directory. Verified in the core -- `persistence/tool_def.rs` sets
 `base_dir = path.parent()` and joins any non-absolute hook path onto it, then
 fails the run if the result does not exist.
 
-That directory used to be `.github/atoma/tools/`, the one the hook scripts are
-in, so a path relative to it landed on the right script by sitting still. It is
-not that any more: the tools file is written per run into the runner's temp
-directory, and a relative path would now follow the output rather than the
-script. So the generator resolves every hook path as it writes, against
-`${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/` -- the same default-branch
+That directory used to be the one the hook scripts are in, so a path relative to
+it landed on the right script by sitting still. It is not that any more: the
+tools file is written per run into the runner's temp directory, and a relative
+path would now follow the output rather than the script. So the generator
+resolves every hook path as it writes, against
+`${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/` -- the same default-branch
 checkout the `args` prefix points at. The hook still gets there without being
 asked; what carries it is a resolved path rather than a fixed location.
 
@@ -1046,9 +1126,9 @@ _(no comment)_
 ## search
 
 Searches this repository's issues by meaning. Imports
-`@huggingface/transformers`, which the runner installs from
-`mcp-packages.json`'s `bun` list rather than receiving in the bundle — see
-build-dist.ts for why that one cannot be inlined.
+`@huggingface/transformers`, which the runner installs from the `bun` list in
+`.github/atoma-runtime/tools/packages.json` rather than receiving in the bundle —
+see build-dist.ts for why that one cannot be inlined.
 Shells out to `gh`, so it needs the run's GitHub token. Declared rather
 than inherited: atoma strips credentials from a server that does not name
 them, which is what keeps this one out of `shell`.
