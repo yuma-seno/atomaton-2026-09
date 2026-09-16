@@ -115,28 +115,52 @@ destination, and the nesting is what says so.
 
 **`tools.secrets` needs a second step, and the others do not.** Naming a secret
 there authorises the run to hold it; it does not deliver it to any tool. The tool
-that needs it must also name it in its own `env`, under `tools.servers` in the
-same file:
+that needs it must also name it in its own `env`, which is written under
+`tools.servers` in the same file:
 
 ```yaml
 tools:
   secrets: ["SLACK_TOKEN"]
   servers:
     slack:
+      command: mcp-server-slack
       env:
         SLACK_TOKEN: "${SLACK_TOKEN}"
 ```
 
+`tools.servers` is empty in a fresh config and is **additive**: it holds servers a
+project adds, and overrides of the ones Atoma ships. `slack` above is an addition,
+so it declares the server in full, starting with the `command` that starts it.
+
+**To route a credential to a server Atoma ships** — `shell`, `github`, `web`,
+`search`, `atoma`, `atoma_env`, `filesystem`, `filesystem_readonly` — write its
+name with an `env` and nothing else. A shipped name is merged field by field, so
+the command, the hooks and the timeout stay as they ship:
+
+```yaml
+tools:
+  servers:
+    <the shipped server's name>:
+      env:
+        API_TOKEN: "${API_TOKEN}"
+```
+
+Do not reconstruct the rest of a shipped entry to do this. You cannot read it in
+`config.yaml` — it is not there — and a copied `command` or `args` freezes that
+server at today's values, so the next upgrade moves nothing you pasted.
+
 A reference, never a value. Every tool that does not name it — including `shell` —
 cannot see it, and that is deliberate rather than a gap to fix. If a tool reports
-a missing credential, check whether its `tools.servers` entry declares it before
-concluding anything else is wrong.
+a missing credential, the question is whether that server's `env` names it: for a
+shipped server, an empty `tools.servers` means it was never routed, and that is
+the answer rather than a sign something is missing from the file.
 
 `config.yaml` is the only place this goes. There is no tools file in the
-repository: the one `atoma` is handed is written from `tools.servers` at the start
-of each run and deleted with the runner. If you find a `tools/tools.yaml` left
-behind by an older release, it is read by nothing — routing a credential through
-it produces a tool that never receives it, with nothing reporting why.
+repository: the one `atoma` is handed is written at the start of each run, from
+the shipped servers and whatever `tools.servers` adds, and deleted with the
+runner. If you find a `tools/tools.yaml` left behind by an older release, it is
+read by nothing — routing a credential through it produces a tool that never
+receives it, with nothing reporting why.
 
 `checks` and `deploy` need no routing step: their commands run in a workflow of
 their own rather than beside an agent.

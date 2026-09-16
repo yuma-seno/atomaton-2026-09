@@ -39,19 +39,33 @@ yourself.
 ### `tools.servers` or an agent definition changed
 
 Read **all** of `.github/atoma/agent-definitions/*.md`, not just the one in the
-diff. Every name under an agent's `mcp_servers` must exist as a key under
-`tools.servers` in `.github/atoma/config.yaml`, and the union across all agents
-must be covered. Adding a server is safe; removing or renaming one is not.
+diff.
 
-If a server under `tools.servers` spawns a command that is not `bun`, that binary
-has to be installed by the runner. Confirm the package appears in
-`mcp-packages.json`.
+Every name under an agent's `mcp_servers` has to resolve to a server the run will
+start, and two things provide one: the servers Atoma ships, which are **not** in
+`config.yaml` and cannot be removed, and whatever `tools.servers` adds. **So a
+name absent from `tools.servers` is not a finding** — every shipped name is absent
+from it, and in most repositories that section is empty. What decides is
+`atoma validate`, which the required check on the pull request already runs
+against that pull request's own config: it fails on a name nothing provides, and
+lists the servers that do exist. Do not repeat that check by eye, and do not
+reject a definition because a name is missing from the config.
 
-`tools.servers` is the only list there is. No tools file ships: the one `atoma` is
-handed is written from that section at the start of each run and deleted with the
-runner. So a diff that adds a `tools/tools.yaml`, or edits one an older release
-left behind, is a defect whatever it says — nothing reads that file, and the
-change it was meant to make never happens. Require it in `tools.servers`.
+What that check cannot judge is the part to spend your reads on:
+
+- A server the diff **removes or renames** under `tools.servers` is one an agent
+  may still name. Search every definition for the old name before accepting it.
+- An entry whose name is one Atoma ships is an **override**, merged field by
+  field. One that pastes the whole shipped entry to change a single field is a
+  defect worth returning: the pasted fields stop tracking the upstream ones.
+- A server that spawns a command which is not `bun` needs that binary installed by
+  the runner. Confirm the package appears in `mcp-packages.json`.
+
+No tools file ships: the one `atoma` is handed is written at the start of each run
+from the shipped servers plus `tools.servers`, and deleted with the runner. So a
+diff that adds a `tools/tools.yaml`, or edits one an older release left behind, is
+a defect whatever it says — nothing reads that file, and the change it was meant
+to make never happens. Require it in `config.yaml`.
 
 ### Generated output touched
 
