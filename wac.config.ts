@@ -20,7 +20,7 @@ export default defineConfig({
     "# commands in .github/atoma/config.yaml under `checks.atoma_runs.commands` or",
     "# `deploy.atoma_runs.targets`. That file is yours, it survives upgrades, and an",
     "# agent can write it -- GitHub refuses to let one write a workflow.",
-    "# See docs/customization.md, \"Set up CI and deployment\".",
+    "# See docs/configuration.md, \"The pipeline as commands\".",
     "#",
     "# Upstream: https://github.com/yuma-seno/atomaton",
     "",

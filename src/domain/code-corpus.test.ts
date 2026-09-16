@@ -9,7 +9,7 @@ describe("what the code search reads", () => {
       "app/models/user.rb",
       "cmd/serve/main.go",
       "lib/parser.py",
-      "docs/customization.md",
+      "docs/configuration.md",
       "src/atoma/tools/tools.yaml",
     ]) {
       expect(shouldIndex(path), path).toBe(true);

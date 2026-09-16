@@ -41,7 +41,7 @@
  * value in `.git/config` inside the work tree.
  *
  * A third-party server. It will not call this, and nothing can call it on its
- * behalf. See docs/customization.md, "What a tool can and cannot be protected
+ * behalf. See docs/operations.md, "What a tool can and cannot be protected
  * from".
  */
 import { statSync } from "node:fs";

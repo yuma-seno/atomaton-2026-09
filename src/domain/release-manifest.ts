@@ -3,7 +3,7 @@
  *
  * # Two questions an adopted repository could not answer
  *
- * **"Which release am I on?"** `docs/customization.md` tells an adopter to name a
+ * **"Which release am I on?"** `docs/recipes.md` tells an adopter to name a
  * version rather than `latest`, and to record which one they took, because that is
  * what makes the next diff readable. It never gave them anywhere to record it, and
  * nothing in `.github/atoma/` said. So the answer was memory, or downloading a zip

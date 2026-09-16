@@ -29,7 +29,7 @@ This repository's own:
   copied over it. Upgraded deliberately rather than on merge — that lag is what
   stops a change to `src/` from reconfiguring the live agents the moment it
   merges. Adopters upgrade as a git-mediated merge instead, since they have tuned
-  files to lose; see [docs/customization.md](docs/customization.md).
+  files to lose; see [docs/recipes.md](docs/recipes.md), "Move to a newer release".
 - `tests/`: tests of the build-and-deploy machinery. Tests of *shipped behaviour*
   live beside the shipped code instead.
 - `docs/`: adopter-facing documentation.
@@ -46,75 +46,43 @@ What may reach `main` is declared in `.github/atoma/rulesets/main.json`: no dire
 pushes, no force-pushes, no branch deletion, and a pull request that cannot merge
 until the `atoma-check` job passes.
 
-That context is the job name in `atoma-check.yml`, and the two are joined by
-nothing but the string. `generated-workflows.test.ts` holds the shipped pair
-together; this repository's copy of the ruleset is applied by hand, so renaming
-either side means applying it again:
+How an adopter applies that file, and the two settings they must get right, are in
+[docs/setup.md](docs/setup.md#5-if-you-use-a-branch-ruleset) — it is their work, not
+a contributor's. What follows is this repository's own, and the reasoning behind
+what the shipped file contains.
+
+**The required context is a string, matched by hand.** `atoma-check` is the job name
+in `atoma-check.yml`, and the two are joined by nothing else.
+`generated-workflows.test.ts` holds the shipped pair together; this repository's copy
+of the ruleset is applied by hand, so renaming either side means applying it again:
 
 ```bash
 gh api -X PUT repos/{owner}/{repo}/rulesets/{id} --input .github/atoma/rulesets/main.json
 ```
 
-A required context no job produces does not fail a pull request — it leaves it
-waiting forever on a check that will never report.
-
 **Nothing needs a bypass.** No workflow writes to `main` — the release deployment
 attaches the deliverable to a release instead, which is why `dist/` is no longer
-tracked. An
-agent merging a pull request needs no bypass either: it satisfies the rules like
-anyone else.
+tracked. An agent merging a pull request needs no bypass either: it satisfies the
+rules like anyone else.
 
-That is deliberate, and it is what keeps this file self-contained. Granting a
-bypass would mean naming either a GitHub App's ID or a deploy key — values that
-only exist after manual setup elsewhere, so the reviewed declaration would stop
-describing the whole configuration.
+That is deliberate, and it is what keeps the ruleset file self-contained. Granting a
+bypass would mean naming either a GitHub App's ID or a deploy key — values that only
+exist after manual setup elsewhere, so the reviewed declaration would stop describing
+the whole configuration.
 
-`bypass_actors` is present and empty rather than absent, so that the intent reads
-as a decision rather than an omission. It once named the built-in GitHub Actions
-app, which is not an app installable on a repository and therefore not a valid
-`Integration` actor — the import failed with `The ruleset you are importing
-contains an invalid actor`, and the entry was never applied at all.
+`bypass_actors` is present and empty rather than absent, so that the intent reads as
+a decision rather than an omission. It once named the built-in GitHub Actions app,
+which is not an app installable on a repository and therefore not a valid
+`Integration` actor — the import failed with `The ruleset you are importing contains
+an invalid actor`, and the entry was never applied at all.
 
-A ruleset is **not** read from the repository. It is a server-side setting, and
-`.github/atoma/rulesets/main.json` is this project's own convention: the reviewed
-declaration of what the setting should be. Something has to carry it across.
+**There is deliberately no workflow checking that the ruleset is in place.** A check
+could only report, never enforce: if the ruleset were missing then `atoma-check`
+would no longer be a required context either, so a failing check would block nothing
+— a permanently red mark that stops nobody, which is worse than no mark at all.
 
-CI cannot: creating or updating a ruleset goes through the repository
-administration API, and `administration` is not a permission a workflow can grant
-`GITHUB_TOKEN`. So applying is a deliberate act by someone with admin, and the
-configuration being in place is taken as a given afterwards.
-
-There is deliberately no workflow checking that. A check could only report, never
-enforce: if the ruleset were missing then `atoma-check` would no longer be a required
-context either, so a failing check would block nothing — a permanently red mark
-that stops nobody, which is worse than no mark at all.
-
-**From the web UI** — easiest, and needs nothing installed:
-
-> Settings → Rules → Rulesets → *New ruleset* → **Import a ruleset**, then upload
-> `.github/atoma/rulesets/main.json`.
-
-If the import option is unavailable, create it through the form instead and set:
-target the default branch; restrict deletions; block force pushes; require a pull
-request with **0** required approvals; and require the `atoma-check` status check. Leave
-the bypass list empty.
-
-**From a shell** — if you already have an admin-scoped `gh` login:
-
-```bash
-gh api --method POST repos/yuma-seno/atomaton/rulesets \
-  --input .github/atoma/rulesets/main.json
-```
-
-To change the rules later, edit the JSON in a pull request, then re-import (or
-`gh api --method PUT repos/<repo>/rulesets/<id> --input ...`). Nothing detects a
-ruleset edited in the UI without a matching change to the file, so keeping the two
-together is a discipline rather than something enforced.
-
-One setting in that file exists for a specific reason. Required approvals is **0**
-because Atoma's agents share one bot identity and GitHub forbids self-approval —
-requiring an approval would deadlock the autonomous path. Repository admins are
-deliberately **not** bypassed either; see above on why the bypass list is empty.
+Nothing detects a ruleset edited in the UI without a matching change to the file, so
+keeping the two together is a discipline rather than something enforced.
 
 ## Cutting a release
 
