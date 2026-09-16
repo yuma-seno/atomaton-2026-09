@@ -10,17 +10,17 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 14 | 21.4% | 55 | 2,144 |
-| Last 30 days | 14 | 21.4% | 55 | 2,144 |
-| Last year | 14 | 21.4% | 55 | 2,144 |
-| All time | 14 | 21.4% | 55 | 2,144 |
+| Last 7 days | 15 | 26.7% | 55 | 2,144 |
+| Last 30 days | 15 | 26.7% | 55 | 2,144 |
+| Last year | 15 | 26.7% | 55 | 2,144 |
+| All time | 15 | 26.7% | 55 | 2,144 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
 | `completed` | 11 |
-| `failed` | 3 |
+| `failed` | 4 |
 
 ## Last 7 days
 
@@ -31,7 +31,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 53,712 | 438,539 | 877,552 | 877,552 | 2,237,371 |
-| messages per session | 13 | 674 | 674 | 674 | 1,129 |
+| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -42,10 +42,10 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 452 | 7 | 44 | 1.5% |
-| `filesystem__read_text_file` | 25 | 1 | 1 | 4% |
-| `search__search_code` | 20 | 0 | 0 | 0% |
-| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `shell__shell_execute` | 670 | 7 | 38 | 1% |
+| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `search__search_code` | 26 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
 | `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
@@ -67,18 +67,19 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 277 | 61.3% |
-| `other` | 86 | 19% |
-| `open` | 55 | 12.2% |
-| `verify` | 18 | 4% |
-| `edit` | 16 | 3.5% |
+| `search` | 470 | 70.1% |
+| `other` | 88 | 13.1% |
+| `open` | 78 | 11.6% |
+| `verify` | 18 | 2.7% |
+| `edit` | 16 | 2.4% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 3 | 37.5% |
-| `project/conventions` | 2 | 25% |
-| `review/quick-quality-gate` | 2 | 25% |
-| `engineering/nonexistent` | 1 | 12.5% |
+| `engineering/tdd` | 4 | 36.4% |
+| `project/conventions` | 3 | 27.3% |
+| `review/quick-quality-gate` | 2 | 18.2% |
+| `delivery/implementation-handoff` | 1 | 9.1% |
+| `engineering/nonexistent` | 1 | 9.1% |
 
 ## Last 30 days
 
@@ -89,7 +90,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 23,251 | 213,927 | 2,281,321 | 6,403,430 | 22,685,610 |
-| messages per session | 13 | 674 | 674 | 674 | 1,129 |
+| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -100,10 +101,10 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 452 | 7 | 44 | 1.5% |
-| `filesystem__read_text_file` | 25 | 1 | 1 | 4% |
-| `search__search_code` | 20 | 0 | 0 | 0% |
-| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `shell__shell_execute` | 670 | 7 | 38 | 1% |
+| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `search__search_code` | 26 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
 | `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
@@ -125,18 +126,19 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 277 | 61.3% |
-| `other` | 86 | 19% |
-| `open` | 55 | 12.2% |
-| `verify` | 18 | 4% |
-| `edit` | 16 | 3.5% |
+| `search` | 470 | 70.1% |
+| `other` | 88 | 13.1% |
+| `open` | 78 | 11.6% |
+| `verify` | 18 | 2.7% |
+| `edit` | 16 | 2.4% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 3 | 37.5% |
-| `project/conventions` | 2 | 25% |
-| `review/quick-quality-gate` | 2 | 25% |
-| `engineering/nonexistent` | 1 | 12.5% |
+| `engineering/tdd` | 4 | 36.4% |
+| `project/conventions` | 3 | 27.3% |
+| `review/quick-quality-gate` | 2 | 18.2% |
+| `delivery/implementation-handoff` | 1 | 9.1% |
+| `engineering/nonexistent` | 1 | 9.1% |
 
 ## Last year
 
@@ -147,7 +149,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 13 | 674 | 674 | 674 | 1,129 |
+| messages per session | 13 | 1,171 | 1,171 | 1,171 | 1,626 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -158,10 +160,10 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 452 | 7 | 44 | 1.5% |
-| `filesystem__read_text_file` | 25 | 1 | 1 | 4% |
-| `search__search_code` | 20 | 0 | 0 | 0% |
-| `atoma_builtin__load_skill` | 9 | 2 | 0 | 22.2% |
+| `shell__shell_execute` | 670 | 7 | 38 | 1% |
+| `filesystem__read_text_file` | 50 | 1 | 0 | 2% |
+| `search__search_code` | 26 | 0 | 0 | 0% |
+| `atoma_builtin__load_skill` | 12 | 2 | 0 | 16.7% |
 | `filesystem__list_directory` | 7 | 1 | 0 | 14.3% |
 | `filesystem__read_multiple_files` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 5 | 0 | 0 | 0% |
@@ -183,18 +185,19 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 277 | 61.3% |
-| `other` | 86 | 19% |
-| `open` | 55 | 12.2% |
-| `verify` | 18 | 4% |
-| `edit` | 16 | 3.5% |
+| `search` | 470 | 70.1% |
+| `other` | 88 | 13.1% |
+| `open` | 78 | 11.6% |
+| `verify` | 18 | 2.7% |
+| `edit` | 16 | 2.4% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `engineering/tdd` | 3 | 37.5% |
-| `project/conventions` | 2 | 25% |
-| `review/quick-quality-gate` | 2 | 25% |
-| `engineering/nonexistent` | 1 | 12.5% |
+| `engineering/tdd` | 4 | 36.4% |
+| `project/conventions` | 3 | 27.3% |
+| `review/quick-quality-gate` | 2 | 18.2% |
+| `delivery/implementation-handoff` | 1 | 9.1% |
+| `engineering/nonexistent` | 1 | 9.1% |
 
 ## All time
 
@@ -205,7 +208,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,594 | 298,686 | 5,198,798 | 39,737,697 | 117,184,129 |
-| messages per session | 10 | 96 | 457 | 1,011 | 13,928 |
+| messages per session | 10 | 96 | 457 | 1,171 | 14,425 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -217,18 +220,18 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 2,717 | 626 | 176 | 23% |
+| `shell__shell_execute` | 2,935 | 626 | 170 | 21.3% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 541 | 43 | 25 | 7.9% |
+| `filesystem__read_text_file` | 566 | 43 | 24 | 7.6% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
 | `filesystem__list_directory` | 255 | 6 | 0 | 2.4% |
 | `github__check_merge_readiness` | 223 | 2 | 0 | 0.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
 | `github__get_issue` | 184 | 22 | 2 | 12% |
-| `atoma_builtin__load_skill` | 178 | 77 | 0 | 43.3% |
+| `atoma_builtin__load_skill` | 181 | 77 | 0 | 42.5% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 108 | 29 | 0 | 26.9% |
-| `search__search_code` | 88 | 0 | 0 | 0% |
+| `search__search_code` | 94 | 0 | 0 | 0% |
 | `github__commit_and_push` | 86 | 53 | 0 | 61.6% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
 | `github__get_pr` | 68 | 10 | 0 | 14.7% |
@@ -294,22 +297,22 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,084 | 39.9% |
-| `other` | 1,072 | 39.5% |
-| `open` | 314 | 11.6% |
-| `verify` | 167 | 6.1% |
-| `edit` | 80 | 2.9% |
+| `search` | 1,277 | 43.5% |
+| `other` | 1,074 | 36.6% |
+| `open` | 337 | 11.5% |
+| `verify` | 167 | 5.7% |
+| `edit` | 80 | 2.7% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `review/quick-quality-gate` | 36 | 35.3% |
-| `project/conventions` | 24 | 23.5% |
-| `delivery/implementation-handoff` | 18 | 17.6% |
-| `delivery/issue-decomposition` | 8 | 7.8% |
-| `engineering/tdd` | 8 | 7.8% |
+| `review/quick-quality-gate` | 36 | 34.3% |
+| `project/conventions` | 25 | 23.8% |
+| `delivery/implementation-handoff` | 19 | 18.1% |
+| `engineering/tdd` | 9 | 8.6% |
+| `delivery/issue-decomposition` | 8 | 7.6% |
 | `engineering/debugging` | 3 | 2.9% |
-| `engineering/environment` | 2 | 2% |
-| `research/web-search` | 2 | 2% |
+| `engineering/environment` | 2 | 1.9% |
+| `research/web-search` | 2 | 1.9% |
 | `engineering/nonexistent` | 1 | 1% |
 
 ## Degraded answers
@@ -318,17 +321,17 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-16 | `github` | 3 | 2 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
-| 2026-09-16 | `search` | 1 | 1 | [atoma-search] code query "tests that assert on the warning message text emitted by res" -> src/scripts/resolve_entry_ag |
-| 2026-09-15 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
-| 2026-09-15 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
-| 2026-09-15 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
-| 2026-09-15 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
-| 2026-09-15 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
-| 2026-09-15 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
-| 2026-09-15 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
-| 2026-09-15 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
-| 2026-09-15 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
+| 2026-09-16 | `shell` | 1 | 1 | [atoma-shell] exec: grep -rn "warning\\|::warning" .github/scripts/resolve_runner.ts \| head; echo "--- the deployed copy' |
+| 2026-09-16 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
+| 2026-09-16 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
+| 2026-09-16 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
+| 2026-09-16 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
+| 2026-09-16 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
+| 2026-09-16 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
+| 2026-09-16 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
+| 2026-09-16 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
+| 2026-09-16 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
+| 2026-09-16 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
 
 ## Never used
 
