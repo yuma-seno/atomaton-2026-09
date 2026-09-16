@@ -125,11 +125,20 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
 /**
  * Write the tools file this tree's config describes, and return its path.
  *
- * `hookBase` is the tree's own `tools/` directory, so the hook paths the core then
- * checks for existence point at the scripts in the tree under review — which is the
- * thing this validation is for.
+ * Both halves come from the tree under review: the project's own `tools.servers`
+ * from `.github/atoma/config.yaml`, and the shipped servers from
+ * `.github/atoma-runtime/tools/defaults.yaml`. The hook base is that same runtime
+ * directory, so the paths the core then checks for existence point at the scripts
+ * this pull request would deploy — which is the thing being validated.
+ *
+ * Spelled out rather than taken from `domain/machinery-layout.ts`, like every other
+ * path in this file and for the reason its header gives: these describe the tree
+ * being judged, and a pull request must not be able to redirect the judging.
  */
-function writeToolsFileFor(atomaDir: string): string {
+function writeToolsFileFor(root: string): string {
+  const atomaDir = join(root, ".github", "atoma");
+  const runtimeTools = join(root, ".github", "atoma-runtime", "tools");
+
   const config = Bun.YAML.parse(readFileSync(join(atomaDir, "config.yaml"), "utf8")) as {
     tools?: ToolsSection;
   };
@@ -138,7 +147,14 @@ function writeToolsFileFor(atomaDir: string): string {
     throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} — reserved by the core`);
   }
   const out = join(mkdtempSync(join(tmpdir(), "atoma-validate-")), "tools.yaml");
-  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join(atomaDir, "tools")), null, 2));
+  writeFileSync(
+    out,
+    Bun.YAML.stringify(
+      toolsFileFrom(config.tools, runtimeTools, join(runtimeTools, "defaults.yaml")),
+      null,
+      2,
+    ),
+  );
   return out;
 }
 
@@ -202,7 +218,7 @@ function collect(root: string, atoma: string): string[] {
   if (names.length > 0) {
     let toolsFile: string;
     try {
-      toolsFile = writeToolsFileFor(atomaDir);
+      toolsFile = writeToolsFileFor(root);
     } catch (error) {
       problems.push(`could not write the tools file from config.yaml: ${(error as Error).message}`);
       return problems;

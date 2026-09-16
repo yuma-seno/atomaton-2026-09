@@ -47,17 +47,25 @@ export interface ToolDefaults {
 }
 
 /**
- * Where the defaults are read from.
+ * Where the defaults are read from when the caller does not say.
  *
- * Resolved from this module rather than from the working directory, because the
- * readers run from three places: `bun test` at the repository root, `build-dist`
- * against `src/`, and the bundled `write_tools_file.ts` inside a deployed tree. A
- * relative path would be right for one of them.
+ * Relative to this module, because the readers run from three places: `bun test` at
+ * the repository root, `build-dist` against `src/`, and the bundled
+ * `write_tools_file.ts` inside a deployed tree. A path relative to the working
+ * directory would be right for one of them.
  *
- * In a deployed tree the bundle sits at `<runtime>/scripts/` and the file at
- * `<runtime>/tools/`, which is the same `../tools/defaults.yaml` step as from
- * `src/domain/` to `src/atoma-runtime/tools/`. That is a coincidence of two layouts
- * and not a thing to rely on, so `toolDefaultsPath` takes an override.
+ * **This default is correct in `src/` only.** The earlier version of this comment
+ * claimed the two layouts happened to agree -- that `<runtime>/scripts/` to
+ * `<runtime>/tools/` was the same step as `src/domain/` to `src/atoma-runtime/tools/`
+ * -- and they do not. Bundling flattens `src/domain/` into the script that imports
+ * it, so `import.meta.url` in a deployed tree is the SCRIPT's location, and `..`
+ * from `<runtime>/scripts/` is `<runtime>`, which already ends in `atoma-runtime`.
+ * The path came out as `atoma-runtime/atoma-runtime/tools/defaults.yaml` and every
+ * agent run died on it.
+ *
+ * So a caller that knows where it is running passes the path, and
+ * `write_tools_file.ts` is given one by the workflow. This default serves the tests
+ * and the build, which do run from `src/`.
  */
 function defaultPath(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..", "atoma-runtime", "tools", "defaults.yaml");

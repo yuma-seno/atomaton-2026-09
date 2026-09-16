@@ -16,6 +16,7 @@ import {
   PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
   SKILLS_DIR as SKILLS_DIRECTORY,
   TOOLS_DIR,
+  TOOL_DEFAULTS_FILE,
   TOOL_HOOKS_DIR as TOOL_HOOKS_DIRECTORY,
 } from "../domain/machinery-layout.ts";
 import { defineCallableWorkflow } from "./actions/reusable-workflow.ts";
@@ -163,6 +164,7 @@ const AGENT_DEF_DIR = AGENT_DEFINITIONS_DIR;
 const PROMPT_TEMPLATE = PROMPT_TEMPLATE_FILE;
 const SKILLS_DIR = SKILLS_DIRECTORY;
 const TOOLS_DIR_PATH = TOOLS_DIR;
+const TOOL_DEFAULTS_PATH = TOOL_DEFAULTS_FILE;
 
 /**
  * The OS user every tool server runs as.
@@ -682,6 +684,7 @@ export GITHUB_RUN_ID ISSUE_NUMBER ISSUE_NOTIFY ATOMA_RUN_TYPE ATOMA_OPS_LOG
 # hook scripts are. The output goes to the run directory and is thrown away with it.
 ${scriptCommandWithArgs(writeToolsFileRef, {
   config: `${MACHINERY}/${CONFIG_FILE_PATH}`,
+  defaults: `${MACHINERY}/${TOOL_DEFAULTS_PATH}`,
   out: `${RUN_DIR}/tools.yaml`,
   "hook-base": `${MACHINERY}/${TOOLS_DIR_PATH}`,
 })}

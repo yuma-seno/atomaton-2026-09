@@ -214,7 +214,14 @@ describe("the machinery layout is declared once", () => {
    */
   test("the validator keeps its own paths", () => {
     const source = readFileSync("src/scripts/validate_deliverable.ts", "utf8");
-    expect(source).not.toContain("machinery-layout.ts");
+    // The IMPORT, not the name. Any mention used to fail this, which meant the one
+    // file whose independence is deliberate could not say so -- a comment explaining
+    // why it does not import the layout was indistinguishable from importing it.
+    const imports = [...source.matchAll(/^import .*$/gm)].map((match) => match[0]);
+    expect(
+      imports.filter((line) => line.includes("machinery-layout.ts")),
+      "the validator must derive its paths from the tree it is judging",
+    ).toEqual([]);
   });
 
   /** An adopter opening the directory should find out what each path means there. */
