@@ -9,13 +9,56 @@ how you know what it is.
 | `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |
-| `tools/scripts/mcp/*.ts` | The tool servers themselves. Which of them a run may start is `tools.servers` in `config.yaml`; the file `atoma` is handed is written from it per run and never lands here. |
+| `tools/scripts/mcp/*.ts` | The tool servers themselves — the eight below. The file `atoma` is handed is written from them per run and never lands here. |
 | `tools/scripts/hooks/*.ts` | What inspects a tool call before or after it runs. |
 | `mcp-packages.json` | npm packages the servers need. Its hash is the cache key. |
 | `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |
 
 `.github/scripts/` sits outside this directory and holds the programs the
 workflows run. `.github/workflows/` is where GitHub requires workflows to be.
+
+## The tool servers a run starts with
+
+Eight, and they are not in `config.yaml`. They are in the template's own
+`domain/shipped-servers.ts`, written into the file `atoma` reads at the start of
+every run.
+
+| Server | What it is for |
+| --- | --- |
+| `filesystem` | Reads and writes files in the work tree. |
+| `filesystem_readonly` | Reads files and nothing else, for agents that must not write. |
+| `shell` | Runs one foreground command. Guarded, and holds no credentials of its own. |
+| `github` | Issues, pull requests, comments, and every Git mutation. |
+| `web` | Fetches a URL. Searching the web is a skill, not a tool. |
+| `search` | Ranked search over this repository's issues and code. |
+| `atoma` | Atoma's own operations: sub-issues, handoffs, stopping a run. |
+| `atoma_env` | Rebuilding the run's environment, and nothing else. |
+
+An agent gets the ones its own `mcp_servers` names, and only those. A server
+nobody names is never started, so there is nothing to gain by removing one — which
+is why there is no way to.
+
+**Why they are not in the file you edit.** Deleting one takes a capability from
+every agent that named it, and `atoma` stops the run before a single tool starts
+rather than continuing without it. `config.yaml` is the file this README calls
+yours; sixty-six of its ninety-three lines used to be these eight, which is a lot
+of machinery to keep in a file labelled that way. The line drawn was: **hide what
+breaks when it is edited wrong, show what degrades.** A skill or a prompt template
+edited badly makes an agent less well-informed and the run carries on; those stay
+where you can reach them.
+
+**What you can still do**, in `tools.servers`:
+
+- **add one** — a name not in the table above is yours, and is merged in
+- **override one** — the same name, field by field. Raising `request_timeout_secs`
+  on `shell`, or routing a credential to `github` through `env`, says only that and
+  inherits the rest, so an upgrade still moves the parts you did not touch
+
+And in `tools.watch`, hooks of your own. They run after Atoma's, on every call to
+every server; they are added to what it watches rather than replacing it.
+
+If you name a server that does not exist, `atoma` says so and lists the ones that
+do — on the pull request, before anything runs.
 
 ## The paths are not configurable, deliberately
 
@@ -66,12 +109,13 @@ Everything here except `config.yaml` is replaced wholesale on upgrade. Edit it a
 the next upgrade takes your edit with it.
 
 The file `atoma --tools-file` reads is not in this directory at all, so there is
-nothing there to edit: each run writes it from `tools.servers` in the config, into
-the runner's temp directory, and throws it away with the runner. It used to ship,
-which gave a repository a config and a file generated from it that nothing here
-could regenerate — removing a server changed nothing, and adding one blocked every
-run. If an upgrade from a release that shipped one left a `tools/tools.yaml`
-behind, nothing reads it; delete it.
+nothing there to edit: each run writes it into the runner's temp directory — the
+eight servers above, with whatever `tools.servers` in the config adds or overrides
+— and throws it away with the runner. It used to ship, which gave a repository a
+config and a file generated from it that nothing here could regenerate — editing
+the config changed nothing, and adding a server blocked every run. If an upgrade
+from a release that shipped one left a `tools/tools.yaml` behind, nothing reads
+it; delete it.
 
 `config.yaml` is yours: the upgrade deliberately restores it. If you need a
 different agent, a different skill or a different tool, that is what a fork is

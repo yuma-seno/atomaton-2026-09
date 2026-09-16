@@ -1,62 +1,129 @@
 import { describe, expect, test } from "bun:test";
 import { reservedServerNames, toolsFileFrom } from "./tools-file.ts";
+import { SHIPPED_SERVERS, SHIPPED_WATCH } from "./shipped-servers.ts";
 
 /** The `tools/` directory relative hook paths are written against. */
 const HOOK_BASE = "/m/.github/atoma/tools";
 
+/** The file a project that has configured nothing gets. */
+const shipped = () => toolsFileFrom(undefined, HOOK_BASE);
+
 /**
- * The tools file is written from the one config now, so the shape the core reads
- * is produced rather than maintained. These pin what the generator owes it.
+ * The generator carries the machinery's own servers now, and a project's config is
+ * additive. These pin what that means, in both directions: what a project cannot
+ * lose, and what it can still say.
  */
-describe("toolsFileFrom", () => {
-  test("a server becomes a top-level entry", () => {
-    const out = toolsFileFrom({ servers: { shell: { command: "bun", args: ["run", "x.ts"] } } }, HOOK_BASE);
-    expect(out.shell).toEqual({ command: "bun", args: ["run", "x.ts"] });
+describe("what every run starts with", () => {
+  test("the shipped servers are there with no config at all", () => {
+    const out = shipped();
+    for (const name of Object.keys(SHIPPED_SERVERS)) {
+      expect(out[name], `${name} must be in every tools file`).toBeDefined();
+    }
   });
 
   /**
-   * `hooks` at the top of a tools file is the file-wide declaration. It is called
-   * `watch` in the config so that a section named `hooks` does not sit beside a
-   * per-server `hooks` meaning something narrower.
+   * The reason they moved out of the config: deleting one takes a capability from
+   * every agent that named it, and the core aborts the run rather than starting
+   * without it. There is no spelling for "remove `shell`" because there does not
+   * need to be — an agent that has finished with a server drops it from its own
+   * `mcp_servers`, and a server nobody names is never started.
    */
-  test("watch becomes the core's reserved hooks key", () => {
-    const out = toolsFileFrom({ watch: { after_tool: "./guard.ts" }, servers: {} }, HOOK_BASE);
-    // The path arrives absolute; that it lands under `hooks` at all is this test's
-    // subject, and `describe("hook paths")` below owns the resolving.
-    expect(out.hooks).toEqual({ after_tool: `${HOOK_BASE}/guard.ts` });
+  test("a project cannot remove one by writing an empty servers map", () => {
+    const out = toolsFileFrom({ servers: {} }, HOOK_BASE);
+    expect(Object.keys(out).filter((k) => k !== "hooks").sort()).toEqual(Object.keys(SHIPPED_SERVERS).sort());
   });
 
-  test("an empty watch is left out rather than written as an empty map", () => {
-    expect(toolsFileFrom({ watch: {}, servers: {} }, HOOK_BASE)).toEqual({});
+  test("the file-wide hooks are there too", () => {
+    const out = shipped();
+    for (const key of Object.keys(SHIPPED_WATCH)) {
+      expect((out.hooks as Record<string, unknown>)[key], `hooks.${key}`).toBeDefined();
+    }
+  });
+});
+
+describe("what a project adds", () => {
+  test("a name Atoma does not ship is a new server", () => {
+    const out = toolsFileFrom({ servers: { warehouse: { command: "bun", args: ["run", "x.ts"] } } }, HOOK_BASE);
+    expect(out.warehouse).toEqual({ command: "bun", args: ["run", "x.ts"] });
   });
 
   /**
-   * `atoma` refuses a tools file it cannot parse, and an unrecognised key inside a
-   * server entry is exactly that. `settings` is this project's own: the server
-   * reads it back from the config, so it never needs to travel here.
+   * Field by field, so the smallest change stays the smallest change. Replacing the
+   * whole entry would mean a project raising one timeout had to copy an argv it has
+   * no reason to know, and would then hold a stale copy of it after an upgrade.
+   */
+  test("a name Atoma does ship is overridden one field at a time", () => {
+    const out = toolsFileFrom({ servers: { shell: { request_timeout_secs: 7200 } } }, HOOK_BASE);
+    const entry = out.shell as Record<string, unknown>;
+    expect(entry.request_timeout_secs, "what they said").toBe(7200);
+    expect(entry.command, "and what they did not").toBe(SHIPPED_SERVERS.shell!.command);
+  });
+
+  test("their file-wide hook is appended to the machinery's, not instead of it", () => {
+    const out = toolsFileFrom({ watch: { after_tool: "./scripts/hooks/mine.ts" } }, HOOK_BASE);
+    const after = (out.hooks as Record<string, string[]>).after_tool!;
+    expect(after.length, "both are there").toBe(SHIPPED_WATCH.after_tool!.length + 1);
+    expect(after.at(-1), "theirs runs last").toBe(`${HOOK_BASE}/scripts/hooks/mine.ts`);
+  });
+
+  /** One script reads better as a scalar. The core takes both, and so does this. */
+  test("a list of their own hooks is accepted as well as one", () => {
+    const out = toolsFileFrom({ watch: { after_tool: ["./a.ts", "./b.ts"] } }, HOOK_BASE);
+    const after = (out.hooks as Record<string, string[]>).after_tool!;
+    expect(after.slice(-2)).toEqual([`${HOOK_BASE}/a.ts`, `${HOOK_BASE}/b.ts`]);
+  });
+
+  /**
+   * `atoma` would refuse a key it does not know inside a server entry, and `settings`
+   * is this project's own: the server reads it back from the config, so it has no
+   * reason to travel here.
    */
   test("settings is stripped", () => {
-    const out = toolsFileFrom({
-      servers: { search: { command: "bun", settings: { reranker_model: "m" } } },
-    }, HOOK_BASE);
-    expect(out.search).toEqual({ command: "bun" });
+    const out = toolsFileFrom({ servers: { search: { settings: { reranker_model: "m" } } } }, HOOK_BASE);
+    expect(JSON.stringify(out.search)).not.toContain("settings");
+    expect((out.search as Record<string, unknown>).command, "the rest survives").toBeDefined();
   });
 
   /**
-   * Everything else is passed on untouched, so a key a later core release adds --
-   * `url` and `headers` for a remote server, whatever comes next -- works the day
-   * it ships without this file learning about it. Enumerating the keys here would
-   * silently drop them.
+   * Passed through untouched, so a key a later core release adds -- `url` and
+   * `headers` for a remote server, whatever comes next -- works the day it ships
+   * without this file learning about it.
    */
   test("keys this file has never heard of are passed through", () => {
-    const out = toolsFileFrom({
-      servers: { remote: { url: "https://example.com/mcp", headers: { A: "b" }, max_output_chars: 100 } },
-    }, HOOK_BASE);
-    expect(out.remote).toEqual({ url: "https://example.com/mcp", headers: { A: "b" }, max_output_chars: 100 });
+    const out = toolsFileFrom({ servers: { remote: { url: "https://example.com/mcp", headers: { A: "b" } } } }, HOOK_BASE);
+    expect(out.remote).toEqual({ url: "https://example.com/mcp", headers: { A: "b" } });
+  });
+});
+
+/**
+ * The core resolves a hook path against the directory the tools file is IN, and that
+ * directory is now the run's temp directory. A relative path would follow the output
+ * rather than the scripts.
+ */
+describe("hook paths", () => {
+  test("the machinery's own come out absolute", () => {
+    const after = (shipped().hooks as Record<string, string[]>).after_tool!;
+    for (const path of after) expect(path.startsWith(HOOK_BASE), path).toBe(true);
   });
 
-  test("no servers and no watch is an empty file rather than a crash", () => {
-    expect(toolsFileFrom(undefined, HOOK_BASE)).toEqual({});
+  test("a server's own hook is resolved too", () => {
+    const out = toolsFileFrom({ servers: { fs: { command: "x", hooks: { after_tool: "./scripts/hooks/n.ts" } } } }, HOOK_BASE);
+    expect((out.fs as { hooks: Record<string, unknown> }).hooks.after_tool).toBe(`${HOOK_BASE}/scripts/hooks/n.ts`);
+  });
+
+  /**
+   * Tool patterns, not paths. Rewriting one as a path turns a glob into a filename
+   * the core then refuses to find.
+   */
+  test("allow and deny lists are left alone", () => {
+    const hooks = { tool_denylist: ["filesystem__directory_tree"], tool_allowlist: ["a__b"] };
+    const out = toolsFileFrom({ servers: { fs: { command: "x", hooks } } }, HOOK_BASE);
+    expect((out.fs as { hooks: unknown }).hooks).toEqual(hooks);
+  });
+
+  test("an absolute path is not joined onto the base", () => {
+    const out = toolsFileFrom({ watch: { after_tool: "/opt/mine.ts" } }, HOOK_BASE);
+    expect((out.hooks as Record<string, string[]>).after_tool!.at(-1)).toBe("/opt/mine.ts");
   });
 });
 
@@ -72,48 +139,5 @@ describe("reservedServerNames", () => {
 
   test("ordinary names are not reserved", () => {
     expect(reservedServerNames({ servers: { shell: { command: "x" }, github: { command: "y" } } })).toEqual([]);
-  });
-});
-
-/**
- * The core resolves a hook path against the directory the tools file is IN. That was
- * invisible while the file sat at one fixed path beside the scripts it named; it is
- * not invisible now that the file is written per run into wherever the caller wants.
- * A relative path left alone would follow the output and miss the scripts.
- */
-describe("hook paths", () => {
-  test("a file-wide hook is written against the base", () => {
-    const out = toolsFileFrom({ watch: { after_tool: "./scripts/hooks/guard.ts" }, servers: {} }, HOOK_BASE);
-    expect(out.hooks).toEqual({ after_tool: "/m/.github/atoma/tools/scripts/hooks/guard.ts" });
-  });
-
-  test("a server's own hook is too", () => {
-    const out = toolsFileFrom(
-      { servers: { fs: { command: "x", hooks: { after_tool: "./scripts/hooks/note.ts" } } } },
-      HOOK_BASE,
-    );
-    expect((out.fs as { hooks: unknown }).hooks).toEqual({
-      after_tool: "/m/.github/atoma/tools/scripts/hooks/note.ts",
-    });
-  });
-
-  /**
-   * Tool patterns, not paths. Rewriting one as a path turns a glob into a filename
-   * the core then refuses to find.
-   */
-  test("allow and deny lists are left alone", () => {
-    const hooks = { tool_denylist: ["filesystem__directory_tree"], tool_allowlist: ["a__b"] };
-    const out = toolsFileFrom({ servers: { fs: { command: "x", hooks } } }, HOOK_BASE);
-    expect((out.fs as { hooks: unknown }).hooks).toEqual(hooks);
-  });
-
-  test("an absolute path is not joined onto the base", () => {
-    const out = toolsFileFrom({ watch: { after_tool: "/opt/mine.ts" }, servers: {} }, HOOK_BASE);
-    expect(out.hooks).toEqual({ after_tool: "/opt/mine.ts" });
-  });
-
-  test("a server with no hooks is unchanged", () => {
-    const out = toolsFileFrom({ servers: { fs: { command: "x", args: ["."] } } }, HOOK_BASE);
-    expect(out.fs).toEqual({ command: "x", args: ["."] });
   });
 });

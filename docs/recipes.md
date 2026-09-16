@@ -334,6 +334,12 @@ tools:
 Now that one server receives it, under that name. **Every other tool still cannot see
 it**, including the shell.
 
+`slack` is a server of your own, so its entry declares it in full. Routing a credential
+to one Atoma ships — `github`, `search`, `web` and the rest — is the same step with a
+shorter entry: the server's name and an `env` alone. An entry for a shipped name is
+merged into it field by field, so naming `env` changes only the environment and leaves
+the command, the hooks and the timeout as they ship.
+
 Steps 2 and 3 are two keys in the same file, which does not make them one step:
 authorising a credential does not deliver it. `checks` and `deploy` need no third step at
 all, because their commands run in a workflow of their own rather than beside an agent —
@@ -341,8 +347,9 @@ a secret named in `checks.atoma_runs.secrets` is in that job's environment and t
 no server to route it to.
 
 You never edit a workflow for any of this, and there is no tools file to edit: the one
-`atoma` is handed is written from `tools.servers` at the start of each run and thrown
-away with the runner. `config.yaml` is the only place a credential is routed.
+`atoma` is handed is written at the start of each run — from the servers Atoma ships and
+whatever `tools.servers` adds or overrides — and thrown away with the runner.
+`config.yaml` is still the only place a credential is routed.
 
 Why routing is required at all is in [docs/configuration.md](configuration.md); what it
 does and does not protect you from is in [docs/operations.md](operations.md).
@@ -359,6 +366,17 @@ tools:
       command: bun
       args: ["run", "./scripts/my_tool.ts"]
       request_timeout_secs: 600
+```
+
+For a server Atoma ships, write the same key under that server's name and nothing else.
+An entry for a shipped name is an override merged field by field, so one line raises the
+timeout and the argv, hooks and `env` stay as they ship:
+
+```yaml
+tools:
+  servers:
+    shell:
+      request_timeout_secs: 7200
 ```
 
 **A timeout argument in your tool's own schema does not raise this.** That is the trap,
@@ -387,7 +405,9 @@ results page and read the links out of it. The endpoint lives in that file on pu
 - To stop agents querying a public search engine at all, delete that section of the
   skill. Fetching a page whose address is already known keeps working.
 - To remove web access entirely, drop `web` from `mcp_servers` in the agent definitions
-  that name it, and from `tools.servers`.
+  that name it. That is the whole of it, and there is nothing to delete in
+  `config.yaml`: `web` is one of the servers Atoma ships, and a server no agent names is
+  never started.
 
 This is separate from the search over this repository's own issues, which is a tool
 server. What each of them is for is in [docs/operations.md](operations.md).

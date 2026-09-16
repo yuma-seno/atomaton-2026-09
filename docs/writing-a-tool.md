@@ -97,7 +97,8 @@ agent read a range with `shell_execute` (`sed -n`, `head`) instead.
 ## How long your tool has to answer
 
 Atoma cuts off one `tools/call` after 60 seconds. If your server can take longer,
-say so in its entry under `tools.servers`:
+say so in its entry under `tools.servers` — the section where a repository adds a
+server of its own:
 
 ```yaml
 tools:
@@ -107,6 +108,10 @@ tools:
       args: ["run", "./scripts/my_tool.ts"]
       request_timeout_secs: 600
 ```
+
+A server this template ships is declared in `src/domain/shipped-servers.ts`
+instead, and carries the same key there. Either way the value reaches the core
+through the tools file a run writes for itself.
 
 **A timeout argument in your tool's own schema does not raise this.** That is the
 trap, and it is not hypothetical — it is how the shell server shipped. Its

@@ -52,7 +52,7 @@ interface ToolEntry {
   env?: Record<string, string>;
   hooks?: { before_tool?: string; after_tool?: string; tool_allowlist?: string[]; tool_denylist?: string[] };
   /** Only on the reserved `hooks` entry, which is a hooks block rather than a server. */
-  after_tool?: string;
+  after_tool?: string | string[];
   request_timeout_secs?: number;
 }
 
@@ -87,12 +87,20 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
      * declaration is still there at all, which atoma cannot.
      */
     test(`${path}: the file-wide after_tool hook is declared and present`, () => {
+      // A list now: the machinery's own hooks, with whatever the project appended.
+      // The core has taken either spelling since v0.1.33, and the generator always
+      // writes the list form here because there is always at least the shipped one.
       const declared = parse(path)[RESERVED]?.after_tool;
-      expect(declared, "tools.yaml should declare a file-wide after_tool hook").toBeDefined();
+      expect(declared, "the tools file should declare file-wide after_tool hooks").toBeDefined();
+      const scripts = Array.isArray(declared) ? declared : [declared as string];
+      expect(scripts.length, "at least the machinery's own").toBeGreaterThan(0);
+
       // Absolute already: the generator resolves every hook path against the base it
       // is given, so the core never has to resolve one against wherever the file
       // happens to have been written. See `domain/tools-file.ts`.
-      expect(existsSync(declared!), `${declared} should exist`).toBe(true);
+      for (const script of scripts) {
+        expect(existsSync(script), `${script} should exist`).toBe(true);
+      }
     });
 
     test(`${path}: every entry has a command and a string[] args`, () => {

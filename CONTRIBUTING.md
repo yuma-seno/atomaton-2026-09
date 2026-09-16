@@ -154,9 +154,9 @@ gh secret set ATOMA_SELF_DEPLOY_TOKEN
 
 **No agent can reach it.** It is named in `self/workflows/atoma-self-deploy.yml`
 and nowhere else; `atoma-runner.yml` does not mention it, and `atoma` hands a tool
-server only the credentials that server's own `tools.servers` entry declares. The
-workflow also refuses a bot as `triggering_actor`, because the agent runner's token
-carries `actions: write` and could therefore dispatch a workflow in principle —
+server only the credentials that server's own `env` declares. The workflow also
+refuses a bot as `triggering_actor`, because the agent runner's token carries
+`actions: write` and could therefore dispatch a workflow in principle —
 an agent has no route to it today (`gh` and `curl` are both refused by the shell
 guard, and no MCP tool dispatches anything), but that is a denylist, and this token
 can rewrite workflows.

@@ -77,79 +77,15 @@ tools:
   # environment.
   secrets: []
 
-  # Applies to every server, before each server's own.
-  watch:
-    after_tool: ./scripts/hooks/workspace_guard.ts
+  # Your own tool servers, and overrides of the ones Atoma ships.
+  #
+  # A name Atoma does not ship is added. A name it does ship is overridden field by
+  # field, so raising one timeout does not mean copying an argv. The shipped set is
+  # listed in .github/atoma/README.md and in docs/configuration.md; it is not here
+  # because deleting one breaks a run, and an agent only starts the servers its own
+  # `mcp_servers` names.
+  servers: {}
 
-  servers:
-    filesystem:
-      command: mcp-server-filesystem
-      args: ["."]
-      env: {}
-      hooks:
-        tool_denylist:
-          - "filesystem__directory_tree"
-        # Clears the search streak, which shell_guard can only see shell opens for.
-        after_tool: ./scripts/hooks/note_file_opened.ts
-
-    filesystem_readonly:
-      command: mcp-server-filesystem
-      args: ["."]
-      env: {}
-      hooks:
-        tool_allowlist:
-          - "filesystem_readonly__read_file"
-          - "filesystem_readonly__read_multiple_files"
-          - "filesystem_readonly__read_media_file"
-          - "filesystem_readonly__list_directory"
-          - "filesystem_readonly__get_file_info"
-        after_tool: ./scripts/hooks/note_file_opened.ts
-
-    shell:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/shell.ts"]
-      env: {}
-      request_timeout_secs: 3600
-      hooks:
-        before_tool: ./scripts/hooks/shell_guard.ts
-
-    github:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/github.ts"]
-      env:
-        GH_TOKEN: "${GH_TOKEN}"
-      hooks: {}
-
-    web:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/web.ts"]
-      env: {}
-      hooks: {}
-
-    search:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/search.ts"]
-      env:
-        GH_TOKEN: "${GH_TOKEN}"
-      request_timeout_secs: 300
-      hooks: {}
-      # Read by the server itself, not by the core. `settings` is the one key this
-      # project reserves inside a server entry; the generator strips it.
-      settings:
-        reranker_model: onnx-community/bge-reranker-v2-m3-ONNX
-
-    atoma:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"]
-      env:
-        GH_TOKEN: "${GH_TOKEN}"
-      hooks: {}
-
-    atoma_env:
-      command: bun
-      args: ["run", "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"]
-      env:
-        GH_TOKEN: "${GH_TOKEN}"
-      hooks:
-        tool_allowlist:
-          - "atoma_env__reload_environment"
+  # Your own hooks, run after Atoma's on every call to every server.
+  # Added to what Atoma watches, never replacing it.
+  watch: {}

@@ -47,15 +47,15 @@ is either an improvement you have not taken yet or a change you made on purpose,
 and the files look identical either way.
 
 The file `atoma --tools-file` reads is in none of these rows, because you do not
-receive it. Each run writes it from `tools.servers` in `config.yaml`, into the
-runner's temp directory, and throws it away with the runner. It used to ship,
-generated once when the deliverable was built, which left an adopted repository
-holding a config and a file generated from it with nothing on its side able to
-regenerate one from the other: removing a server from `tools.servers` then did
-nothing, because the shipped file still had it, and adding one blocked every run,
-because `atoma validate` resolved `mcp_servers` against the shipped file, which
-did not. `tools.servers` is now the only place tool servers are declared — which
-is what this page said all along.
+receive it. Each run writes it into the runner's temp directory — the servers
+Atoma ships, plus whatever `tools.servers` in `config.yaml` adds or overrides —
+and throws it away with the runner. It used to ship, generated once when the
+deliverable was built, which left an adopted repository holding a config and a
+file generated from it with nothing on its side able to regenerate one from the
+other: editing `tools.servers` then did nothing, because the shipped file still
+carried the old entry, and adding a server blocked every run, because `atoma
+validate` resolved `mcp_servers` against that shipped file, which did not have it.
+Writing the file per run is what removed the second copy.
 
 Extracting a release never deletes, so if you adopted before that change your tree
 still has a `.github/atoma/tools/tools.yaml`. Nothing reads it. Delete it.
@@ -524,10 +524,53 @@ What you see when either limit fires, and how to resume, is in
 
 ## `tools`
 
-The machinery's own configuration, declared here rather than in a second file
-because this project owns the runtime it uses. An adopter configures Atoma; they
-do not configure the binary Atoma runs. The generator writes the part the core
-reads into the tools file it is handed.
+What an agent can reach. This section is **additive**: the servers a run starts
+with are Atoma's own, and what you write here is added to them.
+
+### The servers every run starts with
+
+| Server | What it is for |
+| --- | --- |
+| `filesystem` | Reads and writes files in the work tree. |
+| `filesystem_readonly` | Reads files and nothing else, for agents that must not write. |
+| `shell` | Runs one foreground command. Guarded, and holds no credentials of its own. |
+| `github` | Issues, pull requests, comments, and every Git mutation. |
+| `web` | Fetches a URL. Searching the web is a skill, not a tool. |
+| `search` | Ranked search over this repository's issues and code. |
+| `atoma` | Atoma's own operations: sub-issues, handoffs, stopping a run. |
+| `atoma_env` | Rebuilding the run's environment, and nothing else. |
+
+They are not in your `config.yaml`. They live in the template's
+`domain/shipped-servers.ts` and are written into the file `atoma` is handed at the
+start of every run — see [How it reaches the core](#how-it-reaches-the-core) below.
+Each one has a section of its own under [The tool servers](#the-tool-servers).
+
+An agent receives the ones its own `mcp_servers` names and no others, so a server
+nobody names costs nothing. That is why there is no way to remove one: there is
+nothing to gain by it, and `atoma` stops a run outright when an agent names a
+server that is not there.
+
+**Why they are not here.** They were, and they were seventy percent of this file —
+sixty-six of ninety-three lines, in the one file you are told is yours, describing
+programs that are as much machinery as the scripts that implement them. The line
+drawn was: **hide what breaks when it is edited wrong, show what degrades.**
+Deleting a server takes a capability from every agent that named it and stops the
+run before a single tool starts. A skill or a prompt template edited badly makes an
+agent less well-informed and the run carries on — so those stay where you can reach
+them, and these do not.
+
+### How it reaches the core
+
+`atoma` is handed a tools file, which is its own format. That file is **written at
+the start of each run** from this section plus the shipped servers, into the
+runner's temp directory, and thrown away with the runner. You do not have one in
+your repository and are not meant to.
+
+It used to ship. An adopter then held a config and a file generated from it, with
+nothing on their side able to regenerate one from the other — so editing
+`tools.servers` did nothing, and adding a server blocked every run. A generated
+file that is distributed is a second source of truth wearing the clothes of a
+first.
 
 ### `tools.secrets`
 
@@ -556,9 +599,10 @@ block is applied, so `env: {}` means "this server gets no credentials" — which
 the default, and is the point rather than an oversight.
 
 The shell tool is the one to think about. It can run anything, so a credential it
-can read is a credential the agent can read and send anywhere. Leaving it out of
-`shell`'s `env:` is what makes "the tool holds the secret, the agent does not"
-true rather than aspirational.
+can read is a credential the agent can read and send anywhere. It ships with
+`env: {}`, and putting a credential there takes an override you wrote on purpose —
+which is what makes "the tool holds the secret, the agent does not" true rather
+than aspirational.
 
 Which layer decides what:
 
@@ -576,12 +620,17 @@ commands run in a workflow of their own rather than beside an agent — a secret
 named in `checks.atoma_runs.secrets` is in that job's environment and there is no
 server to route it to.
 
+The bottom row reads the same whether the server is one of yours or one Atoma
+ships. For a shipped name, an entry carrying `env` and nothing else is an override
+of that one field, so the credential arrives without your having to copy the
+server's command or hooks.
+
 Never write a value in the config, only a `${NAME}` reference. A pasted secret
 is committed in plain text.
 
 You never edit a workflow for any of this, and there is no tools file to edit:
-the one the core is handed is written from `tools.servers` for each run and
-deleted with the runner. The three-step procedure is in
+the one the core is handed is written for each run, from the shipped servers and
+this section, and deleted with the runner. The three-step procedure is in
 [docs/recipes.md](recipes.md), under "Give a tool a credential"; what the routing
 does and does not protect is in [docs/operations.md](operations.md).
 
@@ -606,16 +655,47 @@ fail — with the reason already in the log.
 
 ### `tools.servers`
 
+Servers of your own, and overrides of the ones Atoma ships. It starts empty, and
+what you write is **added to** the shipped set rather than standing in for it.
+
 One entry per server: `command`, `args`, `env`, `hooks`, `request_timeout_secs`,
 and `settings` — the last being this project's own, stripped by the generator so
 it never reaches the core. Everything else is the core's own tools-file format,
 one level in, and is passed through untouched, so a key a later core release adds
 works the day it ships.
 
-This section is the whole declaration. The file the core is handed is written from
-it at the start of each run, into the runner's temp directory, and does not exist
-in your repository — so there is no second list to keep in step, and no file to
-edit instead of this one. Tool scripts and MCP servers live under
+**A name Atoma does not ship is added.** It needs a whole entry, starting with a
+`command`, because nothing else knows how to start it.
+
+**A name Atoma does ship is an override, merged field by field.** Write only what
+you are changing:
+
+```yaml
+tools:
+  servers:
+    shell:
+      request_timeout_secs: 7200
+```
+
+That raises one timeout and inherits the argv, the hooks and the empty `env`, so
+an upgrade that changes any of those still moves them. Pasting the whole shipped
+entry to alter one field is what freezes the rest at today's values.
+
+The merge is one level deep, so a `hooks` block you write **replaces** that
+server's, rather than adding to it. That is the right direction for the thing it
+is: narrowing `filesystem`'s `tool_allowlist` has to mean the list you wrote,
+where a union could only ever widen it.
+
+**There is no way to remove one, and none is needed.** An agent is given the
+servers its own `mcp_servers` names and no others, so one nobody names is never
+started and costs nothing. A project finished with `web` drops it from the agent
+definitions that name it — which is where the decision belongs, because it is a
+decision per agent rather than per repository.
+
+The file the core is handed is written from the shipped set and this section at
+the start of each run, into the runner's temp directory, and does not exist in
+your repository — so there is no second list to keep in step, and no file to edit
+instead of this one. Tool scripts and MCP servers live under
 `.github/atoma/tools/scripts/`, which does ship.
 
 A hook path in a server's `hooks` is written relative to `.github/atoma/tools/`,
@@ -670,6 +750,10 @@ It sits under the server because the server itself reads it, not the core:
 generator strips it out of the tools file the core is handed, which would
 otherwise refuse a key it does not know.
 
+`search` is a shipped server, so that block is an override of one field. It names
+`settings` and nothing else, and the command, the credential and the timeout stay
+as shipped.
+
 The default is multilingual and about 600MB, downloaded once per runner and
 cached after that. Name a smaller cross encoder here if that cost matters more
 than ranking quality, or a language-specific one if your issues are all in one
@@ -680,9 +764,22 @@ the first stage's own order.
 ### File-wide hooks
 
 `tools.watch` holds hooks that apply to every server, beside `tools.servers`
-rather than inside any one of them. The generator writes them into the tools file
-under `hooks`, the name the core reserves there. The appendix below says why a
-file-wide hook is usually the right shape.
+rather than inside any one of them. It is additive in the same way the servers
+are: Atoma ships its own file-wide hooks, and yours are **appended** to them
+rather than replacing them.
+
+```yaml
+tools:
+  watch:
+    before_tool: ./scripts/hooks/my_check.ts
+```
+
+A hook level takes one path or a list of them, and the generator writes the
+combined list — Atoma's first, then yours — into the tools file under `hooks`,
+the name the core reserves there. A list per level is what the core has accepted
+since v0.1.33; before that a tools file could name only one hook at a level, which
+is why a shipped hook and a project's own could not both exist. The appendix below
+says why a file-wide hook is usually the right shape.
 
 ---
 
@@ -792,24 +889,31 @@ Skills live under `.github/atoma/skills/**/*.md`. The template ships none under
 
 # The tool servers
 
-What follows was written beside the settings themselves, and is kept in full.
+What follows was written beside these servers while they were entries in
+`config.yaml`, and is kept in full. The entries themselves moved into the
+template's own `domain/shipped-servers.ts`; the reasoning stayed on this page,
+because a reader deciding whether an agent should have `search` is reading here
+and not there.
 
-## The file as a whole
+## The set as a whole
 
-Tools configuration for Atoma GitHub templates
+The servers a run starts must cover the union of `mcp_servers` across
+.github/atoma/agent-definitions/*.md. The shipped set covers every name the three
+shipped agents use. A name that is neither shipped nor added under
+`tools.servers` aborts the run before any MCP server starts ("Tool 'X' not found
+in tools file"), and atoma lists the servers that do exist beside that error.
+`agent-definitions.test.ts` resolves the same way against the same set, so a
+definition naming a server nothing provides fails the build rather than the next
+run.
 
-Every server named here must cover the union of `mcp_servers` across
-.github/atoma/agent-definitions/*.md. An agent naming a server that is absent
-here aborts before any MCP server starts ("Tool 'X' not found in tools file"),
-so removals must be checked against all three agents, not just the one in
-front of you. `agent-definitions.test.ts` enforces this.
-
-This is where a credential is ROUTED to the server that needs it, with a
-`${NAME}` reference in that server's `env`. A server receives exactly what it
-names here and nothing else -- atoma removes every credential it knows about
-from a server's environment before applying this block, so leaving `env: {}`
-means "this server gets no credentials", and that is the point rather than an
-oversight.
+A credential is ROUTED to the server that needs it with a `${NAME}` reference in
+that server's `env` -- shipped as the run's GitHub token for `github`, `search`,
+`atoma` and `atoma_env`, and empty for the rest. Anything else takes an entry
+under `tools.servers` carrying that server's name and an `env`, which overrides
+that one field. A server receives exactly what its own `env` names and nothing
+else -- atoma removes every credential it knows about from a server's environment
+before applying that block, so `env: {}` means "this server gets no credentials",
+and that is the point rather than an oversight.
 
 `args` paths carry `${ATOMA_MACHINERY_ROOT:-.}` for a different reason, and it is
 not about secrets. On a pull request run the workspace IS the pull request, so a
@@ -853,13 +957,16 @@ needed and neither substitutes for the other; see [docs/recipes.md](recipes.md),
 
 ## `tools.watch`
 
-Hooks that apply to EVERY server, run before each server's own.
+Hooks that apply to EVERY server, run before each server's own. Atoma ships one,
+`workspace_guard.ts`; `tools.watch` in the config is what a project appends to it,
+and the machinery's run first, because order is the contract for `before_tool`
+where the first refusal wins.
 
 It is called `watch` in the config so that it does not sit beside the per-server
-`hooks` meaning something narrower. The generator writes it into the tools file
-under `hooks`, which is the name the core reserves at that level -- so a server
-may not be called `hooks`, and both the pull request check and the run that writes
-the file refuse one that is.
+`hooks` meaning something narrower. The generator writes the combined list into
+the tools file under `hooks`, which is the name the core reserves at that level --
+so a server may not be called `hooks`, and both the pull request check and the run
+that writes the file refuse one that is.
 
 The file-wide form exists because what is worth watching is usually the run rather than
 a tool: how much has been written where, how long a search has gone on. Attached to

@@ -77,16 +77,31 @@ export interface AtomaConfig {
   };
 
   /**
-   * What an agent can reach, and under what watch.
+   * What an agent can reach beyond what Atoma ships, and under what extra watch.
+   *
+   * Additive. The eight servers a run starts with and the hooks that watch all of
+   * them are in `domain/shipped-servers.ts`, not here: deleting one breaks a run, and
+   * the file this interface describes is the one an adopter is told is theirs. See
+   * that module for the line -- hide what breaks when edited wrong, show what
+   * degrades.
    *
    * `servers` is passed through to the core's own tools-file format verbatim, so a
-   * key the core gains works here the day it ships. `settings` is the one key this
+   * key the core gains works here the day it ships. A name Atoma ships is overridden
+   * field by field; a name it does not is added. `settings` is the one key this
    * project reserves inside a server entry: the generator strips it, and the server
    * reads it back through `lib/config.ts`.
    */
   tools?: {
     secrets?: string[];
-    watch?: Record<string, string>;
+    /**
+     * Hooks appended to the machinery's, per hook key.
+     *
+     * A string or a list of them. Both reach the core, which has accepted both since
+     * v0.1.33 -- its `Hooks` always held a list and only the tools file's shape was
+     * singular, which left a delivery shipping a required hook with no way to let a
+     * project add one beside it.
+     */
+    watch?: Record<string, string | string[]>;
     // Not enumerated, and `settings` is not either: the runtime schema passes every
     // key inside a server entry through, so naming them here would make the two
     // disagree about what a known key is -- which a contract test catches, and which
