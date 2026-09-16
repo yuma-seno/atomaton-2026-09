@@ -58,6 +58,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { configProblems } from "../domain/deliverable-integrity.ts";
+import { withEditableSource } from "../domain/generated-file-hint.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ValidateDeliverableArgs {
@@ -110,8 +111,12 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
   }
   if (proc.exitCode === 0) return [];
 
+  // Relayed with the editable source named. `atoma validate` reports on the tools file
+  // it was handed, which is generated from `tools.servers` -- so an adopter who opens
+  // the file the message names and fixes it there loses the fix on the next build.
+  // See `domain/generated-file-hint.ts`; most messages pass through untouched.
   const found = validatorProblems(`${stdout}\n${stderr}`);
-  if (found.length > 0) return found.map((problem) => `${label}: ${problem}`);
+  if (found.length > 0) return found.map((problem) => `${label}: ${withEditableSource(problem)}`);
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
 }
 
