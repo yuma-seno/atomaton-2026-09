@@ -140,10 +140,15 @@ describe("deployment contract", () => {
     // stale entry here is worse than none.
     const PROVIDED_BY_THE_RUNNER = new Map<string, string>([]);
 
-    // The generated file, because that is what the runner starts servers from. The
-    // source is `tools.servers` in config.yaml now and carries the same commands.
-    const yaml = readFileSync("dist/.github/atoma/tools/tools.yaml", "utf8");
-    const commands = [...yaml.matchAll(/^\s{2}command:\s*(\S+)\s*$/gm)].map((m) => m[1] as string);
+    // From `tools.servers` in the config, which is the only place these live now:
+    // the generated file is written per run into the runner's temp directory and
+    // does not ship, so there is no artifact here to read.
+    const config = Bun.YAML.parse(readFileSync(join(ATOMA_SRC, "config.yaml"), "utf8")) as {
+      tools?: { servers?: Record<string, { command?: unknown }> };
+    };
+    const commands = Object.values(config.tools?.servers ?? {})
+      .map((server) => server.command)
+      .filter((command): command is string => typeof command === "string");
     const external = [...new Set(commands.filter((c) => c !== "bun" && c !== "npx"))];
     const mustBeInstalled = external.filter((c) => !PROVIDED_BY_THE_RUNNER.has(c));
 

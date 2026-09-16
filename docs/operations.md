@@ -350,11 +350,19 @@ What it does not check is anything that needs a run to find out. Whether your
 commands pass, whether a deployment works, whether a model answers — that is CI's
 job, and this deliberately does not duplicate it.
 
-**Why this exists.** Atoma resolves every `mcp_servers` name against `tools.yaml`
-and aborts before a single tool server starts if one is missing. Nothing objected
-at merge time, so the failure landed on whoever triggered the *next* run — which
-had already happened once here: an agent looked at its own tool surface, concluded
-a server was unused, removed it, and broke a different agent that depended on it.
+**Why this exists.** Atoma resolves every `mcp_servers` name against the tools
+file it is handed, and aborts before a single tool server starts if one is
+missing. Nothing objected at merge time, so the failure landed on whoever
+triggered the *next* run — which had already happened once here: an agent looked
+at its own tool surface, concluded a server was unused, removed it, and broke a
+different agent that depended on it.
+
+**Where those names come from.** There is no tools file in your repository to
+open. It is written from `tools.servers` in `config.yaml` at the start of each
+run, into the runner's temp directory, so `tools.servers` is the list a name is
+resolved against — and the check above writes one the same way, from the pull
+request's own config, so what it resolves against is what that pull request would
+actually run with.
 
 **What you see when it fails.** The required check goes red, the problems are
 listed in a comment on the pull request, and the engineer is dispatched to fix
