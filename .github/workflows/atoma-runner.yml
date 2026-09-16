@@ -194,17 +194,26 @@ jobs:
       - name: Cache MCP server package downloads
         with:
           path: ~/.npm
-          key: mcp-npm-${{ hashFiles('atoma-machinery/.github/atoma/mcp-packages.json') }}
+          key: mcp-npm-${{ hashFiles('atoma-machinery/.github/atoma-runtime/tools/packages.json', 'atoma-machinery/.github/atoma/config.yaml') }}
           restore-keys: mcp-npm-
         uses: actions/cache@v4
       - name: Install MCP server packages
         shell: bash
         run: |
-          MCP_PKGS_FILE="${ATOMA_MACHINERY_ROOT}/.github/atoma/mcp-packages.json"
+          # Two lists: what the shipped servers need, and what a project declared
+          # for a server of its own in `tools.packages`. Installed as one set, because a
+          # runner does not care which half asked.
+          MCP_PKGS_FILE="${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/packages.json"
+          PROJECT_CONFIG="${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml"
           if [ ! -f "$MCP_PKGS_FILE" ]; then
-            echo "No mcp-packages.json found; skipping MCP package installation."
-            exit 0
+            echo "::error::$MCP_PKGS_FILE is missing. The shipped tool servers cannot be installed."
+            exit 1
           fi
+
+          # Merged here rather than in a script, so the jq below reads one shape.
+          MERGED_PKGS="${RUNNER_TEMP}/atoma-run/packages.json"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/merge_tool_packages.ts" --shipped "$MCP_PKGS_FILE" --config "$PROJECT_CONFIG" --out "$MERGED_PKGS"
+          MCP_PKGS_FILE="$MERGED_PKGS"
 
           # Executables a tool server is started by name, installed globally.
           NPM_PKGS=$(jq -r '.npm[]? // empty' "$MCP_PKGS_FILE" 2>/dev/null || true)
@@ -277,8 +286,8 @@ jobs:
       - name: Make tool hooks executable
         shell: bash
         run: |
-          if [ -d "${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/scripts/hooks" ]; then
-            find "${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/scripts/hooks" -name '*.ts' -exec chmod +x {} +
+          if [ -d "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/hooks" ]; then
+            find "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/hooks" -name '*.ts' -exec chmod +x {} +
           fi
       - name: Run configured environment setup
         shell: bash
@@ -596,7 +605,7 @@ jobs:
           #
           # `--hook-base` is the machinery's `tools/` directory, because that is where the
           # hook scripts are. The output goes to the run directory and is thrown away with it.
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma/tools"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools"
           TOOLS_ARG="--tools-file ${RUNNER_TEMP}/atoma-run/tools.yaml"
 
           # Settings, not credentials. These two are repository VARIABLES -- which provider

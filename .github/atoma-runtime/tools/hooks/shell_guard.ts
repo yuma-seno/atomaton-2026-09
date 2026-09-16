@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/atoma/tools/scripts/hooks/shell_guard.ts
+// src/atoma-runtime/tools/hooks/shell_guard.ts
 import { readFileSync, writeFileSync } from "fs";
 import { resolve, sep } from "path";
 
@@ -33,7 +33,7 @@ function refusalReason(streak, limit = MAX_SEARCHES_WITHOUT_OPENING) {
   return `${streak} searches in a row without opening any of the files they found. A search returns ` + "where something is, not what it is, so nothing found so far has been read. Do one of two " + "things before searching again: open the most promising result \u2014 with " + "filesystem__read_text_file, or `sed -n` for a range \u2014 or, if you are guessing at what the " + "thing is called, ask search__search_code the same question in a sentence. Measured, that " + "finds the right file in the top five 70% of the time, against 41.5% for the regex patterns " + "agents search with.";
 }
 
-// src/atoma/tools/scripts/lib/search-streak-file.ts
+// src/atoma-runtime/tools/lib/search-streak-file.ts
 function streakFile() {
   const opsLog = process.env.ATOMA_OPS_LOG;
   if (!opsLog)
@@ -42,7 +42,7 @@ function streakFile() {
   return dir === opsLog ? undefined : `${dir}/search-streak`;
 }
 
-// src/atoma/tools/scripts/hooks/shell_guard.ts
+// src/atoma-runtime/tools/hooks/shell_guard.ts
 var ROUTING_RULES = {
   gh: "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
   curl: "curl is disabled. Use web__fetch, which returns the page as text.",

@@ -1,8 +1,16 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/aggregate_sub_issues.ts
+// src/scripts/dispatch_if_siblings_done.ts
 import { parseArgs } from "util";
+
+// src/scripts/lib/script-ref.ts
+import { basename } from "path";
+import { fileURLToPath } from "url";
+var SCRIPTS_RUNTIME_ROOT = ".github/scripts";
+function defineScript(importMetaUrl) {
+  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
+}
 
 // src/lib/gh.ts
 function run(cmd) {
@@ -20,9 +28,6 @@ function run(cmd) {
 function gh(...args) {
   return run(["gh", ...args]);
 }
-function gitRun(...args) {
-  return run(["git", ...args]);
-}
 function dispatchWorkflow(context, workflow, args = [], log = (m) => console.error(m)) {
   const { code, stdout, stderr } = gh("workflow", "run", workflow, ...args);
   if (code) {
@@ -31,14 +36,6 @@ function dispatchWorkflow(context, workflow, args = [], log = (m) => console.err
   }
   log(`${context}: dispatched ${workflow}`);
   return true;
-}
-
-// src/scripts/lib/script-ref.ts
-import { basename } from "path";
-import { fileURLToPath } from "url";
-var SCRIPTS_RUNTIME_ROOT = ".github/scripts";
-function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
 // src/lib/config.ts
@@ -57,15 +54,18 @@ var CI_WOULD_BE_WASTED = new Set([
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
-var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
-var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
-var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
+var USER_ROOT = ".github/atoma";
+var RUNTIME_ROOT = ".github/atoma-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
 // src/lib/config.ts
 function configPath() {
@@ -307,157 +307,8 @@ Atoma: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestra
   return dispatched ? { kind: "dispatched" } : { kind: "dispatch-failed" };
 }
 
-// src/lib/inject-sub-results.ts
-function findLastToolIndex(messages) {
-  for (let i = messages.length - 1;i >= 0; i--) {
-    if (messages[i]?.role === "tool")
-      return i;
-  }
-  return null;
-}
-function gatherSubResults(repo, subIssues) {
-  const lines = ["All sub-issues have been completed.", "", "## Sub-issue Results", ""];
-  for (const num of subIssues) {
-    let title = "Unknown";
-    let state = "could not be read";
-    try {
-      const { code, stdout } = gh("issue", "view", String(num), "--repo", repo, "--json", "title,state,closedAt");
-      if (code === 0 && stdout) {
-        const info = JSON.parse(stdout);
-        title = info.title ?? "Unknown";
-        state = info.state ?? "could not be read";
-      }
-    } catch {}
-    const linkedPrs = [];
-    let prLookupFailed = false;
-    for (const state_ of ["merged", "open"]) {
-      try {
-        const { code, stdout } = gh("pr", "list", "--repo", repo, "--state", state_, "--search", `#${num} in:body`, "--json", "number,title,url");
-        if (code === 0 && stdout) {
-          const prs = JSON.parse(stdout);
-          for (const pr of prs) {
-            linkedPrs.push(`- PR #${pr.number}: ${pr.title} (${pr.url})`);
-          }
-        } else {
-          prLookupFailed = true;
-        }
-      } catch {
-        prLookupFailed = true;
-      }
-    }
-    lines.push(`### #${num}: ${title}`);
-    lines.push(`Status: ${state}`);
-    if (linkedPrs.length) {
-      lines.push("Linked PRs:");
-      lines.push(...linkedPrs);
-    } else if (prLookupFailed) {
-      lines.push("Linked PRs could not be read.");
-    } else {
-      lines.push("No linked PRs found.");
-    }
-    lines.push("");
-  }
-  lines.push("---");
-  lines.push("All sub-issues are complete. Please review the results and aggregate them into a final summary.");
-  return lines.join(`
-`);
-}
-function injectSummary(session, summary) {
-  const messages = session.messages ?? [];
-  const lastToolIdx = findLastToolIndex(messages);
-  if (lastToolIdx === null) {
-    console.error("No tool message found in session. Appending as user message.");
-    messages.push({ role: "user", content: summary });
-  } else {
-    messages[lastToolIdx].content = summary;
-  }
-  session.messages = messages;
-  return session;
-}
-
-// src/scripts/lib/atoma-data.ts
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
-import { tmpdir } from "os";
-import { dirname, join } from "path";
-function sessionTargetPath(type, number, agent) {
-  return `sessions/${type}-${number}/${agent}.json`;
-}
-function restoreSession(targetPath) {
-  if (gitRun("fetch", "origin", "atoma-data", "--depth=1").code !== 0) {
-    return;
-  }
-  if (gitRun("cat-file", "-e", `origin/atoma-data:${targetPath}`).code !== 0) {
-    return;
-  }
-  const shown = gitRun("show", `origin/atoma-data:${targetPath}`);
-  return shown.code === 0 ? shown.stdout : undefined;
-}
-function gitIn(cwd, ...args) {
-  const proc = Bun.spawnSync({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe" });
-  return { code: proc.exitCode ?? 1, stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "" };
-}
-function saveSession(targetPath, content, commitMessage) {
-  if (gitRun("ls-remote", "--exit-code", "origin", "atoma-data").code !== 0) {
-    gitRun("config", "user.email", "action@github.com");
-    gitRun("config", "user.name", "GitHub Actions");
-    const commit = gitRun("commit-tree", "4b825dc642cb6eb9a060e54bf8d69288fbee4904", "-m", "init: atoma-data session store").stdout;
-    gitRun("push", "origin", `${commit}:refs/heads/atoma-data`);
-  }
-  gitRun("fetch", "origin", "atoma-data");
-  const worktreeDir = mkdtempSync(join(tmpdir(), "atoma-data-wt-"));
-  gitRun("worktree", "add", worktreeDir, "origin/atoma-data");
-  let saved = false;
-  try {
-    gitIn(worktreeDir, "config", "user.email", "action@github.com");
-    gitIn(worktreeDir, "config", "user.name", "GitHub Actions");
-    for (let attempt = 1;attempt <= 5; attempt++) {
-      gitIn(worktreeDir, "fetch", "origin", "atoma-data");
-      gitIn(worktreeDir, "reset", "--hard", "origin/atoma-data");
-      const fullTarget = join(worktreeDir, targetPath);
-      mkdirSync(dirname(fullTarget), { recursive: true });
-      writeFileSync(fullTarget, content);
-      gitIn(worktreeDir, "add", targetPath);
-      if (gitIn(worktreeDir, "diff", "--cached", "--quiet").code === 0) {
-        saved = true;
-        break;
-      }
-      gitIn(worktreeDir, "commit", "-m", commitMessage);
-      if (gitIn(worktreeDir, "push", "origin", "HEAD:atoma-data").code === 0) {
-        saved = true;
-        break;
-      }
-      console.error(`Push attempt ${attempt} failed (concurrent push) -- resetting and retrying with a fresh pull...`);
-      Bun.sleepSync(attempt * 2000);
-    }
-  } finally {
-    gitRun("worktree", "remove", "--force", worktreeDir);
-    rmSync(worktreeDir, { recursive: true, force: true });
-  }
-  return saved;
-}
-
-// src/scripts/aggregate_sub_issues.ts
+// src/scripts/dispatch_if_siblings_done.ts
 var ref = defineScript(import.meta.url);
-function linkedSubIssues(repo, parent) {
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `atoma:parent=${parent} in:body`, "--json", "number,body");
-  if (code !== 0) {
-    throw new Error(`could not list sub-issues of #${parent}: ${stderr || stdout}`);
-  }
-  const issues = stdout ? JSON.parse(stdout) : [];
-  return issues.filter((issue) => PARENT_TAG.read(issue.body ?? "") === parent).map((issue) => issue.number);
-}
-function injectResultsIntoOrchestratorSession(repo, parent) {
-  const subIssues = linkedSubIssues(repo, parent);
-  console.error(`Sub-issues of #${parent}: ${subIssues.join(", ") || "(none)"}`);
-  const sessionPath = sessionTargetPath("issue", parent, "orchestrator");
-  const existing = restoreSession(sessionPath);
-  const session = existing ? JSON.parse(existing) : { messages: [] };
-  const updated = injectSummary(session, gatherSubResults(repo, subIssues));
-  const message = `atoma: inject sub-issue results for parent #${parent}`;
-  if (!saveSession(sessionPath, JSON.stringify(updated, null, 2), message)) {
-    console.error(`::warning::Failed to save session to atoma-data:${sessionPath} after all retries.`);
-  }
-}
 async function main() {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -467,23 +318,19 @@ async function main() {
       "closed-num": { type: "string" }
     }
   });
-  const repo = values.repo;
-  const parent = values.parent;
-  const closedNum = values["closed-num"];
-  if (!repo || !parent || !closedNum) {
-    console.error("usage: aggregate_sub_issues.ts --repo OWNER/REPO --parent N --closed-num N");
+  if (!values.repo || !values.parent || !values["closed-num"]) {
+    console.error("usage: dispatch_if_siblings_done.ts --repo OWNER/REPO --parent N --closed-num N");
     process.exit(2);
   }
-  console.error(`PR merged (sub-issue #${closedNum}, parent #${parent}). Checking siblings...`);
+  const { repo, parent } = values;
+  const closedNum = values["closed-num"];
+  console.log("Sub-issue closed manually. Checking open siblings...");
   const result = await dispatchOrchestratorIfReady({
     repo,
     parent: Number(parent),
-    closedNum: Number(closedNum),
-    exclude: true,
-    progressMessage: (remaining) => `Atoma: Sub-task #${closedNum} completed. ${remaining} sub-task(s) still in progress.`,
-    beforeDispatch: () => injectResultsIntoOrchestratorSession(repo, Number(parent))
+    closedNum: Number(closedNum)
   });
-  console.error(describeGateResult(result, Number(closedNum), Number(parent)));
+  console.log(describeGateResult(result, Number(closedNum), Number(parent)));
   if (needsAttention(result))
     process.exit(1);
 }

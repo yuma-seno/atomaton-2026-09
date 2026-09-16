@@ -1,7 +1,8 @@
 # `.github/atoma/`
 
-Everything an agent run reads. One directory, and the path of each thing in it is
-how you know what it is.
+**This directory is yours.** It holds what a project says about itself — what to
+verify, which agents exist, what they are told — and the path of each thing in it
+is how you know what it is.
 
 | Path | What it holds |
 | --- | --- |
@@ -9,18 +10,39 @@ how you know what it is.
 | `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |
-| `tools/scripts/mcp/*.ts` | The tool servers themselves — the eight below. The file `atoma` is handed is written from them per run and never lands here. |
-| `tools/scripts/hooks/*.ts` | What inspects a tool call before or after it runs. |
-| `mcp-packages.json` | npm packages the servers need. Its hash is the cache key. |
 | `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |
 
-`.github/scripts/` sits outside this directory and holds the programs the
-workflows run. `.github/workflows/` is where GitHub requires workflows to be.
+## What is not here
+
+`.github/atoma-runtime/` is the other half, and it is **not yours**: it is what
+Atoma runs, replaced wholesale on upgrade.
+
+| Path | What it holds |
+| --- | --- |
+| `atoma-runtime/tools/defaults.yaml` | The tool servers every run starts with, and the hooks that watch all of them. There to be read — it is the entry you override. |
+| `atoma-runtime/tools/mcp/*.ts` | The tool servers themselves. The file `atoma` is handed is written from `defaults.yaml` plus your `tools.servers` per run, and never lands in either directory. |
+| `atoma-runtime/tools/hooks/*.ts` | What inspects a tool call before or after it runs. |
+| `atoma-runtime/tools/packages.json` | The packages those shipped servers need. Yours for a server you added go in `tools.packages` in the config. |
+| `atoma-runtime/scripts/*.ts` | The programs the workflows run. |
+
+`.github/workflows/` is where GitHub requires workflows to be, and is generated
+too. So the rule has no exceptions: `.github/atoma/` is the project's, and
+everything else under `.github/` is the deliverable's. Editing the runtime works
+until the next upgrade, which replaces it and takes the edit with it — and what you
+were trying to change is almost always a setting in `config.yaml`.
+
+The split is not tidiness. Deleting something in the runtime breaks a run outright:
+the server does not start, and `atoma` stops before the first tool call. Editing
+something in this directory degrades one at worst — a worse-informed agent, and the
+run carries on. That line is drawn once, for the whole tree, rather than file by
+file.
 
 ## The tool servers a run starts with
 
-Eight, and they are not in `config.yaml`. They are in the template's own
-`domain/shipped-servers.ts`, written into the file `atoma` reads at the start of
+Eight, and they are not in `config.yaml`. They are in
+`.github/atoma-runtime/tools/defaults.yaml`, in the same schema as `tools.servers`
+in your config, and that file is the one to read when you are about to override
+one. What it declares is written into the file `atoma` is handed at the start of
 every run.
 
 | Server | What it is for |
@@ -54,6 +76,11 @@ where you can reach them.
   on `shell`, or routing a credential to `github` through `env`, says only that and
   inherits the rest, so an upgrade still moves the parts you did not touch
 
+A server you add is started by something the runner may not have; `tools.packages`
+in the config is where you name what to install for it. The shipped servers' own
+packages are in `atoma-runtime/tools/packages.json`, because they are not yours to
+choose.
+
 And in `tools.watch`, hooks of your own. They run after Atoma's, on every call to
 every server; they are added to what it watches rather than replacing it.
 
@@ -71,8 +98,8 @@ says what it holds. A `definitions_dir` key pointing anywhere would say only tha
 somebody chose — and the next person has to open the config before they can read
 the repository.
 
-Three mechanisms are built around this directory being one root, and a redirected
-path breaks all three at once:
+Three mechanisms are built around these two directories being roots, and a
+redirected path breaks all three at once:
 
 - The run grants the tool user read access to the machinery root. A file outside
   it is unreadable to the servers, and the symptom is "no server started" rather
@@ -81,13 +108,13 @@ path breaks all three at once:
   a model, a tool list or a role prompt in a person's hands. Moving
   `agent-definitions/` elsewhere leaves that gate permanently, on a single
   approval that reads as tidying up.
-- Upgrades replace this directory **by position** — `unzip -o` over it, then your
-  `config.yaml` restored. A redirected tree is never upgraded again, and the new
-  upstream copy lands beside it unread.
+- Upgrades replace these directories **by position** — `unzip -o` over them, then
+  your `config.yaml` restored. A redirected tree is never upgraded again, and the
+  new upstream copy lands beside it unread.
 
 And one of them could never be a setting whatever was decided about the rest:
-`.github/scripts/` holds the programs that open the configuration. A file cannot
-say where to find the thing that reads it.
+`.github/atoma-runtime/scripts/` holds the programs that open the configuration. A
+file cannot say where to find the thing that reads it.
 
 ## Why the core is configurable and this is not
 
@@ -108,14 +135,19 @@ reach. Paths describe structure, and structure is what a name is for.
 Everything here except `config.yaml` is replaced wholesale on upgrade. Edit it and
 the next upgrade takes your edit with it.
 
-The file `atoma --tools-file` reads is not in this directory at all, so there is
-nothing there to edit: each run writes it into the runner's temp directory — the
-eight servers above, with whatever `tools.servers` in the config adds or overrides
-— and throws it away with the runner. It used to ship, which gave a repository a
-config and a file generated from it that nothing here could regenerate — editing
-the config changed nothing, and adding a server blocked every run. If an upgrade
-from a release that shipped one left a `tools/tools.yaml` behind, nothing reads
-it; delete it.
+The file `atoma --tools-file` reads is in neither directory, so there is nothing
+anywhere to edit: each run writes it into the runner's temp directory — the eight
+servers above, with whatever `tools.servers` in the config adds or overrides — and
+throws it away with the runner. It used to ship, which gave a repository a config
+and a file generated from it that nothing here could regenerate — editing the
+config changed nothing, and adding a server blocked every run. If an upgrade from a
+release that shipped one left a `tools/tools.yaml` behind, nothing reads it; delete
+it.
+
+An upgrade only unpacks, so it deletes nothing either. A tree adopted before the
+runtime moved still has `.github/scripts/` and `.github/atoma/tools/` sitting
+there, read by nothing — the workflows name the new paths. Delete them, so that
+nobody edits a copy that no run will ever load.
 
 `config.yaml` is yours: the upgrade deliberately restores it. If you need a
 different agent, a different skill or a different tool, that is what a fork is

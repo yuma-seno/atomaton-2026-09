@@ -1,8 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/guard_comment_during_run.ts
-import { appendFileSync } from "fs";
+// src/scripts/request_stop.ts
 import { parseArgs } from "util";
 
 // src/lib/gh.ts
@@ -38,15 +37,18 @@ var CI_WOULD_BE_WASTED = new Set([
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/machinery-layout.ts
-var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
-var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
-var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
+var USER_ROOT = ".github/atoma";
+var RUNTIME_ROOT = ".github/atoma-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
 // src/lib/config.ts
 function configPath() {
@@ -112,8 +114,37 @@ function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/guard_comment_during_run.ts
+// src/scripts/request_stop.ts
 var ref = defineScript(import.meta.url);
+function runningChildren(repo, parent) {
+  const label = getLabel("in_progress");
+  const { code, stdout } = gh("issue", "list", "--repo", repo, "--state", "open", "--limit", "200", "--search", `atoma:parent=${parent} in:body`, "--label", label, "--json", "number,body");
+  if (code !== 0)
+    return [];
+  try {
+    const issues = JSON.parse(stdout || "[]");
+    return issues.filter((i) => PARENT_TAG.read(i.body ?? "") === parent).map((i) => i.number);
+  } catch {
+    return [];
+  }
+}
+function stopRequestedNotice(commenter, deleted, children) {
+  const mention = commenter ? `@${commenter} ` : "";
+  const lines = [
+    LLM_CONTEXT_TAG.write("exclude"),
+    STOP_TAG.write("requested"),
+    `${mention}Atoma: stop requested.`,
+    "",
+    deleted ? "Your `/stop` comment was removed so it does not become part of the agent's context." : "Your `/stop` comment could not be removed, so it may end up in the agent's context.",
+    "",
+    "The run will stop after its current step, so it may take a minute. Nothing is lost when it does: the session is saved and can be continued."
+  ];
+  if (children.length > 0) {
+    lines.push("", `This issue also has work running on ${children.map((n) => `#${n}`).join(", ")}. ` + "A stop here does not reach those \u2014 comment `/stop` on each one you want stopped.");
+  }
+  return lines.join(`
+`);
+}
 function main() {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -124,43 +155,27 @@ function main() {
     }
   });
   if (!values.number || !values["comment-id"]) {
-    console.error("usage: guard_comment_during_run.ts --number N --comment-id ID --commenter LOGIN");
+    console.error("usage: request_stop.ts --number N --comment-id ID --commenter LOGIN");
     process.exit(2);
   }
   const repo = process.env.GITHUB_REPOSITORY ?? "";
-  const label = getLabel("in_progress");
-  const githubOutput = process.env.GITHUB_OUTPUT;
-  const { code, stdout } = gh("issue", "view", String(values.number), "--repo", repo, "--json", "labels", "--jq", `([.labels[].name] | index("${label}")) != null`);
-  if (code !== 0) {
-    console.error(`Could not read the labels on #${values.number}, so this cannot tell whether a run is in progress.`);
-    process.exit(1);
-  }
-  const inProgress = stdout.trim() === "true";
-  if (!inProgress) {
-    if (githubOutput)
-      appendFileSync(githubOutput, `blocked=false
-`);
-    return;
-  }
+  const number = String(values.number);
   const { code: delCode, stdout: delOut, stderr: delErr } = gh("api", "--method", "DELETE", `repos/${repo}/issues/comments/${values["comment-id"]}`);
   const deleted = delCode === 0;
   if (!deleted) {
-    console.error(`Warning: failed to delete comment #${values["comment-id"]} on #${values.number}: ${delErr || delOut}`);
+    console.error(`Warning: failed to delete comment #${values["comment-id"]} on #${number}: ${delErr || delOut}`);
   }
-  const mention = values.commenter ? `@${values.commenter} ` : "";
-  const what = deleted ? "Your comment was removed because" : "Your comment could not be removed, and will not be acted on, because";
-  gh("issue", "comment", String(values.number), "--repo", repo, "--body", [
-    LLM_CONTEXT_TAG.write("exclude"),
-    `${mention}${what} Atoma is currently processing this issue/PR (the \`${label}\` label is active). Please wait for the current run to finish, then comment again.`
-  ].join(`
-`));
-  if (githubOutput)
-    appendFileSync(githubOutput, `blocked=true
-`);
-  console.error(`Deleted comment #${values["comment-id"]} on #${values.number} (in-progress guard) and notified ${values.commenter || "(unknown)"}.`);
+  const children = runningChildren(repo, Number(number));
+  const { code, stdout, stderr } = gh("issue", "comment", number, "--repo", repo, "--body", stopRequestedNotice(values.commenter ?? "", deleted, children));
+  if (code !== 0) {
+    console.error(`Could not post the stop request on #${number}: ${stderr || stdout}`);
+    process.exit(1);
+  }
+  console.error(`Stop requested on #${number}${children.length ? ` (children running: ${children.join(", ")})` : ""}`);
 }
 if (import.meta.main)
   main();
 export {
-  ref
+  ref,
+  stopRequestedNotice
 };
