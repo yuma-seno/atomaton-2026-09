@@ -3093,7 +3093,7 @@
   {
     "path": "sessions/issue-706/engineer.json",
     "agent": "engineer",
-    "messages": 1404,
+    "messages": 1406,
     "calls": 714,
     "failed": 6,
     "refused": 2,
