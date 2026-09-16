@@ -192,7 +192,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
     expect(existsSync(join(BUILT, "workflows/atoma-self-deploy.yml")), "it must not be shipped").toBe(false);
 
     // An adopter receiving a reference to this secret would get a workflow that
-    // cannot run, and -- worse -- a name suggesting Atoma expects a PAT.
+    // cannot run, and -- worse -- a name suggesting Atomaton expects a PAT.
     for (const file of filesUnder("src")) {
       if (!/\.(ts|yml|yaml|md|json)$/.test(file)) continue;
       expect(

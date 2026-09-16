@@ -3,7 +3,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-// The servers are spawned with the ambient environment, and inside an Atoma run that
+// The servers are spawned with the ambient environment, and inside an Atomaton run that
 // includes the run's own `ATOMATON_RUN_TYPE` and `ISSUE_NUMBER`. See `hermeticEnv`.
 import { hermeticEnv } from "../../../scripts/testing/harness.ts";
 
@@ -72,13 +72,13 @@ function git(cwd: string, ...args: string[]): string {
 }
 
 function makeRemoteBranchFixture(): { root: string; seed: string; work: string } {
-  const root = mkdtempSync(join(tmpdir(), "atoma-sync-branch-"));
+  const root = mkdtempSync(join(tmpdir(), "atomaton-sync-branch-"));
   const remote = join(root, "remote.git");
   const seed = join(root, "seed");
   const work = join(root, "work");
   git(root, "init", "--bare", "--initial-branch=atoma/issue-1", remote);
   git(root, "init", "--initial-branch=atoma/issue-1", seed);
-  git(seed, "config", "user.name", "Atoma Test");
+  git(seed, "config", "user.name", "Atomaton Test");
   git(seed, "config", "user.email", "atoma@example.com");
   writeFileSync(join(seed, "value.txt"), "one\n");
   git(seed, "add", "value.txt");
@@ -164,7 +164,7 @@ describe("mcp/github.ts", () => {
     const { root, seed, work } = makeRemoteBranchFixture();
     try {
       advanceRemote(seed);
-      git(work, "config", "user.name", "Atoma Test");
+      git(work, "config", "user.name", "Atomaton Test");
       git(work, "config", "user.email", "atoma@example.com");
       writeFileSync(join(work, "local.txt"), "local\n");
       git(work, "add", "local.txt");
@@ -214,7 +214,7 @@ describe("mcp/github.ts", () => {
    * to name somebody: a review is where an agent asks for a second opinion.
    */
   test("submit_pr_review escapes a mention it cannot vouch for", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-review-mentions-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-review-mentions-"));
     const log = join(dir, "gh.log");
     try {
       await sendRequest(
@@ -269,7 +269,7 @@ describe("mcp/github.ts", () => {
   });
 
   test("create_issue provisions the sub-issue label before creating a child", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-create-sub-issue-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-create-sub-issue-"));
     const log = join(dir, "gh.log");
     try {
       const response = await sendRequest(
@@ -450,7 +450,7 @@ describe("mcp/github.ts", () => {
      * times it was asked for.
      */
     test("a rate-limited search waits out the limit instead of failing", async () => {
-      const dir = mkdtempSync(join(tmpdir(), "atoma-search-retry-"));
+      const dir = mkdtempSync(join(tmpdir(), "atomaton-search-retry-"));
       const log = join(dir, "gh.log");
       try {
         const r = await sendRequest(
@@ -625,7 +625,7 @@ describe("mcp/github.ts", () => {
   });
 
   test("list_issues accepts a bare string for labels", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-list-issues-labels-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-list-issues-labels-"));
     const log = join(dir, "gh.log");
     try {
       const r = await sendRequest(

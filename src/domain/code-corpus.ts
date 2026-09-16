@@ -14,7 +14,7 @@
  * `.github/atomaton/**` and `.github/atomaton-runtime/**` are the DEPLOYED tree, generated
  * from `src/` by `build-dist.ts`. Excluding them serves both kinds of repository for
  * different reasons: in this one they are a second copy of `src/`, so a search would
- * return the copy; in an adopter's, they are Atoma's implementation, so a question
+ * return the copy; in an adopter's, they are Atomaton's implementation, so a question
  * about their own project would be answered with ours.
  *
  * **Tests are indexed.** "Where is this tested" is a question worth answering, and

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { stopRequested, type StopComment } from "./watch_for_stop.ts";
 import { STOP_TAG } from "../lib/tags.ts";
 
-const REQUEST = `${STOP_TAG.write("requested")}\n@someone Atoma: stop requested.`;
+const REQUEST = `${STOP_TAG.write("requested")}\n@someone Atomaton: stop requested.`;
 
 describe("watch_for_stop.ts", () => {
   const since = new Date("2026-09-06T12:00:00Z");

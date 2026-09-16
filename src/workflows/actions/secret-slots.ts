@@ -69,7 +69,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * replaced.
  */
 export function secretNamesStep(destination: SecretDestinationName): TypedOutputsStep<"names"> {
-  const trustedConfig = "$RUNNER_TEMP/atoma-declared-secrets.yaml";
+  const trustedConfig = "$RUNNER_TEMP/atomaton-declared-secrets.yaml";
   return new TypedOutputsStep(
     {
       name: "Resolve which repository secrets may reach this run",

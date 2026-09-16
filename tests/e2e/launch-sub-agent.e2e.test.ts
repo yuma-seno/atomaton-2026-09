@@ -40,7 +40,7 @@ describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atoma.ts", (
       { match: ["workflow", "run"] },
     ]);
 
-    const dir = mkdtempSync(join(tmpdir(), "atoma-e2e-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-e2e-"));
     try {
       writeFileSync(
         join(dir, "agent.md"),

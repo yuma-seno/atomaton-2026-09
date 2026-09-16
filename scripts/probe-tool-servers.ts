@@ -30,7 +30,7 @@
  * defect is entirely about WHERE the files are. So this reproduces the two facts
  * the runner's install step establishes --
  *
- *   - the machinery lives at `${RUNNER_TEMP}/atoma-machinery`, out of the work tree
+ *   - the machinery lives at `${RUNNER_TEMP}/atomaton-machinery`, out of the work tree
  *   - the libraries a server imports live at `${RUNNER_TEMP}/node_modules`, beside
  *     it rather than in the project's own tree
  *
@@ -53,7 +53,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
 
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
-const MACHINERY = `${RUNNER_TEMP}/atoma-machinery`;
+const MACHINERY = `${RUNNER_TEMP}/atomaton-machinery`;
 const CONFIG_FILE = `${MACHINERY}/.github/atomaton/config.yaml`;
 const HOOK_BASE = `${MACHINERY}/.github/atomaton-runtime/tools`;
 
@@ -100,7 +100,7 @@ function result(name: string, value: unknown): void {
 async function assertLayoutStillMatches(): Promise<boolean> {
   const wac = await Bun.file(RUNNER_WAC).text();
   const expectations: [string, string][] = [
-    ["machinery_out_of_the_work_tree", "RUNNER_TEMP}/atoma-machinery"],
+    ["machinery_out_of_the_work_tree", "RUNNER_TEMP}/atomaton-machinery"],
     ["libraries_beside_the_machinery", 'RUNNER_TEMP}" && bun add'],
   ];
   let held = true;
@@ -184,7 +184,7 @@ async function probe(): Promise<number> {
   const bunPackages = packages.bun ?? [];
   if (bunPackages.length > 0) {
     // Beside the machinery, which is the whole of that defect: resolution walks up from
-    // the importing file, so from `${RUNNER_TEMP}/atoma-machinery/...` it reaches
+    // the importing file, so from `${RUNNER_TEMP}/atomaton-machinery/...` it reaches
     // `${RUNNER_TEMP}` and stops. Not the work tree, ever.
     const manifest = Bun.file(`${RUNNER_TEMP}/package.json`);
     if (!(await manifest.exists())) {

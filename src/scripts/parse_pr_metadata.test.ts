@@ -7,7 +7,7 @@ import { SCRIPTS_DIR, parseGithubOutput } from "./testing/harness.ts";
 
 describe("parse_pr_metadata.ts", () => {
   test("parses parent-issue and Closes # references", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     spawnSync("bun", ["run", `${SCRIPTS_DIR}/parse_pr_metadata.ts`], {
@@ -26,7 +26,7 @@ describe("parse_pr_metadata.ts", () => {
   });
 
   test("empty outputs when no metadata present", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     spawnSync("bun", ["run", `${SCRIPTS_DIR}/parse_pr_metadata.ts`], {

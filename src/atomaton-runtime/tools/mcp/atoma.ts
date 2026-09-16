@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
- * atoma.ts — MCP server exposing Atoma orchestration tools.
+ * atoma.ts — MCP server exposing Atomaton orchestration tools.
  *
  * Transport: stdio, via the official @modelcontextprotocol/sdk.
  *
  * Tools:
- *   - launch_sub_agent: Launch Atoma agents on sub-issues and end the
+ *   - launch_sub_agent: Launch Atomaton agents on sub-issues and end the
  *     orchestrator session.
  *   - request_close_issue: Conclude work on the current issue.
  *   - reload_environment: Re-run the project's setup as a workflow step and start
@@ -98,7 +98,7 @@ function handleLaunchSubAgent(args: z.infer<typeof LAUNCH_SUB_AGENT_SCHEMA>): Mc
   // Best-effort comment on the PARENT issue so a human reading the parent's
   // thread has a full audit trail of what was dispatched.
   if (dispatched.length && parentIssue) {
-    const bodyLines = [LLM_CONTEXT_TAG.write("exclude"), "Atoma: Launched sub-agent(s):", ...dispatched.map((d) => `- ${d}`)];
+    const bodyLines = [LLM_CONTEXT_TAG.write("exclude"), "Atomaton: Launched sub-agent(s):", ...dispatched.map((d) => `- ${d}`)];
     gh("issue", "comment", parentIssue, "--body", bodyLines.join("\n"));
   }
 
@@ -175,7 +175,7 @@ async function handleRequestCloseIssue(args: z.infer<typeof REQUEST_CLOSE_ISSUE_
 
   return {
     text: [
-      `Issue #${issueNumber} was created by an Atoma agent (a sub-issue) and has been closed automatically.`,
+      `Issue #${issueNumber} was created by an Atomaton agent (a sub-issue) and has been closed automatically.`,
       aggregation ? describeGateResult(aggregation, issueNumber) : "",
       stalled
         ? "This session is staying open because you are the last thing able to act on that: report it on the parent issue so a person sees it."
@@ -264,7 +264,7 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({
     name: "launch_sub_agent",
     description:
-      "Dispatch Atoma agents onto sub-issues and immediately end the orchestrator session. " +
+      "Dispatch Atomaton agents onto sub-issues and immediately end the orchestrator session. " +
       "Call this ONCE after creating all sub-issues via GitHub MCP. " +
       "Each sub-issue can be assigned a different agent. " +
       "The orchestrator session ends immediately after this call returns. " +
@@ -279,7 +279,7 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
       "correct way for the orchestrator to finish an issue -- do NOT call " +
       "github__close_issue yourself, and do NOT just stop responding without calling " +
       "this. The tool decides what happens next based on who opened THIS issue: " +
-      "if it was created by another Atoma agent (a sub-issue), it is closed " +
+      "if it was created by another Atomaton agent (a sub-issue), it is closed " +
       "automatically right now and phase-gating/aggregation is triggered for its " +
       "parent. If it was opened directly by a human (a root issue), it is NOT " +
       "closed -- instead a comment mentioning that human is posted with your reason " +

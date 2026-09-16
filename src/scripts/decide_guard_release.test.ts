@@ -7,7 +7,7 @@ import { parseGithubOutput, scriptPath } from "./testing/harness.ts";
 
 describe("decide_guard_release.ts", () => {
   function run(args: string[]) {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-guard-release-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-guard-release-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     try {

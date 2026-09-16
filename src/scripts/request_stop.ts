@@ -84,7 +84,7 @@ export function stopRequestedNotice(commenter: string, deleted: boolean, childre
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
     STOP_TAG.write("requested"),
-    `${mention}Atoma: stop requested.`,
+    `${mention}Atomaton: stop requested.`,
     "",
     deleted
       ? "Your `/stop` comment was removed so it does not become part of the agent's context."

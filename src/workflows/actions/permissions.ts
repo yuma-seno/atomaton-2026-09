@@ -1,6 +1,6 @@
 /**
  * permissions.ts — Shared `GITHUB_TOKEN` permission set used across nearly
- * every Atoma workflow file. `atoma-entry`, `atoma-auto-trigger`,
+ * every Atomaton workflow file. `atoma-entry`, `atoma-auto-trigger`,
  * `atoma-manual-comment`, `atoma-pr-review`, `atoma-runner`, and
  * `atoma-sub-issue-closed` all need the identical full set (they may create
  * branches, manage labels, post comments, and dispatch follow-up runs) --

@@ -15,7 +15,7 @@ import { toolDefaults, whatEachIsFor } from "./shipped-servers.ts";
  */
 const PAGES = ["src/atomaton/README.md", "docs/configuration.md"];
 
-describe("the servers Atoma ships", () => {
+describe("the servers Atomaton ships", () => {
   test("every one has a line saying what it is for", () => {
     for (const name of Object.keys(toolDefaults().servers)) {
       const what = whatEachIsFor()[name];

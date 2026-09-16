@@ -66,7 +66,7 @@ export async function concludeIssue(issue: number, reason: string, summary: stri
   // the pair: it hands the decision to someone rather than taking it.
   const isBot = authorInfo.author?.is_bot ?? false;
 
-  let body = `Atoma: orchestrator considers work on this issue complete.\n\n**Reason:** ${reason}`;
+  let body = `Atomaton: orchestrator considers work on this issue complete.\n\n**Reason:** ${reason}`;
   if (summary) {
     body += `\n\n${summary}`;
   }

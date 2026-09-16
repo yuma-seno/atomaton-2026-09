@@ -165,7 +165,7 @@ export const atomaValidatePr = new Workflow("atoma-validate-pr", {
       // One validation per pull request at a time. A second push while the first
       // is still polling would otherwise race to write the same check.
       concurrency: {
-        group: "atoma-validate-${{ inputs.number }}",
+        group: "atomaton-validate-${{ inputs.number }}",
         "cancel-in-progress": true,
       },
       permissions: { ...ATOMATON_WORKFLOW_PERMISSIONS, checks: "write" },

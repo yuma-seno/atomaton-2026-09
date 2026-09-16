@@ -32,7 +32,7 @@ const AGENT_DIR = join(process.cwd(), "src/atomaton/agent-definitions");
 const CONFIG = join(process.cwd(), "src/atomaton/config.yaml");
 
 /**
- * Every server name a run would resolve: the ones Atoma ships, plus whatever this
+ * Every server name a run would resolve: the ones Atomaton ships, plus whatever this
  * project added.
  *
  * Both halves, because both halves are real. It read only `tools.servers` while the

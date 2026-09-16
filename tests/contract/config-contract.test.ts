@@ -348,7 +348,7 @@ describe("the default checks a project inherits", () => {
   /**
    * The adopter's own commands go beside this one, not instead of it -- so a default
    * that assumed a language would be a default most adopters delete. Nothing here may
-   * name a package manager or a runtime beyond the one Atoma already requires.
+   * name a package manager or a runtime beyond the one Atomaton already requires.
    */
   test("no default assumes what the project is written in", () => {
     for (const command of commands) {

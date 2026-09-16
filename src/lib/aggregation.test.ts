@@ -15,7 +15,7 @@ const LIB_DIR = import.meta.dir;
  */
 function runGate(rules: FakeGhRule[]): { kind: string; ghCalls: string[][]; stderr: string } {
   const configDir = makeConfigDir({});
-  const dir = mkdtempSync(join(tmpdir(), "atoma-gate-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-gate-"));
   const file = join(dir, "shim.ts");
   writeFileSync(
     file,

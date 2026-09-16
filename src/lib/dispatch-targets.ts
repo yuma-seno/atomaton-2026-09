@@ -86,7 +86,7 @@ export function dispatchPostMergeAgent(repo: string, subIssueNum: number, agent:
   const notify = resolveNotify(repo, subIssueNum);
   const { code, stdout, stderr } = gh(
     "issue", "comment", String(subIssueNum), "--repo", repo,
-    "--body", "Atoma: Your PR was merged. Please confirm completion and close this sub-task.",
+    "--body", "Atomaton: Your PR was merged. Please confirm completion and close this sub-task.",
   );
   if (code) {
     log(`dispatchPostMergeAgent: could not post trigger comment on #${subIssueNum}: ${stderr || stdout}`);

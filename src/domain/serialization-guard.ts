@@ -1,5 +1,5 @@
 /**
- * serialization-guard.ts — the domain rule enforcing that at most one Atoma
+ * serialization-guard.ts — the domain rule enforcing that at most one Atomaton
  * agent Turn is ever active on a given WorkItem (Issue/PR) at a time.
  *
  * This module says nothing about GitHub, labels, or comments -- it is pure

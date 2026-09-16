@@ -61,7 +61,7 @@ describe("collect", () => {
 
 describe("write_credentials_file.ts", () => {
   test("writes a JSON object atoma can read", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-creds-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-creds-"));
     const out = join(dir, "credentials.json");
     try {
       const r = spawnSync("bun", ["run", scriptPath("write_credentials_file.ts"), "--out", out], {

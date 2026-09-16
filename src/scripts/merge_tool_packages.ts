@@ -5,7 +5,7 @@
  *
  * ## Why there are two lists
  *
- * `tools/packages.json` exists for the servers Atoma ships —
+ * `tools/packages.json` exists for the servers Atomaton ships —
  * `@modelcontextprotocol/server-filesystem` is what `filesystem` runs, and
  * `@huggingface/transformers` is what `search` reranks with. Neither is a project's
  * decision, so neither belongs in the file a project edits.
@@ -49,7 +49,7 @@ type PackageLists = Partial<Record<(typeof ECOSYSTEMS)[number], string[]>>;
  * Both lists, per ecosystem, deduplicated and in a stable order.
  *
  * Shipped first, because the servers that depend on them are the ones a failed
- * install breaks most visibly. Deduplicated because a project naming a package Atoma
+ * install breaks most visibly. Deduplicated because a project naming a package Atomaton
  * already installs is asking for it to be there, not for it to be installed twice.
  */
 export function mergePackages(shipped: PackageLists, project: PackageLists): Record<string, string[]> {

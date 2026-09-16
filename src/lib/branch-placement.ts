@@ -24,7 +24,7 @@ function log(message: string): void {
   console.error(`[atoma-github] ${message}`);
 }
 
-/** The prefix every Atoma work branch carries; also how a parent's branch is named. */
+/** The prefix every Atomaton work branch carries; also how a parent's branch is named. */
 const BRANCH_PREFIX = "atoma/issue-";
 
 /** A parent issue's branch name. */
@@ -32,7 +32,7 @@ export function branchOfIssue(issue: number): string {
   return `${BRANCH_PREFIX}${issue}`;
 }
 
-/** Whether a branch name is one of Atoma's work branches. */
+/** Whether a branch name is one of Atomaton's work branches. */
 export function isIssueBranch(name: string): boolean {
   return name.startsWith(BRANCH_PREFIX);
 }

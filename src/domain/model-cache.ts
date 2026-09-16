@@ -13,7 +13,7 @@
  * `domain/workspace.ts` holds one.
  *
  * A name rather than a full path, because the base is different in each place --
- * `$XDG_CACHE_HOME` inside the server, `${{ runner.temp }}/atoma-tool-cache` in an
+ * `$XDG_CACHE_HOME` inside the server, `${{ runner.temp }}/atomaton-tool-cache` in an
  * action input that cannot read a shell variable.
  */
 export const MODEL_CACHE_DIR = "atoma-transformers";

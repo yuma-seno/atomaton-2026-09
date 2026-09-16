@@ -46,7 +46,7 @@ describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/github.ts", 
       },
       { content: "Done: shell command completed." },
     ]);
-    const dir = mkdtempSync(join(tmpdir(), "atoma-shell-e2e-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-shell-e2e-"));
     try {
       writeFileSync(
         join(dir, "agent.md"),
@@ -113,7 +113,7 @@ You are a test agent.
       },
     ]);
 
-    const dir = mkdtempSync(join(tmpdir(), "atoma-e2e-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-e2e-"));
     try {
       writeFileSync(
         join(dir, "agent.md"),
@@ -187,7 +187,7 @@ You are a test agent.
       { content: "Done: applied the TDD skill." },
     ]);
 
-    const dir = mkdtempSync(join(tmpdir(), "atoma-skill-e2e-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-skill-e2e-"));
     try {
       writeFileSync(
         join(dir, "agent.md"),

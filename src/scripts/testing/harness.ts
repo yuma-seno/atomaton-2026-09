@@ -35,7 +35,7 @@ export interface RunWithFakeGhResult {
 }
 
 /**
- * The ambient environment, minus the variables that only exist inside an Atoma run.
+ * The ambient environment, minus the variables that only exist inside an Atomaton run.
  *
  * A test spawns a child with `...process.env` so it inherits PATH, HOME and the rest
  * of what a program needs. That is right until an agent runs the suite: the runner
@@ -76,7 +76,7 @@ export function runWithFakeGh(
   args: string[] = [],
   opts: { rules?: FakeGhRule[]; env?: Record<string, string>; cwd?: string } = {},
 ): RunWithFakeGhResult {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-fakegh-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-fakegh-"));
   const logPath = join(dir, "gh-calls.jsonl");
   writeFileSync(logPath, "");
   try {
@@ -114,7 +114,7 @@ export function runWithFakeGh(
  * than a literal, so a config that moves again moves the fixtures with it.
  */
 export function makeConfigDir(config: Record<string, unknown>): string {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-config-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-config-"));
   mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });
   writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify(config));
   return dir;

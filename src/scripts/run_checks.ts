@@ -14,7 +14,7 @@
  * request satisfies a required check that verified nothing — true of any
  * repository with no CI, but worth saying out loud rather than reporting a quiet
  * success. Failing instead would block every pull request in a repository from
- * the moment it adopts Atoma until someone configures it, which is a worse first
+ * the moment it adopts Atomaton until someone configures it, which is a worse first
  * hour and teaches nothing the warning does not.
  *
  * Mirrors GitHub Actions' own default `bash -e {0}` semantics: the first failing

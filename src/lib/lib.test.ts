@@ -30,7 +30,7 @@ const LIB_DIR = import.meta.dir;
 
 /** Writes a temp .ts file containing `code` and returns its absolute path. */
 function makeShim(code: string): { file: string; dir: string } {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-lib-shim-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-lib-shim-"));
   const file = join(dir, "shim.ts");
   writeFileSync(file, code);
   return { file, dir };

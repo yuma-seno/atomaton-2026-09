@@ -16,19 +16,19 @@ import { ref as resolveResumeAgentRef } from "../scripts/resolve_resume_agent.ts
 // Slash-command DISPATCH is restricted to OWNER/MEMBER/COLLABORATOR (see
 // parseCommandStep's own `if:` below), but the in-progress GUARD (see
 // guardStep) runs for every human comment regardless of association --
-// nobody's comment should sit unseen (or race a dispatch) while an Atoma
+// nobody's comment should sit unseen (or race a dispatch) while an Atomaton
 // run is actively working on this issue/PR.
 //
 // Job graph:
 //   parse --> run (atoma-runner.yml, reusable)
 
-// Bot comments are never guarded (Atoma's own comments, e.g. dispatch
+// Bot comments are never guarded (Atomaton's own comments, e.g. dispatch
 // confirmations, must never be self-deleted) -- only ever relevant for a
 // human-authored comment.
 const IS_HUMAN_COMMENT = `${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} != 'Bot'`;
 
 
-// A slash command dispatches only for a repository member, or for Atoma's own
+// A slash command dispatches only for a repository member, or for Atomaton's own
 // dispatch marker. The membership half now shares `isRepositoryMember` with every
 // other entry point, so the trust boundary has one definition rather than an
 // inline expression here and nothing anywhere else.
@@ -190,7 +190,7 @@ const commandErrorStep = new TypedOutputsStep({
     NUMBER: targetStep.outputs.number,
     ERROR: parseCommandStep.outputs.error,
   },
-  run: `gh issue comment "\${NUMBER}" --body "Atoma command error: \${ERROR}"
+  run: `gh issue comment "\${NUMBER}" --body "Atomaton command error: \${ERROR}"
 `,
 });
 

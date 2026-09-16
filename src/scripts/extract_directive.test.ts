@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { extractDirective } from "./extract_directive.ts";
 
 describe("extract_directive.ts", () => {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-defdir-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-defdir-"));
   writeFileSync(join(dir, "reviewer.md"), "---\nname: reviewer\n---\n");
   writeFileSync(join(dir, "engineer.md"), "---\nname: engineer\n---\n");
 

@@ -183,7 +183,7 @@ function reportFailure(
   const body = [
     LLM_CONTEXT_TAG.write("include"),
     CI_RETRY_TAG.write(attempt),
-    `Atoma: ${summary}`,
+    `Atomaton: ${summary}`,
     ...(details.length > 0 ? ["", ...details.map((detail) => `- ${detail}`)] : []),
     "",
     runUrl ? `Failing run: ${runUrl}` : "",
@@ -325,7 +325,7 @@ function main(): void {
     // concluded, so a red run still fails, still posts its brief, and still advances
     // the retry tally. What is gone is GitHub refusing the merge -- github__merge_pr
     // holds that line instead, and says so.
-    log(`::notice::${required.why}. Atoma enforces the CI result itself when merging.`);
+    log(`::notice::${required.why}. Atomaton enforces the CI result itself when merging.`);
   } else if (requiredContexts.length === 0) {
     // A different situation, and worth saying once: the rules ARE readable and
     // require nothing. That is usually a ruleset nobody imported rather than a

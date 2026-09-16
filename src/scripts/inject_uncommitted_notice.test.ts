@@ -10,7 +10,7 @@ const run = (args: string[], cwd?: string) =>
 
 describe("inject_uncommitted_notice.ts", () => {
   test("appends a commit-and-push notice to the given session file", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const sessionFile = join(dir, "session.json");
       writeFileSync(sessionFile, JSON.stringify({ messages: [{ role: "user", content: "hi" }] }));
@@ -29,7 +29,7 @@ describe("inject_uncommitted_notice.ts", () => {
    * tolerated, while being asked for nothing at all is a mistake in the caller.
    */
   test("a missing session file is reported and tolerated", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const r = run(["--session", join(dir, "session.json")]);
       expect(r.status).toBe(0);
@@ -50,7 +50,7 @@ describe("inject_uncommitted_notice.ts", () => {
    * someone else's tree is a guess, and this one wrote to what it guessed.
    */
   test("refuses to guess when given no session path", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       // A file the old search would have found and written to.
       const decoy = join(dir, "session.json");

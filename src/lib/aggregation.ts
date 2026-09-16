@@ -230,7 +230,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
  * search index is only eventually consistent -- the sub-issue we just
  * closed a moment ago may still be reported as open for a second or two).
  * Returns `not-tracked` when `subIssueNum` carries no parent tag at all (not
- * every closed issue is a tracked Atoma sub-issue), and `undetermined` when its
+ * every closed issue is a tracked Atomaton sub-issue), and `undetermined` when its
  * body could not be read -- which is a different thing, because an unread body
  * may belong to a sub-issue that just completed.
  *

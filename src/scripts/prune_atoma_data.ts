@@ -133,7 +133,7 @@ function main(): void {
 
   // A worktree, like `saveSession`: the current checkout may hold work in progress,
   // and this must not be the thing that disturbs it.
-  const worktree = mkdtempSync(join(tmpdir(), "atoma-data-prune-"));
+  const worktree = mkdtempSync(join(tmpdir(), "atomaton-data-prune-"));
   try {
     gitRun("worktree", "add", worktree, `origin/${BRANCH}`);
     const git = (...args: string[]) =>

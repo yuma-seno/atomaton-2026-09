@@ -8,7 +8,7 @@ export default defineConfig({
   // regeneration command in CONTRIBUTING.md instead.
   // Says where to go, not only what not to touch. Someone opening this file
   // usually wants to change what CI runs, and the old header answered that with
-  // "don't", which leaves editing here as the only idea they have. Under Atoma
+  // "don't", which leaves editing here as the only idea they have. Under Atomaton
   // the build steps are commands in config.yaml -- a file they own, that an agent
   // can write, and that survives an upgrade -- so the header names it.
   headerText: [
@@ -33,7 +33,7 @@ export default defineConfig({
   },
   outputPaths: {
     workflows: {
-      // All *.wac.ts files are the Atoma deliverable, copied into a user's
+      // All *.wac.ts files are the Atomaton deliverable, copied into a user's
       // own .github/ -- this repo's own CI (.github/workflows/ci.yml) is
       // hand-written YAML, not generated, so no override is needed here.
       default: "dist/.github/workflows",

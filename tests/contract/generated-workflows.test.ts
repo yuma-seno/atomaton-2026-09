@@ -57,7 +57,7 @@ describe("generated workflows", () => {
     // And both users, or one of them has half of it: the restore happens as the
     // runner, the load as the tool user, the save as the runner again.
     const acl = steps.find(
-      (step) => (step.run ?? "").includes("setfacl") && (step.run ?? "").includes("atoma-tool-cache"),
+      (step) => (step.run ?? "").includes("setfacl") && (step.run ?? "").includes("atomaton-tool-cache"),
     );
     const run = acl?.run ?? "";
     // The user is read out of the workspace ACL in the same step rather than typed
@@ -66,7 +66,7 @@ describe("generated workflows", () => {
     const user = /setfacl -R -m "u:([^:]+):rwX" "\$GITHUB_WORKSPACE"/.exec(run)?.[1] ?? "";
     expect(user, "the tool user, as the workspace ACL names it").toBeTruthy();
 
-    const cacheDir = "${RUNNER_TEMP}/atoma-tool-cache";
+    const cacheDir = "${RUNNER_TEMP}/atomaton-tool-cache";
     for (const [who, why] of [
       [`u:${user}`, "the tool user must be able to write what the runner restored"],
       ["u:$(id -un)", "the runner must be able to read back what the tool user downloaded"],
@@ -172,7 +172,7 @@ describe("generated workflows", () => {
     expect(agent, "the agent step").toBeGreaterThan(-1);
     expect(watcher, "the watcher has to be looking before there is anything to stop").toBeLessThan(agent);
 
-    const stopFile = "${RUNNER_TEMP}/atoma-run/stop-requested";
+    const stopFile = "${RUNNER_TEMP}/atomaton-run/stop-requested";
     expect(steps[watcher]?.run).toContain(`--stop-file "${stopFile}"`);
     expect(steps[agent]?.run).toContain(`--stop-file "${stopFile}"`);
 
@@ -401,7 +401,7 @@ describe("generated workflows", () => {
     const steps = workflow.jobs?.run?.steps ?? [];
     expect(steps.length, "atoma-runner has steps").toBeGreaterThan(0);
 
-    const names = ["session.json", "events.json", "atoma_ops.log", "atoma_output.txt", "atoma_logs.txt"];
+    const names = ["session.json", "events.json", "atomaton_ops.log", "atomaton_output.txt", "atomaton_logs.txt"];
     for (const step of steps) {
       const lines = [step.run ?? "", ...Object.values(step.env ?? {}), step.if ?? ""]
         .join("\n")
@@ -415,7 +415,7 @@ describe("generated workflows", () => {
         for (const match of text.matchAll(new RegExp(`(.{0,24})${name.replace(".", "\.")}`, "g"))) {
           const before = match[1] ?? "";
           expect(
-            /RUNNER_TEMP|atoma-run\//.test(before),
+            /RUNNER_TEMP|atomaton-run\//.test(before),
             `"${step.name ?? "?"}" mentions ${name} at "...${before}${name}" with no directory before it. ` +
               `A bare name lands in the repository root, where git add -A commits it and create_pr then ` +
               `refuses for a dirty worktree`,
@@ -437,14 +437,14 @@ describe("generated workflows", () => {
     const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
-    const created = steps.findIndex((step) => /mkdir -p "\$\{RUNNER_TEMP\}\/atoma-run"/.test(step.run ?? ""));
+    const created = steps.findIndex((step) => /mkdir -p "\$\{RUNNER_TEMP\}\/atomaton-run"/.test(step.run ?? ""));
     expect(created, "the step that creates the run directory").toBeGreaterThanOrEqual(0);
 
-    const firstWriter = steps.findIndex((step) => /atoma-run\/(events|session)\.json/.test(step.run ?? ""));
+    const firstWriter = steps.findIndex((step) => /atomaton-run\/(events|session)\.json/.test(step.run ?? ""));
     expect(firstWriter, "a step that writes into it").toBeGreaterThanOrEqual(0);
     expect(created, "the directory must exist before the first write").toBeLessThan(firstWriter);
 
-    const shared = steps.findIndex((step) => /setfacl[^\n]*atoma-run/.test(step.run ?? ""));
+    const shared = steps.findIndex((step) => /setfacl[^\n]*atomaton-run/.test(step.run ?? ""));
     expect(shared, "the step that gives the tool user access").toBeGreaterThanOrEqual(0);
 
     const agent = steps.findIndex((step) => step.name === "Run agent");
@@ -459,11 +459,11 @@ describe("generated workflows", () => {
    * That one reads the generated workflow, so a path hardcoded inside a SCRIPT is
    * invisible to it -- and `post_result_comment.ts` had three:
    *
-   *     existsSync("atoma_output.txt")
-   *     readFileSync("atoma_logs.txt", "utf8")
+   *     existsSync("atomaton_output.txt")
+   *     readFileSync("atomaton_logs.txt", "utf8")
    *
    * Correct only while the run's files sat in the repository root. They moved
-   * to `$RUNNER_TEMP/atoma-run`, so `existsSync` went false -- and the branch it
+   * to `$RUNNER_TEMP/atomaton-run`, so `existsSync` went false -- and the branch it
    * falls into reports "session ended via a tool call", which reads like a normal
    * outcome. **Two releases went out where no agent's report reached anyone.** The
    * step said success, the agent wrote 3,914 characters, and nobody received them.
@@ -473,7 +473,7 @@ describe("generated workflows", () => {
    * rather than to fix the string.
    */
   test("no script opens the run's own files by a bare name", () => {
-    const names = ["session.json", "events.json", "atoma_ops.log", "atoma_output.txt", "atoma_logs.txt"];
+    const names = ["session.json", "events.json", "atomaton_ops.log", "atomaton_output.txt", "atomaton_logs.txt"];
     const CALLS = ["existsSync", "readFileSync", "writeFileSync", "appendFileSync", "unlinkSync", "statSync"];
     const scripts = readdirSync("src/scripts", { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts"))
@@ -514,12 +514,12 @@ describe("generated workflows", () => {
    *
    * `actions/checkout` can only write under `GITHUB_WORKSPACE`, so it lands there
    * and has to be moved out. While it stayed, `git status` was never clean --
-   * `?? atoma-machinery/` -- which meant `git add -A` committing it as a dangling
+   * `?? atomaton-machinery/` -- which meant `git add -A` committing it as a dangling
    * gitlink with no `.gitmodules`, and `create_pr` refusing for a dirty worktree.
    *
    * `.gitignore` in this repository already carries `atoma-src/` with a comment
    * describing exactly that failure. Same shape, found once, and
-   * `atoma-machinery/` was never added beside it -- and an adopter has neither
+   * `atomaton-machinery/` was never added beside it -- and an adopter has neither
    * line, so it happened to every one of them.
    *
    * Found by a verification run, which is the point: the agent was told
@@ -557,7 +557,7 @@ describe("generated workflows", () => {
       ).toBe(false);
     }
 
-    const checkout = steps.findIndex((step) => step.with?.path === "atoma-machinery");
+    const checkout = steps.findIndex((step) => step.with?.path === "atomaton-machinery");
     expect(checkout, "the machinery checkout").toBeGreaterThanOrEqual(0);
     expect(checkout, "the move comes straight after the checkout").toBeLessThan(setter);
   });
@@ -766,7 +766,7 @@ describe("generated workflows", () => {
       );
       // Outside the workspace, so the checkout cannot have brought the file.
       expect(step?.run, `${file} must not trust a path the checkout controls`).toContain(
-        "$RUNNER_TEMP/atoma-declared-secrets.yaml",
+        "$RUNNER_TEMP/atomaton-declared-secrets.yaml",
       );
     }
   });
@@ -874,10 +874,10 @@ describe("generated workflows", () => {
     // And what it points at is a checkout of the default branch, not of the pull
     // request. The checkout still lands in the work tree -- `actions/checkout`
     // cannot write anywhere else -- and the setter step is what moves it out.
-    const machineryCheckout = steps.find((step) => step.with?.path === "atoma-machinery");
-    expect(machineryCheckout, "a checkout into atoma-machinery").toBeDefined();
+    const machineryCheckout = steps.find((step) => step.with?.path === "atomaton-machinery");
+    expect(machineryCheckout, "a checkout into atomaton-machinery").toBeDefined();
     expect(machineryCheckout?.with?.ref).toContain("default_branch");
-    expect(setter?.run, "the setter must be what moves that checkout").toContain("mv \"atoma-machinery\"");
+    expect(setter?.run, "the setter must be what moves that checkout").toContain("mv \"atomaton-machinery\"");
 
     // Nothing runs a script from the workspace. A bare `.github/atomaton-runtime/scripts/` would
     // be the pull request's copy.
@@ -905,7 +905,7 @@ describe("generated workflows", () => {
     // the generated tools file is written per run into the runner's temp directory. So
     // the constant is where a server's argv is declared and the only place to check it.
     const servers = Object.entries(toolDefaults().servers);
-    expect(servers.length, "Atoma must ship some servers").toBeGreaterThan(0);
+    expect(servers.length, "Atomaton must ship some servers").toBeGreaterThan(0);
 
     for (const [name, server] of servers) {
       for (const arg of Array.isArray(server.args) ? server.args : []) {
@@ -927,7 +927,7 @@ describe("generated workflows", () => {
       expect(reads.length, `${path} must still be referenced at all`).toBeGreaterThan(0);
       for (const line of reads) {
         expect(line, `${path} must be read from the machinery root`).toMatch(
-          /ATOMATON_MACHINERY_ROOT|atoma-machinery/,
+          /ATOMATON_MACHINERY_ROOT|atomaton-machinery/,
         );
       }
     }
@@ -1037,7 +1037,7 @@ describe("generated workflows", () => {
    * A shell variable in an `env:` mapping is six literal characters.
    *
    * Actions substitutes `${{ }}` there and nothing else, so `ATOMATON_OPS_LOG:
-   * ${RUNNER_TEMP}/atoma-run/atoma_ops.log` set the variable to that text. Every tool
+   * ${RUNNER_TEMP}/atomaton-run/atomaton_ops.log` set the variable to that text. Every tool
    * that logged an operation then tried to write into a directory literally named
    * `${RUNNER_TEMP}`, failed with ENOENT, and wrote nothing -- for every run between the
    * commit that introduced it and the one that added this test.

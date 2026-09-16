@@ -1,5 +1,5 @@
 /**
- * deployment-contract.test.ts — every static Atoma file reaches the deployed
+ * deployment-contract.test.ts — every static Atomaton file reaches the deployed
  * `.github/`.
  *
  * A repository adopts the deliverable by copying it over its own `.github/`:

@@ -149,7 +149,7 @@ describe("post_result_comment.ts main", () => {
   /**
    * The path is required, and this is why.
    *
-   * It used to open `atoma_output.txt` relative to the working directory. A change
+   * It used to open `atomaton_output.txt` relative to the working directory. A change
    * moved the run's files out of the work tree and the read went to a path that no
    * longer existed -- landing in the "empty output" branch, whose message reads
    * like a session that ended via a tool call. Two releases shipped where no
@@ -160,10 +160,10 @@ describe("post_result_comment.ts main", () => {
    * the original could not be.
    */
   test("refuses to run without --output rather than guessing a path", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
     try {
       // A file the old relative read would have found and posted from.
-      writeFileSync(join(dir, "atoma_output.txt"), "All done.");
+      writeFileSync(join(dir, "atomaton_output.txt"), "All done.");
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
         ["--number", "5", "--agent", "engineer", "--run-url", "http://example.com/run/1"],
@@ -177,11 +177,11 @@ describe("post_result_comment.ts main", () => {
   });
 
   test("skips posting entirely when the output file is missing (session ended via a tool call)", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atoma_output.txt")],
+        ["--number", "5", "--agent", "orchestrator", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, rules: [{ match: ["api", "comments"] }] },
       );
       expect(r.status).toBe(0);
@@ -191,13 +191,13 @@ describe("post_result_comment.ts main", () => {
     }
   });
 
-  test("skips posting entirely when atoma_output.txt is blank", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
-    writeFileSync(join(dir, "atoma_output.txt"), "   \n");
+  test("skips posting entirely when atomaton_output.txt is blank", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    writeFileSync(join(dir, "atomaton_output.txt"), "   \n");
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atoma_output.txt")],
+        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, rules: [{ match: ["api", "comments"] }] },
       );
       expect(r.status).toBe(0);
@@ -207,13 +207,13 @@ describe("post_result_comment.ts main", () => {
     }
   });
 
-  test("posts normally when atoma_output.txt has real content", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
-    writeFileSync(join(dir, "atoma_output.txt"), "All done.");
+  test("posts normally when atomaton_output.txt has real content", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    writeFileSync(join(dir, "atomaton_output.txt"), "All done.");
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atoma_output.txt")],
+        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api", "comments"], stdout: "42" }] },
       );
       expect(r.status).toBe(0);
@@ -224,13 +224,13 @@ describe("post_result_comment.ts main", () => {
   });
 
   test("reads the issue's own state to decide the mention, and only for an issue run", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
-    writeFileSync(join(dir, "atoma_output.txt"), "Merged and closed.");
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    writeFileSync(join(dir, "atomaton_output.txt"), "Merged and closed.");
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
         // prettier-ignore
-        ["--number", "5", "--type", "issue", "--agent", "engineer", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atoma_output.txt")],
+        ["--number", "5", "--type", "issue", "--agent", "engineer", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         {
           cwd: dir,
           env: { GITHUB_REPOSITORY: "owner/repo" },
@@ -251,12 +251,12 @@ describe("post_result_comment.ts main", () => {
   // A pull request run's `--number` is a PR number, and `gh issue view` on one
   // is an error rather than an answer.
   test("does not look the number up as an issue on a pull request run", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-post-result-"));
-    writeFileSync(join(dir, "atoma_output.txt"), "Reviewed.");
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    writeFileSync(join(dir, "atomaton_output.txt"), "Reviewed.");
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "7", "--type", "pr", "--agent", "reviewer", "--run-url", "http://example.com/run/1", "--output", join(dir, "atoma_output.txt")],
+        ["--number", "7", "--type", "pr", "--agent", "reviewer", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api", "comments"], stdout: "42" }] },
       );
       expect(r.status).toBe(0);

@@ -117,7 +117,7 @@ async function main(): Promise<void> {
     // GITHUB_TOKEN) -- excluding it makes this check reliably correct on
     // its first (and normally only) run instead of depending on that timing.
     exclude: true,
-    progressMessage: (remaining) => `Atoma: Sub-task #${closedNum} completed. ${remaining} sub-task(s) still in progress.`,
+    progressMessage: (remaining) => `Atomaton: Sub-task #${closedNum} completed. ${remaining} sub-task(s) still in progress.`,
     beforeDispatch: () => injectResultsIntoOrchestratorSession(repo, Number(parent)),
   });
 

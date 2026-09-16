@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * guard_comment_during_run.ts — While an issue/PR carries the configured
- * "in_progress" label (an Atoma agent run is currently active on it), a new
+ * "in_progress" label (an Atomaton agent run is currently active on it), a new
  * human comment would otherwise sit unseen until the current run finishes
  * (or worse, race a slash-command dispatch against the in-flight run).
  * Instead: delete the comment immediately and notify its author via mention
@@ -91,7 +91,7 @@ function main(): void {
     "--body",
     [
       LLM_CONTEXT_TAG.write("exclude"),
-      `${mention}${what} Atoma is currently processing this issue/PR (the \`${label}\` label is active). Please wait for the current run to finish, then comment again.`,
+      `${mention}${what} Atomaton is currently processing this issue/PR (the \`${label}\` label is active). Please wait for the current run to finish, then comment again.`,
     ].join("\n"),
   );
 

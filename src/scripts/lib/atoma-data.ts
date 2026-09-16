@@ -135,7 +135,7 @@ export function saveSession(targetPath: string, content: string, commitMessage: 
   }
 
   gitRun("fetch", "origin", "atoma-data");
-  const worktreeDir = mkdtempSync(join(tmpdir(), "atoma-data-wt-"));
+  const worktreeDir = mkdtempSync(join(tmpdir(), "atomaton-data-wt-"));
   gitRun("worktree", "add", worktreeDir, "origin/atoma-data");
 
   let saved = false;
@@ -189,7 +189,7 @@ export function archiveSession(
   if (gitRun("ls-remote", "--exit-code", "origin", "atoma-data").code !== 0) return undefined;
 
   gitRun("fetch", "origin", "atoma-data");
-  const worktreeDir = mkdtempSync(join(tmpdir(), "atoma-data-archive-wt-"));
+  const worktreeDir = mkdtempSync(join(tmpdir(), "atomaton-data-archive-wt-"));
   gitRun("worktree", "add", worktreeDir, "origin/atoma-data");
 
   let archivedPath: string | undefined;
@@ -308,7 +308,7 @@ export function saveWorkspace(prefix: string, sourceDir: string, commitMessage: 
   }
 
   gitRun("fetch", "origin", "atoma-data");
-  const worktreeDir = mkdtempSync(join(tmpdir(), "atoma-data-ws-"));
+  const worktreeDir = mkdtempSync(join(tmpdir(), "atomaton-data-ws-"));
   gitRun("worktree", "add", worktreeDir, "origin/atoma-data");
 
   let saved = false;

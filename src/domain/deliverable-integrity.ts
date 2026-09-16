@@ -120,7 +120,7 @@ const CONFIG_SCHEMA: Section = {
  * The `atoma_runs` arm of a `checks` or `deploy` section, or an empty one.
  *
  * Both sections have two arms and only one can be filled. The other arm names a
- * workflow of the project's own, and nothing inside it is Atoma's to validate --
+ * workflow of the project's own, and nothing inside it is Atomaton's to validate --
  * so an absent `atoma_runs` is a project that made the other choice, not a fault.
  */
 function arm(section: unknown): Record<string, unknown> {
@@ -220,7 +220,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // undefined, takes the default, and the setting the author wrote has no effect
   // at all.
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
-    problems.push(`\`${key}\` in config.yaml is not a setting Atoma reads. Check the spelling.`);
+    problems.push(`\`${key}\` in config.yaml is not a setting Atomaton reads. Check the spelling.`);
   }
 
   // ── two arms, and exactly one of them ─────────────────────────────────────
@@ -256,9 +256,9 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // the deploy run, where nobody is watching.
   //
   // `checks` and `deploy` carry theirs inside `atoma_runs` -- the arm that declares
-  // what Atoma runs also declares what that run may reach. A project naming its own
+  // what Atomaton runs also declares what that run may reach. A project naming its own
   // workflow hands that workflow its own secrets. `tools` has no arms: the servers
-  // are always Atoma's.
+  // are always Atomaton's.
   const deployRuns = arm(config.deploy);
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
 
@@ -299,7 +299,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   if (workflowFiles.length > 0) {
     const present = new Set(workflowFiles);
     // The other arm of `checks` and `deploy`, not a section of its own: a project
-    // either hands Atoma its commands or hands it a workflow.
+    // either hands Atomaton its commands or hands it a workflow.
     for (const [section, fallback] of [
       ["checks", DEFAULT_CI_WORKFLOW],
       ["deploy", DEFAULT_CD_WORKFLOW],

@@ -7,7 +7,7 @@
  * in the web UI; the pull requests come from two places that have to be unioned,
  * for the reason `claimsToClose` explains.
  *
- * Nothing here reads an Atoma marker. The relationships have to survive an
+ * Nothing here reads an Atomaton marker. The relationships have to survive an
  * issue a person opened, decomposed and closed without an agent ever touching
  * it, and markers only exist where an agent has been.
  */

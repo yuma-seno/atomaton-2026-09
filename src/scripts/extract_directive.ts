@@ -19,7 +19,7 @@
  * the exclusivity of the outcome prevents that one, and it is stated where the
  * agent decides. Strictness here would cost handoffs and buy nothing.
  *
- * Usage: extract_directive.ts --output-file atoma_output.txt --def-dir DIR
+ * Usage: extract_directive.ts --output-file atomaton_output.txt --def-dir DIR
  * Writes `directive=<name-or-empty>` to $GITHUB_OUTPUT.
  */
 import { existsSync, readFileSync, appendFileSync } from "node:fs";

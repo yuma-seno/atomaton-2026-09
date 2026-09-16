@@ -7,7 +7,7 @@ import { SCRIPTS_DIR, parseGithubOutput } from "./testing/harness.ts";
 
 describe("extract_notify_tag.ts", () => {
   test("extracts the notify tag from a PR body", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     const r = spawnSync("bun", ["run", `${SCRIPTS_DIR}/extract_notify_tag.ts`], {
@@ -21,7 +21,7 @@ describe("extract_notify_tag.ts", () => {
   });
 
   test("empty when no tag present", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     spawnSync("bun", ["run", `${SCRIPTS_DIR}/extract_notify_tag.ts`], {

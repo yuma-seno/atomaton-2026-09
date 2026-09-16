@@ -253,7 +253,7 @@ describe("decideMergeReadiness", () => {
 
   // Refusing the merge is the control; saying where the change belongs is what
   // stops the same pull request being opened again. The commonest reason to edit
-  // a generated workflow is to change what CI does, and under Atoma that is
+  // a generated workflow is to change what CI does, and under Atomaton that is
   // configuration.
   test("touching a generated workflow says where CI actually gets configured", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atoma-check.yml"] }));
@@ -334,7 +334,7 @@ describe("governedPathsIn", () => {
   });
 });
 
-// `merge.governed_paths` is Atoma's own gate; these are the project's. Same outcome —
+// `merge.governed_paths` is Atomaton's own gate; these are the project's. Same outcome —
 // the agent reviews and reports, a person merges — reached from a condition
 // nothing here could have guessed.
 describe("declared merge gates", () => {
@@ -433,7 +433,7 @@ describe("declared merge gates", () => {
  * The consequence is narrow and easy to miss: a failing check that no rule requires
  * makes a pull request UNSTABLE, and UNSTABLE is mergeable. On a repository that HAS
  * rules that is somebody's decision. Where rules cannot exist it is just a red build
- * with nothing in front of it, so Atoma refuses in GitHub's place.
+ * with nothing in front of it, so Atomaton refuses in GitHub's place.
  */
 describe("a repository that cannot have branch rules", () => {
   const failing = [{ name: "atoma-check", status: "completed", conclusion: "failure" }];
@@ -455,11 +455,11 @@ describe("a repository that cannot have branch rules", () => {
    * The refusal has to say why GitHub is not the one refusing, or the obvious next move
    * is to go looking for the branch rule that did it.
    */
-  test("the refusal says that Atoma is standing in for GitHub", () => {
+  test("the refusal says that Atomaton is standing in for GitHub", () => {
     const out = decideMergeReadiness(
       signals({ mergeStateStatus: "UNSTABLE", requiredChecksEnforceable: false, requiredChecks: [], checks: failing }),
     );
-    expect(formatBlockers(out.blockers)).toContain("Atoma does");
+    expect(formatBlockers(out.blockers)).toContain("Atomaton does");
   });
 
   test("a passing check still merges", () => {

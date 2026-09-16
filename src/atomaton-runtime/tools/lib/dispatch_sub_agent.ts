@@ -32,7 +32,7 @@ export function dispatchSubAgent(issue: number, agent: string, notify = ""): Dis
   // `sibling-check.ts` reads this label to decide whether a sub-issue has already
   // been launched, so silently never applying it makes a child look unlaunched and
   // invites a relaunch.
-  gh("label", "create", launchedLabel, "--force", "-c", "1f883d", "-d", "Atoma has dispatched an agent for this sub-task");
+  gh("label", "create", launchedLabel, "--force", "-c", "1f883d", "-d", "Atomaton has dispatched an agent for this sub-task");
   const { code: labelCode } = gh("issue", "edit", String(issue), "--add-label", launchedLabel);
   if (labelCode !== 0) {
     console.error(`Warning: failed to add '${launchedLabel}' label to #${issue}`);

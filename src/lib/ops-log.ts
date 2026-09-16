@@ -1,7 +1,7 @@
 /**
- * ops-log.ts — Structured JSON-lines log of mutating operations Atoma
+ * ops-log.ts — Structured JSON-lines log of mutating operations Atomaton
  * performs during a run, written to $ATOMATON_OPS_LOG (default
- * /tmp/atoma_ops.log). Two purposes:
+ * /tmp/atomaton_ops.log). Two purposes:
  *   1. A general audit trail (create_issue, close_issue, create_pr,
  *      merge_pr, etc. -- see mcp/github.ts's call sites).
  *   2. `logDispatch()`'s `"op":"dispatch"` entries are the canonical,
@@ -18,7 +18,7 @@
  */
 import { appendFileSync } from "node:fs";
 
-const OPS_LOG_PATH = process.env.ATOMATON_OPS_LOG ?? "/tmp/atoma_ops.log";
+const OPS_LOG_PATH = process.env.ATOMATON_OPS_LOG ?? "/tmp/atomaton_ops.log";
 
 export function logOp(op: string, payload: Record<string, unknown> = {}): void {
   const entry = { ts: new Date().toISOString(), op, ...payload };

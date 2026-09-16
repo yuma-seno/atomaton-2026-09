@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * check_sub_issue_closure.ts — Determine whether a just-closed issue is an
- * Atoma sub-issue (has an `<!-- atoma:parent=N -->` tag) and, if so,
+ * Atomaton sub-issue (has an `<!-- atoma:parent=N -->` tag) and, if so,
  * whether it was already closed via a merged PR (in which case
  * atoma-pr-merged.wac.ts already handled aggregation, and this fallback
  * path must skip to avoid dispatching the orchestrator twice).

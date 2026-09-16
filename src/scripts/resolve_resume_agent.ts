@@ -77,7 +77,7 @@ function main(): void {
       "--body",
       [
         LLM_CONTEXT_TAG.write("exclude"),
-        "Atoma: `/resume` found no previous run on this issue to continue. Use `/<agent>` to start one.",
+        "Atomaton: `/resume` found no previous run on this issue to continue. Use `/<agent>` to start one.",
       ].join("\n"),
     );
   }

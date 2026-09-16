@@ -29,7 +29,7 @@ describe("run_checks.ts", () => {
 
   // This workflow is the default `checks.your_workflow`, so an empty list means a pull
   // request satisfied a required check that tested nothing. Failing instead
-  // would block every pull request from the moment a repository adopts Atoma
+  // would block every pull request from the moment a repository adopts Atomaton
   // until someone configures it, which is a worse first hour.
   test("declaring nothing passes, but says so as a warning", () => {
     const r = run({});

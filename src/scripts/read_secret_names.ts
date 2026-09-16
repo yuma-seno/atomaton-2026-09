@@ -78,8 +78,8 @@ export function declarationIn(configText: string, destination: SecretDestination
     deploy?: { atoma_runs?: { secrets?: unknown } };
   };
   // `checks` and `deploy` carry theirs inside `atoma_runs`: a secret is reached by
-  // the step Atoma runs, and a project naming its own workflow gives that workflow
-  // its secrets itself. `tools` has no arms -- the servers are always Atoma's.
+  // the step Atomaton runs, and a project naming its own workflow gives that workflow
+  // its secrets itself. `tools` has no arms -- the servers are always Atomaton's.
   if (destination === "tools") return config.tools?.secrets;
   return (destination === "checks" ? config.checks : config.deploy)?.atoma_runs?.secrets;
 }

@@ -7,7 +7,7 @@ const EXAMPLES_DIR = "examples/workflows";
 /**
  * `examples/` is for the adopter to copy, and must never become deliverable.
  *
- * The whole point of the recurring-work example is that Atoma does not install
+ * The whole point of the recurring-work example is that Atomaton does not install
  * it: `on:` takes no expression, so a schedule cannot come from configuration,
  * and an agent cannot write `.github/workflows/**` at all. If one of these files
  * ever reached `dist/.github/workflows/`, every adopter would start running a

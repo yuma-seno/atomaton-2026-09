@@ -122,7 +122,7 @@ be rebuilt from it, which is a second, deliberate step.
 gh workflow run atoma-self-deploy.yml --ref main -f version=latest
 ```
 
-Or press **Run workflow** on **Atoma Self Deploy** in the Actions tab. It opens a
+Or press **Run workflow** on **Atomaton Self Deploy** in the Actions tab. It opens a
 pull request and merges nothing: `.github/**` is in `merge.governed_paths`, so a person
 reviews it.
 
@@ -161,7 +161,7 @@ an agent has no route to it today (`gh` and `curl` are both refused by the shell
 guard, and no MCP tool dispatches anything), but that is a denylist, and this token
 can rewrite workflows.
 
-A PAT is acceptable here and not inside Atoma because what holds it is a person
+A PAT is acceptable here and not inside Atomaton because what holds it is a person
 pressing a button. The line in #353 — a pull request may not decide its own
 execution environment — is not crossed: nothing an agent produces reaches it.
 
@@ -220,7 +220,7 @@ not have until you build it.
   deliverable still builds.
 - `dist/.github/*` is generated: never hand-edit it.
 - `.github/*` is *deployed*, not generated on merge. It is a release plus `self/`
-  copied over it, rebuilt by [Atoma Self Deploy](#applying-a-release-to-this-repository).
+  copied over it, rebuilt by [Atomaton Self Deploy](#applying-a-release-to-this-repository).
   So a change under `src/` does not reach the live agents until someone
   dispatches that, and CI does not reject a diff that touches `.github/`.
 - What is genuinely yours to edit lives in `self/`, not in `.github/`. Edit both,

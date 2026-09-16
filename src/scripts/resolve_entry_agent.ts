@@ -25,7 +25,7 @@ interface GithubIssueOpenedEvent {
  *
  * Blank lines and HTML comments are skipped because neither is visible on the
  * rendered issue, so requiring the command literally first would fail on a body
- * that looks exactly right. Atoma writes such comments itself — the
+ * that looks exactly right. Atomaton writes such comments itself — the
  * `atoma:parent` tag `create_issue` prepends to a sub-issue is one — and an
  * issue that carried one silently started nothing.
  *

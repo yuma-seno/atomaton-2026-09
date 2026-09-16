@@ -4,7 +4,7 @@
  * comment, including token usage and (when nothing further will
  * happen automatically) a mention.
  *
- * Reads atoma_output.txt (required) and atoma_logs.txt (optional, for the
+ * Reads atomaton_output.txt (required) and atomaton_logs.txt (optional, for the
  * ATOMA_TOKEN_USAGE: line) from the current directory.
  *
  * Usage:
@@ -48,8 +48,8 @@ export interface PostResultCommentArgs {
    *
    * Arguments rather than the bare names this used to open. Those were relative
    * paths, correct only while the run's files sat in the repository root -- they
-   * moved them to `$RUNNER_TEMP/atoma-run` and every result comment since was
-   * silently dropped, because `existsSync("atoma_output.txt")` was false and the
+   * moved them to `$RUNNER_TEMP/atomaton-run` and every result comment since was
+   * silently dropped, because `existsSync("atomaton_output.txt")` was false and the
    * skip branch reads exactly like a session that ended via a tool call.
    *
    * Two full releases went out that way. The step reported success, the agent wrote
@@ -335,7 +335,7 @@ function main(): void {
   }
   const redacted = redact(existsSync(outputFile) ? readFileSync(outputFile, "utf8") : "");
 
-  // `atoma_output.txt` is empty whenever the run ended via a session-ending
+  // `atomaton_output.txt` is empty whenever the run ended via a session-ending
   // tool call (launch_sub_agent, request_close_issue, create_pr -- see
   // src/atomaton/tools/scripts/mcp/{atoma,github}.ts's `_meta.session_ends`):
   // atoma's own inference loop stops immediately in that case, before the
@@ -367,7 +367,7 @@ function main(): void {
   }
 
   if (!output.trim()) {
-    console.error("atoma_output.txt is empty (session ended via a tool call) -- skipping result comment.");
+    console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
     return;
   }
 

@@ -8,7 +8,7 @@ import { SCRIPTS_DIR, parseGithubOutput } from "./testing/harness.ts";
 
 describe("resolve_entry_agent.ts", () => {
   test("emits agent/number/type/notify when body starts with a slash command", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
     writeFileSync(eventFile, JSON.stringify({ issue: { body: "/orchestrator\n\nDo the thing." } }));
@@ -32,11 +32,11 @@ describe("resolve_entry_agent.ts", () => {
   });
 
   // An HTML comment is invisible on the rendered issue, so a body carrying one
-  // above the command looks exactly right and used to start nothing. Atoma
+  // above the command looks exactly right and used to start nothing. Atomaton
   // writes such comments itself — `create_issue` prepends the `atoma:parent` tag
   // to every sub-issue.
   test("looks past an invisible tag above the command", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
     writeFileSync(
@@ -56,7 +56,7 @@ describe("resolve_entry_agent.ts", () => {
   // prose is not a command at the top, and reading further would turn any mention
   // of an agent in a discussion into a dispatch.
   test("does not look past visible text", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
     writeFileSync(eventFile, JSON.stringify({ issue: { body: "Some background.\n\n/engineer" } }));
@@ -70,7 +70,7 @@ describe("resolve_entry_agent.ts", () => {
   });
 
   test("writes nothing when body has no slash command", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
     writeFileSync(eventFile, JSON.stringify({ issue: { body: "just a regular issue" } }));
@@ -96,7 +96,7 @@ describe("resolve_entry_agent.ts", () => {
     ["/Engineer", "an uppercase name"],
     ["/../../etc/passwd", "a path traversal"],
   ])("emits nothing for '%s' (%s)", async (body) => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
     writeFileSync(eventFile, JSON.stringify({ issue: { body } }));

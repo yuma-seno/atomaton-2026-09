@@ -1,5 +1,5 @@
 /**
- * path-patterns.ts — the one path-pattern form Atoma's configuration accepts.
+ * path-patterns.ts — the one path-pattern form Atomaton's configuration accepts.
  *
  * A pattern is a literal path, or a directory followed by `/**`. That is all.
  * Deliberately not a glob library, and the reason is not laziness: a

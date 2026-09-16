@@ -1,6 +1,6 @@
 # Recipes
 
-For somebody who already has Atoma running and wants it to do one specific thing.
+For somebody who already has Atomaton running and wants it to do one specific thing.
 
 Each entry is the goal, the smallest change that reaches it, and a pointer. What a
 setting means, what else it accepts and why it defaults the way it does belongs in
@@ -18,7 +18,7 @@ line you edit.
 | [prefer particular upstream providers](#prefer-particular-upstream-providers) | `extra_body`, in an agent definition |
 | [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.atoma_runs` and `deploy.atoma_runs` |
 | [have agents start your own CI and deployment](#have-agents-start-your-own-ci-and-deployment) | `checks.your_workflow` and `deploy.your_workflow` |
-| [make a workflow of your own work when Atoma starts it](#make-a-workflow-of-your-own-work-when-atoma-starts-it) | `workflow_dispatch`, in that workflow |
+| [make a workflow of your own work when Atomaton starts it](#make-a-workflow-of-your-own-work-when-atomaton-starts-it) | `workflow_dispatch`, in that workflow |
 | [check your config before pushing it](#check-your-config-before-pushing-it) | nothing — one command |
 | [keep some paths for human review](#keep-some-paths-for-human-review) | `merge.governed_paths` |
 | [let agents merge their own pull requests](#let-agents-merge-their-own-pull-requests) | `merge.policy` |
@@ -196,19 +196,19 @@ itself and your deployment would silently never run.
 What each arm means, and what the workflow you name has to support, is in
 [docs/configuration.md](configuration.md).
 
-### Make a workflow of your own work when Atoma starts it
+### Make a workflow of your own work when Atomaton starts it
 
 Add `workflow_dispatch` to its triggers, keeping the ones you have:
 
 ```yaml
 on:
   pull_request:      # keep it — this is what serves humans and forks
-  workflow_dispatch: # add it — this is how Atoma runs the same workflow
+  workflow_dispatch: # add it — this is how Atomaton runs the same workflow
 ```
 
 Then stop reading the pull request out of the event. A `workflow_dispatch` run has no
 `github.event.pull_request`, so a step that takes the PR number or its diff from the
-event payload gets nothing when Atoma starts it. Resolve it from the branch instead:
+event payload gets nothing when Atomaton starts it. Resolve it from the branch instead:
 
 ```bash
 PR=$(gh pr list --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].number // empty')
@@ -335,7 +335,7 @@ Now that one server receives it, under that name. **Every other tool still canno
 it**, including the shell.
 
 `slack` is a server of your own, so its entry declares it in full. Routing a credential
-to one Atoma ships — `github`, `search`, `web` and the rest — is the same step with a
+to one Atomaton ships — `github`, `search`, `web` and the rest — is the same step with a
 shorter entry: the server's name and an `env` alone. An entry for a shipped name is
 merged into it field by field, so naming `env` changes only the environment and leaves
 the command, the hooks and the timeout as they ship.
@@ -353,7 +353,7 @@ a secret named in `checks.atoma_runs.secrets` is in that job's environment and t
 no server to route it to.
 
 You never edit a workflow for any of this, and there is no tools file to edit: the one
-`atoma` is handed is written at the start of each run — from the servers Atoma ships and
+`atoma` is handed is written at the start of each run — from the servers Atomaton ships and
 whatever `tools.servers` adds or overrides — and thrown away with the runner.
 `config.yaml` is still the only place a credential is routed.
 
@@ -374,7 +374,7 @@ tools:
       request_timeout_secs: 600
 ```
 
-For a server Atoma ships, write the same key under that server's name and nothing else.
+For a server Atomaton ships, write the same key under that server's name and nothing else.
 An entry for a shipped name is an override merged field by field, so one line raises the
 timeout and the argv, hooks and `env` stay as they ship:
 
@@ -412,7 +412,7 @@ results page and read the links out of it. The endpoint lives in that file on pu
   skill. Fetching a page whose address is already known keeps working.
 - To remove web access entirely, drop `web` from `mcp_servers` in the agent definitions
   that name it. That is the whole of it, and there is nothing to delete in
-  `config.yaml`: `web` is one of the servers Atoma ships, and a server no agent names is
+  `config.yaml`: `web` is one of the servers Atomaton ships, and a server no agent names is
   never started.
 
 This is separate from the search over this repository's own issues, which is a tool
@@ -470,7 +470,7 @@ to dispatch, and `skills/project/` is yours outright.
 
 ### Have something happen every week
 
-Atoma has no schedule setting, and will not grow one — but the thing you want is two
+Atomaton has no schedule setting, and will not grow one — but the thing you want is two
 steps away, and both are ordinary.
 
 Copy [`examples/workflows/scheduled-issue.yml`](../examples/workflows/scheduled-issue.yml)
@@ -502,7 +502,7 @@ runner time, while an agent that starts and finds nothing to do costs a billed i
 **The last step is not optional.** An issue created with `GITHUB_TOKEN` raises no
 `issues` event, so the issue would appear and nothing would pick it up. The example
 therefore dispatches `atoma-runner.yml` explicitly. That is the same rule as everywhere
-else in Atoma — see [docs/operations.md](operations.md).
+else in Atomaton — see [docs/operations.md](operations.md).
 
 **What it will cost.** One agent run per firing, whether or not there was anything to do,
 except the firings the open-issue guard skips. Multiply your provider's per-run cost by

@@ -175,7 +175,7 @@ describe("names that have to resolve to a file", () => {
       auto_triggers: [{ event: "pull_request.opened", agent: "reviewer" }],
     });
     expect(problems.join(" ")).toContain("auto_triggers");
-    expect(problems.join(" ")).toContain("not a setting Atoma reads");
+    expect(problems.join(" ")).toContain("not a setting Atomaton reads");
   });
 
   // The key an adopter is most likely to still have: it configured a per-agent

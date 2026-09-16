@@ -31,7 +31,7 @@ yn() { if "$@" >/dev/null 2>&1; then echo yes; else echo no; fi; }
 
 U=atomaton-tools
 WS="$HOME/work/probe-repo/probe-repo"
-CACHE=/tmp/atoma-tool-cache
+CACHE=/tmp/atomaton-tool-cache
 
 # ── 1. the user ──────────────────────────────────────────────────────────────
 say "1. the user"

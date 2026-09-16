@@ -5,7 +5,7 @@
  *
  * ## The gap this closes
  *
- * Nothing checked the deliverable's own consistency at pull-request time. Atoma
+ * Nothing checked the deliverable's own consistency at pull-request time. Atomaton
  * resolves every name in an agent's `mcp_servers` against tools.yaml and aborts
  * the whole run before a single MCP server starts if one is missing — so that
  * failure surfaced AFTER the merge, on whoever triggered the next run, rather
@@ -146,7 +146,7 @@ function writeToolsFileFor(root: string): string {
   if (collisions.length > 0) {
     throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} — reserved by the core`);
   }
-  const out = join(mkdtempSync(join(tmpdir(), "atoma-validate-")), "tools.yaml");
+  const out = join(mkdtempSync(join(tmpdir(), "atomaton-validate-")), "tools.yaml");
   writeFileSync(
     out,
     Bun.YAML.stringify(
@@ -249,7 +249,7 @@ function main(): void {
     problems = collect(root, atoma);
   } catch (error) {
     if (!(error instanceof CannotCheck)) throw error;
-    console.error(`[atoma-validate-deliverable] cannot check: ${error.message}`);
+    console.error(`[atomaton-validate-deliverable] cannot check: ${error.message}`);
     process.exit(2);
   }
 

@@ -1,6 +1,6 @@
 # Setup
 
-For somebody putting Atoma into a repository for the first time. Everything on this
+For somebody putting Atomaton into a repository for the first time. Everything on this
 page is work to do, in the order to do it; getting the deliverable into the tree is
 the step before it, in [the README](../README.md).
 
@@ -95,14 +95,14 @@ the two together is a discipline rather than something enforced.
 
 ### Set required approving reviews to 0
 
-Atoma's agents share one bot identity and GitHub forbids self-approval, so requiring
+Atomaton's agents share one bot identity and GitHub forbids self-approval, so requiring
 even one review deadlocks every agent pull request. The shipped file already declares
 `required_approving_review_count: 0`; set it yourself if you write your own ruleset
 rather than importing that one.
 
 ### Require only checks that `workflow_dispatch` can start
 
-Atoma starts the workflow behind a required check itself for an agent's pull request,
+Atomaton starts the workflow behind a required check itself for an agent's pull request,
 waits for it, and publishes the result. A workflow it cannot start leaves the check
 unfilled, and the pull request can never merge.
 
@@ -112,7 +112,7 @@ your own, keep whatever triggers you have and add that one:
 ```yaml
 on:
   pull_request:      # keep it — this is what serves humans and forks
-  workflow_dispatch: # add it — this is how Atoma runs the same workflow
+  workflow_dispatch: # add it — this is how Atomaton runs the same workflow
 ```
 
 Contexts that come from somewhere else — a coverage service, a scanner, a workflow

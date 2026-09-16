@@ -62,7 +62,7 @@
 export const USER_ROOT = ".github/atomaton";
 
 /**
- * What Atoma runs, and what a project does not touch.
+ * What Atomaton runs, and what a project does not touch.
  *
  * The MCP servers, the hooks, the default tool declarations, and the scripts the
  * workflows invoke. Separate from [`USER_ROOT`] so that "everything outside

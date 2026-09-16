@@ -39,7 +39,7 @@
  * relying on it.
  *
  * Usage:
- *   write_credentials_file.ts --out "$RUNNER_TEMP/atoma-credentials.json"
+ *   write_credentials_file.ts --out "$RUNNER_TEMP/atomaton-credentials.json"
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";

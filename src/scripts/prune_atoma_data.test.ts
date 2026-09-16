@@ -35,7 +35,7 @@ function git(cwd: string, ...args: string[]): void {
 beforeAll(() => {
   // One directory serving as both the checkout and its own `origin`, which is all the
   // script needs: it fetches `origin/atoma-data` and lists it.
-  repo = mkdtempSync(join(tmpdir(), "atoma-prune-test-"));
+  repo = mkdtempSync(join(tmpdir(), "atomaton-prune-test-"));
   git(repo, "init", "--quiet", "--initial-branch=atoma-data");
   git(repo, "config", "user.email", "test@example.com");
   git(repo, "config", "user.name", "Test");

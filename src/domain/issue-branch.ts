@@ -70,7 +70,7 @@ export function branchToResume(branches: IssueBranch[], issueNumber: number): st
  *
  * Normally there are none: a merge deletes its branch, so `atoma/issue-N` is
  * free again and the common case stays readable. The suffix is for when one
- * survived anyway — a deletion that failed, or a merge made outside Atoma —
+ * survived anyway — a deletion that failed, or a merge made outside Atomaton —
  * where reusing the name would build on history the base already contains. It
  * counts from the highest taken rather than from how many exist, so removing an
  * old branch cannot hand out a name that was already used.

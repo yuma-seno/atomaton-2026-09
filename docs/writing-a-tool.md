@@ -6,7 +6,7 @@ template, or one for a repository of your own.
 Where a path below begins `src/` or `tests/`, it belongs to this template's own
 source tree. An adopted repository does not receive those directories. It receives
 `.github/atomaton/**`, which is its own, and `.github/atomaton-runtime/**`, which is
-Atoma's — and the servers under `.github/atomaton-runtime/tools/mcp/` are bundles,
+Atomaton's — and the servers under `.github/atomaton-runtime/tools/mcp/` are bundles,
 with the helpers named here already inside them. What differs is the import, not
 the behaviour, and each place that matters says so.
 
@@ -76,7 +76,7 @@ branch object" while the tool returns three fields sends the model looking for
 something that is not there. Say what you return, say that it can be truncated,
 and say what to do about it.
 
-Atoma's own tools share one budget, `TOOL_OUTPUT_BUDGET`: 50,000 characters, about
+Atomaton's own tools share one budget, `TOOL_OUTPUT_BUDGET`: 50,000 characters, about
 12.5k tokens, a tenth of the smallest context window worth designing for. It was
 four numbers in three units before — 1,000,000 **bytes** in the shell, 60,000
 characters in `web_fetch`, 50,000 in two GitHub tools, and nothing anywhere else.

@@ -124,7 +124,7 @@ const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt it
  * is the intent rather than a loss: `.github/**` is governed, so a person reads
  * that diff, and CI still runs the pull request's own checks.
  */
-const MACHINERY_DIR = "atoma-machinery";
+const MACHINERY_DIR = "atomaton-machinery";
 
 /**
  * Where the machinery ends up, once it is out of the work tree.
@@ -135,12 +135,12 @@ const MACHINERY_DIR = "atoma-machinery";
  *
  * It has to leave, because while it was there `git status` was never clean:
  *
- *     ?? atoma-machinery/
+ *     ?? atomaton-machinery/
  *
  * Which meant `git add -A` committing it as a dangling gitlink with no
  * `.gitmodules`, and `create_pr` refusing for a dirty worktree. `.gitignore` in
  * this repository already carries `atoma-src/` with a comment describing exactly
- * that failure -- the same shape, found once, and `atoma-machinery/` was never
+ * that failure -- the same shape, found once, and `atomaton-machinery/` was never
  * added beside it. An adopter has neither, so it happened to all of them.
  *
  * The alternative was `.git/info/exclude`, which needs nothing from an adopter and
@@ -152,7 +152,7 @@ const MACHINERY_DIR = "atoma-machinery";
  * -- would need "except that one" appended, which is the sentence this was all
  * meant to avoid.
  */
-const MACHINERY_ABS = "\${RUNNER_TEMP}/atoma-machinery";
+const MACHINERY_ABS = "\${RUNNER_TEMP}/atomaton-machinery";
 
 /** The same directory, as shell -- the job exports it so every step agrees. */
 const MACHINERY = "${ATOMATON_MACHINERY_ROOT}";
@@ -189,7 +189,7 @@ const TOOL_USER = "atomaton-tools";
  * failure the container produced. Package managers need somewhere real, and this
  * is it: outside the work tree, so nothing commits it.
  */
-const TOOL_CACHE_NAME = "atoma-tool-cache";
+const TOOL_CACHE_NAME = "atomaton-tool-cache";
 const TOOL_CACHE = `\${RUNNER_TEMP}/${TOOL_CACHE_NAME}`;
 /**
  * The same directory, spelled for an action input.
@@ -218,7 +218,7 @@ const rerankerModelStep = new TypedOutputsStep(
     shell: "bash",
     run: `MODEL=$(${scriptCommand(getConfigValueRef, configValueArgv("tools.servers.search.settings.reranker_model", DEFAULT_RERANKER))})
 echo "reranker: \${MODEL}"
-echo "cache_key=atoma-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHUB_OUTPUT"
+echo "cache_key=atomaton-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHUB_OUTPUT"
 `,
   },
   ["cache_key"] as const,
@@ -247,7 +247,7 @@ echo "cache_key=atoma-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHUB_O
  * (once that user exists). Both halves are load-bearing: three steps write here
  * before the user is created, and `atoma run` writes the session as that user.
  */
-const RUN_DIR = "\${RUNNER_TEMP}/atoma-run";
+const RUN_DIR = "\${RUNNER_TEMP}/atomaton-run";
 
 /**
  * The same directory, written so GitHub Actions expands it rather than a shell.
@@ -265,7 +265,7 @@ const RUN_DIR = "\${RUNNER_TEMP}/atoma-run";
  * The readers were never wrong: they sit in `run:` blocks, where the shell does expand
  * it, so they were looking in the right place at a file nothing had written.
  */
-const RUN_DIR_EXPR = "${{ runner.temp }}/atoma-run";
+const RUN_DIR_EXPR = "${{ runner.temp }}/atomaton-run";
 
 /**
  * The file `atoma run --stop-file` watches, and `watch_for_stop.ts` creates.
@@ -544,7 +544,7 @@ const installAtomaCli = installAtomaCliStep("${{ inputs.atoma_version }}");
  * rest of the run" and carries on. Every credential the run supplies would sit
  * there, readable by the shell server, for the whole run.
  */
-const CREDENTIALS_DIR = "$RUNNER_TEMP/atoma-credentials";
+const CREDENTIALS_DIR = "$RUNNER_TEMP/atomaton-credentials";
 const CREDENTIALS_FILE = `${CREDENTIALS_DIR}/credentials.json`;
 
 /**
@@ -652,7 +652,7 @@ const runAgentStep = new TypedOutputsStep(
       // Structured JSON-lines log every MCP tool mutation/dispatch decision
       // is written to (see lib/ops-log.ts) -- read back below to determine
       // chain_continues, and generally useful as a per-run audit trail.
-      ATOMATON_OPS_LOG: `${RUN_DIR_EXPR}/atoma_ops.log`,
+      ATOMATON_OPS_LOG: `${RUN_DIR_EXPR}/atomaton_ops.log`,
       // Repository variables, not secrets: which provider to use and which host
       // to reach. The `_IN` suffix keeps them out of the names Atoma reads until
       // the script has checked they are non-empty, so an unset variable cannot
@@ -774,10 +774,10 @@ sudo -n -u "${TOOL_USER}" env "\${AGENT_ENV[@]}" \\
   --stop-file "${STOP_FILE}" \\
   --credentials-file "${CREDENTIALS_FILE}" \\
   \${TOOLS_ARG} \\
-  > "${RUN_DIR}/atoma_output.txt" 2> "${RUN_DIR}/atoma_logs.txt" || EXIT_CODE=$?
+  > "${RUN_DIR}/atomaton_output.txt" 2> "${RUN_DIR}/atomaton_logs.txt" || EXIT_CODE=$?
 
 echo "=== Atoma Logs ===" >&2
-cat "${RUN_DIR}/atoma_logs.txt" >&2
+cat "${RUN_DIR}/atomaton_logs.txt" >&2
 
 # The watcher has nothing left to watch for. Killed rather than left to the job,
 # because a poller that outlives the run it was polling for spends API budget on an
@@ -807,11 +807,11 @@ fi
 RESULT_EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
 {
   echo "result<<\${RESULT_EOF}"
-  cat "${RUN_DIR}/atoma_output.txt"
+  cat "${RUN_DIR}/atomaton_output.txt"
   echo "\${RESULT_EOF}"
 } >> "$GITHUB_OUTPUT"
 
-${scriptCommandWithArgs(extractDirectiveRef, { "output-file": `${RUN_DIR}/atoma_output.txt`, "def-dir": `${MACHINERY}/${AGENT_DEF_DIR}` })}
+${scriptCommandWithArgs(extractDirectiveRef, { "output-file": `${RUN_DIR}/atomaton_output.txt`, "def-dir": `${MACHINERY}/${AGENT_DEF_DIR}` })}
 
 # Detect whether a tool call already triggered an automatic follow-up
 # dispatch during this run (atoma__launch_sub_agent, github__create_pr ->
@@ -825,7 +825,7 @@ ${scriptCommandWithArgs(extractDirectiveRef, { "output-file": `${RUN_DIR}/atoma_
 # when a refactor changed a log message's wording without updating the grep
 # pattern to match.
 CHAIN_CONTINUES=false
-if [ -f "${RUN_DIR}/atoma_ops.log" ] && grep -q '"op":"dispatch"' "${RUN_DIR}/atoma_ops.log"; then
+if [ -f "${RUN_DIR}/atomaton_ops.log" ] && grep -q '"op":"dispatch"' "${RUN_DIR}/atomaton_ops.log"; then
   CHAIN_CONTINUES=true
 fi
 echo "chain_continues=\${CHAIN_CONTINUES}" >> "$GITHUB_OUTPUT"
@@ -839,7 +839,7 @@ echo "chain_continues=\${CHAIN_CONTINUES}" >> "$GITHUB_OUTPUT"
 # run, and reading either as "changed nothing" would stop a chain at the moment it
 # was working.
 CHANGED=false
-if [ -f "${RUN_DIR}/atoma_ops.log" ] && grep -qE '"op":"(commit_and_push|create_pr|merge_pr)"' "${RUN_DIR}/atoma_ops.log"; then
+if [ -f "${RUN_DIR}/atomaton_ops.log" ] && grep -qE '"op":"(commit_and_push|create_pr|merge_pr)"' "${RUN_DIR}/atomaton_ops.log"; then
   CHANGED=true
 fi
 echo "changed=\${CHANGED}" >> "$GITHUB_OUTPUT"
@@ -857,7 +857,7 @@ const tokenUsageStep = new TypedOutputsStep({
   // restating what the script does.
   if: "always()",
   shell: "bash",
-  run: `USAGE_LINE=$(grep -m1 "ATOMA_TOKEN_USAGE:" "${RUN_DIR}/atoma_logs.txt" 2>/dev/null || true)
+  run: `USAGE_LINE=$(grep -m1 "ATOMA_TOKEN_USAGE:" "${RUN_DIR}/atomaton_logs.txt" 2>/dev/null || true)
 if [ -z "$USAGE_LINE" ]; then
   exit 0
 fi
@@ -919,8 +919,8 @@ const postResultCommentStep = new TypedOutputsStep(
       // agent said -- see post_result_comment.ts. Measurement showed what the alternative
       // costs: 17 minutes of work and a one-line notice.
       session: `${RUN_DIR}/session.json`,
-      output: `${RUN_DIR}/atoma_output.txt`,
-      "logs-file": `${RUN_DIR}/atoma_logs.txt`,
+      output: `${RUN_DIR}/atomaton_output.txt`,
+      "logs-file": `${RUN_DIR}/atomaton_logs.txt`,
     })}\n`,
   },
   ["comment_id"] as const,
@@ -1006,7 +1006,7 @@ const reportFailureStep = new TypedOutputsStep({
     agent: "\${AGENT}",
     notify: "\${NOTIFY}",
     "run-url": "\${RUN_URL}",
-    "logs-file": `${RUN_DIR}/atoma_logs.txt`,
+    "logs-file": `${RUN_DIR}/atomaton_logs.txt`,
   })}\n`,
 });
 
@@ -1170,7 +1170,7 @@ const reviewerStartCommentStep = new TypedOutputsStep({
     NUMBER: "${{ inputs.number }}",
   },
   run: `gh issue comment "$NUMBER" --body "${LLM_CONTEXT_TAG.write("exclude")}
-Atoma: reviewer starting review."
+Atomaton: reviewer starting review."
 `,
 });
 
@@ -1183,7 +1183,7 @@ const runJob = new NormalJob("run", {
   },
   permissions: ATOMATON_WORKFLOW_PERMISSIONS,
   // `ATOMATON_MACHINERY_ROOT` is deliberately NOT a job-level `env:` any more. It used
-  // to be, set to the relative `atoma-machinery`, and the step that moves the
+  // to be, set to the relative `atomaton-machinery`, and the step that moves the
   // machinery out of the work tree then wrote the absolute path to `$GITHUB_ENV`.
   //
   // That worked only if the env file wins over a job-level `env:` -- which it does,
@@ -1252,7 +1252,7 @@ echo "machinery moved to ${MACHINERY_ABS}; the work tree holds only the reposito
   // GitHub-hosted runners do not ship Bun preinstalled.
   new SetupBunAction({ name: "Setup Bun" }),
   // The two branch steps sit after Bun and before everything that reads the
-  // working tree: they run Atoma's own scripts, and a later checkout would swap
+  // working tree: they run Atomaton's own scripts, and a later checkout would swap
   // the files under steps that already inspected them.
   //
   // No branch is created here. Most runs never commit -- reporting a CI failure,
@@ -1345,7 +1345,7 @@ fi
 #
 # Installed NEXT TO THE MACHINERY, not in the work tree. Module resolution walks
 # up from the importing file looking for \`node_modules\`, and the servers now live
-# in \`$RUNNER_TEMP/atoma-machinery\` -- so the walk goes to \`$RUNNER_TEMP\` and stops
+# in \`$RUNNER_TEMP/atomaton-machinery\` -- so the walk goes to \`$RUNNER_TEMP\` and stops
 # at the root, never reaching the workspace. This was measured, not reasoned about:
 # moving the machinery out killed the search server with
 #
@@ -1408,7 +1408,7 @@ fi
       // than an empty one. transformers.js keys its own files by model name, so
       // the old weights are inert rather than wrong -- and the next save replaces
       // the entry.
-      "restore-keys": "atoma-reranker-",
+      "restore-keys": "atomaton-reranker-",
     },
   }),
   // Hooks are the one part of the tool tree that has to be directly executable.

@@ -42,7 +42,7 @@ describe("what every run starts with", () => {
 });
 
 describe("what a project adds", () => {
-  test("a name Atoma does not ship is a new server", () => {
+  test("a name Atomaton does not ship is a new server", () => {
     const out = toolsFileFrom({ servers: { warehouse: { command: "bun", args: ["run", "x.ts"] } } }, HOOK_BASE);
     expect(out.warehouse).toEqual({ command: "bun", args: ["run", "x.ts"] });
   });
@@ -52,7 +52,7 @@ describe("what a project adds", () => {
    * whole entry would mean a project raising one timeout had to copy an argv it has
    * no reason to know, and would then hold a stale copy of it after an upgrade.
    */
-  test("a name Atoma does ship is overridden one field at a time", () => {
+  test("a name Atomaton does ship is overridden one field at a time", () => {
     const out = toolsFileFrom({ servers: { shell: { request_timeout_secs: 7200 } } }, HOOK_BASE);
     const entry = out.shell as Record<string, unknown>;
     expect(entry.request_timeout_secs, "what they said").toBe(7200);

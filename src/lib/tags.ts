@@ -1,6 +1,6 @@
 /**
  * tags.ts — canonical encode/decode for every `<!-- atoma:xxx=... -->`
- * HTML-comment marker Atoma embeds in issue/PR bodies and comments to carry
+ * HTML-comment marker Atomaton embeds in issue/PR bodies and comments to carry
  * state across otherwise-stateless GitHub Actions workflow runs.
  *
  * This is the ONE place each tag's

@@ -19,7 +19,7 @@ describe("what the code search reads", () => {
   /**
    * `.github/atomaton/**` is generated from `src/` by `build-dist.ts`. Indexing it serves
    * neither kind of repository: here it is a second copy of the source, so a search
-   * returns the copy; in an adopter's, it is Atoma's implementation, so a question
+   * returns the copy; in an adopter's, it is Atomaton's implementation, so a question
    * about their project is answered with ours.
    */
   test("the deployed machinery is not the project's source", () => {

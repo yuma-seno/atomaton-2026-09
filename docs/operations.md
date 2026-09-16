@@ -1,6 +1,6 @@
 # Operations
 
-This page is for somebody who already has Atoma running: how the machinery behaves,
+This page is for somebody who already has Atomaton running: how the machinery behaves,
 and how to work out why it just did that.
 
 ## How work starts
@@ -200,13 +200,13 @@ the project, it belongs in the repository or in `environment.setup_commands`.
 
 ### Release pull requests
 
-Atoma has no notion of a release: the promotion pull request — `develop` into
+Atomaton has no notion of a release: the promotion pull request — `develop` into
 `main`, or whatever your equivalent is — is yours to open, from the GitHub UI or
 `gh pr create --base main --head develop`. It carries the merge of many issues and
 is where you decide a set of work is ready to ship, which is a judgement no agent
 is positioned to make.
 
-Nothing about that pull request is special to Atoma. It is reviewed by whoever
+Nothing about that pull request is special to Atomaton. It is reviewed by whoever
 reviews releases, and merging it runs whatever your `main` branch already runs.
 
 ## Serialization guard and labels
@@ -226,7 +226,7 @@ Three labels are applied, and only the first is about the guard:
 | label | what it means |
 | --- | --- |
 | `atoma/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |
-| `atoma/sub-issue` | this issue is a child delivery task Atoma created, with an `atoma:parent=N` tag in its body saying whose |
+| `atoma/sub-issue` | this issue is a child delivery task Atomaton created, with an `atoma:parent=N` tag in its body saying whose |
 | `atoma/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |
 
 The last two are read together, and that is why there are two. A parent is
@@ -272,7 +272,7 @@ Three things are worth knowing about it.
 
 **It is not immediate.** The running job polls for the request every 30 seconds, and
 the agent stops at its next turn — so it can finish the tool call it is in and start
-one more. Expect up to a minute or two. The comment Atoma posts in reply says this,
+one more. Expect up to a minute or two. The comment Atomaton posts in reply says this,
 because a command that appears to do nothing looks broken.
 
 **Nothing is lost.** The agent stops between turns, where the conversation is
@@ -281,7 +281,7 @@ exists rather than a note saying "cancel the workflow run": a cancelled job neve
 reaches the step that saves the session, so cancelling means discarding.
 
 **Your `/stop` comment is deleted.** It must not become part of what the agent reads
-when it resumes — a paused run is not a run that was told something. Atoma's reply
+when it resumes — a paused run is not a run that was told something. Atomaton's reply
 carries the record of who asked and when, and is itself excluded from the agent's
 context.
 
@@ -333,11 +333,11 @@ narrower question that only has one right answer.
 What it checks:
 
 - Every `mcp_servers` name in every agent definition exists in the tools file the
-  run would write — the servers Atoma ships, plus whatever `tools.servers` adds —
+  run would write — the servers Atomaton ships, plus whatever `tools.servers` adds —
   along with `knows_about` targets and `extra_body` keys. This part runs
   `atoma validate`, so it is the same resolution a run performs rather than an
   imitation of it.
-- `config.yaml` uses only keys Atoma reads.
+- `config.yaml` uses only keys Atomaton reads.
 - `checks` and `deploy` each declare one arm. `atoma_runs` and `your_workflow`
   together are reported here rather than resolved by a precedence rule.
 - `merge.gates`, `deploy.atoma_runs.targets` and the three `secrets` lists parse.
@@ -363,7 +363,7 @@ while an agent still names it.
 
 **Where those names come from.** There is no tools file in your repository to
 open. It is written at the start of each run into the runner's temp directory,
-from the servers Atoma ships and whatever `tools.servers` in `config.yaml` adds or
+from the servers Atomaton ships and whatever `tools.servers` in `config.yaml` adds or
 overrides. So a name resolves if it is one of the shipped eight or one you added;
 when it is neither, `atoma` says so and lists the servers that do exist. The check
 above writes a tools file the same way, from the pull request's own config, so
@@ -597,7 +597,7 @@ of the run, so the agent still has a turn in which to say what it found.
 | Draft pull request will not merge | PR is in draft and reviewer reports a `draft` blocker by design | Author marks the PR ready for review |
 | Required check goes red and your CI never ran | The `.github/atomaton/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .` |
 | Agent's pull request shows a check stuck at `action_required` | GitHub holds `pull_request` runs for pull requests opened with `GITHUB_TOKEN` | Expected; the merge does not depend on it, and the pull request settles at `UNSTABLE`, which a ruleset permits. Approve it to clear the display, but never delete the run — that breaks the commit's check rollup in a way no re-run repairs, and the pull request becomes permanently unmergeable |
-| Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atoma cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
+| Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atomaton cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
 | Agent reports a missing dependency instead of installing it | `atoma_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [configuration.md](configuration.md#environment) only if the rebuilds were making progress |
 | Agent run takes longer than expected or consumes excessive tokens | High number of shell tool round trips, or large tool output size | Read the `[atoma-shell]` lines in the workflow log; each records the command, exit code, duration, and output byte size |
 

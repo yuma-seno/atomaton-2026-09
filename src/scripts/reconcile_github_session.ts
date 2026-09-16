@@ -26,7 +26,7 @@
  *
  * It took a `--config` too, for a per-agent `agents.<name>.shared_context` filter.
  * No config has ever had an `agents` key: the validator reports one as a setting
- * Atoma does not read, so the filter could only ever be empty. Passing it the new
+ * Atomaton does not read, so the filter could only ever be empty. Passing it the new
  * `config.yaml` would have been worse than useless -- the read was `JSON.parse`,
  * which throws on YAML, and nothing here catches it.
  */

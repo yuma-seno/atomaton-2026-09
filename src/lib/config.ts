@@ -224,7 +224,7 @@ export function getDeployTargets(): DeployTargetsResolution {
  */
 export function getWorkflowName(kind: "ci" | "cd", fallback = ""): string {
   // `checks.your_workflow` and `deploy.your_workflow` are the other arm of those two
-  // sections, not a third place that names a workflow. A project either hands Atoma
+  // sections, not a third place that names a workflow. A project either hands Atomaton
   // its commands or hands it a workflow; there is no order of precedence to remember.
   const section = kind === "ci" ? loadConfig().checks : loadConfig().deploy;
   return (section?.your_workflow ?? "").trim() || fallback;
@@ -277,7 +277,7 @@ export function getReloadLimit(): unknown {
 export function getRunsOn(field: "checks" | "deploy"): unknown {
   const config = loadConfig();
   // Inside `atoma_runs`, because the machine a step runs on is a property of the
-  // step Atoma runs -- a project naming its own workflow decides that there.
+  // step Atomaton runs -- a project naming its own workflow decides that there.
   return field === "checks" ? config.checks?.atoma_runs?.runs_on : config.deploy?.atoma_runs?.runs_on;
 }
 

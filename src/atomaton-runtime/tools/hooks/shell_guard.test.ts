@@ -25,7 +25,7 @@ function guard(args: Record<string, unknown>, env?: Record<string, string>): str
  */
 function ownRun(): (command: string) => string {
   const dir = mkdtempSync(join(tmpdir(), "streak-"));
-  return (command: string) => guard({ command }, { ATOMATON_OPS_LOG: join(dir, "atoma_ops.log") });
+  return (command: string) => guard({ command }, { ATOMATON_OPS_LOG: join(dir, "atomaton_ops.log") });
 }
 
 describe("shell_guard.ts", () => {

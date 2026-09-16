@@ -15,7 +15,7 @@ import { declarationIn } from "./read_secret_names.ts";
  * puts one there would hide a regression that reintroduced it.
  */
 function run(config: Record<string, unknown> | null, destination = "tools") {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-declared-"));
   const configPath = join(dir, "trusted-config.yaml");
   const outputPath = join(dir, "github_output");
   // YAML, like the file the workflow materialises from the default branch.
@@ -34,7 +34,7 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
-  // `checks` and `deploy` carry their list inside `atoma_runs`, the arm Atoma
+  // `checks` and `deploy` carry their list inside `atoma_runs`, the arm Atomaton
   // runs itself; `tools` has no arms, so its list stays at the top of the section.
   test("picks the destination's own list", () => {
     const config = `
@@ -57,7 +57,7 @@ deploy:
   });
 
   // The other arm: a project that names its own workflow gives that workflow its
-  // secrets itself, so there is nothing here for Atoma's step to be handed.
+  // secrets itself, so there is nothing here for Atomaton's step to be handed.
   test("a section on the your_workflow arm declares nothing", () => {
     expect(declarationIn("checks:\n  your_workflow: ci.yml\n", "checks")).toBeUndefined();
   });
@@ -134,7 +134,7 @@ describe("read_secret_names.ts", () => {
   // no credentials -- and never reaches for the working tree, which is the thing
   // a pull request controls.
   test("declares nothing, loudly, when not told which config to trust", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-declared-"));
     const outputPath = join(dir, "github_output");
     writeFileSync(outputPath, "");
     // A config where the working tree keeps one -- `CONFIG_FILE`, so this stays
