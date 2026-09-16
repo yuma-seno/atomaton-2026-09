@@ -500,12 +500,13 @@ function toolDefaults(path = defaultPath()) {
 }
 
 // src/domain/tools-file.ts
-function toolsFileFrom(tools, hookBase) {
+function toolsFileFrom(tools, hookBase, defaultsPath) {
   const out = {};
-  const watch = mergedWatch(tools?.watch);
+  const defaults = toolDefaults(defaultsPath);
+  const watch = mergedWatch(tools?.watch, defaults);
   if (Object.keys(watch).length > 0)
     out.hooks = absoluteHooks(watch, hookBase);
-  for (const [name, server] of Object.entries(mergedServers(tools?.servers))) {
+  for (const [name, server] of Object.entries(mergedServers(tools?.servers, defaults))) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord4(forTheCore.hooks))
       forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
@@ -513,9 +514,9 @@ function toolsFileFrom(tools, hookBase) {
   }
   return out;
 }
-function mergedServers(configured) {
+function mergedServers(configured, defaults) {
   const out = {};
-  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+  for (const [name, server] of Object.entries(defaults.servers)) {
     const { description: _ours, ...rest } = server;
     out[name] = { ...rest };
   }
@@ -524,9 +525,9 @@ function mergedServers(configured) {
   }
   return out;
 }
-function mergedWatch(configured) {
+function mergedWatch(configured, defaults) {
   const out = {};
-  for (const [key, scripts] of Object.entries(toolDefaults().watch))
+  for (const [key, scripts] of Object.entries(defaults.watch))
     out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
@@ -611,14 +612,16 @@ ${stderr}`);
     return found.map((problem) => `${label}: ${withEditableSource(problem)}`);
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
 }
-function writeToolsFileFor(atomaDir) {
+function writeToolsFileFor(root) {
+  const atomaDir = join3(root, ".github", "atoma");
+  const runtimeTools = join3(root, ".github", "atoma-runtime", "tools");
   const config = Bun.YAML.parse(readFileSync2(join3(atomaDir, "config.yaml"), "utf8"));
   const collisions = reservedServerNames(config.tools);
   if (collisions.length > 0) {
     throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} \u2014 reserved by the core`);
   }
   const out = join3(mkdtempSync(join3(tmpdir(), "atoma-validate-")), "tools.yaml");
-  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join3(atomaDir, "tools")), null, 2));
+  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, runtimeTools, join3(runtimeTools, "defaults.yaml")), null, 2));
   return out;
 }
 function agentNames(agentDir) {
@@ -659,7 +662,7 @@ function collect(root, atoma) {
   if (names.length > 0) {
     let toolsFile;
     try {
-      toolsFile = writeToolsFileFor(atomaDir);
+      toolsFile = writeToolsFileFor(root);
     } catch (error) {
       problems.push(`could not write the tools file from config.yaml: ${error.message}`);
       return problems;

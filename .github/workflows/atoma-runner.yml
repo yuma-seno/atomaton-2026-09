@@ -605,7 +605,7 @@ jobs:
           #
           # `--hook-base` is the machinery's `tools/` directory, because that is where the
           # hook scripts are. The output goes to the run directory and is thrown away with it.
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/write_tools_file.ts" --config "${ATOMA_MACHINERY_ROOT}/.github/atoma/config.yaml" --defaults "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools/defaults.yaml" --out "${RUNNER_TEMP}/atoma-run/tools.yaml" --hook-base "${ATOMA_MACHINERY_ROOT}/.github/atoma-runtime/tools"
           TOOLS_ARG="--tools-file ${RUNNER_TEMP}/atoma-run/tools.yaml"
 
           # Settings, not credentials. These two are repository VARIABLES -- which provider
