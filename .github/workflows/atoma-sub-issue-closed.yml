@@ -44,7 +44,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.event.repository.name }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/check_sub_issue_closure.ts"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/check_sub_issue_closure.ts"
   aggregate:
     runs-on: ubuntu-latest
     if: needs.check.outputs.is_sub_issue == 'true' && needs.check.outputs.closed_via_pr != 'true'
@@ -65,7 +65,7 @@ jobs:
           PARENT: ${{ needs.check.outputs.parent_number }}
           CLOSED_NUM: ${{ github.event.issue.number }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/dispatch_if_siblings_done.ts" --repo "${OWNER}/${REPO}" --parent "${PARENT}" --closed-num "${CLOSED_NUM}"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/dispatch_if_siblings_done.ts" --repo "${OWNER}/${REPO}" --parent "${PARENT}" --closed-num "${CLOSED_NUM}"
   prune:
     runs-on: ubuntu-latest
     steps:
@@ -80,4 +80,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/scripts/prune_atoma_data.ts"
+          bun run "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma-runtime/scripts/prune_atoma_data.ts"
