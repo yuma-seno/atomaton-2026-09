@@ -88,8 +88,16 @@ jobs:
       # `dist/` is not tracked, and the probe reads it rather than `.github/`:
       # during a pull request those are different trees, and the one worth
       # measuring is what this change would ship.
+      #
+      # `node_modules` is removed again straight after. Building needs it; the
+      # probe below is asking whether a server can resolve its imports with the
+      # work tree EMPTY of them, which is the arrangement a run has. Leaving it
+      # would answer a question nobody asked, in the affirmative, every time.
       - name: Build the deliverable the probe measures
-        run: bun run synth
+        run: |
+          bun install --frozen-lockfile
+          bun run synth
+          rm -rf node_modules
       - name: Measure — do the tool servers start at the layout a run uses
         run: ATOMA_BIN="${RUNNER_TEMP}/atoma-probe" bun run scripts/probe-tool-servers.ts
       # The transport atoma added. Unreachable from a unit test: what is left
