@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.120",
+  "version": "v0.1.121",
   "files": [
     ".github/atoma-release.json",
     ".github/atoma-runtime/scripts/aggregate_sub_issues.ts",

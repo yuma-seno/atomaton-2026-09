@@ -26,12 +26,13 @@ function toolDefaults(path = defaultPath()) {
 }
 
 // src/domain/tools-file.ts
-function toolsFileFrom(tools, hookBase) {
+function toolsFileFrom(tools, hookBase, defaultsPath) {
   const out = {};
-  const watch = mergedWatch(tools?.watch);
+  const defaults = toolDefaults(defaultsPath);
+  const watch = mergedWatch(tools?.watch, defaults);
   if (Object.keys(watch).length > 0)
     out.hooks = absoluteHooks(watch, hookBase);
-  for (const [name, server] of Object.entries(mergedServers(tools?.servers))) {
+  for (const [name, server] of Object.entries(mergedServers(tools?.servers, defaults))) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord(forTheCore.hooks))
       forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
@@ -39,9 +40,9 @@ function toolsFileFrom(tools, hookBase) {
   }
   return out;
 }
-function mergedServers(configured) {
+function mergedServers(configured, defaults) {
   const out = {};
-  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+  for (const [name, server] of Object.entries(defaults.servers)) {
     const { description: _ours, ...rest } = server;
     out[name] = { ...rest };
   }
@@ -50,9 +51,9 @@ function mergedServers(configured) {
   }
   return out;
 }
-function mergedWatch(configured) {
+function mergedWatch(configured, defaults) {
   const out = {};
-  for (const [key, scripts] of Object.entries(toolDefaults().watch))
+  for (const [key, scripts] of Object.entries(defaults.watch))
     out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
@@ -115,10 +116,15 @@ var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
-    options: { config: { type: "string" }, out: { type: "string" }, "hook-base": { type: "string" } }
+    options: {
+      config: { type: "string" },
+      out: { type: "string" },
+      "hook-base": { type: "string" },
+      defaults: { type: "string" }
+    }
   });
-  if (!values.config || !values.out || !values["hook-base"]) {
-    console.error("usage: write_tools_file.ts --config config.yaml --out tools.yaml --hook-base DIR");
+  if (!values.config || !values.out || !values["hook-base"] || !values.defaults) {
+    console.error("usage: write_tools_file.ts --config config.yaml --defaults defaults.yaml --out tools.yaml --hook-base DIR");
     process.exit(2);
   }
   let tools;
@@ -134,7 +140,7 @@ function main() {
     console.error(`::error::${values.config}: \`tools.servers\` may not be named ${collisions.join(", ")} \u2014 ` + "`hooks` is the core's reserved key for the hooks that apply to every server, so a server " + "by that name would silently become one.");
     process.exit(1);
   }
-  const file = toolsFileFrom(tools, values["hook-base"]);
+  const file = toolsFileFrom(tools, values["hook-base"], values.defaults);
   mkdirSync(dirname2(values.out), { recursive: true });
   writeFileSync(values.out, `# Generated from ${values.config} for this run. Not a file to edit or keep.
 ` + Bun.YAML.stringify(file, null, 2).replace(/[ \t]+$/gm, ""));
