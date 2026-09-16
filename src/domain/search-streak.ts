@@ -43,16 +43,35 @@
  * gets the same refusal again — which the core's own `MAX_IDENTICAL_TOOL_FAILURES`
  * already stops. No new stopping rule anywhere.
  *
- * # What it cannot see
+ * # What clears it, and the run this cost before it did
  *
- * Reads that go through the `filesystem` server, because this is a hook on `shell`.
- * Measured, those runs opened 0, 11 and 17 files that way against 124-188 searches, so
- * the over-count is small — and the threshold has the p99 doubled underneath it.
+ * A read through the `filesystem` server clears the streak, the same as `sed -n` does.
+ * It did not always, and that is worth writing down because the reasoning that left it
+ * out was careful and wrong. It said: this is a hook on `shell`, those runs opened 0,
+ * 11 and 17 files that way against 124-188 searches, so the over-count is small — and
+ * "a miss in either direction only makes the guard fire later or slightly sooner; it
+ * cannot break a run."
  *
- * A miss in either direction only makes the guard fire later or slightly sooner; it
- * cannot break a run. That is why matching text is acceptable here and was not
- * acceptable for tracking which file a shell command wrote to, where a miss would have
- * refused a legitimate re-read.
+ * It broke a run: issue #706, an engineer, aborted at iteration 166. The size of the
+ * over-count was never the mechanism. This was:
+ *
+ *   1. the streak reaches the limit, and the search is refused
+ *   2. the refusal says to open a file — **naming `filesystem__read_text_file`**
+ *   3. the agent does exactly that, and the streak does not move
+ *   4. the next search is refused identically, because a refusal is deterministic
+ *   5. `MAX_IDENTICAL_TOOL_FAILURES` stops the run
+ *
+ * The streak went 15, 16, 17 ... 27 with `filesystem__read_text_file` and
+ * `read_multiple_files` in between. The guard had told the agent to do the one thing
+ * that could not satisfy it.
+ *
+ * The note above about `MAX_IDENTICAL_TOOL_FAILURES` was written for an agent that
+ * **ignores** the refusal, and for that agent it is right. What it missed is that an
+ * agent which obeys reaches the same end. A guard has to be satisfiable by the act it
+ * asks for; if it is not, it is not a guard, it is a countdown.
+ *
+ * So the streak is cleared by the tool that read, whichever server it came from —
+ * `toolOpens` below — and a hook on the filesystem servers reports it.
  */
 
 /**
@@ -98,6 +117,25 @@ export function classifyShellAct(command: string): ShellAct {
   if (SEARCHES.test(name)) return "search";
   if (OPENS.test(name)) return "open";
   return "other";
+}
+
+/**
+ * Whether this tool, named as the agent calls it, returned the content of a file.
+ *
+ * The prefix is the server, so this is deliberately not anchored to `filesystem`: a
+ * read is a read whichever server performed it, and the failure this repairs came from
+ * a rule that knew about one server's reads and not another's.
+ *
+ * Listing is not opening. `list_directory` and `directory_tree` answer where things
+ * are, which is what a search answers, and clearing the streak on them would let a run
+ * enumerate for ever without reading anything — the shape this whole module exists to
+ * catch.
+ */
+const TOOLS_THAT_OPEN = /(^|__)(read_text_file|read_media_file|read_multiple_files|read_file)$/;
+
+/** Whether a completed tool call counts as having opened something. */
+export function toolOpens(tool: string): boolean {
+  return TOOLS_THAT_OPEN.test(tool.trim());
 }
 
 /**

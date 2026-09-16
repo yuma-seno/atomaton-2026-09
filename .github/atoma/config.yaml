@@ -104,6 +104,8 @@ tools:
       hooks:
         tool_denylist:
           - "filesystem__directory_tree"
+        # Clears the search streak, which shell_guard can only see shell opens for.
+        after_tool: ./scripts/hooks/note_file_opened.ts
 
     filesystem_readonly:
       command: mcp-server-filesystem
@@ -116,6 +118,7 @@ tools:
           - "filesystem_readonly__read_media_file"
           - "filesystem_readonly__list_directory"
           - "filesystem_readonly__get_file_info"
+        after_tool: ./scripts/hooks/note_file_opened.ts
 
     shell:
       command: bun
