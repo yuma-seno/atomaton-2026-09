@@ -2,9 +2,9 @@
 // @bun
 
 // src/scripts/validate_deliverable.ts
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync as readFileSync2, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join as join2 } from "path";
+import { join as join3 } from "path";
 import { parseArgs } from "util";
 
 // src/domain/control-commands.ts
@@ -376,7 +376,8 @@ var CONFIG_SCHEMA = {
       children: {
         secrets: null,
         watch: { anyName: null },
-        servers: { anyName: { anyName: null } }
+        servers: { anyName: { anyName: null } },
+        packages: { children: { npm: null, bun: null, pip: null } }
       }
     }
   }
@@ -480,117 +481,23 @@ function withEditableSource(problem) {
 }
 
 // src/domain/tools-file.ts
-import { isAbsolute, join } from "path";
+import { isAbsolute, join as join2 } from "path";
 
 // src/domain/shipped-servers.ts
-var SHIPPED_SERVERS = {
-  filesystem: {
-    command: "mcp-server-filesystem",
-    args: [
-      "."
-    ],
-    env: {},
-    hooks: {
-      tool_denylist: [
-        "filesystem__directory_tree"
-      ],
-      after_tool: "./scripts/hooks/note_file_opened.ts"
-    }
-  },
-  filesystem_readonly: {
-    command: "mcp-server-filesystem",
-    args: [
-      "."
-    ],
-    env: {},
-    hooks: {
-      tool_allowlist: [
-        "filesystem_readonly__read_file",
-        "filesystem_readonly__read_multiple_files",
-        "filesystem_readonly__read_media_file",
-        "filesystem_readonly__list_directory",
-        "filesystem_readonly__get_file_info"
-      ],
-      after_tool: "./scripts/hooks/note_file_opened.ts"
-    }
-  },
-  shell: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/shell.ts"
-    ],
-    env: {},
-    request_timeout_secs: 3600,
-    hooks: {
-      before_tool: "./scripts/hooks/shell_guard.ts"
-    }
-  },
-  github: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/github.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {}
-  },
-  web: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/web.ts"
-    ],
-    env: {},
-    hooks: {}
-  },
-  search: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/search.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    request_timeout_secs: 300,
-    hooks: {},
-    settings: {
-      reranker_model: "onnx-community/bge-reranker-v2-m3-ONNX"
-    }
-  },
-  atoma: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {}
-  },
-  atoma_env: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {
-      tool_allowlist: [
-        "atoma_env__reload_environment"
-      ]
-    }
-  }
-};
-var SHIPPED_WATCH = {
-  after_tool: ["./scripts/hooks/workspace_guard.ts"]
-};
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+function defaultPath() {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "atoma-runtime", "tools", "defaults.yaml");
+}
+var cached;
+function toolDefaults(path = defaultPath()) {
+  if (cached)
+    return cached;
+  const parsed = Bun.YAML.parse(readFileSync(path, "utf8"));
+  cached = { watch: parsed.watch ?? {}, servers: parsed.servers ?? {} };
+  return cached;
+}
 
 // src/domain/tools-file.ts
 function toolsFileFrom(tools, hookBase) {
@@ -608,8 +515,10 @@ function toolsFileFrom(tools, hookBase) {
 }
 function mergedServers(configured) {
   const out = {};
-  for (const [name, server] of Object.entries(SHIPPED_SERVERS))
-    out[name] = { ...server };
+  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+    const { description: _ours, ...rest } = server;
+    out[name] = { ...rest };
+  }
   for (const [name, server] of Object.entries(configured ?? {})) {
     out[name] = { ...out[name] ?? {}, ...server };
   }
@@ -617,7 +526,7 @@ function mergedServers(configured) {
 }
 function mergedWatch(configured) {
   const out = {};
-  for (const [key, scripts] of Object.entries(SHIPPED_WATCH))
+  for (const [key, scripts] of Object.entries(toolDefaults().watch))
     out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
@@ -646,7 +555,7 @@ function absolutePath(script, base) {
     return script;
   if (isAbsolute(script))
     return script;
-  return join(base, script).split("\\").join("/");
+  return join2(base, script).split("\\").join("/");
 }
 function reservedServerNames(tools) {
   return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
@@ -654,10 +563,10 @@ function reservedServerNames(tools) {
 
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath as fileURLToPath2 } from "url";
 var SCRIPTS_RUNTIME_ROOT = ".github/scripts";
 function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
+  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath2(importMetaUrl))}` };
 }
 
 // src/scripts/validate_deliverable.ts
@@ -688,13 +597,13 @@ ${stderr}`);
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
 }
 function writeToolsFileFor(atomaDir) {
-  const config = Bun.YAML.parse(readFileSync(join2(atomaDir, "config.yaml"), "utf8"));
+  const config = Bun.YAML.parse(readFileSync2(join3(atomaDir, "config.yaml"), "utf8"));
   const collisions = reservedServerNames(config.tools);
   if (collisions.length > 0) {
     throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} \u2014 reserved by the core`);
   }
-  const out = join2(mkdtempSync(join2(tmpdir(), "atoma-validate-")), "tools.yaml");
-  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join2(atomaDir, "tools")), null, 2));
+  const out = join3(mkdtempSync(join3(tmpdir(), "atoma-validate-")), "tools.yaml");
+  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join3(atomaDir, "tools")), null, 2));
   return out;
 }
 function agentNames(agentDir) {
@@ -710,9 +619,9 @@ function workflowFiles(workflowDir) {
 function collect(root, atoma) {
   if (!existsSync(root))
     throw new CannotCheck(`--root ${root} does not exist`);
-  const atomaDir = join2(root, ".github", "atoma");
-  const agentDir = join2(atomaDir, "agent-definitions");
-  const configFile = join2(atomaDir, "config.yaml");
+  const atomaDir = join3(root, ".github", "atoma");
+  const agentDir = join3(atomaDir, "agent-definitions");
+  const configFile = join3(atomaDir, "config.yaml");
   const names = agentNames(agentDir);
   const problems = [];
   if (!existsSync(configFile)) {
@@ -720,7 +629,7 @@ function collect(root, atoma) {
   } else {
     let config;
     try {
-      config = Bun.YAML.parse(readFileSync(configFile, "utf8"));
+      config = Bun.YAML.parse(readFileSync2(configFile, "utf8"));
     } catch (error) {
       problems.push(`${configFile} is not valid YAML: ${error.message}`);
     }
@@ -728,7 +637,7 @@ function collect(root, atoma) {
       problems.push(...configProblems({
         config,
         agentNames: names,
-        workflowFiles: workflowFiles(join2(root, ".github", "workflows"))
+        workflowFiles: workflowFiles(join3(root, ".github", "workflows"))
       }));
     }
   }
@@ -741,7 +650,7 @@ function collect(root, atoma) {
       return problems;
     }
     for (const name of names) {
-      problems.push(...validateAgentDefinition(atoma, join2(agentDir, `${name}.md`), toolsFile, `${name}.md`));
+      problems.push(...validateAgentDefinition(atoma, join3(agentDir, `${name}.md`), toolsFile, `${name}.md`));
     }
   }
   return problems;

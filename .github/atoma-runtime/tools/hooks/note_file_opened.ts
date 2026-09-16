@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/atoma/tools/scripts/hooks/note_file_opened.ts
+// src/atoma-runtime/tools/hooks/note_file_opened.ts
 import { writeFileSync } from "fs";
 
 // src/domain/search-streak.ts
@@ -10,7 +10,7 @@ function toolOpens(tool) {
   return TOOLS_THAT_OPEN.test(tool.trim());
 }
 
-// src/atoma/tools/scripts/lib/search-streak-file.ts
+// src/atoma-runtime/tools/lib/search-streak-file.ts
 function streakFile() {
   const opsLog = process.env.ATOMA_OPS_LOG;
   if (!opsLog)
@@ -19,7 +19,7 @@ function streakFile() {
   return dir === opsLog ? undefined : `${dir}/search-streak`;
 }
 
-// src/atoma/tools/scripts/hooks/note_file_opened.ts
+// src/atoma-runtime/tools/hooks/note_file_opened.ts
 async function main() {
   let tool = "";
   try {

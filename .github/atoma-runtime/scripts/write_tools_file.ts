@@ -2,122 +2,28 @@
 // @bun
 
 // src/scripts/write_tools_file.ts
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname } from "path";
+import { mkdirSync, readFileSync as readFileSync2, writeFileSync } from "fs";
+import { dirname as dirname2 } from "path";
 import { parseArgs } from "util";
 
 // src/domain/tools-file.ts
-import { isAbsolute, join } from "path";
+import { isAbsolute, join as join2 } from "path";
 
 // src/domain/shipped-servers.ts
-var SHIPPED_SERVERS = {
-  filesystem: {
-    command: "mcp-server-filesystem",
-    args: [
-      "."
-    ],
-    env: {},
-    hooks: {
-      tool_denylist: [
-        "filesystem__directory_tree"
-      ],
-      after_tool: "./scripts/hooks/note_file_opened.ts"
-    }
-  },
-  filesystem_readonly: {
-    command: "mcp-server-filesystem",
-    args: [
-      "."
-    ],
-    env: {},
-    hooks: {
-      tool_allowlist: [
-        "filesystem_readonly__read_file",
-        "filesystem_readonly__read_multiple_files",
-        "filesystem_readonly__read_media_file",
-        "filesystem_readonly__list_directory",
-        "filesystem_readonly__get_file_info"
-      ],
-      after_tool: "./scripts/hooks/note_file_opened.ts"
-    }
-  },
-  shell: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/shell.ts"
-    ],
-    env: {},
-    request_timeout_secs: 3600,
-    hooks: {
-      before_tool: "./scripts/hooks/shell_guard.ts"
-    }
-  },
-  github: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/github.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {}
-  },
-  web: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/web.ts"
-    ],
-    env: {},
-    hooks: {}
-  },
-  search: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/search.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    request_timeout_secs: 300,
-    hooks: {},
-    settings: {
-      reranker_model: "onnx-community/bge-reranker-v2-m3-ONNX"
-    }
-  },
-  atoma: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {}
-  },
-  atoma_env: {
-    command: "bun",
-    args: [
-      "run",
-      "${ATOMA_MACHINERY_ROOT:-.}/.github/atoma/tools/scripts/mcp/atoma.ts"
-    ],
-    env: {
-      GH_TOKEN: "${GH_TOKEN}"
-    },
-    hooks: {
-      tool_allowlist: [
-        "atoma_env__reload_environment"
-      ]
-    }
-  }
-};
-var SHIPPED_WATCH = {
-  after_tool: ["./scripts/hooks/workspace_guard.ts"]
-};
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+function defaultPath() {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "atoma-runtime", "tools", "defaults.yaml");
+}
+var cached;
+function toolDefaults(path = defaultPath()) {
+  if (cached)
+    return cached;
+  const parsed = Bun.YAML.parse(readFileSync(path, "utf8"));
+  cached = { watch: parsed.watch ?? {}, servers: parsed.servers ?? {} };
+  return cached;
+}
 
 // src/domain/tools-file.ts
 function toolsFileFrom(tools, hookBase) {
@@ -135,8 +41,10 @@ function toolsFileFrom(tools, hookBase) {
 }
 function mergedServers(configured) {
   const out = {};
-  for (const [name, server] of Object.entries(SHIPPED_SERVERS))
-    out[name] = { ...server };
+  for (const [name, server] of Object.entries(toolDefaults().servers)) {
+    const { description: _ours, ...rest } = server;
+    out[name] = { ...rest };
+  }
   for (const [name, server] of Object.entries(configured ?? {})) {
     out[name] = { ...out[name] ?? {}, ...server };
   }
@@ -144,7 +52,7 @@ function mergedServers(configured) {
 }
 function mergedWatch(configured) {
   const out = {};
-  for (const [key, scripts] of Object.entries(SHIPPED_WATCH))
+  for (const [key, scripts] of Object.entries(toolDefaults().watch))
     out[key] = [...scripts];
   for (const [key, added] of Object.entries(configured ?? {})) {
     const theirs = Array.isArray(added) ? added : [added];
@@ -173,7 +81,7 @@ function absolutePath(script, base) {
     return script;
   if (isAbsolute(script))
     return script;
-  return join(base, script).split("\\").join("/");
+  return join2(base, script).split("\\").join("/");
 }
 function reservedServerNames(tools) {
   return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
@@ -181,10 +89,10 @@ function reservedServerNames(tools) {
 
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath as fileURLToPath2 } from "url";
 var SCRIPTS_RUNTIME_ROOT = ".github/scripts";
 function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath(importMetaUrl))}` };
+  return { runtimePath: `${SCRIPTS_RUNTIME_ROOT}/${basename(fileURLToPath2(importMetaUrl))}` };
 }
 
 // src/scripts/write_tools_file.ts
@@ -200,7 +108,7 @@ function main() {
   }
   let tools;
   try {
-    const config = Bun.YAML.parse(readFileSync(values.config, "utf8"));
+    const config = Bun.YAML.parse(readFileSync2(values.config, "utf8"));
     tools = config.tools;
   } catch (error) {
     console.error(`::error::${values.config}: could not read the tool servers: ${error.message}`);
@@ -212,7 +120,7 @@ function main() {
     process.exit(1);
   }
   const file = toolsFileFrom(tools, values["hook-base"]);
-  mkdirSync(dirname(values.out), { recursive: true });
+  mkdirSync(dirname2(values.out), { recursive: true });
   writeFileSync(values.out, `# Generated from ${values.config} for this run. Not a file to edit or keep.
 ` + Bun.YAML.stringify(file, null, 2).replace(/[ \t]+$/gm, ""));
   console.error(`write_tools_file: ${Object.keys(file).length} entries -> ${values.out}`);

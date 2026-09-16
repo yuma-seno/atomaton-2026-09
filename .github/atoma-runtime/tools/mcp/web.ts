@@ -6600,387 +6600,6 @@ var require_dist = __commonJS(function(exports, module) {
   exports.default = formatsPlugin;
 });
 
-// src/lib/gh.ts
-function run(cmd) {
-  const proc = Bun.spawnSync({
-    cmd,
-    stdout: "pipe",
-    stderr: "pipe"
-  });
-  return {
-    code: proc.exitCode ?? 1,
-    stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "",
-    stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
-  };
-}
-function gh(...args) {
-  return run(["gh", ...args]);
-}
-function dispatchWorkflow(context, workflow, args = [], log = (m) => console.error(m)) {
-  const { code, stdout, stderr } = gh("workflow", "run", workflow, ...args);
-  if (code) {
-    log(`${context}: WARN failed to dispatch ${workflow}: ${stderr || stdout}`);
-    return false;
-  }
-  log(`${context}: dispatched ${workflow}`);
-  return true;
-}
-
-// src/lib/agent-name.ts
-var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
-var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
-function isAgentName(value) {
-  return AGENT_NAME_RE.test(value);
-}
-
-// src/lib/config.ts
-import { readFileSync } from "fs";
-
-// src/domain/merge-readiness.ts
-var CI_WOULD_BE_WASTED = new Set([
-  "not-open",
-  "draft",
-  "conflicting",
-  "behind",
-  "mergeability-unknown",
-  "checks-pending",
-  "checks-failing"
-]);
-var PASSING = new Set(["success", "neutral", "skipped"]);
-
-// src/domain/machinery-layout.ts
-var MACHINERY_ROOT = ".github/atoma";
-var CONFIG_FILE = `${MACHINERY_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${MACHINERY_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
-var TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
-var MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;
-var RULESETS_DIR = `${MACHINERY_ROOT}/rulesets`;
-
-// src/lib/config.ts
-function configPath() {
-  const root = process.env.ATOMA_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
-}
-var cached;
-function loadConfig() {
-  if (!cached) {
-    cached = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
-  }
-  return cached;
-}
-var DEFAULT_LABELS = {
-  sub_issue: "atoma/sub-issue",
-  launched: "atoma/launched",
-  in_progress: "atoma/in-progress"
-};
-function getLabel(key) {
-  return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
-}
-function getReloadLimit() {
-  return loadConfig().environment?.max_reloads;
-}
-
-// src/lib/ops-log.ts
-import { appendFileSync } from "fs";
-var OPS_LOG_PATH = process.env.ATOMA_OPS_LOG ?? "/tmp/atoma_ops.log";
-function logOp(op, payload = {}) {
-  const entry = { ts: new Date().toISOString(), op, ...payload };
-  try {
-    appendFileSync(OPS_LOG_PATH, JSON.stringify(entry) + `
-`);
-  } catch (e) {
-    console.error(`[ops-log] WARN: failed to write op log: ${e}`);
-  }
-}
-function logDispatch(target, agent, extra = {}) {
-  logOp("dispatch", { target, agent, ...extra });
-}
-
-// src/lib/dispatch.ts
-function runnerWorkflow() {
-  return process.env.ATOMA_DISPATCH_WORKFLOW || "atoma-runner.yml";
-}
-function dispatchRunner(d) {
-  const args = [
-    ...d.repo ? ["--repo", d.repo] : [],
-    "--field",
-    `agent=${d.agent}`,
-    "--field",
-    `number=${d.number}`,
-    "--field",
-    `type=${d.type}`,
-    "--field",
-    `notify=${d.notify ?? ""}`,
-    "--field",
-    `reload_count=${d.reloadCount ?? 0}`
-  ];
-  if (!dispatchWorkflow(d.context, runnerWorkflow(), args, d.log))
-    return false;
-  logDispatch(d.type, d.agent, { number: Number(d.number) });
-  return true;
-}
-
-// src/lib/tags.ts
-function makeTag(key, valuePattern, parse, render) {
-  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
-  return {
-    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
-    read: (text) => {
-      const m = re.exec(text);
-      return m ? parse(m[1]) : undefined;
-    },
-    has: (text) => re.test(text)
-  };
-}
-function numericTag(key) {
-  return makeTag(key, "\\d+", Number, String);
-}
-function stringTag(key, valuePattern) {
-  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
-}
-var STOP_TAG = stringTag("stop", "requested");
-var PARENT_TAG = numericTag("parent");
-var PARENT_ISSUE_TAG = numericTag("parent-issue");
-var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
-var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
-var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
-var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
-var CHANGED_TAG = stringTag("changed", "yes|no");
-var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
-var AGGREGATED_TAG = numericTag("aggregated");
-var SUB_RESULT_TAG = numericTag("sub-result");
-var CI_RETRY_TAG = numericTag("ci-retry");
-function readAnyParentTag(text) {
-  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
-}
-
-// src/atoma/tools/scripts/lib/dispatch_sub_agent.ts
-function dispatchSubAgent(issue, agent, notify = "") {
-  if (!Number.isInteger(issue) || issue <= 0) {
-    throw new Error(`issue must be a positive integer, got: ${issue}`);
-  }
-  if (!isAgentName(agent)) {
-    throw new Error(`agent must be a valid lowercase agent name, got: ${agent}`);
-  }
-  gh("issue", "comment", String(issue), "--body", `${LLM_CONTEXT_TAG.write("exclude")}
-Atoma: Agent \`${agent}\` dispatched to work on this sub-task.`);
-  const launchedLabel = getLabel("launched");
-  gh("label", "create", launchedLabel, "--force", "-c", "1f883d", "-d", "Atoma has dispatched an agent for this sub-task");
-  const { code: labelCode } = gh("issue", "edit", String(issue), "--add-label", launchedLabel);
-  if (labelCode !== 0) {
-    console.error(`Warning: failed to add '${launchedLabel}' label to #${issue}`);
-  }
-  const dispatched = dispatchRunner({
-    context: `dispatchSubAgent: dispatching ${agent} on sub-issue #${issue}`,
-    agent,
-    type: "issue",
-    number: issue,
-    notify
-  });
-  if (!dispatched) {
-    throw new Error(`could not dispatch ${agent} on sub-issue #${issue}; see the workflow log for the gh error`);
-  }
-  return { issue, agent };
-}
-
-// src/lib/notify.ts
-function log(message) {
-  console.error(`[atoma-notify] ${message}`);
-}
-var MAX_HOPS = 10;
-function repositoryOwner(repo) {
-  const owner = repo.split("/")[0]?.trim() ?? "";
-  if (!owner)
-    log(`WARN could not read an owner out of ${JSON.stringify(repo)}; nobody will be mentioned`);
-  return owner;
-}
-function fetchIssueLookup(repo, number) {
-  const { code, stderr, stdout } = gh("api", `repos/${repo}/issues/${number}`, "--jq", "{body: .body, login: .user.login, type: .user.type}");
-  if (code !== 0 || !stdout.trim()) {
-    log(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
-    return {};
-  }
-  try {
-    return JSON.parse(stdout);
-  } catch {
-    log(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
-    return {};
-  }
-}
-function resolveNotify(repo, number) {
-  const visited = new Set;
-  let current = number;
-  for (let i = 0;i < MAX_HOPS; i++) {
-    if (visited.has(current))
-      break;
-    visited.add(current);
-    const d = fetchIssueLookup(repo, current);
-    const body = d.body ?? "";
-    const tagged = NOTIFY_TAG.read(body);
-    if (tagged)
-      return tagged;
-    if ((d.type ?? "").toLowerCase() === "user" && d.login) {
-      return d.login;
-    }
-    const parent = readAnyParentTag(body);
-    if (parent === undefined)
-      break;
-    current = parent;
-  }
-  const owner = repositoryOwner(repo);
-  if (owner)
-    log(`no requester found for #${number}; falling back to the repository owner @${owner}`);
-  return owner;
-}
-
-// src/lib/sibling-check.ts
-function countOpenSiblings(opts) {
-  const label = opts.label || getLabel("sub_issue");
-  const launchedLabel = opts.launchedLabel || getLabel("launched");
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `atoma:parent=${opts.parent} in:body`, "--json", "number");
-  if (code !== 0) {
-    throw new Error(`countOpenSiblings: gh issue list failed: ${stderr}`);
-  }
-  const siblings = stdout ? JSON.parse(stdout) : [];
-  const remaining = opts.exclude !== undefined ? siblings.filter((s) => s.number !== opts.exclude) : siblings;
-  return remaining.length;
-}
-
-// src/lib/aggregation.ts
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-function needsAttention(result) {
-  return result.kind === "dispatch-failed" || result.kind === "undetermined";
-}
-function describeGateResult(result, closedNum, parent) {
-  const which = parent === undefined ? "the parent issue" : `#${parent}`;
-  switch (result.kind) {
-    case "not-tracked":
-      return `#${closedNum} is not a tracked sub-issue; nothing to aggregate.`;
-    case "waiting":
-      return `${result.remaining} sibling(s) of ${which} still open. No action needed.`;
-    case "already-aggregated":
-      return `Another caller already aggregated #${closedNum}. Nothing to do -- this is the normal race.`;
-    case "dispatched":
-      return `All sub-tasks of ${which} complete. Orchestrator re-invoked.`;
-    case "dispatch-failed":
-      return `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the orchestrator by hand.`;
-    case "undetermined":
-      return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
-  }
-}
-async function dispatchOrchestratorIfReady(opts) {
-  const excludeNum = opts.exclude ? opts.closedNum : undefined;
-  const count = () => countOpenSiblings({ repo: opts.repo, parent: opts.parent, exclude: excludeNum });
-  let remaining;
-  try {
-    remaining = count();
-    if (opts.retry) {
-      for (let attempt = 1;remaining > 0 && attempt < 4; attempt++) {
-        await sleep(2000 * attempt);
-        remaining = count();
-      }
-    }
-  } catch (error) {
-    const why = `could not count #${opts.parent}'s open sub-issues: ${error.message}`;
-    console.error(why);
-    return { kind: "undetermined", why };
-  }
-  if (remaining > 0) {
-    if (opts.progressMessage) {
-      gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${LLM_CONTEXT_TAG.write("exclude")}
-${SUB_RESULT_TAG.write(opts.closedNum)}
-${opts.progressMessage(remaining)}`);
-    }
-    return { kind: "waiting", remaining };
-  }
-  const { code: commentsCode, stdout: commentsOut } = gh("issue", "view", String(opts.parent), "--repo", opts.repo, "--json", "comments", "--jq", ".comments[].body");
-  if (commentsCode !== 0) {
-    const why = `could not read #${opts.parent}'s comments, so this cannot tell whether the aggregation already ran`;
-    console.error(`${why}; not dispatching`);
-    return { kind: "undetermined", why };
-  }
-  if (commentsOut.includes(AGGREGATED_TAG.write(opts.closedNum))) {
-    return { kind: "already-aggregated" };
-  }
-  if (opts.beforeDispatch)
-    await opts.beforeDispatch();
-  const marker = gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${AGGREGATED_TAG.write(opts.closedNum)}
-Atoma: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
-  if (marker.code !== 0) {
-    const why = `could not write the aggregation marker on #${opts.parent}: ${marker.stderr.trim() || marker.stdout.trim()}`;
-    console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
-    return { kind: "undetermined", why };
-  }
-  const dispatched = dispatchRunner({
-    context: `dispatchOrchestratorIfReady: re-invoking orchestrator on #${opts.parent}`,
-    agent: "orchestrator",
-    type: "issue",
-    number: opts.parent,
-    notify: resolveNotify(opts.repo, opts.parent),
-    repo: opts.repo
-  });
-  return dispatched ? { kind: "dispatched" } : { kind: "dispatch-failed" };
-}
-async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
-  const { code, stdout } = gh("issue", "view", String(subIssueNum), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code !== 0) {
-    const why = `could not read issue #${subIssueNum}; cannot tell whether it belongs to a parent`;
-    console.error(why);
-    return { kind: "undetermined", why };
-  }
-  const parent = PARENT_TAG.read(stdout);
-  if (parent === undefined) {
-    console.error(`issue #${subIssueNum} has no atoma:parent tag, nothing to do`);
-    return { kind: "not-tracked" };
-  }
-  return dispatchOrchestratorIfReady({ repo, parent, closedNum: subIssueNum, retry: true });
-}
-
-// src/atoma/tools/scripts/lib/conclude_issue.ts
-function mustSucceed(result, what) {
-  if (result.code === 0)
-    return;
-  throw new Error(`Could not ${what}: ${result.stderr.trim() || result.stdout.trim() || `gh exited ${result.code}`}`);
-}
-async function concludeIssue(issue, reason, summary) {
-  const repo = process.env.GITHUB_REPOSITORY ?? "";
-  const { code, stdout } = gh("issue", "view", String(issue), "--repo", repo, "--json", "author");
-  if (code !== 0) {
-    throw new Error(`Could not read the author of issue #${issue}, so this cannot tell whether closing it is yours to do.`);
-  }
-  const authorInfo = stdout ? JSON.parse(stdout) : {};
-  const isBot = authorInfo.author?.is_bot ?? false;
-  let body = `Atoma: orchestrator considers work on this issue complete.
-
-**Reason:** ${reason}`;
-  if (summary) {
-    body += `
-
-${summary}`;
-  }
-  if (!isBot) {
-    const notify = resolveNotify(repo, issue);
-    const mention = notify ? `@${notify} ` : "";
-    body = `${mention}${body}
-
-This issue was opened directly by a human, so it will not be closed automatically. Please review and close it yourself if you agree, or comment with further instructions.`;
-    mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);
-    console.error(`escalated: issue=#${issue} (human-authored, not closed)`);
-    return { outcome: "escalated" };
-  }
-  mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);
-  mustSucceed(gh("issue", "close", String(issue), "--repo", repo), `close issue #${issue}`);
-  console.error(`closed: issue=#${issue} (bot-authored)`);
-  const aggregation = await dispatchOrchestratorIfSubIssueReady(repo, issue);
-  console.error(describeGateResult(aggregation, issue));
-  return { outcome: "closed", aggregation };
-}
-
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util) {
@@ -10791,16 +10410,6 @@ var optionalType = ZodOptional.create;
 var nullableType = ZodNullable.create;
 var preprocessType = ZodEffects.createWithPreprocess;
 var pipelineType = ZodPipeline.create;
-var coerce = {
-  string: (arg) => ZodString.create({ ...arg, coerce: true }),
-  number: (arg) => ZodNumber.create({ ...arg, coerce: true }),
-  boolean: (arg) => ZodBoolean.create({
-    ...arg,
-    coerce: true
-  }),
-  bigint: (arg) => ZodBigInt.create({ ...arg, coerce: true }),
-  date: (arg) => ZodDate.create({ ...arg, coerce: true })
-};
 // node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
 var defaultOptions = {
@@ -12111,7 +11720,7 @@ function jsonStringifyReplacer(_, value) {
     return value.toString();
   return value;
 }
-function cached2(getter) {
+function cached(getter) {
   const set = false;
   return {
     get value() {
@@ -12174,7 +11783,7 @@ var captureStackTrace = Error.captureStackTrace ? Error.captureStackTrace : (...
 function isObject(data) {
   return typeof data === "object" && data !== null && !Array.isArray(data);
 }
-var allowsEval = cached2(() => {
+var allowsEval = cached(() => {
   if (typeof navigator !== "undefined" && navigator?.userAgent?.includes("Cloudflare")) {
     return false;
   }
@@ -13554,7 +13163,7 @@ function handleOptionalObjectResult(result, final, key, input) {
 }
 var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   $ZodType.init(inst, def);
-  const _normalized = cached2(() => {
+  const _normalized = cached(() => {
     const keys = Object.keys(def.shape);
     for (const k of keys) {
       if (!(def.shape[k] instanceof $ZodType)) {
@@ -13789,7 +13398,7 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
     }
     return propValues;
   });
-  const disc = cached2(() => {
+  const disc = cached(() => {
     const opts = def.options;
     const map = new Map;
     for (const o of opts) {
@@ -17905,9 +17514,6 @@ class StdioServerTransport {
 }
 
 // src/lib/mcp-tool.ts
-function positiveInt(description) {
-  return coerce.number().int().positive().describe(description);
-}
 var ALIASES = {
   number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
   branch: ["name"]
@@ -18007,7 +17613,92 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/atoma/tools/scripts/lib/harden.ts
+// src/domain/html-to-markdown.ts
+var ENTITIES = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  mdash: "\u2014",
+  ndash: "\u2013",
+  hellip: "\u2026"
+};
+var DROPPED = "script|style|noscript|svg|head|select|form|nav|footer|template|iframe|button";
+function htmlToMarkdown(html) {
+  let s = html;
+  s = s.replace(/<!--[\s\S]*?-->/g, "");
+  s = s.replace(new RegExp(`<(${DROPPED})\\b[\\s\\S]*?<\\/\\1>`, "gi"), "");
+  s = s.replace(/<br\s*\/?>/gi, `
+`);
+  s = s.replace(/<hr\s*\/?>/gi, `
+---
+`);
+  s = s.replace(/<h([1-6])[^>]*>/gi, (_, level) => `
+
+${"#".repeat(Number(level))} `);
+  s = s.replace(/<\/h[1-6]>/gi, `
+
+`);
+  s = s.replace(/<li[^>]*>/gi, `
+- `);
+  s = s.replace(/<\/(p|div|tr|li|table|section|article|blockquote)>/gi, `
+
+`);
+  s = s.replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, text) => {
+    const label = text.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    return label ? `[${label}](${href})` : "";
+  });
+  s = s.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_, code) => `
+
+\`\`\`
+${code.replace(/<[^>]+>/g, "")}
+\`\`\`
+
+`);
+  s = s.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (_, code) => `\`${code.replace(/<[^>]+>/g, "")}\``);
+  s = s.replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, "**$2**");
+  s = s.replace(/<(em|i)\b[^>]*>([\s\S]*?)<\/\1>/gi, "*$2*");
+  s = s.replace(/<img\b[^>]*alt=["']([^"']+)["'][^>]*>/gi, "[image: $1]");
+  s = s.replace(/<[^>]+>/g, "");
+  s = s.replace(/&(#x?[0-9a-f]+|\w+);/gi, (match, entity) => {
+    const key = entity.toLowerCase();
+    if (ENTITIES[key])
+      return ENTITIES[key];
+    if (key.startsWith("#x"))
+      return String.fromCodePoint(parseInt(key.slice(2), 16));
+    if (key.startsWith("#"))
+      return String.fromCodePoint(Number(key.slice(1)));
+    return match;
+  });
+  return s.split(`
+`).map((line) => line.replace(/[ \t]+/g, " ").trimEnd()).join(`
+`).replace(/\n{3,}/g, `
+
+`).trim();
+}
+
+// src/lib/issue-images.ts
+var MAX_IMAGE_BYTES = 4000000;
+function sniffMimeType(bytes) {
+  const starts = (...sig) => sig.every((b, i) => bytes[i] === b);
+  if (starts(137, 80, 78, 71))
+    return "image/png";
+  if (starts(255, 216, 255))
+    return "image/jpeg";
+  if (starts(71, 73, 70, 56))
+    return "image/gif";
+  if (starts(82, 73, 70, 70) && [87, 69, 66, 80].every((b, i) => bytes[8 + i] === b)) {
+    return "image/webp";
+  }
+  return "";
+}
+
+// src/domain/tool-output.ts
+var TOOL_OUTPUT_BUDGET = 50000;
+
+// src/atoma-runtime/tools/lib/harden.ts
 import { statSync } from "fs";
 
 // src/domain/tool-hardening.ts
@@ -18031,7 +17722,7 @@ function classifyPathEntries(path, inspect) {
   return { writable, unreadable };
 }
 
-// src/atoma/tools/scripts/lib/harden.ts
+// src/atoma-runtime/tools/lib/harden.ts
 var PR_SET_DUMPABLE = 4;
 var PR_GET_DUMPABLE = 3;
 function inspect(directory) {
@@ -18075,170 +17766,84 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/domain/environment-reload.ts
-var DEFAULT_RELOAD_LIMIT = 3;
-function resolveReloadLimit(configured) {
-  const value = typeof configured === "number" ? configured : Number(configured);
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_RELOAD_LIMIT;
-}
-function reloadsSoFar(raw) {
-  const value = typeof raw === "number" ? raw : Number(String(raw ?? "").trim());
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
-}
-function reloadRefusal(soFar, limit) {
-  if (soFar < limit)
-    return;
-  return `This run has already rebuilt its environment ${soFar} time${soFar === 1 ? "" : "s"}, which is the limit ` + `(${limit}). Reloading again is refused: each one starts a new run with a fresh time budget, so an ` + `unbounded chain of them is an unbounded chain of runs. ` + `Report what you found instead -- say which dependency or tool is missing and what you were trying to do -- ` + `and a person can decide. If the answer is a system package, it belongs in ` + `\`environment.setup_commands\` in .github/atoma/config.yaml, which needs a human merge either way.`;
-}
-function reloadAccepted(next, limit) {
-  return `Rebuilding the environment and starting a new run (${next} of ${limit}). ` + `The setup commands come from the default branch and run against the current work tree, so a dependency ` + `you added to a manifest will be installed. A system package the default branch does not already install ` + `will NOT appear -- that needs \`environment.setup_commands\` and a person. This session ends now.`;
-}
-
-// src/atoma/tools/scripts/mcp/atoma.ts
-function log2(msg) {
-  console.error(`[atoma-mcp] ${msg}`);
-}
-hardenCredentialHolder(log2);
-var LAUNCH_SUB_AGENT_SCHEMA = objectType({
-  tasks: arrayType(objectType({
-    issue: positiveInt("The sub-issue number."),
-    agent: stringType().min(1).describe("The agent to dispatch (e.g., 'engineer').")
-  })).min(1, "tasks must be a non-empty list of {issue, agent} objects").describe("List of {issue, agent} pairs to dispatch.")
-});
-var REQUEST_CLOSE_ISSUE_SCHEMA = objectType({
-  reason: stringType().min(1).describe("Why this issue's work is considered complete."),
-  summary: stringType().optional().describe("Final summary to include in the posted comment (e.g. an aggregation report).")
-});
-function mcpFail(message) {
-  throw new Error(message);
-}
-function handleLaunchSubAgent(args) {
-  const validTasks = args.tasks;
-  log2(`Dispatching ${validTasks.length} sub-issue(s): ${JSON.stringify(validTasks)}`);
-  const parentIssue = (process.env.ISSUE_NUMBER ?? "").trim();
-  const notify = process.env.ISSUE_NOTIFY ?? "";
-  const dispatched = [];
-  const errors = [];
-  for (const { issue, agent } of validTasks) {
+// src/atoma-runtime/tools/mcp/web.ts
+var MAX_TEXT_CHARS = TOOL_OUTPUT_BUDGET;
+var REQUEST_TIMEOUT_MS = 30000;
+var FETCHABLE_SCHEMES = new Set(["http:", "https:"]);
+var FETCH_SCHEMA = objectType({
+  url: stringType().url().refine((value) => {
     try {
-      dispatchSubAgent(issue, agent, notify);
-      dispatched.push(`#${issue}\u2192${agent}`);
-    } catch (e) {
-      const message = e.message ?? String(e);
-      log2(`dispatchSubAgent failed for #${issue}: ${message}`);
-      errors.push(`#${issue}/${agent}: ${message}`);
+      return FETCHABLE_SCHEMES.has(new URL(value).protocol);
+    } catch {
+      return false;
     }
-  }
-  if (dispatched.length && parentIssue) {
-    const bodyLines = [LLM_CONTEXT_TAG.write("exclude"), "Atoma: Launched sub-agent(s):", ...dispatched.map((d) => `- ${d}`)];
-    gh("issue", "comment", parentIssue, "--body", bodyLines.join(`
-`));
-  }
-  if (errors.length && !dispatched.length) {
-    mcpFail(`All dispatches failed: ${errors.join("; ")}`);
-  }
-  const complete = errors.length === 0;
-  return {
-    text: JSON.stringify({
-      dispatched,
-      failed: errors,
-      complete,
-      note: complete ? "Every sub-agent is running. This session ends here, and resumes when all sub-issues are closed." : "Some sub-agents were NOT dispatched, and nothing will retry them. This session stays open: " + "re-dispatch the failures with atoma__launch_sub_agent, or the parent waits forever for sub-issues " + "nobody is working on."
-    }),
-    meta: complete ? { session_ends: true } : {}
-  };
+  }, { message: "must be an http:// or https:// URL; this tool fetches the web, not the local filesystem" }).describe("Absolute http:// or https:// URL to fetch. Other schemes, including file://, are refused."),
+  raw: booleanType().optional().default(false).describe("Return the response body unchanged instead of converting HTML to Markdown."),
+  method: enumType(["GET", "POST"]).optional().default("GET").describe("HTTP method. Use POST only when a page requires it."),
+  body: stringType().optional().describe("Request body for POST, e.g. `q=search+terms` for a form endpoint.")
+});
+function log(message) {
+  console.error(`[atoma-web] ${message}`);
 }
-async function handleRequestCloseIssue(args) {
-  const reason = args.reason.trim();
-  const summary = (args.summary ?? "").trim();
-  if (!reason)
-    mcpFail("reason must be a non-empty string");
-  const issueNumberRaw = (process.env.ISSUE_NUMBER ?? "").trim();
-  if (!issueNumberRaw)
-    mcpFail("ISSUE_NUMBER is not set in the environment");
-  const issueNumber = Number(issueNumberRaw);
-  log2(`Concluding issue #${issueNumber}: reason=${JSON.stringify(reason)}`);
-  let result;
+hardenCredentialHolder(log);
+var USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+async function fetchUrl(a) {
+  const started = Date.now();
+  log(`fetch ${a.method} ${a.url}${a.raw ? " (raw)" : ""}`);
+  let response;
   try {
-    result = await concludeIssue(issueNumber, reason, summary);
-  } catch (e) {
-    const message = e.message ?? String(e);
-    log2(`concludeIssue failed for #${issueNumber}: ${message}`);
-    mcpFail(`Failed to conclude issue #${issueNumber}: ${message}`);
+    response = await fetch(a.url, {
+      method: a.method,
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/json,image/*;q=0.8,*/*;q=0.5",
+        ...a.method === "POST" ? { "Content-Type": "application/x-www-form-urlencoded" } : {}
+      },
+      ...a.body !== undefined ? { body: a.body } : {},
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+    });
+  } catch (error) {
+    throw new Error(`Could not reach ${a.url}: ${error.message}`);
   }
-  if (result.outcome !== "closed") {
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText} from ${a.url}; nothing was read.`);
+  }
+  const declared = (response.headers.get("content-type") ?? "").toLowerCase();
+  if (declared.startsWith("image/")) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const mimeType = sniffMimeType(bytes);
+    if (!mimeType)
+      throw new Error(`The response from ${a.url} is not an image format that can be shown.`);
+    const data = Buffer.from(bytes).toString("base64");
+    if (data.length > MAX_IMAGE_BYTES)
+      throw new Error(`The image at ${a.url} is too large to include.`);
+    log(`fetch: image ${mimeType}, ${bytes.length}B, ${Date.now() - started}ms`);
     return {
-      text: `Issue #${issueNumber} was opened directly by a human. It has NOT been closed automatically -- a comment mentioning them was posted with your reason/summary, asking them to review and close it themselves.`,
-      meta: { session_ends: true }
+      text: `Image from ${a.url} (${mimeType}).`,
+      images: [{ type: "image", data, mimeType }]
     };
   }
-  const aggregation = result.aggregation;
-  const stalled = aggregation !== undefined && needsAttention(aggregation);
+  const body = await response.text();
+  const isHtml = declared.includes("html") || /^\s*<(!doctype|html)\b/i.test(body);
+  const text = a.raw || !isHtml ? body : htmlToMarkdown(body);
+  const clipped = text.length > MAX_TEXT_CHARS;
+  log(`fetch: ${response.status}, ${body.length}B in -> ${text.length} chars out` + `${clipped ? " (clipped)" : ""}, ${Date.now() - started}ms`);
   return {
-    text: [
-      `Issue #${issueNumber} was created by an Atoma agent (a sub-issue) and has been closed automatically.`,
-      aggregation ? describeGateResult(aggregation, issueNumber) : "",
-      stalled ? "This session is staying open because you are the last thing able to act on that: report it on the parent issue so a person sees it." : ""
-    ].filter(Boolean).join(" "),
-    meta: stalled ? {} : { session_ends: true }
+    text: text.slice(0, MAX_TEXT_CHARS) + (clipped ? `
+
+[truncated at ${MAX_TEXT_CHARS} characters]` : "")
   };
 }
-var RELOAD_ENVIRONMENT_SCHEMA = objectType({
-  reason: stringType().min(1).describe("What you need the environment to have that it does not, in one sentence. Recorded on the issue so a " + "person reading it later can see why the run restarted.")
-});
-function handleReloadEnvironment(args) {
-  const number = (process.env.ISSUE_NUMBER ?? "").trim();
-  const agent = (process.env.AGENT ?? "").trim();
-  if (!number || !agent) {
-    mcpFail("Cannot reload: this run does not know its own issue number or agent name.");
-  }
-  const limit = resolveReloadLimit(getReloadLimit());
-  const soFar = reloadsSoFar(process.env.ATOMA_RELOAD_COUNT);
-  const refusal = reloadRefusal(soFar, limit);
-  if (refusal) {
-    log2(`reload refused: ${soFar}/${limit}`);
-    mcpFail(refusal);
-  }
-  const next = soFar + 1;
-  gh("issue", "comment", number, "--body", `${LLM_CONTEXT_TAG.write("exclude")}
-Atoma: rebuilding the environment and restarting \`${agent}\` ` + `(reload ${next} of ${limit}). Reason: ${args.reason}`);
-  const dispatched = dispatchRunner({
-    context: `reload_environment: restarting ${agent} on #${number} after a rebuild`,
-    agent,
-    type: (process.env.ATOMA_RUN_TYPE ?? "").trim() === "pr" ? "pr" : "issue",
-    number,
-    notify: (process.env.ISSUE_NOTIFY ?? "").trim(),
-    reloadCount: next,
-    log: log2
-  });
-  if (!dispatched) {
-    mcpFail("Could not dispatch the new run; the environment was not rebuilt. See the workflow log. " + "Report what you found rather than retrying.");
-  }
-  return { text: reloadAccepted(next, limit), meta: { session_ends: true } };
-}
-var { tools: TOOLS, dispatch } = buildMcpTools([
+var { tools, dispatch } = buildMcpTools([
   defineMcpTool({
-    name: "launch_sub_agent",
-    description: "Dispatch Atoma agents onto sub-issues and immediately end the orchestrator session. " + "Call this ONCE after creating all sub-issues via GitHub MCP. " + "Each sub-issue can be assigned a different agent. " + "The orchestrator session ends immediately after this call returns. " + "The orchestrator will be automatically re-invoked when ALL sub-issues are closed.",
-    schema: LAUNCH_SUB_AGENT_SCHEMA,
-    handler: handleLaunchSubAgent
-  }),
-  defineMcpTool({
-    name: "request_close_issue",
-    description: "Conclude work on YOUR CURRENT issue and end your session. This is the ONLY " + "correct way for the orchestrator to finish an issue -- do NOT call " + "github__close_issue yourself, and do NOT just stop responding without calling " + "this. The tool decides what happens next based on who opened THIS issue: " + "if it was created by another Atoma agent (a sub-issue), it is closed " + "automatically right now and phase-gating/aggregation is triggered for its " + "parent. If it was opened directly by a human (a root issue), it is NOT " + "closed -- instead a comment mentioning that human is posted with your reason " + "and summary, asking them to review and close it themselves.",
-    schema: REQUEST_CLOSE_ISSUE_SCHEMA,
-    handler: handleRequestCloseIssue
-  }),
-  defineMcpTool({
-    name: "reload_environment",
-    description: "Rebuild this project's environment and restart your run. Use it when something you need is missing " + "and you cannot install it yourself: a system package (you have no sudo), a globally installed CLI, or " + "a work tree you broke. YOUR SESSION ENDS IMMEDIATELY and a new run starts, so finish anything you were " + "part-way through first -- commit what is worth keeping and leave notes in /tmp/atoma-workspace, which " + "survives into the next run. " + "What it does: re-runs `environment.setup_commands` as a privileged workflow step, against the CURRENT " + "work tree. So a dependency you added to package.json, Cargo.toml or requirements.txt gets installed by " + "the project's own trusted command -- you do not edit that command, and cannot. " + "What it does NOT do: install a system package the setup does not already ask for. Those commands come " + "from the default branch, so a package you decided you need is not in them yet; add it to " + "`environment.setup_commands` in .github/atoma/config.yaml, say so in your report, and a person merges " + "it. Reloading first will hand you the same environment back and cost a run. " + "There is a limit on how many times one piece of work may do this, because each reload starts a new run " + "and resets the run's time budget. The tool tells you where you stand.",
-    schema: RELOAD_ENVIRONMENT_SCHEMA,
-    handler: handleReloadEnvironment
+    name: "fetch",
+    description: "Fetch a URL and return its content. HTML is converted to Markdown so the result is readable prose rather than markup; pass raw: true to get the body unchanged. A URL that resolves to an image is returned as an image for models that can read one. Supports POST with a form-encoded body for endpoints that require it. An unreachable host or a non-2xx status is an error, never a result: anything returned successfully is content that was actually read.",
+    schema: FETCH_SCHEMA,
+    handler: fetchUrl
   })
 ]);
 async function main() {
-  log2("Starting atoma-mcp-server (stdio transport)");
-  await serveMcpServer({ name: "atoma-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log: log2 });
+  await serveMcpServer({ name: "atoma-web-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main)
   main();

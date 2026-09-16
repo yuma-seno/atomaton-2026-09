@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/atoma/tools/scripts/hooks/workspace_guard.ts
+// src/atoma-runtime/tools/hooks/workspace_guard.ts
 import { readdirSync, statSync } from "fs";
 import { join } from "path";
 
@@ -50,7 +50,7 @@ function overLimitNotice(usage, path) {
 `);
 }
 
-// src/atoma/tools/scripts/hooks/workspace_guard.ts
+// src/atoma-runtime/tools/hooks/workspace_guard.ts
 var WALK_CEILING = MAX_FILES + 1;
 var KEEP_LARGEST = 5;
 function measure(root) {
