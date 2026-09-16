@@ -37,6 +37,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { classifyShellAct, nextStreak, refusalReason } from "../../../../domain/search-streak.ts";
+import { streakFile } from "../lib/search-streak-file.ts";
 
 /**
  * Commands that have a proper route through an MCP tool.
@@ -324,22 +325,7 @@ function checkInvocation(invocation: ShellInvocation): GuardVerdict {
   return ALLOWED;
 }
 
-/**
- * Where the search streak is kept.
- *
- * A file, because this hook is a fresh process per tool call -- there is nowhere else
- * for a count to live. Beside the ops log, which is the run's own directory and is
- * already written by this user.
- *
- * `undefined` when the run did not say where that is, and then the streak rule is
- * simply off. A guard with nowhere to keep its state should do nothing, not guess.
- */
-function streakFile(): string | undefined {
-  const opsLog = process.env.ATOMA_OPS_LOG;
-  if (!opsLog) return undefined;
-  const dir = opsLog.replace(/[/\\][^/\\]*$/, "");
-  return dir === opsLog ? undefined : `${dir}/search-streak`;
-}
+
 
 /**
  * The streak so far, or zero.

@@ -4,6 +4,7 @@ import {
   MAX_SEARCHES_WITHOUT_OPENING,
   nextStreak,
   refusalReason,
+  toolOpens,
 } from "./search-streak.ts";
 
 describe("what a shell command is doing", () => {
@@ -107,5 +108,68 @@ describe("the refusal", () => {
 
   test("the count in the message is the real one", () => {
     expect(refusalReason(85)).toContain("85 searches");
+  });
+});
+
+/**
+ * The rule that was missing, and the one the refusal depends on being true.
+ *
+ * `shell_guard` sees shell commands. A read through the filesystem server is not one,
+ * so until `toolOpens` existed the streak climbed straight through it -- while the
+ * refusal was telling the agent to read a file that way. See `search-streak.ts` for
+ * the run that cost.
+ */
+describe("a read that did not go through the shell", () => {
+  test("the filesystem server's reads count as opening", () => {
+    for (const tool of [
+      "filesystem__read_text_file",
+      "filesystem__read_multiple_files",
+      "filesystem__read_media_file",
+      "filesystem_readonly__read_file",
+      "filesystem_readonly__read_multiple_files",
+    ]) {
+      expect(toolOpens(tool), tool).toBe(true);
+    }
+  });
+
+  /**
+   * Listing answers where things are, which is what a search answers. Clearing the
+   * streak on one would let a run enumerate for ever without reading anything, which
+   * is the shape the whole rule exists to catch.
+   */
+  test("listing is not opening", () => {
+    for (const tool of [
+      "filesystem__list_directory",
+      "filesystem__directory_tree",
+      "filesystem__search_files",
+      "filesystem_readonly__get_file_info",
+      "shell__shell_execute",
+      "github__create_pr",
+    ]) {
+      expect(toolOpens(tool), tool).toBe(false);
+    }
+  });
+
+  /** Not anchored to one server: a read is a read whoever performed it. */
+  test("the server prefix is not what decides it", () => {
+    expect(toolOpens("somethingelse__read_text_file")).toBe(true);
+    expect(toolOpens("read_text_file")).toBe(true);
+  });
+
+  /**
+   * The failure in full. An agent that obeys the refusal must be able to satisfy it;
+   * before this, obeying and ignoring ended the same way -- three identical refusals
+   * and a dead run.
+   */
+  test("obeying the refusal clears the streak", () => {
+    let streak = MAX_SEARCHES_WITHOUT_OPENING;
+    expect(refusalReason(streak)).toBeDefined();
+
+    // What the refusal names, verbatim.
+    expect(refusalReason(streak)).toContain("filesystem__read_text_file");
+    expect(toolOpens("filesystem__read_text_file")).toBe(true);
+
+    streak = 0; // what the after-hook writes on that read
+    expect(refusalReason(nextStreak(streak, "search"))).toBeUndefined();
   });
 });
