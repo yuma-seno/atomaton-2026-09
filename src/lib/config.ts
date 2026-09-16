@@ -280,3 +280,17 @@ export function getRunsOn(field: "checks" | "deploy"): unknown {
   // step Atoma runs -- a project naming its own workflow decides that there.
   return field === "checks" ? config.checks?.atoma_runs?.runs_on : config.deploy?.atoma_runs?.runs_on;
 }
+
+/**
+ * The dotted path `getRunsOn` reads, for the messages that name it.
+ *
+ * Here rather than at the caller. `resolve_runner.ts` built it as `${field}.runs_on`
+ * and went on emitting `checks.runs_on` after the key moved under `atoma_runs` -- so
+ * the warning telling an adopter to fix their configuration named a key the validator
+ * rejects, and following it failed their pull request. A path assembled where it is
+ * used cannot notice that the reader moved; one that sits beside the reader can at
+ * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.
+ */
+export function runsOnPath(field: "checks" | "deploy"): string {
+  return `${field}.atoma_runs.runs_on`;
+}

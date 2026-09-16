@@ -14,7 +14,7 @@
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { resolveRunsOn, runsOnOutput } from "../domain/runner-label.ts";
-import { getRunsOn } from "../lib/config.ts";
+import { getRunsOn, runsOnPath } from "../lib/config.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ResolveRunnerArgs {
@@ -35,11 +35,11 @@ function main(): void {
   // Warnings, not failures. A bad `runs_on` still yields a runner that exists, so
   // the job runs and the project's commands are what report. `validate_deliverable`
   // shows the same problems at pull request time, where a person is reading.
-  for (const problem of problems) console.error(`::warning::${field}.${problem}`);
+  for (const problem of problems) console.error(`::warning::${runsOnPath(field)}: ${problem}`);
 
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput) appendFileSync(githubOutput, `runs_on=${runsOnOutput(labels)}\n`);
-  console.error(`${field}.runs_on resolved to ${labels.join(", ")}`);
+  console.error(`${runsOnPath(field)} resolved to ${labels.join(", ")}`);
 }
 
 if (import.meta.main) main();
