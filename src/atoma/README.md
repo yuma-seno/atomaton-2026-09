@@ -9,8 +9,7 @@ how you know what it is.
 | `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |
-| `tools/tools.yaml` | The tool servers a run may start — **generated** from `tools.servers` in `config.yaml`. Edit the config, not this. |
-| `tools/scripts/mcp/*.ts` | Those servers. |
+| `tools/scripts/mcp/*.ts` | The tool servers themselves. Which of them a run may start is `tools.servers` in `config.yaml`; the file `atoma` is handed is written from it per run and never lands here. |
 | `tools/scripts/hooks/*.ts` | What inspects a tool call before or after it runs. |
 | `mcp-packages.json` | npm packages the servers need. Its hash is the cache key. |
 | `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |
@@ -64,9 +63,15 @@ reach. Paths describe structure, and structure is what a name is for.
 ## Changing any of this
 
 Everything here except `config.yaml` is replaced wholesale on upgrade. Edit it and
-the next upgrade takes your edit with it. `tools/tools.yaml` goes further: it is
-written from `tools.servers` in the config every time the deliverable is built, so
-an edit there is gone before the upgrade even reaches it.
+the next upgrade takes your edit with it.
+
+The file `atoma --tools-file` reads is not in this directory at all, so there is
+nothing there to edit: each run writes it from `tools.servers` in the config, into
+the runner's temp directory, and throws it away with the runner. It used to ship,
+which gave a repository a config and a file generated from it that nothing here
+could regenerate — removing a server changed nothing, and adding one blocked every
+run. If an upgrade from a release that shipped one left a `tools/tools.yaml`
+behind, nothing reads it; delete it.
 
 `config.yaml` is yours: the upgrade deliberately restores it. If you need a
 different agent, a different skill or a different tool, that is what a fork is

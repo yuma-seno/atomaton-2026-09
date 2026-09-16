@@ -10,7 +10,7 @@ describe("what the code search reads", () => {
       "cmd/serve/main.go",
       "lib/parser.py",
       "docs/configuration.md",
-      "src/atoma/tools/tools.yaml",
+      "src/atoma/config.yaml",
     ]) {
       expect(shouldIndex(path), path).toBe(true);
     }

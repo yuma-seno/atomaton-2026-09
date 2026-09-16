@@ -69,8 +69,23 @@ export const PROMPT_TEMPLATE = `${MACHINERY_ROOT}/prompt-template.md`;
 /** Skills: instructions loaded on demand, addressed by `<category>/<name>`. */
 export const SKILLS_DIR = `${MACHINERY_ROOT}/skills`;
 
-/** The tool servers a run may start, in the format the core reads. */
-export const TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
+/**
+ * Where the tool servers' own scripts and hooks live.
+ *
+ * There is deliberately no `TOOLS_FILE` beside this. The file the core reads is
+ * written per run by `scripts/write_tools_file.ts`, from `tools.servers` in the
+ * config, into the run's temp directory — so it has no place in this layout at all.
+ *
+ * It used to be here, and shipped. That gave an adopter a config and a file generated
+ * from it, with nothing on their side able to regenerate one from the other: editing
+ * `tools.servers` did nothing, and adding a server blocked every run. A path constant
+ * for a generated artifact is how a build output starts looking like part of the
+ * layout.
+ *
+ * This directory is still a real path, because the hook scripts are real files and
+ * the generated file's hook paths are written against it.
+ */
+export const TOOLS_DIR = `${MACHINERY_ROOT}/tools`;
 
 /**
  * Hook scripts.
@@ -79,7 +94,7 @@ export const TOOLS_FILE = `${MACHINERY_ROOT}/tools/tools.yaml`;
  * directory, so this constant exists for the steps that must grant access to the
  * directory rather than for anything that names it to `atoma`.
  */
-export const TOOL_HOOKS_DIR = `${MACHINERY_ROOT}/tools/scripts/hooks`;
+export const TOOL_HOOKS_DIR = `${TOOLS_DIR}/scripts/hooks`;
 
 /** npm packages the tool servers need, installed before a run and cached by this file's hash. */
 export const MCP_PACKAGES_FILE = `${MACHINERY_ROOT}/mcp-packages.json`;

@@ -340,8 +340,9 @@ all, because their commands run in a workflow of their own rather than beside an
 a secret named in `checks.atoma_runs.secrets` is in that job's environment and there is
 no server to route it to.
 
-You never edit a workflow for any of this, and you never edit `tools/tools.yaml`: it is
-generated from `tools.servers` when the deliverable is built.
+You never edit a workflow for any of this, and there is no tools file to edit: the one
+`atoma` is handed is written from `tools.servers` at the start of each run and thrown
+away with the runner. `config.yaml` is the only place a credential is routed.
 
 Why routing is required at all is in [docs/configuration.md](configuration.md); what it
 does and does not protect you from is in [docs/operations.md](operations.md).

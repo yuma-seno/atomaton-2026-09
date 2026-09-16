@@ -54,11 +54,13 @@
  * that passed. Run by hand — `bun run .github/scripts/validate_deliverable.ts` —
  * it is the same check the pull request is judged by.
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { configProblems } from "../domain/deliverable-integrity.ts";
 import { withEditableSource } from "../domain/generated-file-hint.ts";
+import { reservedServerNames, toolsFileFrom, type ToolsSection } from "../domain/tools-file.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ValidateDeliverableArgs {
@@ -120,6 +122,26 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
 }
 
+/**
+ * Write the tools file this tree's config describes, and return its path.
+ *
+ * `hookBase` is the tree's own `tools/` directory, so the hook paths the core then
+ * checks for existence point at the scripts in the tree under review — which is the
+ * thing this validation is for.
+ */
+function writeToolsFileFor(atomaDir: string): string {
+  const config = Bun.YAML.parse(readFileSync(join(atomaDir, "config.yaml"), "utf8")) as {
+    tools?: ToolsSection;
+  };
+  const collisions = reservedServerNames(config.tools);
+  if (collisions.length > 0) {
+    throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} — reserved by the core`);
+  }
+  const out = join(mkdtempSync(join(tmpdir(), "atoma-validate-")), "tools.yaml");
+  writeFileSync(out, Bun.YAML.stringify(toolsFileFrom(config.tools, join(atomaDir, "tools")), null, 2));
+  return out;
+}
+
 /** Agent names in a deployed tree, one per `agent-definitions/<name>.md`. */
 function agentNames(agentDir: string): string[] {
   if (!existsSync(agentDir)) return [];
@@ -139,7 +161,6 @@ function collect(root: string, atoma: string): string[] {
 
   const atomaDir = join(root, ".github", "atoma");
   const agentDir = join(atomaDir, "agent-definitions");
-  const toolsFile = join(atomaDir, "tools", "tools.yaml");
   const configFile = join(atomaDir, "config.yaml");
 
   const names = agentNames(agentDir);
@@ -169,13 +190,25 @@ function collect(root: string, atoma: string): string[] {
 
   // The core's half. Skipped only when there is nothing to hand it — which
   // `configProblems` has already reported as a problem of its own.
+  //
+  // The tools file is written here, from the config of the tree being validated, for
+  // the same reason a run writes its own: it is not a file that exists. Validating a
+  // shipped one would be validating what the template built months ago rather than
+  // what this pull request's `tools.servers` says — which is how adding a server came
+  // to pass validation here and then block every run.
+  //
+  // Into a temp directory, because `--root` on a pull request is the content under
+  // review and nothing here may write to it.
   if (names.length > 0) {
-    if (!existsSync(toolsFile)) {
-      problems.push(`${toolsFile} is missing, so every \`mcp_servers\` entry names a server that cannot resolve.`);
-    } else {
-      for (const name of names) {
-        problems.push(...validateAgentDefinition(atoma, join(agentDir, `${name}.md`), toolsFile, `${name}.md`));
-      }
+    let toolsFile: string;
+    try {
+      toolsFile = writeToolsFileFor(atomaDir);
+    } catch (error) {
+      problems.push(`could not write the tools file from config.yaml: ${(error as Error).message}`);
+      return problems;
+    }
+    for (const name of names) {
+      problems.push(...validateAgentDefinition(atoma, join(agentDir, `${name}.md`), toolsFile, `${name}.md`));
     }
   }
 

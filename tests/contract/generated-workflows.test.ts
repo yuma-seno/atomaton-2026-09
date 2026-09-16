@@ -898,16 +898,22 @@ describe("generated workflows", () => {
   // review it. The filesystem servers are the deliberate exception -- their `.`
   // argument IS the workspace, which is what they exist to read.
   test("the tool servers are read from the machinery, and the workspace only where intended", () => {
-    const tools = readFileSync("dist/.github/atoma/tools/tools.yaml", "utf8");
+    // From the config: the generated tools file is written per run into the runner's
+    // temp directory and does not ship, so `tools.servers` is where these arguments
+    // are declared and the only place left to check them.
+    const config = Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as {
+      tools?: { servers?: Record<string, { args?: unknown }> };
+    };
+    const servers = Object.entries(config.tools?.servers ?? {});
+    expect(servers.length, "config.yaml must declare some servers").toBeGreaterThan(0);
 
-    const argLines = tools.split(/\r?\n/).filter((line) => line.trim().startsWith("args:"));
-    expect(argLines.length, "tools.yaml must declare some servers").toBeGreaterThan(0);
-
-    for (const line of argLines) {
-      if (line.includes("tools/scripts/")) {
-        expect(line, "a server shipped here must be read from the machinery root").toContain(
-          "ATOMA_MACHINERY_ROOT",
-        );
+    for (const [name, server] of servers) {
+      for (const arg of Array.isArray(server.args) ? server.args : []) {
+        if (typeof arg === "string" && arg.includes("tools/scripts/")) {
+          expect(arg, `${name}: a server shipped here must be read from the machinery root`).toContain(
+            "ATOMA_MACHINERY_ROOT",
+          );
+        }
       }
     }
 

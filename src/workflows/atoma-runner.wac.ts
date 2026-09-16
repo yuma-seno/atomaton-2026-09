@@ -11,10 +11,11 @@ import {
 import { ATOMA_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import {
   AGENT_DEFINITIONS_DIR,
+  CONFIG_FILE as CONFIG_FILE_PATH,
   MCP_PACKAGES_FILE,
   PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
   SKILLS_DIR as SKILLS_DIRECTORY,
-  TOOLS_FILE as TOOLS_FILE_PATH,
+  TOOLS_DIR,
   TOOL_HOOKS_DIR as TOOL_HOOKS_DIRECTORY,
 } from "../domain/machinery-layout.ts";
 import { defineCallableWorkflow } from "./actions/reusable-workflow.ts";
@@ -37,6 +38,7 @@ import { WORKSPACE_PATH } from "../domain/workspace.ts";
 import { ref as fetchEventsRef } from "../scripts/fetch_events.ts";
 import { ref as restoreAgentSessionRef } from "../scripts/restore_agent_session.ts";
 import { ref as reconcileGithubSessionRef } from "../scripts/reconcile_github_session.ts";
+import { ref as writeToolsFileRef } from "../scripts/write_tools_file.ts";
 import { ref as extractDirectiveRef } from "../scripts/extract_directive.ts";
 import { ref as postResultCommentRef } from "../scripts/post_result_comment.ts";
 import { ref as recordRunMetadataRef } from "../scripts/record_run_metadata.ts";
@@ -159,7 +161,7 @@ const MACHINERY = "${ATOMA_MACHINERY_ROOT}";
 const AGENT_DEF_DIR = AGENT_DEFINITIONS_DIR;
 const PROMPT_TEMPLATE = PROMPT_TEMPLATE_FILE;
 const SKILLS_DIR = SKILLS_DIRECTORY;
-const TOOLS_FILE = TOOLS_FILE_PATH;
+const TOOLS_DIR_PATH = TOOLS_DIR;
 
 /**
  * The OS user every tool server runs as.
@@ -667,10 +669,22 @@ export AGENT
 # the dependency visible rather than implicit.
 export GITHUB_RUN_ID ISSUE_NUMBER ISSUE_NOTIFY ATOMA_RUN_TYPE ATOMA_OPS_LOG
 
-TOOLS_ARG=""
-if [ -f "${MACHINERY}/${TOOLS_FILE}" ]; then
-  TOOLS_ARG="--tools-file ${MACHINERY}/${TOOLS_FILE}"
-fi
+# The tools file is written now, from the config, rather than shipped. See
+# \`scripts/write_tools_file.ts\` for what shipping a generated file cost.
+#
+# From the MACHINERY config, which is the default branch's: a tools file names a
+# \`command\` for every server, so whoever writes it chooses what this run starts.
+# Generating from the pull request's own config would let a pull request decide its
+# own execution environment, which is the one rule none of this may cross.
+#
+# \`--hook-base\` is the machinery's \`tools/\` directory, because that is where the
+# hook scripts are. The output goes to the run directory and is thrown away with it.
+${scriptCommandWithArgs(writeToolsFileRef, {
+  config: `${MACHINERY}/${CONFIG_FILE_PATH}`,
+  out: `${RUN_DIR}/tools.yaml`,
+  "hook-base": `${MACHINERY}/${TOOLS_DIR_PATH}`,
+})}
+TOOLS_ARG="--tools-file ${RUN_DIR}/tools.yaml"
 
 # Settings, not credentials. These two are repository VARIABLES -- which provider
 # to use and which host to reach -- so they belong in the environment; the

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { toolsFileFrom, type ToolsSection } from "../../src/domain/tools-file.ts";
 
 /**
  * `tools.yaml` decides how every tool server is started, and nothing was reading
@@ -18,13 +20,31 @@ import { dirname, join } from "node:path";
  * it to a plain `bun run`, and the test that pinned the container is now the test
  * that keeps one from coming back.
  */
-// One file now, and it is written rather than kept: `build-dist.ts` generates it
-// from `tools.servers` in config.yaml. There used to be a source copy beside the
-// deployed one and both were checked, because a hand-edited source could disagree
-// with what shipped. A generator cannot disagree with itself, so what is worth
-// checking is the thing atoma is actually handed.
-const DEPLOYED = "dist/.github/atoma/tools/tools.yaml";
-const SOURCE = DEPLOYED;
+/**
+ * Written here, from the shipped config, because it exists nowhere else.
+ *
+ * It used to be built by `synth` and read out of `dist/`. Then it stopped being
+ * built at all: a generated file that is distributed is a second source of truth,
+ * and an adopter who edited `tools.servers` found that nothing in their repository
+ * ever regenerated one from the other. `write_tools_file.ts` writes it per run now.
+ *
+ * So the thing worth checking is what that generator produces from the config this
+ * template ships — which is exactly what a run will be handed. `hookBase` is the
+ * real `src/atoma/tools`, so the hook paths below point at the actual scripts and
+ * the existence check still means something.
+ */
+const HOOK_BASE = join(process.cwd(), "src/atoma/tools");
+const GENERATED = join(mkdtempSync(join(tmpdir(), "atoma-tools-")), "tools.yaml");
+writeFileSync(
+  GENERATED,
+  Bun.YAML.stringify(
+    toolsFileFrom((Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as { tools?: ToolsSection }).tools, HOOK_BASE),
+    null,
+    2,
+  ),
+);
+const DEPLOYED = GENERATED;
+const SOURCE = GENERATED;
 
 interface ToolEntry {
   command?: string;
@@ -69,8 +89,10 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
     test(`${path}: the file-wide after_tool hook is declared and present`, () => {
       const declared = parse(path)[RESERVED]?.after_tool;
       expect(declared, "tools.yaml should declare a file-wide after_tool hook").toBeDefined();
-      const resolved = join(dirname(path), declared!);
-      expect(existsSync(resolved), `${resolved} should exist`).toBe(true);
+      // Absolute already: the generator resolves every hook path against the base it
+      // is given, so the core never has to resolve one against wherever the file
+      // happens to have been written. See `domain/tools-file.ts`.
+      expect(existsSync(declared!), `${declared} should exist`).toBe(true);
     });
 
     test(`${path}: every entry has a command and a string[] args`, () => {

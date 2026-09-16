@@ -24,7 +24,7 @@ import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atoma-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
-import { SKILLS_DIR, TOOLS_FILE } from "../domain/machinery-layout.ts";
+import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
 import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
@@ -282,14 +282,16 @@ function declared(): { tools: string[]; skills: string[] } {
   const tools: string[] = [];
   const skills: string[] = [];
   try {
-    const yaml = readFileSync(`${root}/${TOOLS_FILE}`, "utf8");
-    for (const line of yaml.split(/\r?\n/)) {
-      const match = /^([A-Za-z_][A-Za-z0-9_-]*):\s*$/.exec(line);
-      // `hooks` is the reserved key at this level, not a server.
-      if (match?.[1] && match[1] !== "hooks") tools.push(match[1]);
-    }
+    // From the config, not from the generated tools file: that file is written per
+    // run into the runner's temp directory and is gone by the time anything reads a
+    // report. `tools.servers` is also where a person would go to act on being told a
+    // server is unused, which is the only reason this list is in the report.
+    const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8")) as {
+      tools?: { servers?: Record<string, unknown> };
+    };
+    tools.push(...Object.keys(config.tools?.servers ?? {}));
   } catch {
-    log("could not read tools.yaml; the report will not name unused tools");
+    log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
   const listed = gitRun("ls-files", `${root}/${SKILLS_DIR}`);
   for (const path of listed.stdout.split("\n")) {

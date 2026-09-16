@@ -37,7 +37,7 @@ kinds of file, and only you can say which of your edits are deliberate:
 
 | Path | Yours to edit? |
 | --- | --- |
-| `.github/scripts/**`, `.github/workflows/**`, `.github/atoma/tools/scripts/**`, `.github/atoma/tools/tools.yaml` | No — generated, replace wholesale |
+| `.github/scripts/**`, `.github/workflows/**`, `.github/atoma/tools/scripts/**` | No — generated, replace wholesale |
 | `.github/atoma/config.yaml` | Yes — every setting lives here on purpose |
 | `.github/atoma/skills/project/**` | Yes — your own skills, the template ships none |
 | `.github/atoma/agent-definitions/**`, `skills/**`, `prompt-template.md`, `mcp-packages.json` | Both — the template ships defaults it also expects you to tune |
@@ -46,11 +46,19 @@ That last row is the awkward one, and no script can resolve it: a difference the
 is either an improvement you have not taken yet or a change you made on purpose,
 and the files look identical either way.
 
-`tools/tools.yaml` left that row for the first one. It is written from
-`tools.servers` in `config.yaml` when the deliverable is built, so an edit to it
-is an edit to a build output: replaced on the next upgrade, and invisible to
-anyone reading the config to find out what the tool servers are. Change
-`tools.servers`.
+The file `atoma --tools-file` reads is in none of these rows, because you do not
+receive it. Each run writes it from `tools.servers` in `config.yaml`, into the
+runner's temp directory, and throws it away with the runner. It used to ship,
+generated once when the deliverable was built, which left an adopted repository
+holding a config and a file generated from it with nothing on its side able to
+regenerate one from the other: removing a server from `tools.servers` then did
+nothing, because the shipped file still had it, and adding one blocked every run,
+because `atoma validate` resolved `mcp_servers` against the shipped file, which
+did not. `tools.servers` is now the only place tool servers are declared — which
+is what this page said all along.
+
+Extracting a release never deletes, so if you adopted before that change your tree
+still has a `.github/atoma/tools/tools.yaml`. Nothing reads it. Delete it.
 
 The procedure — treat it as vendoring, and let git do the merge — is in
 [docs/recipes.md](recipes.md), under "Move to a newer release".
@@ -571,11 +579,11 @@ server to route it to.
 Never write a value in the config, only a `${NAME}` reference. A pasted secret
 is committed in plain text.
 
-You never edit a workflow for any of this, and you never edit
-`tools/tools.yaml`: it is generated from `tools.servers` when the template is
-built. The three-step procedure is in [docs/recipes.md](recipes.md), under "Give a
-tool a credential"; what the routing does and does not protect is in
-[docs/operations.md](operations.md).
+You never edit a workflow for any of this, and there is no tools file to edit:
+the one the core is handed is written from `tools.servers` for each run and
+deleted with the runner. The three-step procedure is in
+[docs/recipes.md](recipes.md), under "Give a tool a credential"; what the routing
+does and does not protect is in [docs/operations.md](operations.md).
 
 ### What fails loudly
 
@@ -604,13 +612,22 @@ it never reaches the core. Everything else is the core's own tools-file format,
 one level in, and is passed through untouched, so a key a later core release adds
 works the day it ships.
 
-`.github/atoma/tools/tools.yaml` is written from this section when the template is
-built and is not edited. Tool scripts and MCP servers live under
-`.github/atoma/tools/scripts/`.
+This section is the whole declaration. The file the core is handed is written from
+it at the start of each run, into the runner's temp directory, and does not exist
+in your repository — so there is no second list to keep in step, and no file to
+edit instead of this one. Tool scripts and MCP servers live under
+`.github/atoma/tools/scripts/`, which does ship.
+
+A hook path in a server's `hooks` is written relative to `.github/atoma/tools/`,
+as `./scripts/hooks/...`. The core resolves a relative hook path against the
+directory the tools file is *in*, and that directory is now a temp directory, so
+the generator resolves each path against the machinery checkout before writing it.
+What you write stays short; what the core receives is absolute.
 
 A server may not be called `hooks`: that name is the core's own reserved key at
 the top level of a tools file, which is where `tools.watch` is written, and a
-server called `hooks` would silently become one. The build refuses it.
+server called `hooks` would silently become one. The check on every pull request
+refuses it, and so does the run that writes the file.
 
 #### `request_timeout_secs`
 
@@ -805,13 +822,19 @@ no such checkout exists, such as a hand-run `atoma`.
 is the workspace, which is exactly what those servers should be reading.
 
 `before_tool` is NOT prefixed either, and for a third reason: atoma resolves a
-relative hook path against the directory of THIS file, not against the working
-directory. Verified in the core -- `persistence/tool_def.rs` sets
+relative hook path against the directory the TOOLS FILE is in, not against the
+working directory. Verified in the core -- `persistence/tool_def.rs` sets
 `base_dir = path.parent()` and joins any non-absolute hook path onto it, then
-fails the run if the result does not exist. The runner passes
-`--tools-file ${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/tools.yaml`, so the
-hook comes from the same default-branch checkout the `args` prefix points at,
-and gets there without being asked.
+fails the run if the result does not exist.
+
+That directory used to be `.github/atoma/tools/`, the one the hook scripts are
+in, so a path relative to it landed on the right script by sitting still. It is
+not that any more: the tools file is written per run into the runner's temp
+directory, and a relative path would now follow the output rather than the
+script. So the generator resolves every hook path as it writes, against
+`${ATOMA_MACHINERY_ROOT}/.github/atoma/tools/` -- the same default-branch
+checkout the `args` prefix points at. The hook still gets there without being
+asked; what carries it is a resolved path rather than a fixed location.
 
 Written down because the paragraph above argues the pull-request-replaces-the-
 code point for `args` and said nothing about the hook -- and the hook is the
@@ -835,8 +858,10 @@ Hooks that apply to EVERY server, run before each server's own.
 It is called `watch` in the config so that it does not sit beside the per-server
 `hooks` meaning something narrower. The generator writes it into the tools file
 under `hooks`, which is the name the core reserves at that level -- so a server
-may not be called `hooks`, and the build refuses one that is. The
-file-wide form exists because what is worth watching is usually the run rather than
+may not be called `hooks`, and both the pull request check and the run that writes
+the file refuse one that is.
+
+The file-wide form exists because what is worth watching is usually the run rather than
 a tool: how much has been written where, how long a search has gone on. Attached to
 one server, such a check only watches the agent while it happens to be using that
 server, and says nothing for the twenty calls it spends elsewhere.
