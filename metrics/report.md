@@ -24,50 +24,50 @@ No session ran in this window.
 
 ## All time
 
-366 sessions.
+367 sessions.
 
 **137,098,495 tokens** over 425 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,629 | 302,887 | 6,403,430 | 39,737,697 | 137,098,495 |
-| messages per session | 10 | 99 | 532 | 1,408 | 15,212 |
+| messages per session | 10 | 99 | 532 | 1,408 | 15,309 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 239 | 65.3% |
-| `engineer` | 90 | 24.6% |
+| `reviewer` | 239 | 65.1% |
+| `engineer` | 91 | 24.8% |
 | `orchestrator` | 37 | 10.1% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 3,257 | 625 | 151 | 19.2% |
+| `shell__shell_execute` | 3,290 | 625 | 151 | 19% |
+| `filesystem__read_text_file` | 589 | 43 | 24 | 7.3% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `filesystem__read_text_file` | 582 | 43 | 24 | 7.4% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
-| `filesystem__list_directory` | 255 | 6 | 0 | 2.4% |
+| `filesystem__list_directory` | 257 | 6 | 0 | 2.3% |
 | `github__check_merge_readiness` | 225 | 2 | 0 | 0.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
-| `github__get_issue` | 187 | 22 | 2 | 11.8% |
-| `atoma_builtin__load_skill` | 184 | 77 | 0 | 41.8% |
+| `github__get_issue` | 188 | 22 | 2 | 11.7% |
+| `atoma_builtin__load_skill` | 186 | 77 | 0 | 41.4% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 110 | 29 | 0 | 26.4% |
 | `search__search_code` | 99 | 0 | 0 | 0% |
-| `github__commit_and_push` | 92 | 53 | 0 | 57.6% |
+| `github__commit_and_push` | 93 | 53 | 0 | 57% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
 | `github__get_pr` | 73 | 10 | 0 | 13.7% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
-| `filesystem__edit_file` | 61 | 6 | 0 | 9.8% |
-| `github__create_pr` | 57 | 24 | 0 | 42.1% |
+| `filesystem__edit_file` | 62 | 6 | 0 | 9.7% |
+| `github__create_pr` | 58 | 24 | 0 | 41.4% |
 | `filesystem__read_multiple_files` | 56 | 0 | 0 | 0% |
 | `github__get_check_runs` | 55 | 6 | 0 | 10.9% |
 | `filesystem__search_files` | 49 | 0 | 43 | 0% |
 | `github__get_pr_diff` | 47 | 4 | 0 | 8.5% |
-| `github__get_issue_comments` | 42 | 8 | 0 | 19% |
+| `github__get_issue_comments` | 43 | 8 | 0 | 18.6% |
+| `search__search_issues` | 39 | 4 | 0 | 10.3% |
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
-| `search__search_issues` | 35 | 4 | 0 | 11.4% |
 | `github__close_issue` | 34 | 1 | 15 | 2.9% |
 | `github__merge_pr` | 34 | 1 | 0 | 2.9% |
 | `github__list_issues` | 31 | 3 | 0 | 9.7% |
@@ -120,22 +120,22 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,430 | 43.9% |
-| `other` | 1,138 | 34.9% |
-| `open` | 413 | 12.7% |
-| `verify` | 190 | 5.8% |
-| `edit` | 86 | 2.6% |
+| `search` | 1,438 | 43.7% |
+| `other` | 1,147 | 34.9% |
+| `open` | 418 | 12.7% |
+| `verify` | 198 | 6% |
+| `edit` | 89 | 2.7% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `review/quick-quality-gate` | 37 | 34.3% |
-| `project/conventions` | 26 | 24.1% |
-| `delivery/implementation-handoff` | 20 | 18.5% |
-| `engineering/tdd` | 9 | 8.3% |
-| `delivery/issue-decomposition` | 8 | 7.4% |
-| `engineering/debugging` | 3 | 2.8% |
-| `engineering/environment` | 2 | 1.9% |
-| `research/web-search` | 2 | 1.9% |
+| `review/quick-quality-gate` | 37 | 33.6% |
+| `project/conventions` | 27 | 24.5% |
+| `delivery/implementation-handoff` | 21 | 19.1% |
+| `engineering/tdd` | 9 | 8.2% |
+| `delivery/issue-decomposition` | 8 | 7.3% |
+| `engineering/debugging` | 3 | 2.7% |
+| `engineering/environment` | 2 | 1.8% |
+| `research/web-search` | 2 | 1.8% |
 | `engineering/nonexistent` | 1 | 0.9% |
 
 ## Degraded answers
