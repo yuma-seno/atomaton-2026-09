@@ -76,10 +76,11 @@ var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
 // src/lib/tags.ts
+var TAG_PREFIX = `atomaton:`;
 function makeTag(key, valuePattern, parse, render) {
-  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
-    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
     read: (text) => {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
@@ -117,7 +118,7 @@ function defineScript(importMetaUrl) {
 var ref = defineScript(import.meta.url);
 function runningChildren(repo, parent) {
   const label = getLabel("in_progress");
-  const { code, stdout } = gh("issue", "list", "--repo", repo, "--state", "open", "--limit", "200", "--search", `atoma:parent=${parent} in:body`, "--label", label, "--json", "number,body");
+  const { code, stdout } = gh("issue", "list", "--repo", repo, "--state", "open", "--limit", "200", "--search", `atomaton:parent=${parent} in:body`, "--label", label, "--json", "number,body");
   if (code !== 0)
     return [];
   try {

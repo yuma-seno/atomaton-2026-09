@@ -354,7 +354,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
         run: |
-          gh issue comment "$NUMBER" --body "<!-- atoma:llm-context=exclude -->
+          gh issue comment "$NUMBER" --body "<!-- atomaton:llm-context=exclude -->
           Atomaton: reviewer starting review."
       - name: 'Checkout Atoma source (for atoma_version: source)'
         uses: actions/checkout@v4
@@ -908,7 +908,7 @@ jobs:
             # Out of the model's context, like the other operational notices: it names a
             # person and tells them how to resume.
             printf '%s
-          ' "<!-- atoma:llm-context=exclude -->" > "$BD"
+          ' "<!-- atomaton:llm-context=exclude -->" > "$BD"
             echo "${MENTION}${REASON}" >> "$BD"
             echo "The next agent would have been ${DIRECTIVE}." >> "$BD"
             echo "Please review the progress so far. To resume, post a manual comment on the Issue/PR (e.g. /${DIRECTIVE}) to trigger the next agent at any time." >> "$BD"

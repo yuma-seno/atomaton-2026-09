@@ -40,7 +40,7 @@ function defineScript(importMetaUrl) {
 // src/scripts/parse_comment_command.ts
 var ref = defineScript(import.meta.url);
 var COMMAND_RE = new RegExp(`^\\/(${AGENT_NAME_PATTERN})(?:\\s+(.*))?$`);
-var DISPATCH_RE = new RegExp(`^<!--\\s*atoma:dispatch\\s*=\\s*(${AGENT_NAME_PATTERN})\\s*-->`);
+var DISPATCH_RE = new RegExp(`^<!--\\s*atomaton:dispatch\\s*=\\s*(${AGENT_NAME_PATTERN})\\s*-->`);
 var NOTHING = { agent: "", control: "", sessionMode: "continue", error: "" };
 function parseCommentCommand(body) {
   if (!body)

@@ -24,7 +24,7 @@ permissions:
 jobs:
   parse:
     runs-on: ubuntu-latest
-    if: (github.event.comment.user.type != 'Bot') || (github.event.comment.user.type == 'Bot' && contains(github.event.comment.body, 'atoma:dispatch'))
+    if: (github.event.comment.user.type != 'Bot') || (github.event.comment.user.type == 'Bot' && contains(github.event.comment.body, 'atomaton:dispatch'))
     outputs:
       agent: ${{ steps.dispatch.outputs.agent }}
       session_mode: ${{ steps.command.outputs.session_mode }}
@@ -41,7 +41,7 @@ jobs:
         id: command
         if: |-
           (github.event.comment.user.type == 'Bot' &&
-           contains(github.event.comment.body, 'atoma:dispatch')) ||
+           contains(github.event.comment.body, 'atomaton:dispatch')) ||
           (github.event.comment.user.type != 'Bot' &&
            contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
         shell: bash
