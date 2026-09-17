@@ -19,11 +19,11 @@ Atomaton runs, replaced wholesale on upgrade.
 
 | Path | What it holds |
 | --- | --- |
-| `atoma-runtime/tools/defaults.yaml` | The tool servers every run starts with, and the hooks that watch all of them. There to be read — it is the entry you override. |
-| `atoma-runtime/tools/mcp/*.ts` | The tool servers themselves. The file `atoma` is handed is written from `defaults.yaml` plus your `tools.servers` per run, and never lands in either directory. |
-| `atoma-runtime/tools/hooks/*.ts` | What inspects a tool call before or after it runs. |
-| `atoma-runtime/tools/packages.json` | The packages those shipped servers need. Yours for a server you added go in `tools.packages` in the config. |
-| `atoma-runtime/scripts/*.ts` | The programs the workflows run. |
+| `atomaton-runtime/tools/defaults.yaml` | The tool servers every run starts with, and the hooks that watch all of them. There to be read — it is the entry you override. |
+| `atomaton-runtime/tools/mcp/*.ts` | The tool servers themselves. The file `atoma` is handed is written from `defaults.yaml` plus your `tools.servers` per run, and never lands in either directory. |
+| `atomaton-runtime/tools/hooks/*.ts` | What inspects a tool call before or after it runs. |
+| `atomaton-runtime/tools/packages.json` | The packages those shipped servers need. Yours for a server you added go in `tools.packages` in the config. |
+| `atomaton-runtime/scripts/*.ts` | The programs the workflows run. |
 
 `.github/workflows/` is where GitHub requires workflows to be, and is generated
 too. So the rule has no exceptions: `.github/atomaton/` is the project's, and
@@ -78,7 +78,7 @@ where you can reach them.
 
 A server you add is started by something the runner may not have; `tools.packages`
 in the config is where you name what to install for it. The shipped servers' own
-packages are in `atoma-runtime/tools/packages.json`, because they are not yours to
+packages are in `atomaton-runtime/tools/packages.json`, because they are not yours to
 choose.
 
 And in `tools.watch`, hooks of your own. They run after Atomaton's, on every call to

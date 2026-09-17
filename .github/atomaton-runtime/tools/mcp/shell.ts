@@ -17695,7 +17695,7 @@ var DEPLOY_SECRETS = {
 
 // src/atomaton-runtime/tools/mcp/shell.ts
 function log(message) {
-  console.error(`[atoma-shell] ${message}`);
+  console.error(`[atomaton-shell] ${message}`);
 }
 var SECRET_ENV_NAMES = [
   ...RUN_CREDENTIALS,
@@ -17769,7 +17769,7 @@ var { tools, dispatch } = buildMcpTools([
   })
 ]);
 async function main() {
-  await serveMcpServer({ name: "atoma-shell-mcp", version: "1.0.0", tools, dispatch, log });
+  await serveMcpServer({ name: "atomaton-shell-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main)
   main();
