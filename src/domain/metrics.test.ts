@@ -74,6 +74,27 @@ describe("metricsOf", () => {
     expect(metrics.neverLoaded).toEqual(["delivery/pipeline-setup"]);
   });
 
+  /**
+   * The two answers this could not tell apart, and the one that lied.
+   *
+   * The skill list is built by listing a directory. While that directory was being
+   * renamed the listing came back empty, an empty list filtered to an empty list, and
+   * the report said every skill had been loaded -- with `delivery/pipeline-setup`,
+   * 1387 words, sitting at zero loads out of 187 behind that sentence.
+   *
+   * `[]` is an answer: nothing is declared, so nothing is unused. `undefined` is not an
+   * answer, and has to read as one.
+   */
+  test("a list that could not be read is not a list that is empty", () => {
+    const unknown = metricsOf(SESSIONS, undefined, undefined, TOKENS);
+    expect(unknown.neverUsedServers).toBeUndefined();
+    expect(unknown.neverLoaded).toBeUndefined();
+
+    const none = metricsOf(SESSIONS, [], [], TOKENS);
+    expect(none.neverUsedServers).toEqual([]);
+    expect(none.neverLoaded).toEqual([]);
+  });
+
   test("failures and refusals are counted apart", () => {
     expect(metrics.byTool.find((t) => t.name === "github__create_pr")?.failed).toBe(1);
     expect(metrics.refusals).toBe(1);
@@ -95,6 +116,13 @@ describe("metricsOf", () => {
 
 describe("renderReport", () => {
   const NOW = new Date("2026-09-13T00:00:00Z");
+
+  test(`the report says it could not check, rather than that nothing is unused`, () => {
+    const text = render(metricsOf(SESSIONS, undefined, undefined, TOKENS), NOW);
+    expect(text).toContain("could not be read");
+    expect(text).not.toContain("Every skill has been loaded at least once.");
+    expect(text).not.toContain("Every declared server has been called at least once.");
+  });
   const report = render(metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS), NOW);
 
   /**

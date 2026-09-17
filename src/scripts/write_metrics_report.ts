@@ -276,10 +276,16 @@ function tokensReported(repo: string): TokenRecord[] {
   return out;
 }
 
-/** The tools and skills the repository offers, so the report can name what is unused. */
-function declared(): { tools: string[]; skills: string[] } {
+/**
+ * The tools and skills the repository offers, so the report can name what is unused.
+ *
+ * `undefined` rather than an empty list when a source could not be read. An empty list
+ * filters to an empty list and reads as "nothing is unused", which is the answer this
+ * gave for as long as the skill directory was being renamed underneath it.
+ */
+function declared(): { tools: string[] | undefined; skills: string[] | undefined } {
   const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
-  const tools: string[] = [];
+  let tools: string[] | undefined;
   const skills: string[] = [];
   try {
     // From the config, not from the generated tools file: that file is written per
@@ -289,7 +295,9 @@ function declared(): { tools: string[]; skills: string[] } {
     const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8")) as {
       tools?: { servers?: Record<string, unknown> };
     };
-    tools.push(...Object.keys(config.tools?.servers ?? {}));
+    // An empty `tools.servers` is ordinary -- a project that adds no server of its own
+    // has none -- so this stays a list. Only the read failing above leaves it unknown.
+    tools = Object.keys(config.tools?.servers ?? {});
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
@@ -297,6 +305,13 @@ function declared(): { tools: string[]; skills: string[] } {
   for (const path of listed.stdout.split("\n")) {
     const match = /skills\/(.+)\.md$/.exec(path.trim());
     if (match?.[1]) skills.push(match[1]);
+  }
+  // A deployed tree always has skills. None listed means the directory was not where
+  // this looked, not that the project ships no skills -- so the report says it could
+  // not check rather than that everything is used.
+  if (skills.length === 0) {
+    log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
+    return { tools, skills: undefined };
   }
   return { tools, skills };
 }

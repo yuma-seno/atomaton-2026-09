@@ -266,15 +266,19 @@ export function renderReport(
   );
   out.push("");
   out.push(
-    all.neverUsedServers.length === 0
-      ? "Every declared server has been called at least once."
-      : "Servers never called:\n\n" + all.neverUsedServers.map((t) => `- \`${t}\``).join("\n"),
+    all.neverUsedServers === undefined
+      ? "The declared servers could not be read, so this cannot say which are unused."
+      : all.neverUsedServers.length === 0
+        ? "Every declared server has been called at least once."
+        : "Servers never called:\n\n" + all.neverUsedServers.map((t) => `- \`${t}\``).join("\n"),
   );
   out.push("");
   out.push(
-    all.neverLoaded.length === 0
-      ? "Every skill has been loaded at least once."
-      : "Skills never loaded:\n\n" + all.neverLoaded.map((s) => `- \`${s}\``).join("\n"),
+    all.neverLoaded === undefined
+      ? "The declared skills could not be read, so this cannot say which are unloaded."
+      : all.neverLoaded.length === 0
+        ? "Every skill has been loaded at least once."
+        : "Skills never loaded:\n\n" + all.neverLoaded.map((s) => `- \`${s}\``).join("\n"),
   );
   out.push("");
 
