@@ -76,7 +76,7 @@ const FETCH_SCHEMA = z.object({
 });
 
 function log(message: string): void {
-  console.error(`[atoma-web] ${message}`);
+  console.error(`[atomaton-web] ${message}`);
 }
 
 // Same OS user as every other tool server, including the one that runs arbitrary
@@ -171,6 +171,6 @@ const { tools, dispatch } = buildMcpTools([
 ]);
 
 async function main(): Promise<void> {
-  await serveMcpServer({ name: "atoma-web-mcp", version: "1.0.0", tools, dispatch, log });
+  await serveMcpServer({ name: "atomaton-web-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main) void main();

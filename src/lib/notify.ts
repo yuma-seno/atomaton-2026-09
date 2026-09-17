@@ -44,7 +44,7 @@ import { gh } from "./gh.ts";
 import { NOTIFY_TAG, readAnyParentTag } from "./tags.ts";
 
 function log(message: string): void {
-  console.error(`[atoma-notify] ${message}`);
+  console.error(`[atomaton-notify] ${message}`);
 }
 
 const MAX_HOPS = 10;

@@ -1355,7 +1355,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   log(`Starting for ${REPO}`);
-  await serveMcpServer({ name: "atoma-github-mcp", version: "1.0.0", tools: TOOLS, dispatch, log });
+  await serveMcpServer({ name: "atomaton-github-mcp", version: "1.0.0", tools: TOOLS, dispatch, log });
 }
 
 if (import.meta.main) void main();

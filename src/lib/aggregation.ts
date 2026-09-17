@@ -7,7 +7,7 @@
  * independently with subtly different retry/exclude/idempotency behavior:
  *
  * - `dispatchOrchestratorIfSubIssueReady` below, reached from the MCP server
- *   whenever an agent closes a sub-issue (atoma-side, post-close).
+ *   whenever an agent closes a sub-issue (atomaton-side, post-close).
  * - dispatch_if_siblings_done.ts (workflow-side, manual-close fallback).
  * - aggregate_sub_issues.ts (workflow-side, PR-merge primary path -- which
  *   additionally injects sub-issue results into the orchestrator's session

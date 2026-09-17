@@ -25,7 +25,7 @@ import { RUN_CREDENTIALS } from "../../../domain/declared-secrets.ts";
  * a parameter rather than owning one.
  */
 function log(message: string): void {
-  console.error(`[atoma-shell] ${message}`);
+  console.error(`[atomaton-shell] ${message}`);
 }
 
 // The cap and the direction of the cut both come from `domain/tool-output.ts`.
@@ -187,6 +187,6 @@ const { tools, dispatch } = buildMcpTools([
 ]);
 
 async function main(): Promise<void> {
-  await serveMcpServer({ name: "atoma-shell-mcp", version: "1.0.0", tools, dispatch, log });
+  await serveMcpServer({ name: "atomaton-shell-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main) void main();

@@ -176,7 +176,7 @@ export function capText(text: string, limit: number): string {
   const dropped = text.length - limit;
   return (
     text.slice(0, head) +
-    `\n\n[atoma] ${dropped} characters dropped from the middle; ${limit} shown\n\n` +
+    `\n\n[atomaton] ${dropped} characters dropped from the middle; ${limit} shown\n\n` +
     text.slice(text.length - tail)
   );
 }
@@ -184,7 +184,7 @@ export function capText(text: string, limit: number): string {
 /** The text left where a tool result used to be. */
 export function removedResultNotice(originalLength: number): string {
   return (
-    `[atoma] This result (${originalLength} characters) was removed so the session fits in the ` +
+    `[atomaton] This result (${originalLength} characters) was removed so the session fits in the ` +
     "model's context window. The call that produced it is still above — call it again if you need it."
   );
 }
@@ -286,7 +286,7 @@ export function shrinkNotice(changed: number): SessionMessage {
   return {
     role: "user",
     content: [
-      `[atoma] The contents of ${changed} earlier tool results were removed from this session so it`,
+      `[atomaton] The contents of ${changed} earlier tool results were removed from this session so it`,
       "fits in the model's context window.",
       "",
       "The calls themselves are still here, so you can see what you already looked at. What is gone is",

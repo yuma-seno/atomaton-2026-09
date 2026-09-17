@@ -122,7 +122,7 @@ const SEARCH_SCHEMA = z.object({
 });
 
 function log(message: string): void {
-  console.error(`[atoma-search] ${message}`);
+  console.error(`[atomaton-search] ${message}`);
 }
 
 // Same OS user as every other tool server, including the one that runs arbitrary
@@ -524,6 +524,6 @@ async function main(): Promise<void> {
       `could not preload the reranker (${(error as Error).message}); the first search will try again`,
     );
   });
-  await serveMcpServer({ name: "atoma-search-mcp", version: "1.0.0", tools, dispatch, log });
+  await serveMcpServer({ name: "atomaton-search-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main) void main();

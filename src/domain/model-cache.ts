@@ -16,4 +16,4 @@
  * `$XDG_CACHE_HOME` inside the server, `${{ runner.temp }}/atomaton-tool-cache` in an
  * action input that cannot read a shell variable.
  */
-export const MODEL_CACHE_DIR = "atoma-transformers";
+export const MODEL_CACHE_DIR = "atomaton-transformers";

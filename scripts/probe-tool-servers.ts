@@ -188,7 +188,7 @@ async function probe(): Promise<number> {
     // `${RUNNER_TEMP}` and stops. Not the work tree, ever.
     const manifest = Bun.file(`${RUNNER_TEMP}/package.json`);
     if (!(await manifest.exists())) {
-      await Bun.write(manifest, `{"name":"atoma-mcp-libraries","private":true}\n`);
+      await Bun.write(manifest, `{"name":"atomaton-mcp-libraries","private":true}\n`);
     }
     const added = await Bun.$`bun add --no-save ${bunPackages}`.cwd(RUNNER_TEMP).quiet().nothrow();
     result("bun_libraries", bunPackages.join(" "));

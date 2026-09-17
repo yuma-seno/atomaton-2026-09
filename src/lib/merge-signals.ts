@@ -48,7 +48,7 @@ interface CheckRunsResponse {
 }
 
 function log(message: string): void {
-  console.error(`[atoma-merge-signals] ${message}`);
+  console.error(`[atomaton-merge-signals] ${message}`);
 }
 
 /**
