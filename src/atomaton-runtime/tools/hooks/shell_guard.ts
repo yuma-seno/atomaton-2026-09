@@ -53,7 +53,7 @@ import { streakFile } from "../lib/search-streak-file.ts";
  * and enforce merge readiness; that enforcement lives there, not here.
  */
 const ROUTING_RULES: Record<string, string> = {
-  gh: "gh CLI is disabled. Use the atoma_github MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
+  gh: "gh CLI is disabled. Use the github__* MCP tools (github__create_pr, github__create_issue, etc.) for GitHub operations.",
   curl: "curl is disabled. Use web__fetch, which returns the page as text.",
   wget: "wget is disabled. Use web__fetch.",
   ssh: "ssh is disabled: this run works on the checked-out repository, not on other hosts.",

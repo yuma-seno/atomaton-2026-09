@@ -132,7 +132,7 @@ describe("shell_guard.ts", () => {
   describe("routing to the MCP tool that does the job", () => {
     test("names the replacement for each disabled CLI", () => {
       const cases: [string, string][] = [
-        ["gh issue list", "atoma_github"],
+        ["gh issue list", "github__"],
         ["curl example.com", "web__fetch"],
         ["wget https://example.com", "web__fetch"],
         ["ssh host", "repository"],
