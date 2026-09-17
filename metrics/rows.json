@@ -3191,6 +3191,25 @@
     "runs": []
   },
   {
+    "path": "sessions/issue-754/reviewer.json",
+    "agent": "reviewer",
+    "messages": 13,
+    "calls": 4,
+    "failed": 0,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__check_merge_readiness": 1,
+      "github__submit_pr_review": 1,
+      "github__merge_pr": 1
+    },
+    "acts": {},
+    "runs": []
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
