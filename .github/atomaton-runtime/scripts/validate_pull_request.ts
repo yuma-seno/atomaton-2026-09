@@ -1,0 +1,317 @@
+#!/usr/bin/env bun
+// @bun
+
+// src/scripts/validate_pull_request.ts
+import { appendFileSync, existsSync, readFileSync } from "fs";
+import { parseArgs } from "util";
+
+// src/domain/pr-validation.ts
+var PASSING = new Set(["success", "skipped", "neutral"]);
+var CI_RETRY_LIMIT = 3;
+function decideValidationOutcome(input) {
+  const { conclusion, requiredContexts, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
+  const failing = requiredContexts.map((name) => ({ name, conclusion: "failure" }));
+  const deliverableProblems = input.deliverableProblems ?? [];
+  if (deliverableProblems.length > 0) {
+    const count = `${deliverableProblems.length} problem${deliverableProblems.length === 1 ? "" : "s"}`;
+    if (priorRetries >= CI_RETRY_LIMIT) {
+      return {
+        verdict: "retries-exhausted",
+        checks: failing,
+        nextAgent: "",
+        summary: `The deliverable is still not internally consistent (${count}) after ${priorRetries} attempts. ` + `Stopping rather than dispatching the engineer again; a human should look.`
+      };
+    }
+    return {
+      verdict: "deliverable-invalid",
+      checks: failing,
+      nextAgent: engineerAgent,
+      summary: `.github/atomaton/ is not internally consistent (${count}), so CI was not run.`
+    };
+  }
+  const normalised = conclusion.trim().toLowerCase();
+  const passed = PASSING.has(normalised);
+  const checks = requiredContexts.map((name) => ({
+    name,
+    conclusion: passed ? "success" : "failure"
+  }));
+  if (passed) {
+    return { verdict: "passed", checks, nextAgent: reviewerAgent, summary: `CI concluded ${normalised}.` };
+  }
+  if (!normalised) {
+    return {
+      verdict: "no-conclusion",
+      checks,
+      nextAgent: "",
+      summary: "CI never reported a conclusion. Nothing was dispatched; a human should look."
+    };
+  }
+  if (priorRetries >= CI_RETRY_LIMIT) {
+    return {
+      verdict: "retries-exhausted",
+      checks,
+      nextAgent: "",
+      summary: `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` + `Stopping rather than dispatching the engineer again; a human should look.`
+    };
+  }
+  return {
+    verdict: "failed",
+    checks,
+    nextAgent: engineerAgent,
+    summary: `CI concluded ${normalised}. Returning to the engineer with the failing job.`
+  };
+}
+
+// src/lib/gh.ts
+function run(cmd) {
+  const proc = Bun.spawnSync({
+    cmd,
+    stdout: "pipe",
+    stderr: "pipe"
+  });
+  return {
+    code: proc.exitCode ?? 1,
+    stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "",
+    stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
+  };
+}
+function gh(...args) {
+  return run(["gh", ...args]);
+}
+
+// src/lib/branch-rules.ts
+var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
+function readRequiredChecks(repo, baseRef) {
+  if (!baseRef)
+    return { known: false, why: "no base branch was given" };
+  const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
+  if (code) {
+    if (FEATURE_UNAVAILABLE.test(`${stderr} ${stdout}`)) {
+      return {
+        known: true,
+        enforceable: false,
+        contexts: [],
+        why: "branch rules are not available on this repository (they are a paid feature on a " + "private one), so GitHub cannot require a status check or refuse a merge here"
+      };
+    }
+    return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  }
+  try {
+    const rules = JSON.parse(stdout || "[]");
+    return {
+      known: true,
+      enforceable: true,
+      contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context)
+    };
+  } catch {
+    return { known: false, why: `the branch rules for ${baseRef} were not valid JSON` };
+  }
+}
+
+// src/lib/agent-name.ts
+var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
+var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
+
+// src/lib/tags.ts
+function makeTag(key, valuePattern, parse, render) {
+  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
+  return {
+    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
+    read: (text) => {
+      const m = re.exec(text);
+      return m ? parse(m[1]) : undefined;
+    },
+    has: (text) => re.test(text)
+  };
+}
+function numericTag(key) {
+  return makeTag(key, "\\d+", Number, String);
+}
+function stringTag(key, valuePattern) {
+  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
+}
+var STOP_TAG = stringTag("stop", "requested");
+var PARENT_TAG = numericTag("parent");
+var PARENT_ISSUE_TAG = numericTag("parent-issue");
+var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
+var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
+var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
+var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
+var CHANGED_TAG = stringTag("changed", "yes|no");
+var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
+var AGGREGATED_TAG = numericTag("aggregated");
+var SUB_RESULT_TAG = numericTag("sub-result");
+var CI_RETRY_TAG = numericTag("ci-retry");
+
+// src/scripts/lib/script-ref.ts
+import { basename } from "path";
+import { fileURLToPath } from "url";
+
+// src/domain/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+
+// src/scripts/lib/script-ref.ts
+function defineScript(importMetaUrl) {
+  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
+}
+
+// src/scripts/validate_pull_request.ts
+var ref = defineScript(import.meta.url);
+function log(message) {
+  console.error(`[atomaton-validate-pr] ${message}`);
+}
+function pickDispatchedRun(runs, headSha, since) {
+  const candidates = runs.filter((run) => run.event === "workflow_dispatch").filter((run) => run.head_sha === headSha).filter((run) => run.created_at >= since).sort((a, b) => a.created_at < b.created_at ? 1 : -1);
+  const run = candidates[0];
+  return run ? { id: run.id, status: run.status, conclusion: run.conclusion } : undefined;
+}
+function countPriorRetries(repo, number) {
+  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments?per_page=100`);
+  if (code)
+    return 0;
+  try {
+    const comments = JSON.parse(stdout || "[]");
+    return comments.filter((c) => CI_RETRY_TAG.has(c.body ?? "")).length;
+  } catch {
+    return 0;
+  }
+}
+function reportFailure(repo, number, attempt, runUrl, summary, details = []) {
+  const body = [
+    LLM_CONTEXT_TAG.write("include"),
+    CI_RETRY_TAG.write(attempt),
+    `Atomaton: ${summary}`,
+    ...details.length > 0 ? ["", ...details.map((detail) => `- ${detail}`)] : [],
+    "",
+    runUrl ? `Failing run: ${runUrl}` : ""
+  ].filter(Boolean).join(`
+`);
+  const posted = gh("issue", "comment", number, "--repo", repo, "--body", body);
+  if (posted.code)
+    log(`WARN could not post the failure comment: ${posted.stderr}`);
+}
+function runCiAndWait(repo, workflow, branch, headSha, timeoutSeconds) {
+  const since = new Date().toISOString();
+  const dispatch = gh("workflow", "run", workflow, "--repo", repo, "--ref", branch);
+  if (dispatch.code) {
+    log(`could not dispatch ${workflow} against ${branch}: ${dispatch.stderr}`);
+    process.exit(1);
+  }
+  const deadline = Date.now() + timeoutSeconds * 1000;
+  while (Date.now() < deadline) {
+    Bun.sleepSync(1e4);
+    const listed = gh("api", `repos/${repo}/actions/runs?per_page=30&event=workflow_dispatch`).stdout;
+    const { workflow_runs = [] } = JSON.parse(listed || "{}");
+    const run = pickDispatchedRun(workflow_runs, headSha, since);
+    if (!run)
+      continue;
+    if (run.status !== "completed")
+      continue;
+    const conclusion = run.conclusion ?? "";
+    log(`dispatched run ${run.id} concluded ${conclusion}`);
+    return { conclusion, runUrl: `https://github.com/${repo}/actions/runs/${run.id}` };
+  }
+  log(`no conclusion within ${timeoutSeconds}s`);
+  return { conclusion: "", runUrl: "" };
+}
+function main() {
+  const { values } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: {
+      repo: { type: "string" },
+      number: { type: "string" },
+      branch: { type: "string" },
+      workflow: { type: "string" },
+      reviewer: { type: "string" },
+      engineer: { type: "string" },
+      "deliverable-report": { type: "string" },
+      "timeout-seconds": { type: "string" }
+    }
+  });
+  const repo = values.repo ?? "";
+  const branch = values.branch ?? "";
+  const workflow = values.workflow ?? "";
+  if (!repo || !branch || !workflow) {
+    console.error("usage: validate_pull_request.ts --repo owner/name --number N --branch B --workflow W");
+    process.exit(1);
+  }
+  const reportPath = values["deliverable-report"] ?? "";
+  if (!reportPath) {
+    console.error("usage: validate_pull_request.ts ... --deliverable-report FILE");
+    process.exit(1);
+  }
+  if (!existsSync(reportPath)) {
+    log(`cannot validate: no deliverable report at ${reportPath}`);
+    process.exit(1);
+  }
+  const deliverableProblems = readFileSync(reportPath, "utf8").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (deliverableProblems.length > 0) {
+    log(`the deliverable is inconsistent (${deliverableProblems.length} problem(s)); CI will not be dispatched`);
+  }
+  const githubOutput = process.env.GITHUB_OUTPUT;
+  const write = (line) => {
+    if (githubOutput)
+      appendFileSync(githubOutput, `${line}
+`);
+  };
+  const prJson = gh("api", `repos/${repo}/pulls/${values.number}`).stdout;
+  const pr = JSON.parse(prJson || "{}");
+  const headSha = pr.head?.sha ?? "";
+  const baseRef = pr.base?.ref ?? "";
+  if (!headSha) {
+    log("could not read the pull request's head SHA");
+    process.exit(1);
+  }
+  const required = readRequiredChecks(repo, baseRef);
+  if (!required.known) {
+    log(`cannot validate: ${required.why}`);
+    process.exit(1);
+  }
+  const requiredContexts = required.contexts;
+  log(`required contexts on ${baseRef}: ${requiredContexts.join(", ") || "(none)"}`);
+  if (!required.enforceable) {
+    log(`::notice::${required.why}. Atomaton enforces the CI result itself when merging.`);
+  } else if (requiredContexts.length === 0) {
+    log(`::warning::${baseRef} requires no status checks, so CI results gate nothing here. ` + "Import .github/atomaton/rulesets/main.json if that was not intended.");
+  }
+  const { conclusion, runUrl } = deliverableProblems.length > 0 ? { conclusion: "", runUrl: "" } : runCiAndWait(repo, workflow, branch, headSha, Number(values["timeout-seconds"] ?? "1800"));
+  const priorRetries = countPriorRetries(repo, values.number ?? "");
+  const outcome = decideValidationOutcome({
+    conclusion,
+    requiredContexts,
+    reviewerAgent: values.reviewer ?? "",
+    engineerAgent: values.engineer ?? "",
+    priorRetries,
+    deliverableProblems
+  });
+  for (const check of outcome.checks) {
+    const created = gh("api", "--method", "POST", `repos/${repo}/check-runs`, "-f", `name=${check.name}`, "-f", `head_sha=${headSha}`, "-f", "status=completed", "-f", `conclusion=${check.conclusion}`);
+    if (created.code)
+      log(`WARN could not write check "${check.name}": ${created.stderr}`);
+    else
+      log(`wrote check "${check.name}" as ${check.conclusion}`);
+  }
+  if (outcome.verdict !== "passed") {
+    reportFailure(repo, values.number ?? "", priorRetries + 1, runUrl, outcome.summary, deliverableProblems);
+  }
+  write(`next_agent=${outcome.nextAgent}`);
+  write(`conclusion=${conclusion}`);
+  write(`summary=${outcome.summary}`);
+}
+if (import.meta.main)
+  main();
+export {
+  pickDispatchedRun,
+  ref
+};
