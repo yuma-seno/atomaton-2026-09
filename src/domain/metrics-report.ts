@@ -74,7 +74,7 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
   const out = ["## Runs", ""];
   if (runs.length === 0) {
     out.push(
-      "No run has recorded itself yet. Atomaton writes `atomaton_runs` into a session from " +
+      "No run has recorded itself yet. Atomaton writes `atoma_runs` into a session from " +
         "v0.1.28; sessions older than that carry no times, and there is no way to backfill " +
         "one that would not be a guess.",
       "",
@@ -187,17 +187,15 @@ function windowSection(label: string, metrics: Metrics): string[] {
       "**Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard " +
         "working is not a tool breaking, and a reader cannot act on the two the same way, so " +
         "they are counted apart. **Failed** is everything else that came back as an error, " +
-        "by string match, so it is an estimate. **Read `last failed` before `failure rate`**: " +
-        "the rate is over all time, so a fault fixed months ago reads exactly like one " +
-        "happening now. That date is when the session file was last written, so it errs recent.",
+        "by string match, so it is an estimate.",
     );
     out.push("");
-    out.push("| tool | calls | failed | refused | failure rate | last failed |");
-    out.push("| --- | ---: | ---: | ---: | ---: | --- |");
+    out.push("| tool | calls | failed | refused | failure rate |");
+    out.push("| --- | ---: | ---: | ---: | ---: |");
     for (const row of metrics.byTool) {
       const rate = row.count === 0 ? 0 : Math.round((row.failed / row.count) * 1000) / 10;
       out.push(
-        `| \`${row.name}\` | ${n(row.count)} | ${n(row.failed)} | ${n(row.refused)} | ${rate}% | ${row.lastFailed?.slice(0, 10) ?? "—"} |`,
+        `| \`${row.name}\` | ${n(row.count)} | ${n(row.failed)} | ${n(row.refused)} | ${rate}% |`,
       );
     }
     out.push("");

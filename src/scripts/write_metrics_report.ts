@@ -170,7 +170,7 @@ function looksFailed(content: string): boolean {
 function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   let parsed: {
     messages?: { role?: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown[] }[];
-    atomaton_runs?: unknown;
+    atoma_runs?: unknown;
   };
   try {
     parsed = JSON.parse(raw);
@@ -220,10 +220,18 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
       });
     }
   }
-  // `atomaton_runs` is atoma's own, written from v0.1.28. Anything unreadable is no
+  // `atoma_runs` is atoma's own -- the core writes this key into the session document
+  // (`RUNS_KEY` in its runner) from v0.1.28, so it keeps the core's name however this
+  // project is spelled. A rename of the CONFIG keys `checks.atoma_runs` and
+  // `deploy.atoma_runs` took this with them once, because the two are spelled alike and
+  // nothing but this sentence says they are unrelated. The reader then found nothing and
+  // every dated window in the report emptied, leaving only the all-time table -- the one
+  // the windows exist to stop anybody reading as though it described now.
+  //
+  // Anything unreadable is no
   // runs rather than a failure: a session from before it is the normal case.
-  const runs = Array.isArray((parsed as { atomaton_runs?: unknown }).atomaton_runs)
-    ? ((parsed as { atomaton_runs: RunRecord[] }).atomaton_runs)
+  const runs = Array.isArray((parsed as { atoma_runs?: unknown }).atoma_runs)
+    ? ((parsed as { atoma_runs: RunRecord[] }).atoma_runs)
     : [];
   return { path, agent, messages: messages.length, calls, runs };
 }
