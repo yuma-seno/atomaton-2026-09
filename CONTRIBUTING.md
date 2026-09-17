@@ -211,6 +211,31 @@ What each command proves:
 reads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
 not have until you build it.
 
+### Green does not mean it ran
+
+`bun test <path that does not exist>` does not fail: it runs the paths it finds,
+reports them, and exits 0. So a `test` script that names a directory which has
+moved runs a smaller suite than it says it does, CI stays green, and nothing
+compares the count against anything — nobody knows what the number should be.
+`tests/contract/test-script.test.ts` is the guard: it asserts that every path the
+`test` scripts name actually exists, which is the check that has an answer. If you
+move test files, update the `test` script in the same change.
+
+### Windows
+
+`bun run synth` does not work out of the box on Windows: `gwf` launches `node`
+through a shell without quoting the space in `C:\Program Files\...`, so it fails
+with `'C:\Program' is not recognized`. Run the two halves by hand, reaching node
+through its 8.3 short path:
+
+```bash
+"/c/PROGRA~1/nodejs/node.exe" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build
+bun run src/build-dist.ts
+```
+
+Without this, the contract tests that read `dist/` fail for a reason unrelated to
+your change and the whole suite looks broken.
+
 ## Generated-file discipline
 
 - **`dist/` is gitignored.** There is nothing generated to commit, and nothing to
