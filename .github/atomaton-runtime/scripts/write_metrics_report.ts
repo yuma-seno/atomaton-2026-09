@@ -218,8 +218,8 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
     byTool: [...byTool.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     bySkill: tally(calls.flatMap((c) => c.skill ? [c.skill] : [])),
     byAct: tally(calls.flatMap((c) => c.act ? [c.act] : [])),
-    neverUsedServers: declaredServers.filter((s) => !usedServers.has(s)).sort(),
-    neverLoaded: declaredSkills.filter((s) => !loaded.has(s)).sort(),
+    neverUsedServers: declaredServers?.filter((s) => !usedServers.has(s)).sort(),
+    neverLoaded: declaredSkills?.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
     degraded: [...degraded.values()].map(({ seen, ...row }) => ({ ...row, sessions: seen.size })).sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "") || b.count - a.count),
     runs: sessions.flatMap((s) => s.runs),
@@ -393,12 +393,12 @@ function renderReport(all, forWindow, now) {
   out.push("");
   out.push("Over all time, because something used once a year is still used. Each of these sits " + "in the prompt of every run and returns nothing.");
   out.push("");
-  out.push(all.neverUsedServers.length === 0 ? "Every declared server has been called at least once." : `Servers never called:
+  out.push(all.neverUsedServers === undefined ? "The declared servers could not be read, so this cannot say which are unused." : all.neverUsedServers.length === 0 ? "Every declared server has been called at least once." : `Servers never called:
 
 ` + all.neverUsedServers.map((t) => `- \`${t}\``).join(`
 `));
   out.push("");
-  out.push(all.neverLoaded.length === 0 ? "Every skill has been loaded at least once." : `Skills never loaded:
+  out.push(all.neverLoaded === undefined ? "The declared skills could not be read, so this cannot say which are unloaded." : all.neverLoaded.length === 0 ? "Every skill has been loaded at least once." : `Skills never loaded:
 
 ` + all.neverLoaded.map((s) => `- \`${s}\``).join(`
 `));
@@ -554,11 +554,11 @@ function tokensReported(repo) {
 }
 function declared() {
   const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
-  const tools = [];
+  let tools;
   const skills = [];
   try {
     const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8"));
-    tools.push(...Object.keys(config.tools?.servers ?? {}));
+    tools = Object.keys(config.tools?.servers ?? {});
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
@@ -568,6 +568,10 @@ function declared() {
     const match = /skills\/(.+)\.md$/.exec(path.trim());
     if (match?.[1])
       skills.push(match[1]);
+  }
+  if (skills.length === 0) {
+    log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
+    return { tools, skills: undefined };
   }
   return { tools, skills };
 }
