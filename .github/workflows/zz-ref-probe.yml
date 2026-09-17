@@ -1,0 +1,16 @@
+# TEMPORARY probe, removed in the next commit. It answers one question that
+# decides how this rename can be deployed: for a `pull_request` event, does
+# GitHub read the workflow file from the MERGE REF (this pull request) or from
+# the BASE BRANCH? A file that exists only here will run only in the first case.
+name: zz ref probe
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "the workflow file came from the merge ref"
