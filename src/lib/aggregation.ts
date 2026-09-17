@@ -200,7 +200,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   // not, and that asymmetry is exactly what the read already relies on.
   const marker = gh(
     "issue", "comment", String(opts.parent), "--repo", opts.repo,
-    "--body", `${AGGREGATED_TAG.write(opts.closedNum)}\nAtoma: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`,
+    "--body", `${AGGREGATED_TAG.write(opts.closedNum)}\nAtomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`,
   );
   if (marker.code !== 0) {
     const why =

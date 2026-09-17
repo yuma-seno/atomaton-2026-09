@@ -113,5 +113,5 @@ export function prunablePaths(paths: readonly string[], isOver: (issue: number) 
 export function pruneCommitMessage(decision: PruneDecision): string {
   const files = `${decision.paths.length} file${decision.paths.length === 1 ? "" : "s"}`;
   const listed = decision.issues.map((n) => `#${n}`).join(", ");
-  return `atoma: prune ${files} from closed issues (${listed})`;
+  return `atomaton: prune ${files} from closed issues (${listed})`;
 }

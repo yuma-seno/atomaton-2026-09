@@ -82,7 +82,7 @@ function injectResultsIntoOrchestratorSession(repo: string, parent: number): voi
   // Composed here, where the I/O belongs: read what the sub-issues did, then
   // put it in the session. `injectSummary` is the half that decides where.
   const updated = injectSummary(session, gatherSubResults(repo, subIssues));
-  const message = `atoma: inject sub-issue results for parent #${parent}`;
+  const message = `atomaton: inject sub-issue results for parent #${parent}`;
   if (!saveSession(sessionPath, JSON.stringify(updated, null, 2), message)) {
     console.error(`::warning::Failed to save session to atomaton-data:${sessionPath} after all retries.`);
   }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { isAbsolute } from "node:path";
 import { reservedServerNames, toolsFileFrom } from "./tools-file.ts";
 import { toolDefaults } from "./shipped-servers.ts";
 
@@ -106,6 +107,23 @@ describe("hook paths", () => {
     for (const path of after) expect(path.startsWith(HOOK_BASE), path).toBe(true);
   });
 
+  /**
+   * `validate_deliverable.ts` checks a pull request out into `pr-head/` and passes
+   * that as the base. `join` left the result relative, the core resolved it against
+   * the temp directory it had just been handed the file in, and every agent pull
+   * request was refused with `Hook script not found`. Three identical problems, one
+   * per agent definition, and nothing in the suite noticed: every other caller passes
+   * an absolute base.
+   */
+  test("a relative base still produces an absolute path", () => {
+    const out = toolsFileFrom(undefined, "pr-head/.github/atomaton-runtime/tools");
+    const after = (out.hooks as Record<string, string[]>).after_tool!;
+    expect(after.length).toBeGreaterThan(0);
+    for (const path of after) {
+      expect(isAbsolute(path), path).toBe(true);
+      expect(path.endsWith("/.github/atomaton-runtime/tools/hooks/workspace_guard.ts"), path).toBe(true);
+    }
+  });
   test("a server's own hook is resolved too", () => {
     const out = toolsFileFrom({ servers: { fs: { command: "x", hooks: { after_tool: "./scripts/hooks/n.ts" } } } }, HOOK_BASE);
     expect((out.fs as { hooks: Record<string, unknown> }).hooks.after_tool).toBe(`${HOOK_BASE}/scripts/hooks/n.ts`);

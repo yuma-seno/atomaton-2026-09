@@ -235,7 +235,7 @@ function handleReloadEnvironment(args: z.infer<typeof RELOAD_ENVIRONMENT_SCHEMA>
   gh(
     "issue", "comment", number,
     "--body",
-    `${LLM_CONTEXT_TAG.write("exclude")}\nAtoma: rebuilding the environment and restarting \`${agent}\` ` +
+    `${LLM_CONTEXT_TAG.write("exclude")}\nAtomaton: rebuilding the environment and restarting \`${agent}\` ` +
       `(reload ${next} of ${limit}). Reason: ${args.reason}`,
   );
 

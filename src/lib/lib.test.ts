@@ -182,7 +182,7 @@ describe("tags.ts", () => {
     const { LLM_CONTEXT_TAG } = await import("./tags.ts");
     const marker = LLM_CONTEXT_TAG.write("exclude");
     expect(marker).toBe("<!-- atoma:llm-context=exclude -->");
-    expect(LLM_CONTEXT_TAG.read(`${marker}\nAtoma: operation started.`)).toBe("exclude");
+    expect(LLM_CONTEXT_TAG.read(`${marker}\nAtomaton: operation started.`)).toBe("exclude");
   });
 });
 

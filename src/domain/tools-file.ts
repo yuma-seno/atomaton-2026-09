@@ -33,8 +33,15 @@
  * rule with no exceptions beats a rule that holds for the output locations somebody
  * thought of. The generated file is a run's ephemeral input, not something a person
  * reads, so the loss of a short relative path costs nothing.
+ *
+ * `hookBase` itself may be relative -- `validate_deliverable.ts` checks out a pull
+ * request into `pr-head/` and passes that -- so this resolves against the working
+ * directory rather than merely joining. Joining made the promise above false for
+ * exactly that caller: every hook came out relative, the core resolved it against
+ * the temp directory it had just been handed the file in, and every agent pull
+ * request was refused with three identical `Hook script not found` problems.
  */
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { toolDefaults, type ToolDefaults } from "./shipped-servers.ts";
 
 /** A server entry as the config carries it: the core's own keys, plus `settings`. */
@@ -172,7 +179,11 @@ function absolutePath(script: unknown, base: string): unknown {
   if (isAbsolute(script)) return script;
   // Posix separators: this is written for a Linux runner, and a Windows-style
   // separator would reach the core as part of the filename.
-  return join(base, script).split("\\").join("/");
+  // The base is made absolute first, rather than resolving base and script
+  // together: resolving both rewrites an already-absolute POSIX base onto the
+  // current drive on Windows, where the tests for this also run.
+  const from = isAbsolute(base) ? base : resolve(base);
+  return join(from, script).split("\\").join("/");
 }
 
 /**

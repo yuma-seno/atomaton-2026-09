@@ -23,7 +23,7 @@ export function dispatchSubAgent(issue: number, agent: string, notify = ""): Dis
 
   gh(
     "issue", "comment", String(issue),
-    "--body", `${LLM_CONTEXT_TAG.write("exclude")}\nAtoma: Agent \`${agent}\` dispatched to work on this sub-task.`,
+    "--body", `${LLM_CONTEXT_TAG.write("exclude")}\nAtomaton: Agent \`${agent}\` dispatched to work on this sub-task.`,
   );
 
   const launchedLabel = getLabel("launched");
