@@ -191,7 +191,7 @@ function loadIndex(): IssueIndex {
 
   // Saving is best-effort. A failure costs the next search a full fetch; it
   // must not cost this one its answer.
-  if (!saveAsOnlyCommit(INDEX_BRANCH, INDEX_PATH, JSON.stringify(index), `atoma: issue search index (${issues.length} issues)`)) {
+  if (!saveAsOnlyCommit(INDEX_BRANCH, INDEX_PATH, JSON.stringify(index), `atomaton: issue search index (${issues.length} issues)`)) {
     // Reported, not just logged: the next search rebuilds, and so does the one
     // after it. A cost that repeats is one somebody can fix.
     report("warning", "could not save the search index; every search from here rebuilds it");

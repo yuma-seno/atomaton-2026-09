@@ -391,10 +391,10 @@ function main(): void {
   // Beside the report, and the reason it exists: the report answers the questions it
   // was built for, and this answers the ones nobody has asked yet. Every finding this
   // repository has made about its own agents came from a question of the second kind.
-  if (!saveSession(ROWS_PATH, `${JSON.stringify(rowsOf(sessions), null, 2)}\n`, `atoma: metric rows from ${sessions.length} sessions`)) {
+  if (!saveSession(ROWS_PATH, `${JSON.stringify(rowsOf(sessions), null, 2)}\n`, `atomaton: metric rows from ${sessions.length} sessions`)) {
     log("could not write the rows; the report is unaffected");
   }
-  if (!saveSession(REPORT_PATH, report, `atoma: metrics from ${sessions.length} sessions`)) {
+  if (!saveSession(REPORT_PATH, report, `atomaton: metrics from ${sessions.length} sessions`)) {
     log("could not write the report; the run is unaffected");
   }
 }

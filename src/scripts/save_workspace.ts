@@ -57,7 +57,7 @@ function main(): void {
   const saved = saveWorkspace(
     prefix,
     source,
-    `atoma: workspace for issue #${root}${values.agent ? ` (${values.agent})` : ""} — ${count} entries`,
+    `atomaton: workspace for issue #${root}${values.agent ? ` (${values.agent})` : ""} — ${count} entries`,
   );
 
   console.error(
