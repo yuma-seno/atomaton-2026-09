@@ -126,7 +126,7 @@ function contentText(content) {
   return;
 }
 function removedResultNotice(originalLength) {
-  return `[atoma] This result (${originalLength} characters) was removed so the session fits in the ` + "model's context window. The call that produced it is still above \u2014 call it again if you need it.";
+  return `[atomaton] This result (${originalLength} characters) was removed so the session fits in the ` + "model's context window. The call that produced it is still above \u2014 call it again if you need it.";
 }
 function replaceOldToolResults(session, keepRecent = KEEP_RECENT_RESULTS) {
   const messages = session.messages ?? [];
@@ -153,7 +153,7 @@ function shrinkNotice(changed) {
   return {
     role: "user",
     content: [
-      `[atoma] The contents of ${changed} earlier tool results were removed from this session so it`,
+      `[atomaton] The contents of ${changed} earlier tool results were removed from this session so it`,
       "fits in the model's context window.",
       "",
       "The calls themselves are still here, so you can see what you already looked at. What is gone is",

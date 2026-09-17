@@ -73,7 +73,7 @@ var CI_RETRY_TAG = numericTag("ci-retry");
 
 // src/lib/parent-issue.ts
 function log(message) {
-  console.error(`[atoma-parent] ${message}`);
+  console.error(`[atomaton-parent] ${message}`);
 }
 function nativeParent(repo, issue) {
   const [owner, name] = repo.split("/", 2);

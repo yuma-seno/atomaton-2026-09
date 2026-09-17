@@ -41,7 +41,7 @@ function gh(...args) {
 
 // src/lib/issue-branches.ts
 function log(message) {
-  console.error(`[atoma-issue-branch] ${message}`);
+  console.error(`[atomaton-issue-branch] ${message}`);
 }
 function collectIssueBranches(repo, issueNumber) {
   const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
@@ -101,7 +101,7 @@ function defineScript(importMetaUrl) {
 // src/scripts/resolve_issue_branch.ts
 var ref = defineScript(import.meta.url);
 function log2(message) {
-  console.error(`[atoma-issue-branch] ${message}`);
+  console.error(`[atomaton-issue-branch] ${message}`);
 }
 function main() {
   const { values } = parseArgs({

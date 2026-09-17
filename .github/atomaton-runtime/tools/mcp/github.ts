@@ -7190,7 +7190,7 @@ function readAnyParentTag(text) {
 
 // src/lib/notify.ts
 function log(message) {
-  console.error(`[atoma-notify] ${message}`);
+  console.error(`[atomaton-notify] ${message}`);
 }
 var MAX_HOPS = 10;
 function repositoryOwner(repo) {
@@ -18575,7 +18575,7 @@ function unattendedNotice(notify, agent) {
 
 // src/lib/parent-issue.ts
 function log2(message) {
-  console.error(`[atoma-parent] ${message}`);
+  console.error(`[atomaton-parent] ${message}`);
 }
 function nativeParent(repo, issue) {
   const [owner, name] = repo.split("/", 2);
@@ -18623,7 +18623,7 @@ function nextBranchName(branches, issueNumber) {
 
 // src/lib/issue-branches.ts
 function log3(message) {
-  console.error(`[atoma-issue-branch] ${message}`);
+  console.error(`[atomaton-issue-branch] ${message}`);
 }
 function collectIssueBranches(repo, issueNumber) {
   const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
@@ -18890,7 +18890,7 @@ function readRequiredChecks(repo, baseRef) {
 
 // src/lib/merge-signals.ts
 function log6(message) {
-  console.error(`[atoma-merge-signals] ${message}`);
+  console.error(`[atomaton-merge-signals] ${message}`);
 }
 function governedPathProblems() {
   return getGovernedPaths().map((pattern) => pathPatternProblem(pattern)).filter((problem) => problem !== "").map((problem) => `\`merge.governed_paths\`: ${problem}`);
@@ -19823,7 +19823,7 @@ async function main() {
     process.exit(1);
   }
   log7(`Starting for ${REPO}`);
-  await serveMcpServer({ name: "atoma-github-mcp", version: "1.0.0", tools: TOOLS, dispatch, log: log7 });
+  await serveMcpServer({ name: "atomaton-github-mcp", version: "1.0.0", tools: TOOLS, dispatch, log: log7 });
 }
 if (import.meta.main)
   main();

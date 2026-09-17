@@ -17783,7 +17783,7 @@ var FETCH_SCHEMA = objectType({
   body: stringType().optional().describe("Request body for POST, e.g. `q=search+terms` for a form endpoint.")
 });
 function log(message) {
-  console.error(`[atoma-web] ${message}`);
+  console.error(`[atomaton-web] ${message}`);
 }
 hardenCredentialHolder(log);
 var USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
@@ -17843,7 +17843,7 @@ var { tools, dispatch } = buildMcpTools([
   })
 ]);
 async function main() {
-  await serveMcpServer({ name: "atoma-web-mcp", version: "1.0.0", tools, dispatch, log });
+  await serveMcpServer({ name: "atomaton-web-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main)
   main();

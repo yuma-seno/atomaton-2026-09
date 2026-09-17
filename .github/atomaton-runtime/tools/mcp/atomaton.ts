@@ -6791,7 +6791,7 @@ Atomaton: Agent \`${agent}\` dispatched to work on this sub-task.`);
 
 // src/lib/notify.ts
 function log(message) {
-  console.error(`[atoma-notify] ${message}`);
+  console.error(`[atomaton-notify] ${message}`);
 }
 var MAX_HOPS = 10;
 function repositoryOwner(repo) {
@@ -18099,7 +18099,7 @@ function reloadAccepted(next, limit) {
 
 // src/atomaton-runtime/tools/mcp/atomaton.ts
 function log2(msg) {
-  console.error(`[atoma-mcp] ${msg}`);
+  console.error(`[atomaton-mcp] ${msg}`);
 }
 hardenCredentialHolder(log2);
 var LAUNCH_SUB_AGENT_SCHEMA = objectType({
@@ -18240,8 +18240,8 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
   })
 ]);
 async function main() {
-  log2("Starting atoma-mcp-server (stdio transport)");
-  await serveMcpServer({ name: "atoma-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log: log2 });
+  log2("Starting atomaton-mcp-server (stdio transport)");
+  await serveMcpServer({ name: "atomaton-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log: log2 });
 }
 if (import.meta.main)
   main();

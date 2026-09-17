@@ -185,7 +185,7 @@ function readAnyParentTag(text) {
 
 // src/lib/notify.ts
 function log(message) {
-  console.error(`[atoma-notify] ${message}`);
+  console.error(`[atomaton-notify] ${message}`);
 }
 var MAX_HOPS = 10;
 function repositoryOwner(repo) {

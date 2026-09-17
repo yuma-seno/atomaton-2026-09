@@ -17895,7 +17895,7 @@ function getRerankerModel() {
 }
 
 // src/domain/model-cache.ts
-var MODEL_CACHE_DIR = "atoma-transformers";
+var MODEL_CACHE_DIR = "atomaton-transformers";
 
 // src/atomaton-runtime/tools/mcp/search.ts
 import { readFileSync as readFileSync2 } from "fs";
@@ -17974,7 +17974,7 @@ var INDEX_BRANCH = "atomaton-index";
 var INDEX_PATH = "issue-index.json";
 var INDEX_VERSION = 2;
 function log(message) {
-  console.error(`[atoma-search] ${message}`);
+  console.error(`[atomaton-search] ${message}`);
 }
 var MAX_BODY = 6000;
 var MAX_COMMENT = 3000;
@@ -18179,7 +18179,7 @@ var SEARCH_SCHEMA = objectType({
   limit: positiveInt("How many issues to return. Defaults to 3, which held the answer for every question measured. " + "At most 20: the ranking pipeline considers that many candidates, so a larger number returns 20.").max(CANDIDATES2).optional()
 });
 function log2(message) {
-  console.error(`[atoma-search] ${message}`);
+  console.error(`[atomaton-search] ${message}`);
 }
 hardenCredentialHolder(log2);
 function currentIssue() {
@@ -18397,7 +18397,7 @@ async function main() {
   loadReranker().catch((error) => {
     report("warning", `could not preload the reranker (${error.message}); the first search will try again`);
   });
-  await serveMcpServer({ name: "atoma-search-mcp", version: "1.0.0", tools, dispatch, log: log2 });
+  await serveMcpServer({ name: "atomaton-search-mcp", version: "1.0.0", tools, dispatch, log: log2 });
 }
 if (import.meta.main)
   main();

@@ -98,7 +98,7 @@ function capText(text, limit) {
   const dropped = text.length - limit;
   return text.slice(0, head) + `
 
-[atoma] ${dropped} characters dropped from the middle; ${limit} shown
+[atomaton] ${dropped} characters dropped from the middle; ${limit} shown
 
 ` + text.slice(text.length - tail);
 }
