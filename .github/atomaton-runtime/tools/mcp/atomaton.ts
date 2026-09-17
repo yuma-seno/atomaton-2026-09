@@ -6769,7 +6769,7 @@ function dispatchSubAgent(issue, agent, notify = "") {
     throw new Error(`agent must be a valid lowercase agent name, got: ${agent}`);
   }
   gh("issue", "comment", String(issue), "--body", `${LLM_CONTEXT_TAG.write("exclude")}
-Atoma: Agent \`${agent}\` dispatched to work on this sub-task.`);
+Atomaton: Agent \`${agent}\` dispatched to work on this sub-task.`);
   const launchedLabel = getLabel("launched");
   gh("label", "create", launchedLabel, "--force", "-c", "1f883d", "-d", "Atomaton has dispatched an agent for this sub-task");
   const { code: labelCode } = gh("issue", "edit", String(issue), "--add-label", launchedLabel);
@@ -6913,7 +6913,7 @@ ${opts.progressMessage(remaining)}`);
   if (opts.beforeDispatch)
     await opts.beforeDispatch();
   const marker = gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${AGGREGATED_TAG.write(opts.closedNum)}
-Atoma: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
+Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
   if (marker.code !== 0) {
     const why = `could not write the aggregation marker on #${opts.parent}: ${marker.stderr.trim() || marker.stdout.trim()}`;
     console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
@@ -18204,7 +18204,7 @@ function handleReloadEnvironment(args) {
   }
   const next = soFar + 1;
   gh("issue", "comment", number, "--body", `${LLM_CONTEXT_TAG.write("exclude")}
-Atoma: rebuilding the environment and restarting \`${agent}\` ` + `(reload ${next} of ${limit}). Reason: ${args.reason}`);
+Atomaton: rebuilding the environment and restarting \`${agent}\` ` + `(reload ${next} of ${limit}). Reason: ${args.reason}`);
   const dispatched = dispatchRunner({
     context: `reload_environment: restarting ${agent} on #${number} after a rebuild`,
     agent,

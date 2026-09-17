@@ -7,7 +7,7 @@ import { dirname as dirname2 } from "path";
 import { parseArgs } from "util";
 
 // src/domain/tools-file.ts
-import { isAbsolute, join as join2 } from "path";
+import { isAbsolute, join as join2, resolve } from "path";
 
 // src/domain/shipped-servers.ts
 import { readFileSync } from "fs";
@@ -99,7 +99,8 @@ function absolutePath(script, base) {
     return script;
   if (isAbsolute(script))
     return script;
-  return join2(base, script).split("\\").join("/");
+  const from = isAbsolute(base) ? base : resolve(base);
+  return join2(from, script).split("\\").join("/");
 }
 function reservedServerNames(tools) {
   return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
