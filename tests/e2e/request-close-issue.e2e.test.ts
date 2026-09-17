@@ -54,7 +54,7 @@ You are a test orchestrator agent.
 
       writeFileSync(
         join(dir, "tools.yaml"),
-        `atoma:
+        `atomaton:
   command: bun
   args: ["run", "${ATOMA_MCP_SCRIPT}"]
 `,

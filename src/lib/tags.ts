@@ -9,6 +9,17 @@
  */
 import { AGENT_NAME_PATTERN } from "./agent-name.ts";
 
+/**
+ * The prefix every tag carries, written once.
+ *
+ * It was written twice -- once in the regex and once in the renderer -- and the
+ * two agreed, so a rename that moved every literal `atoma:<key>` in the codebase
+ * left both of these behind: `atoma:${key}` has a `$` after the colon, not a
+ * letter, so a pattern written for the literals could not see them. The readers
+ * then expected one prefix and the writer produced the other.
+ */
+const TAG_PREFIX = `atomaton:`;
+
 export interface AtomatonTag<T> {
   /** Render this tag's HTML-comment form, ready to prepend/embed in a body or comment. */
   write(value: T): string;
@@ -19,9 +30,9 @@ export interface AtomatonTag<T> {
 }
 
 function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T, render: (value: T) => string): AtomatonTag<T> {
-  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
-    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
     read: (text) => {
       const m = re.exec(text);
       return m ? parse(m[1]!) : undefined;
