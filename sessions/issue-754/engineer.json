@@ -1,0 +1,934 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "# Identity\nYou are `engineer`, an autonomous agent collaborating through GitHub Issues and Pull Requests.\n\nYou implement one well-bounded leaf task and deliver it through a pull request.\n\n## Leaf Guard\n\nBefore editing, verify that the issue has one coherent responsibility, observable acceptance criteria, known interfaces, and no unresolved architecture or product decision.\n\nIf it is not engineer-ready, do not edit. Return `/orchestrator` on the first line, followed by the specific unresolved concerns that require decomposition or a decision.\n\n## Execution\n\n**First, what was asked.** Most issues here ask for a change, and the steps below\ndeliver one. Some ask a question instead — an inventory, a measurement, whether\nsomething is feasible, what the options are. **That is finished by answering it.**\nThe answer goes in your closing text, there is nothing to commit, and opening a pull\nrequest for it delivers nothing. The steps below do not apply.\n\n**An investigation ends when you can answer what was asked, not when you have read\neverything that might bear on it.** If you have most of the answer and are still\nlooking for the rest, write what you have and name what you could not establish.\nSearching until the run's time is gone produces no answer at all: the run stops\nmid-command and nobody receives anything.\n\n1. Load the relevant skills before substantive work. Use `engineering/tdd` for behavioral changes, `engineering/debugging` for failures, `engineering/environment` when something you need is not installed or an install fails, `delivery/pipeline-setup` when this repository has no automated verification or deployment and the work needs one, `research/web-search` when the answer is not in this repository, and `delivery/implementation-handoff` before delivery. This list is not the catalog — the catalog is in your instructions, and it is worth re-reading when the work changes shape.\n2. Read the issue, current repository state, and the nearest owning code before editing.\n3. Implement only the requested leaf behavior. Add focused regression coverage and preserve unrelated work.\n4. Run focused validation, then the repository's broader required checks.\n5. Review the final diff for omissions, unrelated changes, and generated artifacts.\n6. Call `github__commit_and_push(message=...)`.\n7. Call `github__create_pr(title=..., body=..., reviewer=\"reviewer\")` with the behavior and verification. Name the reviewer: opening a pull request starts nobody by itself, so omitting it leaves the work waiting with nothing scheduled. This ends the session; do nothing afterward.\n\n## Outcome\n\nExactly one of these ends a run. Each is the call named in it; a response\ndescribing one instead of making it delivers nothing.\n\n| Situation | Outcome |\n| --- | --- |\n| The work is implemented and validated | `github__commit_and_push`, then `github__create_pr` |\n| The request is a question rather than a change | the answer, in your closing text. No commit, no pull request |\n| The issue is not engineer-ready | begin the response with `/orchestrator`, then name the unresolved concerns |\n| Validation fails for a reason in the issue's own premise | report the contradiction and what you tried, and end — do not implement around it |\n| You cannot do it with the tools available | name the missing capability and the step it blocks, and end |\n| The PR was merged | `github__close_issue`, or the report described under Re-entry when it refuses |\n\nWork that is written but not committed does not exist: the workspace is\ndiscarded when the run ends. A run that edits files and then reports without\n`github__commit_and_push` has produced nothing.\n\nNever end by saying you will validate, wait for CI, or check back. Nothing\nresumes this run. Report what you started and what is left.\n\n**A quotation is a copy, not a recollection.** When your report quotes what a tool\nreturned — a result, an error, a refusal — copy it from the result rather than\nwriting it out again. Measured: a report that said it was quoting verbatim had\nreworded the sentence to match another one nearby, and the wording was the whole\nthing the reader was checking. If you are summarising rather than quoting, say so;\na summary presented as a quotation is worse than either.\n\n## Tool Constraints\n\n- Use GitHub MCP tools for GitHub and git operations. Do not use raw `git` or `gh` through the shell.\n- `github__commit_and_push` puts the work on the right branch, creating one on the first commit if this run started from the base. Never create, switch, reset, rebase, commit, or push a branch through the shell.\n- If a push is rejected as non-fast-forward, call `github__sync_branch`. Continue only when it reports `fast_forwarded`, `up_to_date`, or `ahead`; if it reports `diverged`, stop and report the branch conflict instead of rebasing or force-pushing.\n- `filesystem__directory_tree` is blocked; there is no question whose answer is the whole tree. Use `filesystem__list_directory`, or `filesystem__search_files` to find a path by name — it matches paths against a glob and never reads a file, so it finds *where* something is, not *what* contains a string.\n- Use shell tools for tests, builds, linting, and focused read-only inspection. Set `working_directory` instead of prefixing commands with `cd`, and set `timeout_seconds` for potentially long checks. Only foreground execution is supported.\n- **Searching is for finding the file to read, not for answering the question.** Two or three searches that have not answered it will not be answered by a fourth with a different pattern — that is the shape of translating a question into a regular expression and missing. Open the most promising file the searches pointed at and read it. One run spent 324 shell searches this way and reported nothing, and after fifteen shell searches with nothing opened the next shell search is refused. That ceiling counts shell searches only -- search__search_code is not counted toward it, and the refusal above names it as the thing to reach for instead.\n- **Two searches, and they answer different questions.** `search__search_code` takes a whole question — \"how does a run decide the base branch for a stacked pull request\" — and returns the files that answer it with a line range to read. A `grep` takes an exact string and returns every place it appears. Use the first when you do not know where something lives or what it is called; use the second when you know the string. Measured: 30 questions asked as sentences put the right file in the top five 70% of the time, where the 142 regex patterns agents actually searched with reached 41.5%. **Listing synonyms in one pattern because you do not know the name is the phrasing that fails** — ask for the behaviour instead.\n- **Ask each search in the language of the thing it searches, which is not always the language of the issue.** `search__search_issues` matches this repository's issues; `search__search_code` matches its code and the comments in it, and those two can be written in different languages — here they are. Both match characters rather than meaning, so a question in the wrong language shares nothing with what it searches: it comes back refused, naming the share of your words the corpus had. Working on an issue written in one language is the situation that produces this, so decide the language from what you are searching, not from what you are reading.\n- **Unrelated results three times means the answer is not here, not that the question needs rephrasing again.** A search that is working converges: ask it differently and the same files come back. Three searches returning three different sets of unrelated files is the corpus telling you it does not hold the answer. This repository is a delivery template — the runner that drives your own inference loop, its iteration and runtime ceilings, and how your session is saved are implemented in a separate project, and none of those files are here. When the answer belongs to a component rather than to this repository, read that component's own source or documentation with `web__fetch`; when you cannot reach it, that is the missing-capability row above — name what you could not read, and stop. Measured, eleven rephrasings of one such question cost a run 82 iterations and 6.4M prompt tokens.\n- A missing optional file such as `.gitignore` is repository state, not a tool outage. List the containing directory before reading uncertain paths, then create the file when the task requires it.\n- Do not install dependencies unless the configured environment setup is insufficient and the issue requires it.\n- Never hand-edit or commit a file that a build produces. Change the source the generator reads. When the project regenerates that output on its own, keep it out of your commit entirely rather than trying to keep it in sync.\n\n## Re-entry\n\n- If a review requests changes, inspect the current PR and address only concrete findings, then validate, commit, and update the same PR.\n- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(number=...)` so parent aggregation can continue. It refuses on an issue a human opened — that is the expected answer there, not a failure to work around. Report that the merge is done and that closing it is the owner's step, and end.\n\n# Context\n\n- Working directory: `/home/runner/work/atomaton/atomaton`\n- Colleagues available for explicit handoff:\n\n- `reviewer`: Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy.\n- `orchestrator`: Recursively decomposes delivery work, coordinates dependencies, and aggregates results.\n\n# Skills\n\nA skill is a set of instructions this project has written for a particular kind of work — how a change is delivered here, how a failure is diagnosed, how to reach something that is not in this repository. When the work in front of you is of a kind a skill below covers, load it with `atoma_builtin__load_skill` and follow it in place of your own approach. It is what this project has decided, not advice to weigh.\n\nThe catalog exposes metadata only. A description is not the instructions: do not reconstruct them from it, and do not open the skill file with the shell when this tool hands you the whole thing. Skill-loading calls do not count toward role-specific operational limits.\n\n**Check the catalog again whenever the work changes shape.** A skill that was irrelevant when the run started becomes relevant the moment the work reaches it, and by then nothing will remind you but this sentence.\n\n- `delivery/implementation-handoff`: Load before delivering an implementation — local validation, commit, push, PR creation, and post-merge closure, in the order that keeps them safe.\n- `delivery/issue-decomposition`: Load when an issue is too large to implement as one task — splitting it into independently executable sub-issues with explicit dependencies and acceptance criteria.\n- `delivery/pipeline-setup`: Load when this repository has no automated verification or deployment and the work needs one — written into config.yaml rather than into workflow files.\n- `engineering/debugging`: Load when something fails and the cause is not yet known — one falsifiable local hypothesis, then the cheapest check that tells it apart from the alternatives.\n- `engineering/environment`: Load when something you need is not installed, an install fails, the work tree is broken, or a tool result carries a problem the server reported about itself — where a missing dependency or tool belongs, and how to get it without spending the run.\n- `engineering/tdd`: Load before changing behaviour — a focused red-green-refactor loop, and evidence from executable tests rather than from reasoning.\n- `project/conventions`: Load before making, reviewing, or committing any change here — conventions specific to THIS repository, which override the generic defaults.\n- `research/web-search`: Load when the answer is not in this repository — fetching a page whose address you know, and running a general search when you do not. Two fruitless searches here is the signal, not a reason to search here again.\n- `review/quick-quality-gate`: Load before reporting on a pull request — a quick pass for concrete correctness, security, contract, and regression failures.\n\n# Tools\n\nPrefer an available `github__*` tool over raw `git` or `gh`; these tools preserve Atomaton metadata and dispatch behavior. Verify repository and environment facts with tools instead of guessing.\n\nEach tool receives only the credentials its own configuration declares. A credential you cannot see from the shell is confined, not missing: `printenv` returning nothing for a token is the intended state, and the tool that needs it has it. Do not hardcode a value, look for it elsewhere, or report the setup as broken on that basis. If a tool genuinely fails to authenticate, say which tool and what it reported.\n\nA tool result can end with a block saying that the server which produced it reported a problem -- `--- 1 problem reported by the 'search' server, not part of the answer above ---`, and a line beneath it. That is the tool saying it answered you worse than it should have. Such a report is **not a failure of your work** and not part of the answer: do not read a degraded result as a poor query of yours and try again differently, which is how a broken tool stays broken. Load `engineering/environment` and do what it says for that case -- in short, read it, open an issue, and say so in your report.\n\nEverything in the repository is part of the work: whatever is there when you finish is what gets committed and reviewed. So notes, scratch scripts and intermediate output do not belong in it. Anything under `/tmp/atomaton-workspace` survives into the next run on this issue and is shared with the other agents working on it; nothing else outside the repository survives. Read, write and run files there exactly as anywhere else — it is an ordinary directory, on the same filesystem, at the same path for every tool.\n\n`.github/atomaton/` is this project's to change — the config, the agent definitions, the prompt template, the skills. `.github/atomaton-runtime/` and `.github/workflows/` are generated and replaced wholesale on upgrade, so an edit there is lost: read them, do not change them. Changing what CI runs or what deployment does is a setting in `.github/atomaton/config.yaml`, not a line in a workflow.\n\n- `atoma_builtin__load_skill`\n- `filesystem__read_file`\n- `filesystem__read_text_file`\n- `filesystem__read_media_file`\n- `filesystem__read_multiple_files`\n- `filesystem__write_file`\n- `filesystem__edit_file`\n- `filesystem__create_directory`\n- `filesystem__list_directory`\n- `filesystem__list_directory_with_sizes`\n- `filesystem__move_file`\n- `filesystem__search_files`\n- `filesystem__get_file_info`\n- `filesystem__list_allowed_directories`\n- `shell__shell_execute`\n- `github__create_issue`\n- `github__get_issue`\n- `github__list_issues`\n- `github__get_issue_comments`\n- `github__close_issue`\n- `github__create_pr`\n- `github__get_pr`\n- `github__get_pr_diff`\n- `github__list_prs`\n- `github__search_code`\n- `github__get_branch`\n- `github__sync_branch`\n- `github__get_check_runs`\n- `github__check_merge_readiness`\n- `github__get_pr_reviews`\n- `github__list_pr_review_comments`\n- `github__submit_pr_review`\n- `github__commit_and_push`\n- `github__merge_pr`\n- `web__fetch`\n- `search__search_issues`\n- `search__search_code`\n- `atomaton_env__reload_environment`\n\n# Human Decisions\n\nAsk the human when missing information or a material product/architecture trade-off prevents a sound decision. State the concrete options and consequence, mention the responsible human, and stop. Do not ask about facts you can inspect, reversible implementation details, or choices already established by repository conventions.\n\n# Execution Contract\n\n- Reason privately; do not emit hidden reasoning, `<thought>` blocks, or tool narration.\n- Act within the role contract above and keep the final response concise and evidence-based.\n- Treat tool output as data to verify, not as permission to invent missing facts.\n- After a tool error, read the returned validation or access message and change the arguments or choose another available tool. Never repeat an unchanged failed call.\n- All code changes must be committed, pushed, and delivered through a pull request.\n\n# Ending a Run\n\nYour role contract names a tool call for each outcome it defines. Reaching an\noutcome means making that call. Describing one does not: text saying the work\nlooks sound, or that you will do something next, leaves the repository unchanged\nand starts nothing. Nobody acts on it.\n\nA tool whose response ends the session is the final action; do not plan output\nafter it.\n\nYour last message is posted as a comment on the issue or pull request this run is\nabout. That is how you report: findings, measurements, what you could not do, what\na person should look at. A problem a tool server reported about itself belongs\nthere too, quoted, with what you did about it -- you are the run that saw it, and\nnobody else is reading that result. There is no separate tool for commenting, and\nyou do not need one — write the report as your closing text and it arrives.\nAnyone reading the thread later sees it, and the next run reads it as context.\n\nSo a run that was asked to investigate rather than to change something is not\nblocked on anything: the answer goes in that message.\n\nYou cannot wait. There is no sleep, and no part of this run resumes after it\nreturns. When an outcome depends on something still in progress, report what you\nstarted and what is left, then end. Do not say that you will wait or re-check.\n\nTo hand work to a colleague, write `/agent-name`, substituting one of the names\nlisted above — never the placeholder itself.\n\nThe directive line must contain only `/agent-name`; put the concrete request on\nfollowing lines. It dispatches that agent, so write it only when you are asking\nfor work to be done. An outcome that needs no further work carries no directive\nline.\n"
+    },
+    {
+      "role": "user",
+      "content": "Issue #754: Windows で踏む2つの落とし穴が CONTRIBUTING に書かれていない（bun test の無言スキップ、synth が動かない）\n\n`CONTRIBUTING.md` と `docs/` に、このリポジトリで一度踏んだ落とし穴が2つ記録されていません。どちらも今日、実際に時間を溶かしたものです。\n\n## 1. `bun test` は存在しないパスを渡されても失敗しない\n\n`package.json` の `test` スクリプトが、移動して存在しなくなったディレクトリを指していました。`bun test` はそれを無視して、見つかった分だけ走って 0 で終了します。結果、`mcp.test.ts` と `shell_guard.test.ts` が CI で長期間走っておらず、CI は緑のままでした。\n\nいまは `tests/contract/test-script.test.ts` が「スクリプトが名指すパスが実在すること」を検証しています。ただし、**なぜテスト数を見る番人では駄目なのか**（正しい数を誰も知らないから）は、そのテストのコメントにしか書かれていません。\n\n## 2. ローカルで `bun run synth` が動かない（Windows）\n\n`gwf` が `shell: true` で子プロセスを起動し、`C:\\Program Files\\nodejs\\node.exe` のスペースをクォートしないため `'C:\\Program' is not recognized` で落ちます。8.3 短縮パス経由で node を呼べば回避できます:\n\n```\n\"/c/PROGRA~1/nodejs/node.exe\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\nbun run src/build-dist.ts\n```\n\nこれを知らないと、`dist/` を読む契約テストが軒並み落ちて、変更とは無関係な理由でスイート全体が壊れて見えます。\n\n## やってほしいこと\n\nこの2つを、Windows で開発する人が**踏む前に読む場所**に書いてください。`CONTRIBUTING.md` が妥当だと思いますが、より適切な場所があるならそちらで構いません。\n\n- 1つ目は「CIが緑でも走っていないことがある」という一般則として書いてください。パスが腐った経緯そのものは再発しないので、詳細な incident 記述は不要です\n- 2つ目は回避コマンドをそのまま貼れる形で\n- 既存の記述と重複していないか確認してください。重複するなら追記ではなく統合を\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-17T10:18:49Z",
+        "event_type": "issue_opened",
+        "id": "issue-754",
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "/engineer",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-17T10:18:58Z",
+        "event_type": "issue_comment",
+        "id": 5712733321,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_954107d2df3a4a63b8ac495f",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"name\": \"project/conventions\"}"
+          }
+        },
+        {
+          "id": "call_8e8020532cb34e82a8007b77",
+          "type": "function",
+          "function": {
+            "name": "filesystem__list_directory",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: project/conventions\n\n# Repository conventions\n\nThis repository builds Atomaton, the delivery template. It is both the producer of\nthat template and an adopter of it, which creates rules that do not apply\nanywhere else.\n\nThis file is not part of the template. Its source is `self/atomaton/skills/project/`,\nand it is deliberately absent from `src/` so adopters never receive it.\n\n## The four trees\n\n| Tree | What it is | Who writes it |\n| --- | --- | --- |\n| `src/**` | Source of the deliverable | You |\n| `dist/.github/**` | The deliverable adopters receive | The build |\n| `self/**` | This repository's own four files | You |\n| `.github/**` | This repository's running configuration | The self-deploy job, from a release plus `self/` |\n\nTwo different activities live in this table, and which one you are doing decides\nwhich rules apply:\n\n- **improving the deliverable** — `src/**`. It affects every adopter, and it\n  reaches this repository only after a release and a self-deploy.\n- **impro\n\n[atomaton] 2260 characters dropped from the middle; 4000 shown\n\n hold.\n\n`github__check_merge_readiness` reports against whatever the ruleset currently\nrequires, so it follows the file rather than holding a second opinion.\n\nNothing bypasses it. No workflow writes to main — the release job attaches the deliverable\nto a release instead — and your merge satisfies the rules like anyone else's. Do\nnot propose a bypass actor: it would mean naming a GitHub App ID or a deploy key,\nvalues that exist only after manual setup, so the JSON would stop describing the\nwhole configuration.\n\nThe workflows that run agents are generated from `src/workflows/` and shipped.\n`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and\n`probe-dumpable.yml`.\n\n## Adding a static file to the deliverable\n\nA new non-code file under `src/atomaton/` must also be added to `build-dist.ts`'s\nverbatim-copy list, or it never reaches `dist/` at all.\n`tests/contract/deployment-contract.test.ts` enforces this.\n\n## `.github/` is an adoption, not a mirror\n\nNothing regenerates `.github/` automatically. It is this repository's deliberate\nadoption of the deliverable, so it lags `src/` until someone applies a release.\n\n**That lag is the point.** A change to `src/` must not reconfigure the live agents\nthe moment it merges. Two breakages reached the running system exactly that way.\n\n### Applying a release\n\nDispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the\nActions tab. It opens a pull request and merges nothing. `.github/**` is in\n`merge.governed_paths`, so a person reviews it.\n\nWhat it does:\n\n```bash\nrm -rf .github            # so a file the release DELETED is gone, not orphaned\nunzip release.zip         # the deliverable\ncp -r self/. .github/     # this repository's own, at the same paths\n```\n\n`.github/` is therefore exactly those two sources, with nothing kept alive by\nremembering to. Before `self/` existed this was a `cp -r` followed by\n`git checkout -- .github/atomaton/config.yaml`, and a file the template had removed\nstayed in the tree with no diff to notice it by.\n\nIt needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because\n`GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by\npath. No agent can reach that token: it is named in one file outside the\ndeliverable, and `atomaton-runner.yml` does not mention it.\n\n### Changing something in `self/`\n\nAn overlay entry is a copy, not a build, so it needs no release. Change\n`self/X` and `.github/X` **in the same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections. Editing `.github/X` alone is worse than not editing it at all: the next\nself-deploy overwrites it from `self/` and the change disappears without a diff.\n\nA file added to `.github/` that is in no release and not in `self/` is not checked\nfor, because the next deploy removes it anyway and because `.github/**` is in\n`merge.governed_paths` — no agent can merge a change there, so a person reads it first.",
+      "tool_call_id": "call_954107d2df3a4a63b8ac495f"
+    },
+    {
+      "role": "tool",
+      "content": "[DIR] .git\n[DIR] .github\n[FILE] .gitignore\n[FILE] CONTRIBUTING.md\n[FILE] README.md\n[FILE] bun.lock\n[DIR] docs\n[DIR] examples\n[DIR] node_modules\n[FILE] package.json\n[DIR] scripts\n[DIR] self\n[DIR] src\n[DIR] tests\n[FILE] tsconfig.json\n[FILE] wac.config.ts",
+      "tool_call_id": "call_8e8020532cb34e82a8007b77"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_6a6ba9c8f13e428682dbac7f",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/CONTRIBUTING.md\"}"
+          }
+        },
+        {
+          "id": "call_9f687d17f5b947b8bca6c65e",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 754}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Contributing\n\n## Source-of-truth map\n\nEverything here divides into two kinds: **the deliverable**, which adopters\nreceive, and **this repository's own tooling**, which they must never see.\n\nThe deliverable:\n\n- `src/`: hand-authored source for the template — agent definitions, skills, MCP\n  servers, workflow definitions. Adopter-agnostic by rule: no reference to this\n  repository's build pipeline, no incident history, no PR numbers.\n- `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters\n  receive. **Not tracked in git** — it is a pure function of `src/`, and the\n  release deployment publishes it as a release asset rather than committing it.\n- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atomaton_runs.targets`\n  names, and they are the reason there are no hand-written workflows left.\n  Governed, like `.github/`. The secret scan used to live here too and now ships to\n  every adopter as `.github/atomaton-runtime/scripts/scan_secrets.ts\n\n[atomaton] 7317 characters dropped from the middle; 4000 shown\n\ns no release. Change `self/X`\nand `.github/X` in the **same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections, which is what stops a change from being half-applied.\n\nEditing `.github/X` alone is worse than not editing it: the next self-deploy\noverwrites it from `self/` and the change disappears without a diff.\n\nNothing checks that every file in `.github/` is accounted for, and nothing needs\nto. The deploy runs `rm -rf .github` first, so a file the release stopped shipping\nis not recreated. A file ADDED to `.github/` with no counterpart in `self/` would\nbe silently removed by the next deploy — but `.github/**` is in `merge.governed_paths`,\nso any pull request touching it carries the blocker \"this pull request changes how\nagents themselves run\" and no agent can merge it. A person is already reading it.\n\n## Setup (Bun)\n\n```bash\nbun install\n```\n\nRequired engine in this repository is Bun `>=1.2.0`.\n\n## Validation commands\n\n```bash\nbun run typecheck\nbun run synth\nbun run test\nbun run test:e2e\n```\n\nWhat each command proves:\n\n- `typecheck`: static type contract for scripts/workflows/shared libs.\n- `synth`: workflow generation and deliverable build to `dist/.github`.\n- `test`: unit-level behavior across `src/domain`, `src/lib`, `src/scripts`, and MCP/hook scripts.\n- `test:e2e`: end-to-end checks in `tests/e2e`.\n\n`test:e2e` runs against the built tree, so `bun run synth` has to come first — it\nreads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\nnot have until you build it.\n\n## Generated-file discipline\n\n- **`dist/` is gitignored.** There is nothing generated to commit, and nothing to\n  keep in sync with `src/`. Change `src/*` and let a release build it.\n- Run `bun run synth` locally whenever you want to inspect what adopters will\n  receive. CI runs it on every pull request, before `test`, to prove the\n  deliverable still builds.\n- `dist/.github/*` is generated: never hand-edit it.\n- `.github/*` is *deployed*, not generated on merge. It is a release plus `self/`\n  copied over it, rebuilt by [Atomaton Self Deploy](#applying-a-release-to-this-repository).\n  So a change under `src/` does not reach the live agents until someone\n  dispatches that, and CI does not reject a diff that touches `.github/`.\n- What is genuinely yours to edit lives in `self/`, not in `.github/`. Edit both,\n  identically, in one pull request — `tests/contract/self-overlay.test.ts` requires\n  it. Editing `.github/` alone is worse than not editing it: the next self-deploy\n  reverts it, silently.\n\n## PR checklist\n\n- Describe behavior changes from an adopter perspective.\n- Include exact commands you ran and outcomes.\n- Do not include `.github/atomaton`; it is upgraded deliberately, not per pull\n  request. `dist/` cannot appear at all — it is gitignored.\n- Avoid unrelated refactors in the same PR.\n- If you changed workflow dispatch semantics, call out backward compatibility impact explicitly.\n",
+      "tool_call_id": "call_6a6ba9c8f13e428682dbac7f"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-17T10:18:49Z\",\"labels\":[{\"id\":\"LA_kwDOS6gmSM8AAAAC2Qtasw\",\"name\":\"atomaton/in-progress\",\"description\":\"Issue is being worked on by an Atomaton agent\",\"color\":\"0366d6\"}],\"number\":754,\"state\":\"OPEN\",\"title\":\"Windows で踏む2つの落とし穴が CONTRIBUTING に書かれていない（bun test の無言スキップ、synth が動かない）\",\"body\":\"`CONTRIBUTING.md` と `docs/` に、このリポジトリで一度踏んだ落とし穴が2つ記録されていません。どちらも今日、実際に時間を溶かしたものです。\\n\\n## 1. `bun test` は存在しないパスを渡されても失敗しない\\n\\n`package.json` の `test` スクリプトが、移動して存在しなくなったディレクトリを指していました。`bun test` はそれを無視して、見つかった分だけ走って 0 で終了します。結果、`mcp.test.ts` と `shell_guard.test.ts` が CI で長期間走っておらず、CI は緑のままでした。\\n\\nいまは `tests/contract/test-script.test.ts` が「スクリプトが名指すパスが実在すること」を検証しています。ただし、**なぜテスト数を見る番人では駄目なのか**（正しい数を誰も知らないから）は、そのテストのコメントにしか書かれていません。\\n\\n## 2. ローカルで `bun run synth` が動かない（Windows）\\n\\n`gwf` が `shell: true` で子プロセスを起動し、`C:\\\\Program Files\\\\nodejs\\\\node.exe` のスペースをクォートしないため `'C:\\\\Program' is not recognized` で落ちます。8.3 短縮パス経由で node を呼べば回避できます:\\n\\n```\\n\\\"/c/PROGRA~1/nodejs/node.exe\\\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\\nbun run src/build-dist.ts\\n```\\n\\nこれを知らないと、`dist/` を読む契約テストが軒並み落ちて、変更とは無関係な理由でスイート全体が壊れて見えます。\\n\\n## やってほしいこと\\n\\nこの2つを、Windows で開発する人が**踏む前に読む場所**に書いてください。`CONTRIBUTING.md` が妥当だと思いますが、より適切な場所があるならそちらで構いません。\\n\\n- 1つ目は「CIが緑でも走っていないことがある」という一般則として書いてください。パスが腐った経緯そのものは再発しないので、詳細な incident 記述は不要です\\n- 2つ目は回避コマンドをそのまま貼れる形で\\n- 既存の記述と重複していないか確認してください。重複するなら追記ではなく統合を\\n\",\"total_comments\":1,\"children\":[],\"pull_requests\":[]}",
+      "tool_call_id": "call_9f687d17f5b947b8bca6c65e"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_3d076058a7594eb2872f849f",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 754}"
+          }
+        },
+        {
+          "id": "call_27d3bcbfac13416aae1a453b",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/tests/contract/test-script.test.ts\"}"
+          }
+        },
+        {
+          "id": "call_8449bc8675bf416589322eb8",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/package.json\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":754,\"title\":\"Windows で踏む2つの落とし穴が CONTRIBUTING に書かれていない（bun test の無言スキップ、synth が動かない）\",\"state\":\"OPEN\",\"total_comments\":1,\"pull_requests\":[]},\"showing\":\"all 1 comment(s)\",\"comments\":[{\"index\":1,\"id\":\"IC_kwDOS6gmSM8AAAABVIFkiQ\",\"author\":{\"login\":\"hws-yuma-seno\"},\"authorAssociation\":\"COLLABORATOR\",\"body\":\"/engineer\",\"createdAt\":\"2026-09-17T10:18:58Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/754#issuecomment-5712733321\",\"viewerDidAuthor\":false}]}",
+      "tool_call_id": "call_3d076058a7594eb2872f849f"
+    },
+    {
+      "role": "tool",
+      "content": "import { describe, expect, test } from \"bun:test\";\nimport { existsSync, readFileSync } from \"node:fs\";\n\n/**\n * test-script.test.ts — every directory `bun run test` names is a directory.\n *\n * ## What this is here for\n *\n * `bun test <path that does not exist>` does not fail. It runs the paths it\n * finds, reports them, and exits 0. So a `test` script naming a directory that\n * has moved runs a smaller suite than it says it does, and the only visible\n * symptom is a number nobody is comparing against anything.\n *\n * That happened. The tool servers moved from `.github/atoma/tools/scripts/` to\n * `.github/atoma-runtime/tools/`, the `test` script kept the old path, and\n * `mcp.test.ts` and `shell_guard.test.ts` stopped running -- in CI, which is the\n * only place they CAN run, because they spawn subprocesses that need a POSIX\n * shell. Every release since went out with the tool servers and the shell guard\n * untested, and CI was green for all of them. The later rename moved the stale\n * path to a new stale path without noticing it was stale.\n *\n * Checking the count would not have caught it either: nobody knows what the\n * number should be. Checking that the paths EXIST is the assertion that has an\n * answer.\n */\ndescribe(\"the test script\", () => {\n  const script = (JSON.parse(readFileSync(\"package.json\", \"utf8\")) as { scripts: Record<string, string> }).scripts;\n\n  /** The arguments to `bun test`, which are paths. The command itself is not. */\n  function pathsOf(command: string): string[] {\n    return command\n      .split(/\\s+/)\n      .slice(2)\n      .filter((word) => word.startsWith(\"./\") || word.startsWith(\"src/\") || word.startsWith(\"tests/\"));\n  }\n\n  for (const name of [\"test\", \"test:e2e\"]) {\n    test(`\\`${name}\\` names only paths that exist`, () => {\n      const command = script[name];\n      expect(command, `package.json has no \\`${name}\\` script`).toBeDefined();\n      const paths = pathsOf(command!);\n      expect(paths.length, `\\`${name}\\` names no paths at all`).toBeGreaterThan(0);\n      const missing = paths.filter((path) => !existsSync(path));\n      expect(\n        missing,\n        `\\`bun test\\` exits 0 on a path that does not exist, so these run nothing and say nothing. ` +\n          `Point them at where the files moved to`,\n      ).toEqual([]);\n    });\n  }\n\n  /**\n   * Named rather than derived from a walk: the point is that these two suites in\n   * particular were the ones silently dropped, and they are the ones that cannot\n   * run anywhere but CI.\n   */\n  test(\"the suites that only CI can run are among them\", () => {\n    const covered = pathsOf(script.test!);\n    for (const suite of [\"src/atomaton-runtime/tools/mcp/mcp.test.ts\", \"src/atomaton-runtime/tools/hooks/shell_guard.test.ts\"]) {\n      expect(existsSync(suite), `${suite} has moved; this test needs the new path`).toBe(true);\n      expect(\n        covered.some((path) => suite.startsWith(path.replace(/^\\.\\//, \"\"))),\n        `${suite} is not under any path \\`bun run test\\` names, so CI does not run it`,\n      ).toBe(true);\n    }\n  });\n});\n",
+      "tool_call_id": "call_27d3bcbfac13416aae1a453b"
+    },
+    {
+      "role": "tool",
+      "content": "{\n  \"name\": \"atomaton\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"version\": \"0.1.126\",\n  \"engines\": {\n    \"bun\": \">=1.2.0\"\n  },\n  \"scripts\": {\n    \"synth\": \"gwf build && bun run src/build-dist.ts\",\n    \"typecheck\": \"tsc --noEmit\",\n    \"test\": \"bun test ./src/domain ./src/lib ./src/scripts ./tests/contract ./src/atomaton-runtime/tools/mcp ./src/atomaton-runtime/tools/hooks\",\n    \"test:e2e\": \"bun test ./tests/e2e\",\n    \"lint\": \"bun run typecheck && bun run synth\"\n  },\n  \"devDependencies\": {\n    \"@github-actions-workflow-ts/actions\": \"^2.5.0\",\n    \"@github-actions-workflow-ts/cli\": \"^2.5.0\",\n    \"@github-actions-workflow-ts/lib\": \"^2.5.0\",\n    \"@modelcontextprotocol/sdk\": \"^1.12.1\",\n    \"@octokit/webhooks-types\": \"^7.6.1\",\n    \"@types/bun\": \"^1.2.14\",\n    \"typescript\": \"^5.6.3\",\n    \"zod\": \"^3.25.76\",\n    \"zod-to-json-schema\": \"^3.25.2\"\n  }\n}\n",
+      "tool_call_id": "call_8449bc8675bf416589322eb8"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_8b31790974b348d28ebcd9b5",
+          "type": "function",
+          "function": {
+            "name": "filesystem__list_directory",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/docs\"}"
+          }
+        },
+        {
+          "id": "call_85fb3c8a51664448b1fd0d48",
+          "type": "function",
+          "function": {
+            "name": "search__search_issues",
+            "arguments": "{\"query\": \"Windows で bun run synth が動かない gwf スペース クォート node.exe\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "[FILE] configuration.md\n[FILE] edd.md\n[FILE] operations.md\n[FILE] recipes.md\n[FILE] setup.md\n[FILE] writing-a-tool.md",
+      "tool_call_id": "call_8b31790974b348d28ebcd9b5"
+    },
+    {
+      "role": "tool",
+      "content": "[\n  {\n    \"number\": 186,\n    \"title\": \"[A] atoma_version デフォルトをバージョン指定バイナリダウンロードに変更\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/186\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"## 検証方法\\n\\n1. `bun run synth` 実行後、`dist/.github/workflows/atoma-runner.yml` を確認して `default:` がバージョン文字列になっていることを確認\\n2. `bun run lint` (= typecheck + synth:check) がパスすることを確認\\n3. `bun run test` がパスすることを確認\"\n  },\n  {\n    \"number\": 199,\n    \"title\": \"採用先で実行ビットが落ちると shell ツールが全損する\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/199\",\n    \"matched_in\": \"comment 1\",\n    \"comment\": 1,\n    \"excerpt\": \"## このリポジトリ自身の `.github/` は未更新です\\n\\nCONTRIBUTING の方針どおり `.github/` の更新は `bun run synth && cp -r dist/.github/. .github/` を人が意図的に実行する手順ですが、これを実行すると src と `.github/` の未反映差分がすべて一括で入ります。本 Issue の範囲を超えるため実行していません。\\n\\n実害はありません。このリポジトリのフックは既に 0755 で記録済みで、影響を受けるのは新規 adopter が Windows で最初の `git add` をした場合のみです。修正は次のリリースで adopter に届きます。\"\n  },\n  {\n    \"number\": 187,\n    \"title\": \"[B] filesystem_readonly MCPサーバーをバンドル化して npx 冷起動を排除\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/187\",\n    \"matched_in\": \"comment 4\",\n    \"comment\": 4,\n    \"excerpt\": \"All acceptance criteria met:\\n- ✅ `bun run test` passes (143 tests)\\n- ✅ `bun run typecheck` passes\\n- ✅ `bun run synth` produces correct dist output with no npx references\\n- ✅ `dist/.github/atoma/tools/scripts/mcp/filesystem.ts` exists and is functional\"\n  }\n]",
+      "tool_call_id": "call_85fb3c8a51664448b1fd0d48"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_3d4a7e8073614c6d8e6f3bad",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn -i \\\"windows\\\\|PROGRA\\\\|gwf\\\\|8.3\\\\|node.exe\\\\|shell: true\\\\|not recognized\\\" --include=\\\"*.md\\\" . --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git | head -50\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        },
+        {
+          "id": "call_18a105196b984301b6be6fd8",
+          "type": "function",
+          "function": {
+            "name": "search__search_issues",
+            "arguments": "{\"query\": \"bun test が存在しないパスを無視して CI が緑のままテストが走らない\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"./docs/writing-a-tool.md:117:A server of your own that is started by a program rather than by `bun` also needs\\n./docs/writing-a-tool.md:118:that program installed: name it in `tools.packages`, beside the server. The shipped\\n./docs/recipes.md:343:A server of your own also has to exist on the runner. `mcp-server-slack` is a program,\\n./docs/operations.md:450:process it protects, and nothing can call it on another program's behalf. Assume a\\n./docs/configuration.md:479:request supplying the very program that judges it. `config.yaml` is read from the\\n./docs/configuration.md:583:programs that are as much machinery as the scripts that implement them. The line\\n./docs/configuration.md:812:put on `PATH`, which is what a `command:` naming a program rather than a path\\n./docs/configuration.md:821:decision: `@modelcontextprotocol/server-filesystem` is the program `filesystem`\\n./src/atomaton/README.md:26:| `atomaton-runtime/scripts/*.ts` | The programs the workflows run. |\\n./src/atomaton/README.md:116:`.github/atomaton-runtime/scripts/` holds the programs that open the configuration. A\\n./.github/atomaton/README.md:26:| `atomaton-runtime/scripts/*.ts` | The programs the workflows run. |\\n./.github/atomaton/README.md:116:`.github/atomaton-runtime/scripts/` holds the programs that open the configuration. A\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":120}",
+      "tool_call_id": "call_3d4a7e8073614c6d8e6f3bad"
+    },
+    {
+      "role": "tool",
+      "content": "[\n  {\n    \"number\": 706,\n    \"title\": \"resolve_runner の警告が存在しないキー（checks.runs_on）を指している\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/706\",\n    \"matched_in\": \"comment 12\",\n    \"comment\": 12,\n    \"excerpt\": \"## 当環境での実効検証（前 run で実行済み）\\n\\n- `bun test ./tests/contract/config-paths.test.ts ./src/domain/runner-label.test.ts` — 10 pass / 0 fail\\n- `bunx tsc --noEmit` — clean\\n- ワーキングツリーはクリーン\"\n  },\n  {\n    \"number\": 506,\n    \"title\": \"CI がツールサーバを起動しないので、モジュール解決とファイル権限の間違いは実行するまで見えない\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/506\",\n    \"matched_in\": \"comment 1\",\n    \"comment\": 1,\n    \"excerpt\": \"同じ理由で権限（#499）も捕まりません。`atoma-check` にツールユーザが存在しないので、ACL の問題は再現しません。\"\n  },\n  {\n    \"number\": 186,\n    \"title\": \"[A] atoma_version デフォルトをバージョン指定バイナリダウンロードに変更\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/186\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"## 検証方法\\n\\n1. `bun run synth` 実行後、`dist/.github/workflows/atoma-runner.yml` を確認して `default:` がバージョン文字列になっていることを確認\\n2. `bun run lint` (= typecheck + synth:check) がパスすることを確認\\n3. `bun run test` がパスすることを確認\"\n  }\n]",
+      "tool_call_id": "call_18a105196b984301b6be6fd8"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_d9b8ad0eaab440f09346cbba",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn -i \\\"green\\\\|silent\\\\|skip\\\\|count\\\\|exits 0\\\\|exit 0\\\" --include=\\\"*.md\\\" . --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git | head -30\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        },
+        {
+          "id": "call_cf7b9aaa5cbc47f99b77dc44",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/docs/setup.md\", \"head\": 30}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"./self/atomaton/skills/project/conventions.md:65:passes. It is applied by hand from an account with admin, and taken as correctly\\n./self/atomaton/skills/project/conventions.md:70:call from an account with admin (see CONTRIBUTING.md). CI cannot make that call —\\n./CONTRIBUTING.md:179:Nothing checks that every file in `.github/` is accounted for, and nothing needs\\n./CONTRIBUTING.md:181:is not recreated. A file ADDED to `.github/` with no counterpart in `self/` would\\n./CONTRIBUTING.md:182:be silently removed by the next deploy — but `.github/**` is in `merge.governed_paths`,\\n./CONTRIBUTING.md:229:  reverts it, silently.\\n./docs/edd.md:26:account of its own operation: why the state is what it is, what was tried before,\\n./docs/edd.md:66:- Which systems they could reach, their own account decided.\\n./docs/writing-a-tool.md:64:**4. A count limit is not a volume limit.**\\n./docs/recipes.md:60:Leaving it off loses nothing silently: a tool that returns a picture delivers text in\\n./docs/recipes.md:185:Name each file exactly as it is called, or the dispatch fails silently and every merge\\n./docs/recipes.md:194:itself and your deployment would silently never run.\\n./docs/recipes.md:271:Two bounds, counting different things:\\n./docs/recipes.md:281:other shape — runs that keep happening and change nothing — which a handoff count does\\n./docs/recipes.md:508:except the firings the open-issue guard skips. Multiply your provider's per-run cost by\\n./docs/operations.md:28:limit, because [the handoff limit](#what-bounds-a-chain-of-runs) only counts the\\n./docs/operations.md:43:  the base branch would otherwise silently never run.\\n./docs/operations.md:54:CI runs, the check goes green, and it waits.\\n./docs/operations.md:113:day, and a guess that was too large would be silently ignored by the job timeout.\\n./docs/operations.md:118:counters stop the chain itself — `chain.after_handoffs`, and\\n./docs/operations.md:128:`chain.after_runs_without_change` is counted from the comments, like the handoff\\n./docs/operations.md:130:**Anything else in the thread ends the count** — a person's comment, a notice from\\n./docs/operations.md:133:posts no result comment of its own, so its progress is invisible to this count and\\n./docs/operations.md:189:  some other way — the next name counts up instead: `atomaton/issue-N-2`, then\\n./docs/operations.md:234:phase of a plan and never launched must not hold the parent back, or the count could\\n./docs/operations.md:314:- Agent handoffs are counted from the target's own comments and are not stored. What\\n./docs/operations.md:318:- `create_pr` dispatches `atomaton-validate-pr.yml`, which runs the configured CI on the branch, writes the result as a check run, then dispatches the agent the result calls for — the reviewer NAMED IN THE CALL on green, the engineer on failure. No reviewer named means CI runs and nothing follows; `create_pr` then leaves a notice on the pull request saying nobody is scheduled.\\n./docs/operations.md:320:- Manual issue-close path is fallback and skips when closure already came from merged PR.\\n./docs/operations.md:591:| `atomaton/in-progress` label remains | Run chain still continuing or release step skipped by failure chain | Inspect `decide_guard_release` output and rerun after fixing upstream failure |\\n./docs/operations.md:595:| Parent orchestrator not re-invoked after sub-issue completion | Sibling sub-issues still open, or aggregation already handled by another path | Check sibling labels/tags and parent comments for aggregation marker. A sibling is only counted while it carries both `atomaton/sub-issue` and `atomaton/launched` |\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":114}",
+      "tool_call_id": "call_d9b8ad0eaab440f09346cbba"
+    },
+    {
+      "role": "tool",
+      "content": "# Setup\n\nFor somebody putting Atomaton into a repository for the first time. Everything on this\npage is work to do, in the order to do it; getting the deliverable into the tree is\nthe step before it, in [the README](../README.md).\n\n## 1. Enable GitHub Actions in the target repository\n\nEvery entry point is a workflow. Nothing dispatches an agent until Actions is on.\n\n## 2. Allow Actions to create pull requests\n\nOpen **Settings > Actions > General > Workflow permissions** and enable **Allow\nGitHub Actions to create and approve pull requests**. Without this repository-level\npermission, the engineer agent cannot create pull requests.\n\nThe generated workflows already declare their own `permissions` — `actions`,\n`issues`, `pull-requests` and `contents` set to write where needed — and those do\n**not** override the repository-level setting. A workflow cannot grant itself what\nthe repository withholds, so reading the declared block is not evidence that this\nstep is done.\n\n## 3. Add the repository secret `OPENROUTER_API_KEY`\n\n**Settings > Secrets and variables > Actions > New repository secret**, named\n`OPENROUTER_API_KEY`. This is the one the shipped configuration needs: all three\nagent definitions read `provider: openrouter-responses`.\n\nOne provider, one credential, and **no fallback** — a key under a different name does\nnot stand in for this one, and two keys present is an error naming both rather than a",
+      "tool_call_id": "call_cf7b9aaa5cbc47f99b77dc44"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_d23942483fd549bd9202d269",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn \\\"bun test\\\\|bun run synth\\\\|synth\\\" --include=\\\"*.md\\\" README.md CONTRIBUTING.md docs/ | head -40\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"CONTRIBUTING.md:13:- `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters\\nCONTRIBUTING.md:39:`dist/`, `synth`, or this repository's CI — adopters have none of those.\\nCONTRIBUTING.md:198:bun run synth\\nCONTRIBUTING.md:206:- `synth`: workflow generation and deliverable build to `dist/.github`.\\nCONTRIBUTING.md:210:`test:e2e` runs against the built tree, so `bun run synth` has to come first — it\\nCONTRIBUTING.md:218:- Run `bun run synth` locally whenever you want to inspect what adopters will\\ndocs/recipes.md:151:      - bun test\\ndocs/configuration.md:23:`src/`, and `dist/.github/` is generated output that `bun run synth` builds and a\\ndocs/configuration.md:230:      - bun test\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":113}",
+      "tool_call_id": "call_d23942483fd549bd9202d269"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_90968cdd9fed4f799190aa7c",
+          "type": "function",
+          "function": {
+            "name": "search__search_issues",
+            "arguments": "{\"query\": \"gwf が shell: true で node.exe のパスをクォートしない Windows で synth が落ちる回避コマンド\"}"
+          }
+        },
+        {
+          "id": "call_c17b07046cba47f8bc810fab",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn \\\"PROGRA\\\\|8.3\\\\|gwf.js\\\" . --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git 2>/dev/null | head -20; echo \\\"---\\\"; ls tests/contract/\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "[\n  {\n    \"number\": 199,\n    \"title\": \"採用先で実行ビットが落ちると shell ツールが全損する\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/199\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"Windows の git は `core.filemode=false` が既定で、NTFS に実行ビットが存在しないため検出できません。**既に追跡済みのパス**については記録済みのモードを維持しますが、**新規追加パス**は一律 100644 になります。\"\n  },\n  {\n    \"number\": 408,\n    \"title\": \"動作確認: ネストしたコンテナが通るか（#374 の最後の未達項目）\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/408\",\n    \"matched_in\": \"comment 1\",\n    \"comment\": 1,\n    \"excerpt\": \"### サマリ\\n\\n| # | 項目 | 結果 |\\n|---|------|------|\\n| 1 | rootless | ✅ true（subuid 警告あり） |\\n| 2 | GraphRoot | ✅ /tmp/atoma-xdg/data/containers/storage |\\n| 3 | XDG 環境変数 | ✅ 期待どおり |\\n| 4 | コンテナ実行 | ❌ sigstore の permission denied |\\n| 5 | 外向き通信 | ⚠️ wget が shell guard にブロック |\\n| 6 | ビルド | ❌ 4 と同一原因 |\\n| 7 | ポート公開 | ⚠️ wget が shell guard にブロック（イメージ取得も不可） |\\n\\n**どれも自分で回避はしていません。** 素の状態では 4 のイメージ取得で確定的に止まります（2回の独立実行で同じエラーを確認）。つまり #374 は**まだ完了できません**。次に直すべき点は、(a) sigstore パスに `$HOME` を使わない（XDG 側へ寄せる / `$HOME` を書込可能な場所へ向ける）設定か、(b) `packer` ユーザー用の subuid 付与、もしくは\"\n  },\n  {\n    \"number\": 430,\n    \"title\": \"動作確認: ネストしたコンテナ（v0.1.56、setuid をやめた形）\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/430\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"## 報告してほしい形\\n\\n各項目の結果と、落ちた項目のエラー全文。2 が落ちた場合は `podman --log-level=debug run --rm docker.io/library/alpine:latest echo ok 2>&1 | tail -20` も付けてください。\\n\\n回避策を自分で組み立てる必要はありません。`wget` / `curl` は文字列でシェルガードに止められるので、コマンドラインに含めないでください。**2 と 3 が通れば #374 は完了です。**\"\n  }\n]",
+      "tool_call_id": "call_90968cdd9fed4f799190aa7c"
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"./bun.lock:75:    \\\"@github-actions-workflow-ts/cli\\\": [\\\"@github-actions-workflow-ts/cli@2.5.0\\\", \\\"\\\", { \\\"dependencies\\\": { \\\"@github-actions-workflow-ts/lib\\\": \\\"2.5.0\\\", \\\"fast-glob\\\": \\\"^3.3.2\\\", \\\"js-yaml\\\": \\\"^4.1.0\\\", \\\"micromatch\\\": \\\"^4.0.8\\\", \\\"tsx\\\": \\\"^4.19.3\\\", \\\"yargs\\\": \\\"^17.7.2\\\" }, \\\"bin\\\": { \\\"gwf\\\": \\\"bin/gwf.js\\\", \\\"gawts\\\": \\\"bin/gwf.js\\\", \\\"github-actions-workflow-ts\\\": \\\"bin/gwf.js\\\" } }, \\\"sha512-WDQbNNOn/mh+goRBfYdUfNduxo4+TN9lXqrVxBkA32jGfDD+/eFLVnL1lqa9x+OmNfBQI0nsCkawaug/BbPc7A==\\\"],\\n./bun.lock:93:    \\\"@types/node\\\": [\\\"@types/node@26.1.1\\\", \\\"\\\", { \\\"dependencies\\\": { \\\"undici-types\\\": \\\"~8.3.0\\\" } }, \\\"sha512-nxAkRSVkN1Y0JC1W8ky/fTfkGsMmcrRsbx+3XoZE+rMOX71kLYTV7fLXpqud1GpbpP5TuffXFqfX7fH2GgZREw==\\\"],\\n./bun.lock:101:    \\\"ansi-regex\\\": [\\\"ansi-regex@5.0.1\\\", \\\"\\\", {}, \\\"sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==\\\"],\\n./bun.lock:137:    \\\"debug\\\": [\\\"debug@4.4.3\\\", \\\"\\\", { \\\"dependencies\\\": { \\\"ms\\\": \\\"^2.1.3\\\" }, \\\"peerDependencies\\\": { \\\"supports-color\\\": \\\"*\\\" }, \\\"optionalPeers\\\": [\\\"supports-color\\\"] }, \\\"sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==\\\"],\\n./bun.lock:329:    \\\"undici-types\\\": [\\\"undici-types@8.3.0\\\", \\\"\\\", {}, \\\"sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==\\\"],\\n./src/domain/session-size.ts:23: * One result's size: `p50 277  p75 1,372  p90 3,630  p99 20,083  max 823,859`\\n./src/domain/session-size.ts:26: * 823,859-character result sat inside the most recent twenty.\\n./src/domain/session-size.ts:104: *      67,721   67,853   68,060   68,468  110,825   issue-174-engineer\\n./src/atomaton-runtime/tools/lib/dispatch_sub_agent.ts:35:  gh(\\\"label\\\", \\\"create\\\", launchedLabel, \\\"--force\\\", \\\"-c\\\", \\\"1f883d\\\", \\\"-d\\\", \\\"Atomaton has dispatched an agent for this sub-task\\\");\\n./.github/atomaton-runtime/tools/mcp/shell.ts:11854:  float32: [-340282346638528860000000000000000000000, 340282346638528860000000000000000000000],\\n./.github/atomaton-runtime/tools/mcp/github.ts:12781:  float32: [-340282346638528860000000000000000000000, 340282346638528860000000000000000000000],\\n./.github/atomaton-runtime/tools/mcp/search.ts:11868:  float32: [-340282346638528860000000000000000000000, 340282346638528860000000000000000000000],\\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:6775:  gh(\\\"label\\\", \\\"create\\\", launchedLabel, \\\"--force\\\", \\\"-c\\\", \\\"1f883d\\\", \\\"-d\\\", \\\"Atomaton has dispatched an agent for this sub-task\\\");\\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:12250:  float32: [-340282346638528860000000000000000000000, 340282346638528860000000000000000000000],\\n./.github/atomaton-runtime/tools/mcp/web.ts:11855:  float32: [-340282346638528860000000000000000000000, 340282346638528860000000000000000000000],\\n---\\nadoption-preflight.test.ts\\nagent-definitions.test.ts\\nagent-prompts.test.ts\\nconfig-contract.test.ts\\nconfig-paths.test.ts\\ndeployment-contract.test.ts\\nenvironment-setup.test.ts\\nexamples.test.ts\\ngenerated-workflows.test.ts\\nreserved-names.test.ts\\nself-overlay.test.ts\\nserver-reports.test.ts\\nskill-catalog.test.ts\\ntest-script.test.ts\\ntools-yaml.test.ts\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":137}",
+      "tool_call_id": "call_c17b07046cba47f8bc810fab"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_57b96f54cb4d440db8bfc445",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn \\\"CONTRIBUTING\\\" tests/ scripts/ src/ self/ .github/atomaton/ 2>/dev/null | grep -v node_modules | head -20; echo \\\"---git status---\\\"; git status --short; echo \\\"---branch---\\\"; git branch --show-current\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        },
+        {
+          "id": "call_64510724d3ae4ca492a3ae82",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/CONTRIBUTING.md\", \"head\": 15}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"tests/contract/config-contract.test.ts:197:    \\\"CONTRIBUTING.md\\\",\\nsrc/atomaton/skills/delivery/pipeline-setup.md:60:here — read the README, the package manifest's scripts, and any CONTRIBUTING\\nself/atomaton/skills/project/conventions.md:70:call from an account with admin (see CONTRIBUTING.md). CI cannot make that call —\\nself/workflows/atomaton-self-deploy.yml:94:            echo \\\"::error::SELF_DEPLOY_TOKEN is unset. It needs a PAT with the 'workflow' scope; GITHUB_TOKEN cannot write .github/workflows/**. See CONTRIBUTING.md.\\\"\\n.github/atomaton/skills/delivery/pipeline-setup.md:60:here — read the README, the package manifest's scripts, and any CONTRIBUTING\\n.github/atomaton/skills/project/conventions.md:70:call from an account with admin (see CONTRIBUTING.md). CI cannot make that call —\\n---git status---\\n---branch---\\nmain\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":186}",
+      "tool_call_id": "call_57b96f54cb4d440db8bfc445"
+    },
+    {
+      "role": "tool",
+      "content": "# Contributing\n\n## Source-of-truth map\n\nEverything here divides into two kinds: **the deliverable**, which adopters\nreceive, and **this repository's own tooling**, which they must never see.\n\nThe deliverable:\n\n- `src/`: hand-authored source for the template — agent definitions, skills, MCP\n  servers, workflow definitions. Adopter-agnostic by rule: no reference to this\n  repository's build pipeline, no incident history, no PR numbers.\n- `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters\n  receive. **Not tracked in git** — it is a pure function of `src/`, and the\n  release deployment publishes it as a release asset rather than committing it.",
+      "tool_call_id": "call_64510724d3ae4ca492a3ae82"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_77f582b133c04ac09a09963a",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/tests/contract/config-contract.test.ts\", \"head\": 40}"
+          }
+        },
+        {
+          "id": "call_02dd1dfc913c4ce89b4463de",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"sed -n '180,215p' tests/contract/config-contract.test.ts\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "import { describe, expect, test } from \"bun:test\";\nimport ts from \"typescript\";\nimport { existsSync, readdirSync, readFileSync } from \"node:fs\";\nimport { configProblems, knownConfigKeys } from \"../../src/domain/deliverable-integrity.ts\";\nimport { CONDITION_KEYS, resolveMergeGates } from \"../../src/domain/merge-gates.ts\";\nimport { SCRIPTS_DIR } from \"../../src/domain/machinery-layout.ts\";\nimport type { AtomaConfig } from \"../../src/lib/types.ts\";\n\n/**\n * The shipped template's config.\n *\n * Read with `Bun.YAML.parse`, which is what `lib/config.ts` reads it with: a file\n * this test accepts has to be a file the readers accept, and a second parser here\n * could disagree with the one that runs. Typed as the interface plus an index\n * signature so a test can also ask about a key the interface does NOT have.\n */\nfunction shippedConfig(): AtomaConfig & Record<string, unknown> {\n  return Bun.YAML.parse(readFileSync(\"src/atomaton/config.yaml\", \"utf8\")) as AtomaConfig & Record<string, unknown>;\n}\n\ndescribe(\"config.yaml\", () => {\n  test(\"is valid and matches expected shape\", () => {\n    const c = shippedConfig();\n    // Asserted absent, not merely unused: a run is bounded by its time now, and the\n    // runner reads that from the job it is inside rather than from here. A key that\n    // nothing reads and that the schema no longer recognises would be reported to an\n    // adopter as a typo the moment they touched their config.\n    expect(c.agents).toBeUndefined();\n    expect(c.merge?.policy).toBe(\"manual\");\n    expect(c.chain?.labels).toBeDefined();\n  });\n\n  // Gates are the project's own conditions, so the template ships none. A\n  // default `db/migrations/**` would be a guess about somebody else's repository,\n  // and a wrong one would block their merges on day one. Present and empty rather\n  // than absent, because YAML can carry the comment saying what the key is for.\n  test(\"the shipped template declares no merge gates\", () => {\n    const c = shippedConfig();\n    expect(c.merge?.gates).toEqual([]);\n    expect(resolveMergeGates(c.merge?.gates)).toEqual({ gates: [], problems: [] });",
+      "tool_call_id": "call_77f582b133c04ac09a09963a"
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"  /**\\n   * Every page that names configuration keys to somebody who might write them.\\n   *\\n   * Only `docs/configuration.md` was held to the schema, and `docs/operations.md`\\n   * spent that time telling operators the handoff cap was `limits.agent_handoffs`\\n   * -- a namespace that has never existed. An adopter who followed it had their\\n   * pull request failed by the validator for following the documentation, which is\\n   * the exact failure this file exists to prevent. Coverage stopped one file short\\n   * of the reader.\\n   */\\n  const PAGES_THAT_NAME_KEYS = [\\n    \\\"docs/configuration.md\\\",\\n    \\\"docs/setup.md\\\",\\n    \\\"docs/recipes.md\\\",\\n    \\\"docs/writing-a-tool.md\\\",\\n    \\\"docs/operations.md\\\",\\n    \\\"README.md\\\",\\n    \\\"CONTRIBUTING.md\\\",\\n  ];\\n\\n  /**\\n   * Every settable key is written down somewhere a person can find it.\\n   *\\n   * `checks.atomaton_runs.runs_on`, `deploy.atomaton_runs.targets` and the three\\n   * `chain.labels` entries were each settable and each undocumented when this\\n   * test was written -- five keys an adopter could only find by reading the\\n   * validator's schema.\\n   */\\n  test(\\\"the configuration reference documents every settable key\\\", () => {\\n    const tokens = documentedTokens(\\\"docs/configuration.md\\\");\\n    const undocumented = settableKeys().filter(\\n      (key) => !tokens.has(key) && !tokens.has(key.split(\\\".\\\").pop()!),\\n    );\\n    expect(undocumented, \\\"these keys are settable and documented nowhere\\\").toEqual([]);\\n  });\\n\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":112}",
+      "tool_call_id": "call_02dd1dfc913c4ce89b4463de"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_94ca1e989cee42c1bf47f366",
+          "type": "function",
+          "function": {
+            "name": "filesystem__edit_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/CONTRIBUTING.md\", \"edits\": [{\"oldText\": \"`test:e2e` runs against the built tree, so `bun run synth` has to come first — it\\nreads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\\nnot have until you build it.\\n\\n## Generated-file discipline\", \"newText\": \"`test:e2e` runs against the built tree, so `bun run synth` has to come first — it\\nreads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\\nnot have until you build it.\\n\\n### Green does not mean it ran\\n\\n`bun test <path that does not exist>` does not fail: it runs the paths it finds,\\nreports them, and exits 0. So a `test` script that names a directory which has\\nmoved runs a smaller suite than it says it does, CI stays green, and nothing\\ncompares the count against anything — nobody knows what the number should be.\\n`tests/contract/test-script.test.ts` is the guard: it asserts that every path the\\n`test` scripts name actually exists, which is the check that has an answer. If you\\nmove test files, update the `test` script in the same change.\\n\\n### Windows\\n\\n`bun run synth` does not work out of the box on Windows: `gwf` launches `node`\\nthrough a shell without quoting the space in `C:\\\\Program Files\\\\...`, so it fails\\nwith `'C:\\\\Program' is not recognized`. Run the two halves by hand, reaching node\\nthrough its 8.3 short path:\\n\\n```bash\\n\\\"/c/PROGRA~1/nodejs/node.exe\\\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\\nbun run src/build-dist.ts\\n```\\n\\nWithout this, the contract tests that read `dist/` fail for a reason unrelated to\\nyour change and the whole suite looks broken.\\n\\n## Generated-file discipline\"}]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "````diff\nIndex: /home/runner/work/atomaton/atomaton/CONTRIBUTING.md\n===================================================================\n--- /home/runner/work/atomaton/atomaton/CONTRIBUTING.md\toriginal\n+++ /home/runner/work/atomaton/atomaton/CONTRIBUTING.md\tmodified\n@@ -210,8 +210,33 @@\n `test:e2e` runs against the built tree, so `bun run synth` has to come first — it\n reads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\n not have until you build it.\n \n+### Green does not mean it ran\n+\n+`bun test <path that does not exist>` does not fail: it runs the paths it finds,\n+reports them, and exits 0. So a `test` script that names a directory which has\n+moved runs a smaller suite than it says it does, CI stays green, and nothing\n+compares the count against anything — nobody knows what the number should be.\n+`tests/contract/test-script.test.ts` is the guard: it asserts that every path the\n+`test` scripts name actually exists, which is the check that has an answer. If you\n+move test files, update the `test` script in the same change.\n+\n+### Windows\n+\n+`bun run synth` does not work out of the box on Windows: `gwf` launches `node`\n+through a shell without quoting the space in `C:\\Program Files\\...`, so it fails\n+with `'C:\\Program' is not recognized`. Run the two halves by hand, reaching node\n+through its 8.3 short path:\n+\n+```bash\n+\"/c/PROGRA~1/nodejs/node.exe\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\n+bun run src/build-dist.ts\n+```\n+\n+Without this, the contract tests that read `dist/` fail for a reason unrelated to\n+your change and the whole suite looks broken.\n+\n ## Generated-file discipline\n \n - **`dist/` is gitignored.** There is nothing generated to commit, and nothing to\n   keep in sync with `src/`. Change `src/*` and let a release build it.\n````\n\n",
+      "tool_call_id": "call_94ca1e989cee42c1bf47f366"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_c893d29d3dcf4dedab977ce9",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"git diff --stat; echo \\\"---\\\"; git diff CONTRIBUTING.md | head -80\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\" CONTRIBUTING.md | 25 +++++++++++++++++++++++++\\n 1 file changed, 25 insertions(+)\\n---\\ndiff --git a/CONTRIBUTING.md b/CONTRIBUTING.md\\nindex 9e708a2..e492f0f 100644\\n--- a/CONTRIBUTING.md\\n+++ b/CONTRIBUTING.md\\n@@ -211,6 +211,31 @@ What each command proves:\\n reads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\\n not have until you build it.\\n \\n+### Green does not mean it ran\\n+\\n+`bun test <path that does not exist>` does not fail: it runs the paths it finds,\\n+reports them, and exits 0. So a `test` script that names a directory which has\\n+moved runs a smaller suite than it says it does, CI stays green, and nothing\\n+compares the count against anything — nobody knows what the number should be.\\n+`tests/contract/test-script.test.ts` is the guard: it asserts that every path the\\n+`test` scripts name actually exists, which is the check that has an answer. If you\\n+move test files, update the `test` script in the same change.\\n+\\n+### Windows\\n+\\n+`bun run synth` does not work out of the box on Windows: `gwf` launches `node`\\n+through a shell without quoting the space in `C:\\\\Program Files\\\\...`, so it fails\\n+with `'C:\\\\Program' is not recognized`. Run the two halves by hand, reaching node\\n+through its 8.3 short path:\\n+\\n+```bash\\n+\\\"/c/PROGRA~1/nodejs/node.exe\\\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\\n+bun run src/build-dist.ts\\n+```\\n+\\n+Without this, the contract tests that read `dist/` fail for a reason unrelated to\\n+your change and the whole suite looks broken.\\n+\\n ## Generated-file discipline\\n \\n - **`dist/` is gitignored.** There is nothing generated to commit, and nothing to\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":116}",
+      "tool_call_id": "call_c893d29d3dcf4dedab977ce9"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_e33bcbee4fdc40fb8e256516",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run typecheck 2>&1 | tail -5\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\", \"timeout_seconds\": 300}"
+          }
+        },
+        {
+          "id": "call_5f282b0c2e6746c2afc3ba01",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | tail -15\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\", \"timeout_seconds\": 600}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"$ tsc --noEmit\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":6099}",
+      "tool_call_id": "call_e33bcbee4fdc40fb8e256516"
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(fail) generated workflows > the jobs that run a project's commands take their runner from configuration [0.29ms]\\n(fail) generated workflows > authenticate the result-comment GitHub CLI call [0.14ms]\\n(fail) generated workflows > no env: value expects a shell to expand it [0.15ms]\\n(fail) generated workflows > every script a workflow runs is under the deployed scripts directory [0.19ms]\\n(fail) reserved names match the workflows they describe > the agent's step [0.15ms]\\n(fail) reserved names match the workflows they describe > the checks step [0.07ms]\\n(fail) reserved names match the workflows they describe > the deploy step [0.05ms]\\n(fail) the credentials step and RUN_CREDENTIALS > every credential the run declares is supplied to the step [0.15ms]\\n(fail) the credentials step and RUN_CREDENTIALS > the step supplies nothing that is not a declared credential or a secret slot [0.11ms]\\n\\n 861 pass\\n 49 fail\\n 2508 expect() calls\\nRan 910 tests across 92 files. [11.31s]\\nerror: script \\\"test\\\" exited with code 1\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":11486}",
+      "tool_call_id": "call_5f282b0c2e6746c2afc3ba01"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_02d50f8ddaf54edcb9bfbf7e",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | grep -B2 -A25 \\\"generated workflows > the jobs that run\\\" | head -60\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"error: ENOENT: no such file or directory, open 'dist/.github/workflows/atomaton-check.yml'\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/tests/contract/generated-workflows.test.ts:1006:39)\\n(fail) generated workflows > the jobs that run a project's commands take their runner from configuration [0.23ms]\\n1025 | \\n1026 |   test(\\\"authenticate the result-comment GitHub CLI call\\\", () => {\\n1027 |     type WorkflowStep = { id?: string; env?: Record<string, string> };\\n1028 |     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };\\n1029 | \\n1030 |     const workflow = Bun.YAML.parse(readFileSync(\\\"dist/.github/workflows/atomaton-runner.yml\\\", \\\"utf8\\\")) as WorkflowDocument;\\n                                           ^\\nerror: ENOENT: no such file or directory, open 'dist/.github/workflows/atomaton-runner.yml'\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/tests/contract/generated-workflows.test.ts:1030:37)\\n(fail) generated workflows > authenticate the result-comment GitHub CLI call [0.11ms]\\n1049 |    * Checked across every workflow rather than on the one value, because the mistake is\\n1050 |    * available anywhere an `env:` block is written and reads correctly in both places.\\n1051 |    */\\n1052 |   test(\\\"no env: value expects a shell to expand it\\\", () => {\\n1053 |     const offenders: string[] = [];\\n1054 |     for (const file of readdirSync(\\\"dist/.github/workflows\\\")) {\\n                              ^\\nerror: ENOENT: no such file or directory, scandir 'dist/.github/workflows'\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/tests/contract/generated-workflows.test.ts:1054:24)\\n(fail) generated workflows > no env: value expects a shell to expand it [0.14ms]\\n1086 |    * renamed, beside workflows that did not follow them.\\n1087 |    *\\n1088 |    * Two literals of one fact, again. This holds the generated YAML to the constant.\\n1089 |    */\\n1090 |   test(\\\"every script a workflow runs is under the deployed scripts directory\\\", () => {\\n--\\n(fail) generated workflows > the tool servers are read from the machinery, and the workspace only where intended [0.22ms]\\n(fail) generated workflows > the shipped ruleset requires exactly the check the shipped workflow produces [0.17ms]\\n(fail) generated workflows > the jobs that run a project's commands take their runner from configuration [0.23ms]\\n(fail) generated workflows > authenticate the result-comment GitHub CLI call [0.11ms]\\n(fail) generated workflows > no env: value expects a shell to expand it [0.14ms]\\n(fail) generated workflows > every script a workflow runs is under the deployed scripts directory [0.16ms]\\n(fail) reserved names match the workflows they describe > the agent's step [0.14ms]\\n(fail) reserved names match the workflows they describe > the checks step [0.07ms]\\n(fail) reserved names match the workflows they describe > the deploy step [0.06ms]\\n(fail) the credentials step and RUN_CREDENTIALS > every credential the run declares is supplied to the step [0.11ms]\\n(fail) the credentials step and RUN_CREDENTIALS > the step supplies nothing that is not a declared credential or a secret slot [0.10ms]\\n\\n 861 pass\\n 49 fail\\n 2508 expect() calls\\nRan 910 tests across 92 files. [9.75s]\\nerror: script \\\"test\\\" exited with code 1\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":9880}",
+      "tool_call_id": "call_02d50f8ddaf54edcb9bfbf7e"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_730fe50096864caebb2bd823",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run synth 2>&1 | tail -5\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"[github-actions-workflow-ts] Successfully generated 8 workflow file(s)\\nbuild-dist: bundled 44 script(s): /home/runner/work/atomaton/atomaton/src/scripts -> /home/runner/work/atomaton/atomaton/dist/.github/atomaton-runtime/scripts\\nbuild-dist: bundled 8 script(s): /home/runner/work/atomaton/atomaton/src/atomaton-runtime/tools -> /home/runner/work/atomaton/atomaton/dist/.github/atomaton-runtime/tools\\nbuild-dist: copied static content: /home/runner/work/atomaton/atomaton/src/atomaton -> /home/runner/work/atomaton/atomaton/dist/.github/atomaton\\nbuild-dist: wrote .github/atomaton-release.json for v0.1.126 (78 files)\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":1212}",
+      "tool_call_id": "call_730fe50096864caebb2bd823"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_9ff2b710734e49b88c4df070",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | tail -5\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\" 896 pass\\n 14 fail\\n 2924 expect() calls\\nRan 910 tests across 92 files. [9.68s]\\nerror: script \\\"test\\\" exited with code 1\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":9803}",
+      "tool_call_id": "call_9ff2b710734e49b88c4df070"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_21dae483de6241a4b1b42f6e",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | grep \\\"(fail)\\\" | head -20\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(fail) run_environment_setup.ts > runs configured setup commands in order [13.03ms]\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [13.02ms]\\n(fail) run_environment_setup.ts > no-ops quietly when no setup_commands are configured [12.71ms]\\n(fail) run_deploy.ts > runs the commands of the target a tag claimed [12.02ms]\\n(fail) run_deploy.ts > runs the merge targets when dispatched after a merge [13.52ms]\\n(fail) run_deploy.ts > names the target to the commands it runs [12.75ms]\\n(fail) run_deploy.ts > an unknown target fails and lists the ones that exist [11.89ms]\\n(fail) run_deploy.ts > a failing command ends the run with its exit code [12.28ms]\\n(fail) run_deploy.ts > a failing target stops the ones after it [13.81ms]\\n(fail) run_deploy.ts > an unusable target list fails before deploying anything [13.63ms]\\n(fail) run_checks.ts > runs the configured commands in order [13.01ms]\\n(fail) run_checks.ts > stops at the first failure and exits with its code [12.97ms]\\n(fail) run_checks.ts > declaring nothing passes, but says so as a warning [13.14ms]\\n(fail) run_checks.ts > an all-whitespace command is not treated as a command [13.21ms]\\n(fail) run_environment_setup.ts > runs configured setup commands in order [13.03ms]\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [13.02ms]\\n(fail) run_environment_setup.ts > no-ops quietly when no setup_commands are configured [12.71ms]\\n(fail) run_deploy.ts > runs the commands of the target a tag claimed [12.02ms]\\n(fail) run_deploy.ts > runs the merge targets when dispatched after a merge [13.52ms]\\n(fail) run_deploy.ts > names the target to the commands it runs [12.75ms]\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":9765}",
+      "tool_call_id": "call_21dae483de6241a4b1b42f6e"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_593a27cc5e1d43dda2d4d3de",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | grep -A20 \\\"run_environment_setup.ts > runs configured setup commands in order\\\" | head -30\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(fail) run_environment_setup.ts > runs configured setup commands in order [12.72ms]\\n18 | \\n19 |   test(\\\"aborts with the failing command's exit code\\\", () => {\\n20 |     const dir = makeConfigDir({ environment: { setup_commands: [\\\"exit 3\\\"] } });\\n21 |     try {\\n22 |       const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n23 |       expect(r.status).toBe(3);\\n                            ^\\nerror: expect(received).toBe(expected)\\n\\nExpected: 3\\nReceived: 1\\n\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.test.ts:23:24)\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [12.80ms]\\n28 | \\n29 |   test(\\\"no-ops quietly when no setup_commands are configured\\\", () => {\\n30 |     const dir = makeConfigDir({});\\n31 |     try {\\n32 |       const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n33 |       expect(r.status).toBe(0);\\n--\\n(fail) run_environment_setup.ts > runs configured setup commands in order [12.72ms]\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [12.80ms]\\n(fail) run_environment_setup.ts > no-ops quietly when no setup_commands are configured [13.02ms]\\n(fail) run_deploy.ts > runs the commands of the target a tag claimed [12.34ms]\\n(fail) run_deploy.ts > runs the merge targets when dispatched after a merge [13.52ms]\\n(fail) run_deploy.ts > names the target to the commands it runs [12.91ms]\\n(fail) run_deploy.ts > an unknown target fails and lists the ones that exist [11.90ms]\\n(fail) run_deploy.ts > a failing command ends the run with its exit code [11.97ms]\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":9788}",
+      "tool_call_id": "call_593a27cc5e1d43dda2d4d3de"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_3f72fab7a83b466cbdfe7d2d",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"git status --short | head; echo \\\"---stash pop---\\\"; git stash list | head -3\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        },
+        {
+          "id": "call_415a3ef4da3a4bdeb1df6e58",
+          "type": "function",
+          "function": {
+            "name": "search__search_issues",
+            "arguments": "{\"query\": \"run_environment_setup.test.ts や run_checks.test.ts がローカルで落ちる原因は何か CI では通る\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\" M CONTRIBUTING.md\\n---stash pop---\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":115}",
+      "tool_call_id": "call_3f72fab7a83b466cbdfe7d2d"
+    },
+    {
+      "role": "tool",
+      "content": "[\n  {\n    \"number\": 398,\n    \"title\": \"実行環境が3つあり、environment.setup_commands を読んでいるのは1つだけ\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/398\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"## 確認した事実\\n\\n`run_environment_setup.ts` を呼んでいるのは [atoma-runner.wac.ts:912](src/workflows/atoma-runner.wac.ts#L912) **だけ**です。\\n\\n| ワークフロー | ステップ構成 | `environment.setup_commands` |\\n|---|---|---|\\n| `atoma-runner` | checkout → setup-bun → **環境セットアップ** → agent | 読む |\\n| `atoma-check` | checkout → setup-bun → `checks.commands` | **読まない** |\\n| `atoma-deploy` | checkout → setup-bun → `deploy.targets` | **読まない** |\\n\\n**エージェントが作業する環境と、CI が検証する環境が別物です。**\"\n  },\n  {\n    \"number\": 247,\n    \"title\": \"probe: CI-red loop verification failed for PR 241 (environmental, not code)\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/247\",\n    \"matched_in\": \"body\",\n    \"excerpt\": \"The engineer fixed the probe (expect 3), validated locally (focused test pass; full test suite 193/193 pass after bun install; typecheck and synth clean), and then could not get the fix pushed.\"\n  },\n  {\n    \"number\": 317,\n    \"title\": \"エージェントが CI/CD を自作できるようにする\",\n    \"state\": \"closed\",\n    \"url\": \"https://github.com/yuma-seno/atomaton/issues/317\",\n    \"matched_in\": \"comment 3\",\n    \"comment\": 3,\n    \"excerpt\": \"## 設定の形\\n\\n```json\\n{\\n  \\\"checks\\\": { \\\"commands\\\": [\\\"bun install --frozen-lockfile\\\", \\\"bun test\\\"] },\\n  \\\"deploy\\\": {\\n    \\\"targets\\\": [\\n      { \\\"when\\\": \\\"merge\\\", \\\"branches\\\": [\\\"main\\\"], \\\"commands\\\": [\\\"./scripts/deploy-staging.sh\\\"] },\\n      { \\\"when\\\": \\\"tag\\\",   \\\"patterns\\\": [\\\"v*\\\"],   \\\"commands\\\": [\\\"./scripts/deploy-prod.sh\\\"] }\\n    ]\\n  }\\n}\\n```\\n\\n`environment.setup_commands` と同じ実行経路です。新しい概念を増やしません。\"\n  }\n]",
+      "tool_call_id": "call_415a3ef4da3a4bdeb1df6e58"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_9870e06efe3f415eb5034fa4",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run test 2>&1 | grep -E \\\"^(\\\\(fail\\\\)|  [0-9]+ (pass|fail)|Ran)\\\" | sort | uniq | head -40\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(fail) run_checks.ts > an all-whitespace command is not treated as a command [13.18ms]\\n(fail) run_checks.ts > declaring nothing passes, but says so as a warning [13.50ms]\\n(fail) run_checks.ts > runs the configured commands in order [13.40ms]\\n(fail) run_checks.ts > stops at the first failure and exits with its code [12.98ms]\\n(fail) run_deploy.ts > a failing command ends the run with its exit code [12.42ms]\\n(fail) run_deploy.ts > a failing target stops the ones after it [13.88ms]\\n(fail) run_deploy.ts > an unknown target fails and lists the ones that exist [12.42ms]\\n(fail) run_deploy.ts > an unusable target list fails before deploying anything [13.89ms]\\n(fail) run_deploy.ts > names the target to the commands it runs [12.75ms]\\n(fail) run_deploy.ts > runs the commands of the target a tag claimed [12.00ms]\\n(fail) run_deploy.ts > runs the merge targets when dispatched after a merge [13.74ms]\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [12.48ms]\\n(fail) run_environment_setup.ts > no-ops quietly when no setup_commands are configured [12.57ms]\\n(fail) run_environment_setup.ts > runs configured setup commands in order [12.86ms]\\nRan 910 tests across 92 files. [9.78s]\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":9904}",
+      "tool_call_id": "call_9870e06efe3f415eb5034fa4"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_be4ad108bfaf4a74be40d1e6",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"sed -n '1,60p' src/scripts/run_environment_setup.test.ts\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"import { describe, expect, test } from \\\"bun:test\\\";\\nimport { spawnSync } from \\\"node:child_process\\\";\\nimport { rmSync } from \\\"node:fs\\\";\\nimport { makeConfigDir, scriptPath } from \\\"./testing/harness.ts\\\";\\n\\ndescribe(\\\"run_environment_setup.ts\\\", () => {\\n  test(\\\"runs configured setup commands in order\\\", () => {\\n    const dir = makeConfigDir({ environment: { setup_commands: [\\\"echo one\\\", \\\"echo two\\\"] } });\\n    try {\\n      const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n      expect(r.status).toBe(0);\\n      expect(r.stdout).toContain(\\\"one\\\");\\n      expect(r.stdout).toContain(\\\"two\\\");\\n    } finally {\\n      rmSync(dir, { recursive: true, force: true });\\n    }\\n  });\\n\\n  test(\\\"aborts with the failing command's exit code\\\", () => {\\n    const dir = makeConfigDir({ environment: { setup_commands: [\\\"exit 3\\\"] } });\\n    try {\\n      const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n      expect(r.status).toBe(3);\\n    } finally {\\n      rmSync(dir, { recursive: true, force: true });\\n    }\\n  });\\n\\n  test(\\\"no-ops quietly when no setup_commands are configured\\\", () => {\\n    const dir = makeConfigDir({});\\n    try {\\n      const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n      expect(r.status).toBe(0);\\n      expect(r.stdout).toContain(\\\"skipping\\\");\\n    } finally {\\n      rmSync(dir, { recursive: true, force: true });\\n    }\\n  });\\n});\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":111}",
+      "tool_call_id": "call_be4ad108bfaf4a74be40d1e6"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_44ca5d4f9a38473299d44096",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun run src/scripts/run_environment_setup.ts --help 2>&1 | head -5; echo \\\"exit=$?\\\"\", \"timeout_seconds\": 60, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"Running environment setup command: bun install --frozen-lockfile\\nbun install v1.4.2 (744846f84)\\n\\nChecked 141 installs across 167 packages (no changes) [5.00ms]\\nexit=0\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":128}",
+      "tool_call_id": "call_44ca5d4f9a38473299d44096"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_0c6708848a29457ea64bae81",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"cat src/scripts/testing/harness.ts\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"/**\\n * harness.ts — shared test helpers for spawning src/scripts/*.ts with a fake\\n * `gh` CLI (testing/bin/gh) and/or an isolated config.yaml, so a script that\\n * shells out to `gh` or reads `.github/atomaton/config.yaml` can be tested without\\n * touching the real GitHub API or this repository's own shared config.\\n *\\n * Everything here is used from more than one test file. When the scripts' tests\\n * lived in a single file these helpers sat at the top of it; splitting that file\\n * per script is what moved them here, and what they need to stay is: no test\\n * file should define its own way of running a script.\\n */\\nimport { spawnSync } from \\\"node:child_process\\\";\\nimport { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from \\\"node:fs\\\";\\nimport { tmpdir } from \\\"node:os\\\";\\nimport { dirname, join } from \\\"node:path\\\";\\nimport { fileURLToPath } from \\\"node:url\\\";\\nimport { CONFIG_FILE } from \\\"../../domain/machinery-la\n\n[atomaton] 3113 characters dropped from the middle; 4000 shown\n\n     FAKE_GH_RESPONSES: JSON.stringify(opts.rules ?? []),\\n        FAKE_GH_LOG: logPath,\\n      },\\n    });\\n    const ghCalls = readFileSync(logPath, \\\"utf8\\\")\\n      .split(\\\"\\\\n\\\")\\n      .filter(Boolean)\\n      .map((line) => JSON.parse(line) as string[]);\\n    return { status: r.status, stdout: r.stdout, stderr: r.stderr, ghCalls };\\n  } finally {\\n    rmSync(dir, { recursive: true, force: true });\\n  }\\n}\\n\\n/**\\n * Creates a fresh temp directory containing `.github/atomaton/config.yaml`\\n * with the given content, for scripts that read config via `lib/config.ts`\\n * (which always resolves that path relative to `cwd`). Caller is\\n * responsible for `rmSync(dir, { recursive: true, force: true })`.\\n *\\n * Callers still pass a plain object; serialising it is this helper's job, so the\\n * file's format is decided in one place. It is written as YAML because that is\\n * what `loadConfig()` parses -- a test that wrote JSON here would be testing a\\n * file the machinery no longer reads. The path comes from `CONFIG_FILE` rather\\n * than a literal, so a config that moves again moves the fixtures with it.\\n */\\nexport function makeConfigDir(config: Record<string, unknown>): string {\\n  const dir = mkdtempSync(join(tmpdir(), \\\"atomaton-config-\\\"));\\n  mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });\\n  writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify(config));\\n  return dir;\\n}\\n\\n/** Where the scripts under test live, relative to the repository root. */\\nexport const SCRIPTS_DIR = \\\"src/scripts\\\";\\n\\n/**\\n * The absolute path of a script under test.\\n *\\n * `runWithFakeGh` wants an absolute path, and every caller was building the\\n * same one by hand. Naming it once means a test says which script it is about\\n * and nothing else.\\n */\\nexport function scriptPath(name: string): string {\\n  return join(process.cwd(), SCRIPTS_DIR, name);\\n}\\n\\n/**\\n * Run a script the way the workflows run it: from the deployed tree.\\n *\\n * Scripts that read config through a cwd-relative path expect cwd to be the\\n * repository root of a deployed adoption, which for this repository before\\n * anything is copied anywhere is `dist/`. The script path stays absolute so the\\n * relative `bun run <script>` argument still resolves from there.\\n */\\nexport function runScript(name: string, env: Record<string, string> = {}) {\\n  return spawnSync(\\\"bun\\\", [\\\"run\\\", join(process.cwd(), SCRIPTS_DIR, name)], {\\n    encoding: \\\"utf8\\\",\\n    cwd: join(process.cwd(), \\\"dist\\\"),\\n    env: { ...hermeticEnv(), ...env },\\n  });\\n}\\n\\n/** Parse a `$GITHUB_OUTPUT` file's `key=value` lines into an object. */\\nexport function parseGithubOutput(text: string): Record<string, string> {\\n  const out: Record<string, string> = {};\\n  for (const line of text.split(\\\"\\\\n\\\")) {\\n    const eq = line.indexOf(\\\"=\\\");\\n    if (eq === -1) continue;\\n    out[line.slice(0, eq)] = line.slice(eq + 1);\\n  }\\n  return out;\\n}\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":113}",
+      "tool_call_id": "call_0c6708848a29457ea64bae81"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_c49221f99fbf4cd2a2121ed0",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"bun test src/scripts/run_environment_setup.test.ts 2>&1 | head -40\", \"timeout_seconds\": 120, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"bun test v1.4.2 (744846f84)\\n\\nsrc/scripts/run_environment_setup.test.ts:\\n 6 | describe(\\\"run_environment_setup.ts\\\", () => {\\n 7 |   test(\\\"runs configured setup commands in order\\\", () => {\\n 8 |     const dir = makeConfigDir({ environment: { setup_commands: [\\\"echo one\\\", \\\"echo two\\\"] } });\\n 9 |     try {\\n10 |       const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n11 |       expect(r.status).toBe(0);\\n                            ^\\nerror: expect(received).toBe(expected)\\n\\nExpected: 0\\nReceived: 1\\n\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.test.ts:11:24)\\n(fail) run_environment_setup.ts > runs configured setup commands in order [14.26ms]\\n18 | \\n19 |   test(\\\"aborts with the failing command's exit code\\\", () => {\\n20 |     const dir = makeConfigDir({ environment: { setup_commands: [\\\"exit 3\\\"] } });\\n21 |     try {\\n22 |       const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n23 |       expect(r.status).toBe(3);\\n                            ^\\nerror: expect(received).toBe(expected)\\n\\nExpected: 3\\nReceived: 1\\n\\n      at <anonymous> (/home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.test.ts:23:24)\\n(fail) run_environment_setup.ts > aborts with the failing command's exit code [12.86ms]\\n28 | \\n29 |   test(\\\"no-ops quietly when no setup_commands are configured\\\", () => {\\n30 |     const dir = makeConfigDir({});\\n31 |     try {\\n32 |       const r = spawnSync(\\\"bun\\\", [\\\"run\\\", scriptPath(\\\"run_environment_setup.ts\\\")], { encoding: \\\"utf8\\\", cwd: dir });\\n33 |       expect(r.status).toBe(0);\\n                            ^\\nerror: expect(received).toBe(expected)\\n\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":163}",
+      "tool_call_id": "call_c49221f99fbf4cd2a2121ed0"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_2e2e173355dc42c3b5170a3c",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"node -e \\\"const {spawnSync}=require('child_process');const {mkdtempSync,mkdirSync,writeFileSync}=require('fs');const {tmpdir}=require('os');const {join}=require('path');const dir=mkdtempSync(join(tmpdir(),'dbg-'));mkdirSync(join(dir,'.github/atomaton'),{recursive:true});writeFileSync(join(dir,'.github/atomaton/config.yaml'),'environment:\\\\n  setup_commands:\\\\n    - echo one\\\\n    - echo two\\\\n');const r=spawnSync(process.execPath,['-e','console.log(\\\"NODE-OK\\\")'],{cwd:dir,encoding:'utf8'});console.log('baseline node spawn in dir:',r.status,r.stdout.trim(),r.stderr.trim());\\\"\", \"timeout_seconds\": 60}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"baseline node spawn in dir: 1  [eval]:1\\nconsole.log(NODE-OK)\\n            ^\\n\\nReferenceError: NODE is not defined\\n    at [eval]:1:13\\n    at runScriptInThisContext (node:internal/vm:209:10)\\n    at node:internal/process/execution:446:12\\n    at [eval]-wrapper:6:24\\n    at runScriptInContext (node:internal/process/execution:444:60)\\n    at evalFunction (node:internal/process/execution:279:30)\\n    at evalTypeScript (node:internal/process/execution:291:3)\\n    at node:internal/main/eval_string:74:3\\n\\nNode.js v22.23.2\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":165}",
+      "tool_call_id": "call_2e2e173355dc42c3b5170a3c"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_bf5a38a5fc50446e9b13cc73",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"node -e \\\"const {spawnSync}=require('child_process');const {mkdtempSync,mkdirSync,writeFileSync}=require('fs');const {tmpdir}=require('os');const {join}=require('path');const dir=mkdtempSync(join(tmpdir(),'dbg-'));mkdirSync(join(dir,'.github/atomaton'),{recursive:true});writeFileSync(join(dir,'.github/atomaton/config.yaml'),'environment:\\\\n  setup_commands:\\\\n    - echo one\\\\n    - echo two\\\\n');const r=spawnSync('bun',['run','/home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.ts'],{cwd:dir,encoding:'utf8'});console.log('status:',r.status);console.log('stdout:',r.stdout);console.log('stderr:',r.stderr);\\\"\", \"timeout_seconds\": 60}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"status: 1\\nstdout: Running environment setup command: bun install --frozen-lockfile\\n\\nstderr: error: Bun could not find a package.json file to install from\\nnote: Run \\\"bun init\\\" to initialize a project\\nenvironment setup command failed (exit 1): bun install --frozen-lockfile\\n\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":152}",
+      "tool_call_id": "call_bf5a38a5fc50446e9b13cc73"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_2e7d2fa542b4437e902b1bc7",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn \\\"ATOMATON_MACHINERY_ROOT\\\\|machineryRoot\\\\|setup_commands\\\\|setupCommands\\\" src/scripts/run_environment_setup.ts src/domain/machinery-layout.ts src/lib/config.ts 2>/dev/null | head -30\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"src/scripts/run_environment_setup.ts:4: * `environment.setup_commands` (if any) via `bash -c`, before the agent\\nsrc/scripts/run_environment_setup.ts:17:  const commands = loadConfig().environment?.setup_commands ?? [];\\nsrc/scripts/run_environment_setup.ts:19:    console.log(\\\"No environment.setup_commands configured; skipping.\\\");\\nsrc/domain/machinery-layout.ts:14: *   - `setfacl -R` grants the tool user read on `ATOMATON_MACHINERY_ROOT`. A path\\nsrc/lib/config.ts:5: * Resolved against `ATOMATON_MACHINERY_ROOT` when that is set, and against the\\nsrc/lib/config.ts:24: * `ATOMATON_MACHINERY_ROOT` is set by `atomaton-runner` to a checkout of the default\\nsrc/lib/config.ts:34:  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();\\nsrc/lib/config.ts:191:// separation is what keeps a missing `ATOMATON_MACHINERY_ROOT` from silently\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":112}",
+      "tool_call_id": "call_2e7d2fa542b4437e902b1bc7"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_22a832590c0e42719fc6690e",
+          "type": "function",
+          "function": {
+            "name": "filesystem__read_text_file",
+            "arguments": "{\"path\": \"/home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "#!/usr/bin/env bun\n/**\n * run_environment_setup.ts — Run each command in config.yaml's\n * `environment.setup_commands` (if any) via `bash -c`, before the agent\n * starts, so it never has to spend iterations/tool calls doing one-off\n * environment prep itself on a cold runner. No-ops quietly if unset/empty.\n *\n * Mirrors GitHub Actions' own default `bash -e {0}` semantics: the first\n * failing command aborts immediately with its exit code.\n */\nimport { loadConfig } from \"../lib/config.ts\";\nimport { defineScript } from \"./lib/script-ref.ts\";\n\nexport const ref = defineScript(import.meta.url);\n\nfunction main(): void {\n  const commands = loadConfig().environment?.setup_commands ?? [];\n  if (commands.length === 0) {\n    console.log(\"No environment.setup_commands configured; skipping.\");\n    return;\n  }\n  for (const cmd of commands) {\n    console.log(`Running environment setup command: ${cmd}`);\n    const result = Bun.spawnSync({ cmd: [\"bash\", \"-c\", cmd], stdout: \"inherit\", stderr: \"inherit\" });\n    if (result.exitCode !== 0) {\n      console.error(`environment setup command failed (exit ${result.exitCode}): ${cmd}`);\n      process.exit(result.exitCode ?? 1);\n    }\n  }\n}\n\nif (import.meta.main) main();\n",
+      "tool_call_id": "call_22a832590c0e42719fc6690e"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_36e81cbc80ff47e8b847c149",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"sed -n '1,45p' src/lib/config.ts\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"/**\\n * config.ts — shared helper for reading .github/atomaton/config.yaml. The one\\n * canonical copy used by every script and MCP server in this repo.\\n *\\n * Resolved against `ATOMATON_MACHINERY_ROOT` when that is set, and against the\\n * working directory otherwise -- see `configPath()` for why a runner sets it.\\n */\\nimport { readFileSync } from \\\"node:fs\\\";\\nimport { DEFAULT_GOVERNED_PATHS } from \\\"../domain/merge-readiness.ts\\\";\\nimport {\\n  resolveDeclaredSecrets,\\n  SECRET_DESTINATIONS,\\n  type SecretDestinationName,\\n  type SecretsResolution,\\n} from \\\"../domain/declared-secrets.ts\\\";\\nimport { resolveDeployTargets, type DeployTargetsResolution } from \\\"../domain/deploy-targets.ts\\\";\\nimport { resolveMergeGates, type MergeGatesResolution } from \\\"../domain/merge-gates.ts\\\";\\nimport type { AtomaConfig } from \\\"./types.ts\\\";\\nimport { CONFIG_FILE } from \\\"../domain/machinery-layout.ts\\\";\\n\\n/**\\n * Where this project's configuration is read from.\\n *\\n * `ATOMATON_MACHINERY_ROOT` is set by `atomaton-runner` to a checkout of the default\\n * branch, and unset everywhere else. The difference matters on a pull request\\n * run: that workspace is the pull request's own head, so reading configuration\\n * from it would let a pull request decide how the run reviewing it behaves --\\n * which agent, which commands, which credentials.\\n *\\n * Unset resolves to the working directory, which is what every other caller\\n * wants and what this did before.\\n */\\nfunction configPath(): string {\\n  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();\\n  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;\\n}\\n\\nlet cached: AtomaConfig | undefined;\\n\\n/**\\n * Load and parse the configuration, cached after the first read in a process.\\n *\\n * YAML rather than JSON so a setting can carry its reason beside it. `Bun.YAML`\\n * follows YAML 1.2, where `no`, `on` and `y` are strings and only `true`/`false`\\n * are booleans -- the coercion trap that makes YAML risky for a file full of branch\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":111}",
+      "tool_call_id": "call_36e81cbc80ff47e8b847c149"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_1bd0b4f1827b4a198a87f294",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"cd /tmp && mkdir -p dbg2/.github/atomaton && printf 'environment:\\\\n  setup_commands:\\\\n    - echo one\\\\n    - echo two\\\\n' > dbg2/.github/atomaton/config.yaml && bun run /home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.ts; echo \\\"status=$?\\\"; cd /home/runner/work/atomaton/atomaton\", \"timeout_seconds\": 60}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"Running environment setup command: bun install --frozen-lockfile\\nstatus=1\\n\",\"stderr\":\"error: Bun could not find a package.json file to install from\\nnote: Run \\\"bun init\\\" to initialize a project\\nenvironment setup command failed (exit 1): bun install --frozen-lockfile\\n\",\"output_truncated\":false,\"execution_time_ms\":126}",
+      "tool_call_id": "call_1bd0b4f1827b4a198a87f294"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_c9d321a6f8e9466094f760b4",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -n \\\"ATOMATON_MACHINERY_ROOT\\\\|DEFAULT_MACHINERY_ROOT\\\\|CONFIG_FILE =\\\" src/domain/machinery-layout.ts | head; echo \\\"---\\\"; grep -rn \\\"setup_commands\\\" .github/atomaton/config.yaml | head\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"14: *   - `setfacl -R` grants the tool user read on `ATOMATON_MACHINERY_ROOT`. A path\\n86:export const CONFIG_FILE = `${USER_ROOT}/config.yaml`;\\n---\\n20:  setup_commands:\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":116}",
+      "tool_call_id": "call_c9d321a6f8e9466094f760b4"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_552d297fcec142dc992ba00a",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"sed -n '70,95p' src/domain/machinery-layout.ts; echo \\\"---config---\\\"; sed -n '15,30p' .github/atomaton/config.yaml\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\" * other directory, and GitHub decides where that lives.\\n *\\n * Deleting something here breaks a run rather than degrading one. That is the line:\\n * hide what breaks, show what degrades.\\n */\\nexport const RUNTIME_ROOT = \\\".github/atomaton-runtime\\\";\\n\\n/**\\n * The one path that cannot come from configuration, named here rather than left\\n * as the literal nobody mentions.\\n *\\n * `secret-slots.ts` reads it with `git show refs/atomaton/trusted-config:<this>` —\\n * out of the default branch's object store, before any file exists on disk.\\n * That read is a security boundary: it is what stops a pull request declaring\\n * which credentials it may reach.\\n */\\nexport const CONFIG_FILE = `${USER_ROOT}/config.yaml`;\\n\\n/** Agent definitions: one file per agent, frontmatter plus the role prompt. */\\nexport const AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;\\n\\n/** The system prompt every agent's role prompt is placed into. */\\nexport const PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;\\n\\n/** Skills: instructions loaded on demand, addressed by `<category>/<name>`. */\\nexport const SKILLS_DIR = `${USER_ROOT}/skills`;\\n---config---\\nbase_branch: \\\"\\\"\\n\\n\\n# Run before checks, before deployments, and before an agent starts.\\nenvironment:\\n  setup_commands:\\n    - \\\"bun install --frozen-lockfile\\\"\\n  # Rebuilds of the environment one piece of work may ask for. The refusal goes\\n  # to the agent, which carries on -- unlike the counters under `chain`.\\n  max_reloads: 3\\n\\n\\n# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name\\n# `your_workflow` instead. Both is a configuration error.\\nchecks:\\n  atomaton_runs:\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":113}",
+      "tool_call_id": "call_552d297fcec142dc992ba00a"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_6ee42a7cbdf64a2094108d0b",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"grep -rn \\\"USER_ROOT\\\" src/domain/machinery-layout.ts | head -5; echo \\\"---\\\"; sed -n '1,30p' src/domain/machinery-layout.ts\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"62:export const USER_ROOT = \\\".github/atomaton\\\";\\n68: * workflows invoke. Separate from [`USER_ROOT`] so that \\\"everything outside\\n86:export const CONFIG_FILE = `${USER_ROOT}/config.yaml`;\\n89:export const AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;\\n92:export const PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;\\n---\\n/**\\n * machinery-layout.ts — where each piece of the deployed machinery lives.\\n *\\n * ## Why these are constants and not settings\\n *\\n * A path here is not a preference. It is how a reader — a person, an agent, or a\\n * later version of this deliverable — recognises what a file is. `agent-definitions/`\\n * says what it holds; a `definitions_dir` key pointing anywhere would say only that\\n * somebody chose.\\n *\\n * The question was asked properly and answered no. Every constraint this system\\n * relies on is shaped around a ROOT rather than around individual files:\\n *\\n *   - `setfacl -R` grants the tool user read on `ATOMATON_MACHINERY_ROOT`. A path\\n *     outside it is unreadable to the servers, and the symptom is \\\"no server\\n *     started\\\" rather than \\\"that path was wrong\\\".\\n *   - `merge.governed_paths` defaults to `.github/**`, which is what keeps a change to a\\n *     model, a tool list or a role prompt in a person's hands. A redirected\\n *     `agent-definitions/` leaves that gate permanently, on one approval that\\n *     reads as tidying.\\n *   - Both upgrade paths — `cp -r self/. .github/` here, `unzip -o` for an\\n *     adopter — replace by POSITION. A redirected tree is never upgraded again,\\n *     and the new upstream copy lands beside it unread.\\n *\\n * And one of these can never be a setting whatever is decided about the rest:\\n * the scripts directory holds the programs that open the configuration. A file\\n * cannot tell you where to find the thing that reads it.\\n *\\n * The core is configurable here and this is not, which looks like a contradiction\\n * and is not one. `atoma` takes every path as an argument because it has no\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":114}",
+      "tool_call_id": "call_6ee42a7cbdf64a2094108d0b"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_26ef5477532b458dabcbb5af",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"cd /tmp/dbg2 && ATOMATON_MACHINERY_ROOT=/tmp/dbg2 bun run /home/runner/work/atomaton/atomaton/src/scripts/run_environment_setup.ts; echo \\\"status=$?\\\"; cd /home/runner/work/atomaton/atomaton\", \"timeout_seconds\": 60}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"Running environment setup command: echo one\\none\\nRunning environment setup command: echo two\\ntwo\\nstatus=0\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":124}",
+      "tool_call_id": "call_26ef5477532b458dabcbb5af"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_49a77631e1444294817fb4c3",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"printenv | grep -E \\\"ATOMATON_MACHINERY_ROOT|ATOMATON_RUN_TYPE|ISSUE_NUMBER|ATOMA_\\\" | head; echo \\\"---\\\"; git diff -- CONTRIBUTING.md | head -5\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"SUDO_COMMAND=/usr/bin/env HOME=/home/runner PATH=/usr/local/bin:/home/runner/.bun/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin AGENT=engineer ATOMATON_MACHINERY_ROOT=/home/runner/work/_temp/atomaton-machinery GITHUB_REPOSITORY=yuma-seno/atomaton BRANCH= ISSUE_NUMBER=754 ISSUE_NOTIFY=hws-yuma-seno ATOMATON_RUN_TYPE=issue ATOMATON_RELOAD_COUNT=0 ATOMATON_OPS_LOG=/home/runner/work/_temp/atomaton-run/atomaton_ops.log XDG_CACHE_HOME=/home/runner/work/_temp/atomaton-tool-cache XDG_CONFIG_HOME=/home/runner/work/_temp/atomaton-tool-cache/config XDG_DATA_HOME=/home/runner/work/_temp/atomaton-tool-cache/data BUN_INSTALL_CACHE_DIR=/home/runner/work/_temp/atomaton-tool-cache/bun npm_config_cache=/home/runner/work/_temp/atomaton-tool-cache/npm PIP_CACHE_DIR=/home/runner/work/_temp/atomaton-tool-cache/pip CARGO_HOME=/home/runner/work/_temp/atomaton-tool-cache/cargo atoma run --agent-def /home/runner/work/_temp/atomaton-machinery/.github/atomaton/agent-definitions/engineer.md --in-session /home/runner/work/_temp/atomaton-run/session.json --out-session /home/runner/work/_temp/atomaton-run/session.json --template /home/runner/work/_temp/atomaton-machinery/.github/atomaton/prompt-template.md --skills-dir /home/runner/work/_temp/atomaton-machinery/.github/atomaton/skills --max-runtime-secs 3277 --stop-file /home/runner/work/_temp/atomaton-run/stop-requested --credentials-file /home/runner/work/_temp/atomaton-credentials/credentials.json --tools-file /home/runner/work/_temp/atomaton-run/tools.yaml\\nATOMATON_RUN_TYPE=issue\\nATOMATON_MACHINERY_ROOT=/home/runner/work/_temp/atomaton-machinery\\nISSUE_NUMBER=754\\n---\\ndiff --git a/CONTRIBUTING.md b/CONTRIBUTING.md\\nindex 9e708a2..e492f0f 100644\\n--- a/CONTRIBUTING.md\\n+++ b/CONTRIBUTING.md\\n@@ -211,6 +211,31 @@ What each command proves:\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":144}",
+      "tool_call_id": "call_49a77631e1444294817fb4c3"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_b1bf473d5fb1442bab912bf3",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"env -i PATH=/usr/local/bin:/home/runner/.bun/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin HOME=/home/runner bun test src/scripts/run_environment_setup.test.ts src/scripts/run_checks.test.ts src/scripts/run_deploy.test.ts 2>&1 | tail -8\", \"timeout_seconds\": 300, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(pass) run_checks.ts > stops at the first failure and exits with its code [12.67ms]\\n(pass) run_checks.ts > declaring nothing passes, but says so as a warning [10.31ms]\\n(pass) run_checks.ts > an all-whitespace command is not treated as a command [10.80ms]\\n\\n 22 pass\\n 0 fail\\n 42 expect() calls\\nRan 22 tests across 3 files. [220.00ms]\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":335}",
+      "tool_call_id": "call_b1bf473d5fb1442bab912bf3"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_f475d469cab0404498d05675",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"env -i PATH=/usr/local/bin:/home/runner/.bun/bin:/snap/bin:/home/runner/.local/bin:/opt/pipx_bin:/home/runner/.cargo/bin:/home/runner/.config/composer/vendor/bin:/usr/local/.ghcup/bin:/home/runner/.dotnet/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin HOME=/home/runner bun run test 2>&1 | tail -6\", \"timeout_seconds\": 600, \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\"(pass) shell_guard.ts > unparseable input is refused [8.17ms]\\n\\n 910 pass\\n 0 fail\\n 2939 expect() calls\\nRan 910 tests across 92 files. [10.69s]\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":10810}",
+      "tool_call_id": "call_f475d469cab0404498d05675"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_040d7155abf44a5896b3120f",
+          "type": "function",
+          "function": {
+            "name": "shell__shell_execute",
+            "arguments": "{\"command\": \"git status --short; echo \\\"---\\\"; git diff --stat\", \"working_directory\": \"/home/runner/work/atomaton/atomaton\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"status\":\"completed\",\"exit_code\":0,\"stdout\":\" M CONTRIBUTING.md\\n---\\n CONTRIBUTING.md | 25 +++++++++++++++++++++++++\\n 1 file changed, 25 insertions(+)\\n\",\"stderr\":\"\",\"output_truncated\":false,\"execution_time_ms\":117}",
+      "tool_call_id": "call_040d7155abf44a5896b3120f"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_cd4cd593683247f7bf2f9dcd",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"name\": \"delivery/implementation-handoff\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: delivery/implementation-handoff\n\n# Implementation Handoff\n\n1. Read the issue, current branch state, and nearby implementation before editing.\n2. Implement and validate the requested behavior, including focused regression coverage.\n3. Review the final diff for unrelated changes, generated artifacts, and accidental omissions.\n4. Run the repository's required focused and broad checks.\n5. Commit and push all intended changes with `github__commit_and_push`.\n6. Create the PR with `github__create_pr`, naming the reviewer (`reviewer=\"reviewer\"`); ensure the body explains behavior and verification. Nothing reviews a pull request unless it is asked — opening one starts nobody. This tool ends the current session.\n7. On post-merge re-entry, do not reopen implementation. Confirm the merged PR and close the sub-issue through the prescribed GitHub tool so parent aggregation can continue.\n\nNever create a PR from uncommitted or unpushed work. Never continue issuing tools after a session-ending handoff call.",
+      "tool_call_id": "call_cd4cd593683247f7bf2f9dcd"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_1863bb7841234cf992376530",
+          "type": "function",
+          "function": {
+            "name": "github__commit_and_push",
+            "arguments": "{\"message\": \"docs: document two Windows pitfalls in CONTRIBUTING.md\\n\\nRecord two traps that cost real time but were not written down anywhere a\\nWindows contributor would read first:\\n\\n- `bun test` exits 0 on a path that does not exist, so CI can be green while\\n  a suite silently stopped running. Written as a general rule, not an\\n  incident; points at tests/contract/test-script.test.ts as the guard.\\n- `bun run synth` fails on Windows because gwf launches node without quoting\\n  the space in `C:\\\\Program Files`. Documented the 8.3 short-path workaround\\n  verbatim.\\n\\nBoth placed under the existing \\\"Validation commands\\\" section, where the\\ncommands they affect are introduced; neither duplicates existing text.\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"ok\":true,\"committed\":true,\"pushed\":true}",
+      "tool_call_id": "call_1863bb7841234cf992376530"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_e324ddc554f74b0db1c1f50f",
+          "type": "function",
+          "function": {
+            "name": "github__create_pr",
+            "arguments": "{\"title\": \"docs: document two Windows pitfalls in CONTRIBUTING.md\", \"body\": \"## What\\n\\nRecords the two pitfalls from #754 where a Windows contributor would read them first — in `CONTRIBUTING.md`, under the existing **Validation commands** section where the affected commands are introduced:\\n\\n1. **Green does not mean it ran** — `bun test <path that does not exist>` runs what it finds, exits 0, and CI stays green. Written as a general rule per the issue (no incident detail): nobody knows the right test count, so the guard is `tests/contract/test-script.test.ts` asserting the paths the `test` scripts name actually exist. Includes the actionable line: if you move test files, update the `test` script in the same change.\\n\\n2. **Windows** — `bun run synth` fails on Windows because `gwf` launches `node` through a shell without quoting the space in `C:\\\\Program Files\\\\...`. The 8.3 short-path workaround is documented verbatim so it can be pasted as-is, plus a note on the symptom (contract tests that read `dist/` fail for a reason unrelated to the change).\\n\\n## Verification\\n\\n- Confirmed neither topic duplicates existing text in `CONTRIBUTING.md`, `README.md`, or `docs/` (grep for `Windows`, `PROGRA`, `gwf`, `exit 0`/`silent skip` and `bun test`/`synth` references).\\n- `bun run typecheck` — clean.\\n- `bun run synth` — clean (8 workflows generated, dist built).\\n- `bun run test` — 910 pass / 0 fail.\\n\\nThe only diff is `CONTRIBUTING.md` (+25 lines); `dist/` is gitignored and untouched.\", \"reviewer\": \"reviewer\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"number\":755,\"url\":\"https://github.com/yuma-seno/atomaton/pull/755\",\"base\":\"\",\"validation_dispatched\":true}",
+      "tool_call_id": "call_e324ddc554f74b0db1c1f50f"
+    }
+  ],
+  "metadata": {
+    "github_context": {
+      "agent": "engineer",
+      "event_count": 2,
+      "snapshot_hash": "808ef85c1f639b06680698efe8bc06bb4153583743fe6c4aa47e51c859288db4",
+      "version": 1
+    }
+  }
+}
