@@ -34,7 +34,7 @@ import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
  * Unset means the checkout, which is what every workflow but one wants. The
  * runner sets it, because a pull request run checks out the pull request and its
  * scripts would then be the pull request's own -- letting it decide how the agent
- * reviewing it behaves. See `atoma-runner.wac.ts`.
+ * reviewing it behaves. See `atomaton-runner.wac.ts`.
  *
  * A shell default rather than a generation-time choice, so one generated file
  * serves both: the workflows that never set it are byte-identical to before.

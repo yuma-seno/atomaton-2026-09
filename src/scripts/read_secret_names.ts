@@ -14,7 +14,7 @@
  * Every other script here reads `.github/atomaton/config.yaml` through
  * `lib/config.ts`, which resolves it against the working tree. This one must
  * not. On a pull request run the working tree is the pull request's own head --
- * `atoma-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
+ * `atomaton-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
  * from there would let a pull request decide which of the repository's secrets
  * are handed to the run reviewing it. The governance gate does not help: it
  * blocks the merge, and the run happens before the merge.
@@ -74,14 +74,14 @@ export function declarationIn(configText: string, destination: SecretDestination
   // credential decision to the working tree.
   const config = Bun.YAML.parse(configText) as {
     tools?: { secrets?: unknown };
-    checks?: { atoma_runs?: { secrets?: unknown } };
-    deploy?: { atoma_runs?: { secrets?: unknown } };
+    checks?: { atomaton_runs?: { secrets?: unknown } };
+    deploy?: { atomaton_runs?: { secrets?: unknown } };
   };
-  // `checks` and `deploy` carry theirs inside `atoma_runs`: a secret is reached by
+  // `checks` and `deploy` carry theirs inside `atomaton_runs`: a secret is reached by
   // the step Atomaton runs, and a project naming its own workflow gives that workflow
   // its secrets itself. `tools` has no arms -- the servers are always Atomaton's.
   if (destination === "tools") return config.tools?.secrets;
-  return (destination === "checks" ? config.checks : config.deploy)?.atoma_runs?.secrets;
+  return (destination === "checks" ? config.checks : config.deploy)?.atomaton_runs?.secrets;
 }
 
 function main(): void {

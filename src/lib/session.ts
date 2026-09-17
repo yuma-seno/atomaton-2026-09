@@ -1,7 +1,7 @@
 /**
  * session.ts — shared `Session`/`SessionMessage` shape for the
  * `session.json` files this repo reads and mutates at several points
- * (persisted on the orphan `atoma-data` branch, restored/saved via
+ * (persisted on the orphan `atomaton-data` branch, restored/saved via
  * `restore_agent_session.ts`/`save_agent_session.ts`, and read/mutated
  * in-place by `reconcile_github_session.ts`, `record_run_metadata.ts`,
  * `manage_dispatch_loop.ts`, `inject_uncommitted_notice.ts`, and

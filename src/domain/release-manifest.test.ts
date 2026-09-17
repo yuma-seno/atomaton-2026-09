@@ -42,7 +42,7 @@ describe("what a release says about itself", () => {
 
 describe("what upstream no longer ships", () => {
   const manifest = buildManifest("v0.1.77", [
-    ".github/workflows/atoma-runner.yml",
+    ".github/workflows/atomaton-runner.yml",
     ".github/atomaton/config.yaml",
   ]);
 

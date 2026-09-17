@@ -48,7 +48,7 @@ describe("examples are examples", () => {
   // event for an issue its own token created.
   test("the scheduled example dispatches the runner explicitly", () => {
     const yaml = readFileSync(join(EXAMPLES_DIR, "scheduled-issue.yml"), "utf8");
-    expect(yaml).toContain("gh workflow run atoma-runner.yml");
+    expect(yaml).toContain("gh workflow run atomaton-runner.yml");
     expect(yaml).toContain("issues: write");
     // And it does not create a second issue while the first is still open.
     expect(yaml).toContain("--state open");

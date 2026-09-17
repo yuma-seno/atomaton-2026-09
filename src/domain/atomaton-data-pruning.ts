@@ -1,9 +1,9 @@
 /**
- * atoma-data-pruning.ts — which stored paths belong to work that is over.
+ * atomaton-data-pruning.ts — which stored paths belong to work that is over.
  *
  * ## What is pruned, and why that rule and not a number of days
  *
- * `atoma-data` grows and nothing removes anything. Measured, the pain is still far
+ * `atomaton-data` grows and nothing removes anything. Measured, the pain is still far
  * off — 513 commits weigh 9 MB, because a session is appended-to JSON and git's delta
  * compression works on it — but the direction is one way and nobody was watching it.
  *

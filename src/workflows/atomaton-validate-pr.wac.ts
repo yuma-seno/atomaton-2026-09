@@ -14,7 +14,7 @@ import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scrip
 //
 // It is a workflow of its own rather than steps at the end of the engineer's
 // run, because waiting is the point and the engineer's run is the wrong place to
-// wait: it holds the `atoma/in-progress` label and the per-issue concurrency
+// wait: it holds the `atomaton/in-progress` label and the per-issue concurrency
 // group, so several minutes of polling there stalls everything else queued
 // behind that issue. This job holds neither.
 //
@@ -48,7 +48,7 @@ import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scrip
  * passing check.
  *
  * The head branch is always in this repository: this workflow is dispatched for
- * pull requests agents open on `atoma/issue-N` branches. A fork's head would not
+ * pull requests agents open on `atomaton/issue-N` branches. A fork's head would not
  * resolve here, and does not arrive here.
  */
 const PR_HEAD_DIR = "pr-head";
@@ -121,9 +121,9 @@ const validateStep = new TypedOutputsStep(
   ["next_agent", "conclusion", "summary"] as const,
 );
 
-export const atomaValidatePr = new Workflow("atoma-validate-pr", {
-  name: "Atoma Validate PR",
-  // Cast for the same upstream reason atoma-runner.wac.ts casts: the generated
+export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
+  name: "Atomaton Validate PR",
+  // Cast for the same upstream reason atomaton-runner.wac.ts casts: the generated
   // `WorkflowDispatchInput.default` type is a json-schema-to-typescript quirk.
   // Structurally this is valid `workflow_dispatch` YAML.
   on: {
@@ -197,7 +197,7 @@ export const atomaValidatePr = new Workflow("atoma-validate-pr", {
           NUMBER: "${{ inputs.number }}",
           SUMMARY: validateStep.outputs.summary,
         },
-        run: `gh workflow run atoma-runner.yml \\
+        run: `gh workflow run atomaton-runner.yml \\
   --repo "\${{ github.repository }}" \\
   -f agent="$AGENT" \\
   -f number="$NUMBER" \\

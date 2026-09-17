@@ -5,7 +5,7 @@
  *   1. A general audit trail (create_issue, close_issue, create_pr,
  *      merge_pr, etc. -- see mcp/github.ts's call sites).
  *   2. `logDispatch()`'s `"op":"dispatch"` entries are the canonical,
- *      STRUCTURED signal `atoma-runner.wac.ts`'s `chain_continues`
+ *      STRUCTURED signal `atomaton-runner.wac.ts`'s `chain_continues`
  *      detection reads (via `grep` for the literal `"op":"dispatch"`
  *      JSON key/value, a stable documented field -- not by pattern-matching
  *      arbitrary human-readable log prose). The previous approach (grepping

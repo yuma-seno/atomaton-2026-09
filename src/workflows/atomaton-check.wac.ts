@@ -8,7 +8,7 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { ref as runChecksRef } from "../scripts/run_checks.ts";
 
-// Runs whatever config.yaml's `checks.atoma_runs.commands` says verifies this project.
+// Runs whatever config.yaml's `checks.atomaton_runs.commands` says verifies this project.
 //
 // It exists so that a project's verification is something an agent can write.
 // GITHUB_TOKEN is refused on `.github/workflows/**` by identity -- on every path
@@ -18,7 +18,7 @@ import { ref as runChecksRef } from "../scripts/run_checks.ts";
 // everything that does lives in config.yaml.
 //
 // A repository that already has CI does not need this: name that workflow in
-// `checks.your_workflow` instead of filling in `checks.atoma_runs`, and the job
+// `checks.your_workflow` instead of filling in `checks.atomaton_runs`, and the job
 // says so and passes rather than failing over an empty list. The two are
 // alternatives -- declaring both is a configuration error, not a precedence rule.
 //
@@ -37,7 +37,7 @@ import { ref as runChecksRef } from "../scripts/run_checks.ts";
 // agent case by the same rule that made it necessary for the human one.
 
 /** The name a required status check refers to. Pinned to the shipped ruleset by a contract test. */
-export const CHECK_JOB_NAME = "atoma-check";
+export const CHECK_JOB_NAME = "atomaton-check";
 
 const runStep = new TypedOutputsStep({
   name: "Run the configured checks",
@@ -51,9 +51,9 @@ const runStep = new TypedOutputsStep({
     // It grants no more than the job already holds. `contents: read` is what the
     // checkout used, so on a public repository this is what any visitor has, and
     // on a private one it is what the code being tested was fetched with. Not
-    // shadowable either: `GH_TOKEN` is reserved against `checks.atoma_runs.secrets`.
+    // shadowable either: `GH_TOKEN` is reserved against `checks.atomaton_runs.secrets`.
     GH_TOKEN: "${{ github.token }}",
-    // The slots carry `checks.atoma_runs.secrets` -- a private registry token, say. They are
+    // The slots carry `checks.atomaton_runs.secrets` -- a private registry token, say. They are
     // this job's, not the agent's: nothing here runs an agent, and a credential
     // declared for checks never enters an agent's process.
     ...secretSlotEnv(),
@@ -63,8 +63,8 @@ ${scriptCommand(runChecksRef)}
 `,
 });
 
-export const atomaCheck = new Workflow("atoma-check", {
-  name: "Atoma Check",
+export const atomaCheck = new Workflow("atomaton-check", {
+  name: "Atomaton Check",
   on: {
     workflow_dispatch: {},
     // The default set, written out: a person's pull request when it opens, when
@@ -73,7 +73,7 @@ export const atomaCheck = new Workflow("atoma-check", {
     pull_request: { types: ["opened", "synchronize", "reopened"] },
   } as unknown as GWT.Workflow["on"],
   // Reading the repository and running commands in it. Nothing here writes to
-  // GitHub: the check run a ruleset reads is written by atoma-validate-pr, which
+  // GitHub: the check run a ruleset reads is written by atomaton-validate-pr, which
   // holds `checks: write` for that one purpose.
   permissions: { contents: "read" },
 }).addJobs(
@@ -82,13 +82,13 @@ export const atomaCheck = new Workflow("atoma-check", {
     CHECK_JOB_NAME,
     {
       needs: [pick.name],
-      // From `checks.atoma_runs.runs_on`, via the job above -- `runs-on` cannot read a file.
+      // From `checks.atomaton_runs.runs_on`, via the job above -- `runs-on` cannot read a file.
       // `fromJSON` always, so one label and a self-hosted runner's several are
       // consumed the same way. See `domain/runner-label.ts`.
       //
       // The job keeps its NAME. That is load-bearing: the ruleset requires the
-      // context `atoma-check`, and a matrix here would rename it to
-      // `atoma-check (ubuntu-latest)` -- so the required context would stop
+      // context `atomaton-check`, and a matrix here would rename it to
+      // `atomaton-check (ubuntu-latest)` -- so the required context would stop
       // existing and every pull request would wait on a check that never reports.
       "runs-on": `\${{ fromJSON(needs.${PICK_RUNNER_JOB}.outputs.runs_on) }}` as unknown as string,
       // Long enough for a real test suite, short enough that a hung command does
@@ -97,7 +97,7 @@ export const atomaCheck = new Workflow("atoma-check", {
       // One verification per ref at a time; a second push supersedes the first,
       // whose verdict is already stale.
       concurrency: {
-        group: `atoma-check-\${{ github.ref }}`,
+        group: `atomaton-check-\${{ github.ref }}`,
         "cancel-in-progress": true,
       },
       permissions: { contents: "read" },

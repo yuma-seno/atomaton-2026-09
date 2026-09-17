@@ -15,7 +15,7 @@ the behaviour, and each place that matters says so.
 If you add an MCP server, this is the part that goes wrong quietly.
 
 **A tool result is not a return value.** It joins the agent's session on the
-`atoma-data` branch and is **resent on every later inference in that session,
+`atomaton-data` branch and is **resent on every later inference in that session,
 across runs**. One large result is not a one-off cost — it is rent charged for the
 rest of that issue's life. And when the session outgrows the model's context
 window, the run fails with a provider error that has nothing to do with the tool

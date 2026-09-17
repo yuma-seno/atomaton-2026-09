@@ -124,7 +124,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh workflow run atoma-runner.yml --repo "${{ github.repository }}" \
+          gh workflow run atomaton-runner.yml --repo "${{ github.repository }}" \
             -f agent=engineer \
             -f type=issue \
             -f number="${{ steps.create.outputs.number }}"

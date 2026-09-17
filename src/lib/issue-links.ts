@@ -81,7 +81,7 @@ export function issueLinks(repo: string, number: number): IssueLinks {
     issue = ghGraphql<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issue ?? null;
   } catch (error) {
     const why = (error as Error).message;
-    console.error(`[atoma-github] WARN could not read links for #${number}: ${why}`);
+    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
     return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
   }
   // A null issue is not a failure: the number may simply not exist. Said as

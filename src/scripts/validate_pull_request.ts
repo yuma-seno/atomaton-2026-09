@@ -77,7 +77,7 @@
  * running a pipeline against a deliverable that cannot be loaded.
  *
  * Usage:
- *   validate_pull_request.ts --repo owner/name --number N --branch atoma/issue-N
+ *   validate_pull_request.ts --repo owner/name --number N --branch atomaton/issue-N
  *     --workflow ci.yml --reviewer reviewer --engineer engineer
  *     --deliverable-report FILE [--timeout-seconds 1800]
  */
@@ -115,7 +115,7 @@ export interface ValidatePullRequestArgs {
 export const ref = defineScript<ValidatePullRequestArgs>(import.meta.url);
 
 function log(message: string): void {
-  console.error(`[atoma-validate-pr] ${message}`);
+  console.error(`[atomaton-validate-pr] ${message}`);
 }
 
 export interface RunRef {

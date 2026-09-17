@@ -30,7 +30,7 @@ describe("aggregate_sub_issues.ts", () => {
       const commentCall = r.ghCalls.find((c) => c.includes("comment"));
       expect(commentCall?.join(" ")).toContain("atoma:sub-result=9");
       // The full aggregation path (siblingCount === 0) additionally performs
-      // real `git` operations against an `atoma-data` branch/remote
+      // real `git` operations against an `atomaton-data` branch/remote
       // (checkout --orphan, commit, push-with-retry-on-race) -- deliberately
       // not covered here; it would need a full git remote fixture for
       // comparatively low additional confidence over this early-return path.

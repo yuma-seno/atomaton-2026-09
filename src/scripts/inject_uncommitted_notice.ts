@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * inject_uncommitted_notice.ts — Append a "please commit" notice to the
- * agent's session.json messages array. Used by atoma-runner.wac.ts when the
+ * agent's session.json messages array. Used by atomaton-runner.wac.ts when the
  * agent's run left uncommitted working-tree changes.
  *
  * Usage: inject_uncommitted_notice.ts --session <path>

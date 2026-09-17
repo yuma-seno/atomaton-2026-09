@@ -13,7 +13,7 @@
  *
  * `tests/contract/agent-definitions.test.ts` does check that one rule, but
  * adopters never receive it: `build-dist.ts` excludes `*.test.ts` by design. And
- * `config.yaml`'s `checks.atoma_runs.commands` ships empty, so an adopter's `atoma-check.yml`
+ * `config.yaml`'s `checks.atomaton_runs.commands` ships empty, so an adopter's `atomaton-check.yml`
  * runs nothing at all until they configure it — and whatever they put there is
  * their pipeline, not a place to hide this.
  *
@@ -49,7 +49,7 @@
  *   1  problems found — they are printed, and written to `--report` if given
  *   2  the check could not be performed (no such root, atoma would not run)
  *
- * `atoma-validate-pr.yml` treats 1 as a red check handed back to the engineer and
+ * `atomaton-validate-pr.yml` treats 1 as a red check handed back to the engineer and
  * 2 as a broken job, because a validation that did not happen must not read as one
  * that passed. Run by hand — `bun run .github/scripts/validate_deliverable.ts` —
  * it is the same check the pull request is judged by.

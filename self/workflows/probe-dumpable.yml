@@ -35,12 +35,12 @@ name: Process and worktree isolation
       - 'src/lib/mcp-tool.ts'
       - 'src/atomaton-runtime/tools/**'
       - 'src/workflows/actions/atoma-cli.ts'
-      - 'src/workflows/atoma-runner.wac.ts'
+      - 'src/workflows/atomaton-runner.wac.ts'
       # .github/** is the deployed machinery -- what a run actually starts. A
       # change under src/ is not tested here, and should not be: it is tested at
       # the deploy pull request, which is when what runs changes.
       - '.github/atomaton/**'
-      - '.github/workflows/atoma-runner.yml'
+      - '.github/workflows/atomaton-runner.yml'
       - '.github/workflows/probe-dumpable.yml'
   push:
     branches:
@@ -78,7 +78,7 @@ jobs:
       # the only place the answer is observable.
       - name: Measure — does a tool's report about itself reach the model
         run: bash scripts/probe-tool-health.sh
-      # atoma-check starts no tool server, so module resolution and file
+      # atomaton-check starts no tool server, so module resolution and file
       # permissions are first tried by a real run -- the half left open, and the path defect in
       # particular. One turn with a fake LLM, at the layout the runner builds.
       #

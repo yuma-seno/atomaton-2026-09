@@ -8,10 +8,10 @@ import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ref as dispatchIfSiblingsDoneRef } from "../scripts/dispatch_if_siblings_done.ts";
 import { ref as checkSubIssueClosureRef } from "../scripts/check_sub_issue_closure.ts";
-import { ref as pruneAtomaDataRef } from "../scripts/prune_atoma_data.ts";
+import { ref as pruneAtomaDataRef } from "../scripts/prune_atomaton_data.ts";
 
 // FALLBACK for manually closed sub-issues.
-// Primary aggregation happens in atoma-pr-merged.wac.ts (pull_request_target).
+// Primary aggregation happens in atomaton-pr-merged.wac.ts (pull_request_target).
 // This handles the case where a human closes a sub-issue manually.
 //
 // Job graph:
@@ -55,8 +55,8 @@ const checkStep = new TypedOutputsStep(
   ["is_sub_issue", "parent_number", "closed_via_pr"] as const,
 );
 
-export const atomaSubIssueClosed = new Workflow("atoma-sub-issue-closed", {
-  name: "Atoma Sub-Issue Closed",
+export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
+  name: "Atomaton Sub-Issue Closed",
   on: {
     issues: { types: ["closed"] },
   },

@@ -19,10 +19,10 @@ export interface IssueBranch {
 }
 
 /**
- * What may follow `atoma/issue-<n>` in a branch that issue owns.
+ * What may follow `atomaton/issue-<n>` in a branch that issue owns.
  *
  * Anchored at both ends, which is the whole point. Unanchored, the remainder of
- * `atoma/issue-12-3` after the prefix for issue **1** is `2-3`, and a pattern
+ * `atomaton/issue-12-3` after the prefix for issue **1** is `2-3`, and a pattern
  * looking only for a trailing `-<digits>` finds one — so a run on issue 1 would
  * resume issue 12's branch, commit to it, and open a pull request from it.
  *
@@ -41,7 +41,7 @@ function ordinalOf(rest: string): number {
 
 /** Every branch this issue owns, newest first. */
 function ownedBranches(branches: IssueBranch[], issueNumber: number): { branch: IssueBranch; ordinal: number }[] {
-  const prefix = `atoma/issue-${issueNumber}`;
+  const prefix = `atomaton/issue-${issueNumber}`;
   return branches
     .filter((branch) => branch.name.startsWith(prefix))
     .map((branch) => ({ branch, ordinal: ordinalOf(branch.name.slice(prefix.length)) }))
@@ -68,7 +68,7 @@ export function branchToResume(branches: IssueBranch[], issueNumber: number): st
  * Only called when nothing is resumable, so every existing branch here has
  * merged and the name has to be a new one.
  *
- * Normally there are none: a merge deletes its branch, so `atoma/issue-N` is
+ * Normally there are none: a merge deletes its branch, so `atomaton/issue-N` is
  * free again and the common case stays readable. The suffix is for when one
  * survived anyway — a deletion that failed, or a merge made outside Atomaton —
  * where reusing the name would build on history the base already contains. It
@@ -76,7 +76,7 @@ export function branchToResume(branches: IssueBranch[], issueNumber: number): st
  * old branch cannot hand out a name that was already used.
  */
 export function nextBranchName(branches: IssueBranch[], issueNumber: number): string {
-  const prefix = `atoma/issue-${issueNumber}`;
+  const prefix = `atomaton/issue-${issueNumber}`;
   const owned = ownedBranches(branches, issueNumber);
   if (owned.length === 0) return prefix;
   return `${prefix}-${(owned[0]?.ordinal ?? 1) + 1}`;

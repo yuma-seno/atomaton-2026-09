@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * prune_atoma_data.ts — remove the scratch a finished issue left behind.
+ * prune_atomaton_data.ts — remove the scratch a finished issue left behind.
  *
- * See `domain/atoma-data-pruning.ts` for why the rule is the issue's state rather than
+ * See `domain/atomaton-data-pruning.ts` for why the rule is the issue's state rather than
  * an age, and what is deliberately left alone. This file is the part that talks to
  * GitHub and to git.
  *
@@ -11,7 +11,7 @@
  * Anything one run misses is taken by the next issue to close.
  *
  * Usage:
- *   prune_atoma_data.ts [--repo OWNER/REPO] [--dry-run]
+ *   prune_atomaton_data.ts [--repo OWNER/REPO] [--dry-run]
  *
  * `--dry-run` prints what it would delete and touches nothing, which is how to look at
  * a store before letting this loose on it.
@@ -31,15 +31,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { getLabel } from "../lib/config.ts";
-import { prunablePaths, pruneCommitMessage } from "../domain/atoma-data-pruning.ts";
+import { prunablePaths, pruneCommitMessage } from "../domain/atomaton-data-pruning.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);
 
-const BRANCH = "atoma-data";
+const BRANCH = "atomaton-data";
 
 function log(message: string): void {
-  console.error(`[prune-atoma-data] ${message}`);
+  console.error(`[prune-atomaton-data] ${message}`);
 }
 
 interface IssueState {
@@ -108,7 +108,7 @@ function main(): void {
   });
   const repo = values.repo ?? process.env.GITHUB_REPOSITORY ?? "";
   if (!repo) {
-    console.error("usage: prune_atoma_data.ts [--repo OWNER/REPO] [--dry-run]");
+    console.error("usage: prune_atomaton_data.ts [--repo OWNER/REPO] [--dry-run]");
     process.exit(2);
   }
 

@@ -21,7 +21,7 @@ execute. Edit your copied `.github/atomaton/` files directly — `config.yaml` f
 every setting, and the agent definitions, the skills and the prompt template for
 the rest. In this template repository the same files are hand-authored under
 `src/`, and `dist/.github/` is generated output that `bun run synth` builds and a
-release publishes as `atoma-delivery.zip`.
+release publishes as `atomaton-delivery.zip`.
 
 What you receive has **two roots**, and which one a file is under is the whole
 rule. `.github/atomaton/` is yours: the config, the agent definitions, the prompt
@@ -143,11 +143,11 @@ elsewhere — `develop` → `main`, say. Without it every agent pull request aim
 `setup_commands` run before checks, before deployments, and before an agent starts
 — all three, on a cold runner every time. They run through `bash -c`, in order,
 and stop on first failure: before the agent starts, before
-`checks.atoma_runs.commands`, and before `deploy.atoma_runs.targets`. One
+`checks.atomaton_runs.commands`, and before `deploy.atomaton_runs.targets`. One
 declaration, three jobs.
 
 That is the reason to use this field rather than putting `npm ci` at the front of
-`checks.atoma_runs.commands`, which works and drifts: the agent's shell and CI
+`checks.atomaton_runs.commands`, which works and drifts: the agent's shell and CI
 then install their dependencies from two places, and a test that passes for the
 agent and fails in CI reaches an engineer as a defect that does not reproduce on
 the machine they can see.
@@ -178,17 +178,17 @@ default, the same as `CI_RETRY_LIMIT`. When the limit is reached the tool refuse
 tells the agent to report instead; the refusal is a tool error rather than the end of
 the run, so the agent still has a turn in which to say what it found.
 
-To turn reloading off entirely, remove `atoma_env` from an agent's `mcp_servers` in
+To turn reloading off entirely, remove `atomaton_env` from an agent's `mcp_servers` in
 its definition. `0` here means the default, not "never".
 
 ## `checks` and `deploy`
 
-Two arms, and exactly one of them. Fill in `atoma_runs` and the shipped workflow
+Two arms, and exactly one of them. Fill in `atomaton_runs` and the shipped workflow
 runs your commands; name `your_workflow` instead and it dispatches that, and the
 commands are read by nothing. Declaring both is a configuration error rather than
 a precedence puzzle you have to remember the answer to.
 
-Under `atoma_runs`:
+Under `atomaton_runs`:
 
 - `commands` (checks) — run in order, stopping at the first failure.
 - `targets` (deploy) — each names an environment, the branch or tag that ships
@@ -196,14 +196,14 @@ Under `atoma_runs`:
   nothing yet, which is the state a template has to ship in.
 - `secrets` — repository secrets that step may reach, by name. The values stay
   in GitHub; only the names are here. Written in full they are
-  `checks.atoma_runs.secrets` and `deploy.atoma_runs.secrets` — the nesting is
+  `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets` — the nesting is
   load-bearing, and `tools.secrets` below says why the three lists are separate.
 - `runs_on` — the GitHub runner label the job asks for. `ubuntu-latest` unless
   the project needs a larger or self-hosted one.
 
 ### The default check
 
-A secret scan ships in `checks.atoma_runs.commands`, and it is the only default.
+A secret scan ships in `checks.atomaton_runs.commands`, and it is the only default.
 A credential is a credential in every language, so it is the one verification a
 template can hand a project it knows nothing about — everything else belongs to
 the project.
@@ -223,14 +223,14 @@ workflow at all and describe the pipeline as commands:
 
 ```yaml
 checks:
-  atoma_runs:
+  atomaton_runs:
     commands:
       - bun install --frozen-lockfile
       - bun run typecheck
       - bun test
 
 deploy:
-  atoma_runs:
+  atomaton_runs:
     targets:
       - name: staging
         on: merge
@@ -241,7 +241,7 @@ deploy:
         commands: ["./scripts/deploy.sh prod"]
 ```
 
-Nothing needs pointing at these — `atoma-check.yml` and `atoma-deploy.yml` are
+Nothing needs pointing at these — `atomaton-check.yml` and `atomaton-deploy.yml` are
 what a section runs when it names no `your_workflow`. Fill in the commands and
 they run.
 
@@ -262,18 +262,18 @@ explicit dispatch, not an event — but your own merges will not, and
 `deploy.your_workflow` is the way to cover them.
 
 **Credentials** go in the list belonging to whatever needs them —
-`checks.atoma_runs.secrets` or `deploy.atoma_runs.secrets`, alongside
+`checks.atomaton_runs.secrets` or `deploy.atomaton_runs.secrets`, alongside
 `tools.secrets`. Add the secret to the repository first; these name it, they do
 not create it. Inside a deployment, `$ATOMATON_DEPLOY_TARGET` holds the target's
-name. `atoma-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
+name. `atomaton-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
 login works and is worth preferring over storing a long-lived key at all.
 
 **What commands cannot express**, and where you still need a workflow of your own
 through `deploy.your_workflow`:
 
-- a job's `permissions` beyond what the shipped workflows declare. `atoma-check.yml`
+- a job's `permissions` beyond what the shipped workflows declare. `atomaton-check.yml`
   runs with `contents: read` plus a `GITHUB_TOKEN` in `GH_TOKEN`;
-  `atoma-deploy.yml` with `contents: write` and `id-token: write`, so it can cut a
+  `atomaton-deploy.yml` with `contents: write` and `id-token: write`, so it can cut a
   release and can exchange its identity for cloud credentials
 - a deployment approval gate — `environment:` takes no expression, so nothing in
   configuration can reach it
@@ -289,22 +289,22 @@ commands.
 
 ```yaml
 checks:
-  atoma_runs:
+  atomaton_runs:
     runs_on: macos-latest
 deploy:
-  atoma_runs:
+  atomaton_runs:
     runs_on: ["self-hosted", "linux", "gpu"]
 ```
 
 A string is one runner label. A list is the set of labels one runner must have —
 which is how a self-hosted runner is addressed. Unset takes `ubuntu-latest`.
 
-It sits inside `atoma_runs` because the machine is a property of the step Atomaton
+It sits inside `atomaton_runs` because the machine is a property of the step Atomaton
 runs: a project that names `your_workflow` instead declares its runner in that
 workflow, where the rest of its pipeline already is.
 
 **One runner, however many labels. Not several runners.** Several would change the
-check run's *name*: `atoma-check` becomes `atoma-check (ubuntu-latest)`, so the
+check run's *name*: `atomaton-check` becomes `atomaton-check (ubuntu-latest)`, so the
 context your ruleset requires stops existing and every pull request waits forever on
 a check that will never report.
 
@@ -325,7 +325,7 @@ deploy:
 ```
 
 `checks.your_workflow` is the workflow Atomaton runs against an agent's pull request
-before anyone reviews it. Defaults to `atoma-check.yml`. Name yours here, exactly
+before anyone reviews it. Defaults to `atomaton-check.yml`. Name yours here, exactly
 as the file is called, or the dispatch fails silently and every merge is refused
 for a missing check.
 
@@ -338,9 +338,9 @@ branch. An agent merge is performed with `GITHUB_TOKEN`, and GitHub starts no
 workflow run for events its own token triggers (see
 [docs/operations.md](operations.md)), so nothing downstream of that merge fires by
 itself and your deployment would silently never run. Defaults to
-`atoma-deploy.yml`, which does nothing when no target deploys on merge.
+`atomaton-deploy.yml`, which does nothing when no target deploys on merge.
 
-**Delete the `atoma_runs` block in the section you name a workflow in.** The two
+**Delete the `atomaton_runs` block in the section you name a workflow in.** The two
 are alternatives: declaring both fails the pull request's check, naming the
 section, rather than resolving by a precedence rule — so a `commands` list left
 behind is reported instead of sitting there reading as live.
@@ -557,8 +557,8 @@ with are Atomaton's own, and what you write here is added to them.
 | `github` | Issues, pull requests, comments, and every Git mutation. |
 | `web` | Fetches a URL. Searching the web is a skill, not a tool. |
 | `search` | Ranked search over this repository's issues and code. |
-| `atoma` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
-| `atoma_env` | Rebuilding the run's environment, and nothing else. |
+| `atomaton` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
+| `atomaton_env` | Rebuilding the run's environment, and nothing else. |
 
 They are not in your `config.yaml`. They ship as data, in
 `.github/atomaton-runtime/tools/defaults.yaml`, and are written into the file `atoma`
@@ -604,7 +604,7 @@ first.
 
 Repository secrets the servers may reach, by name.
 
-Separate from `checks.atoma_runs.secrets` and `deploy.atoma_runs.secrets` because the nesting **is** the
+Separate from `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets` because the nesting **is** the
 boundary: only these enter an agent's own environment, so a prompt injection
 carried in an issue body reaches them and no deployment credential. Collapsing the
 three into one list would put every credential in every destination while still
@@ -645,7 +645,7 @@ what the run may hold, a server's `env` says which server sees it, and the secon
 is what keeps the first out of the shell. Authorising a credential does not
 deliver it. `checks` and `deploy` need no third step at all, because their
 commands run in a workflow of their own rather than beside an agent — a secret
-named in `checks.atoma_runs.secrets` is in that job's environment and there is no
+named in `checks.atomaton_runs.secrets` is in that job's environment and there is no
 server to route it to.
 
 The bottom row reads the same whether the server is one of yours or one Atomaton
@@ -988,7 +988,7 @@ run.
 
 A credential is ROUTED to the server that needs it with a `${NAME}` reference in
 that server's `env` -- shipped as the run's GitHub token for `github`, `search`,
-`atoma` and `atoma_env`, and empty for the rest. Anything else takes an entry
+`atomaton` and `atomaton_env`, and empty for the rest. Anything else takes an entry
 under `tools.servers` carrying that server's name and an `env`, which overrides
 that one field. A server receives exactly what its own `env` names and nothing
 else -- atoma removes every credential it knows about from a server's environment
@@ -1053,7 +1053,7 @@ a tool: how much has been written where, how long a search has gone on. Attached
 one server, such a check only watches the agent while it happens to be using that
 server, and says nothing for the twenty calls it spends elsewhere.
 
-`workspace_guard.ts` answers with a notice when /tmp/atoma-workspace has grown past
+`workspace_guard.ts` answers with a notice when /tmp/atomaton-workspace has grown past
 what will be carried into the next run. It is an `after_tool` rather than a
 `before_tool` because it reports rather than refuses -- nothing the agent is about to
 do is wrong, and the file it would complain about does not exist until after the
@@ -1142,13 +1142,13 @@ server connecting and the first search in the run that measured this. 300
 covers the remainder and a slow network, without being so large that a
 genuinely stuck server goes unnoticed for long.
 
-## atoma
+## atomaton
 
 Shells out to `gh`, so it needs the run's GitHub token. Declared rather
 than inherited: atoma strips credentials from a server that does not name
 them, which is what keeps this one out of `shell`.
 
-## atoma_env
+## atomaton_env
 
 The same server, with everything but `reload_environment` withheld.
 

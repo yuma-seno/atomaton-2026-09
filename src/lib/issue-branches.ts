@@ -19,9 +19,9 @@ function log(message: string): void {
  * The remote branches that could belong to this issue, each marked with whether
  * its work merged.
  *
- * Scoped to one issue rather than listing every `atoma/issue-*` branch, because
+ * Scoped to one issue rather than listing every `atomaton/issue-*` branch, because
  * the merged flag has to be asked for per branch and a repository accumulates
- * hundreds. `atoma/issue-12` also matches `atoma/issue-120` here; separating
+ * hundreds. `atomaton/issue-12` also matches `atomaton/issue-120` here; separating
  * them is `domain/issue-branch.ts`'s job, and over-collecting is the safe
  * direction.
  *
@@ -34,7 +34,7 @@ function log(message: string): void {
  * list branches should start from the base branch, not stop the run.
  */
 export function collectIssueBranches(repo: string, issueNumber: number): IssueBranch[] {
-  const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atoma/issue-${issueNumber}`);
+  const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
   if (refs.code) {
     log(`WARN could not list branches: ${refs.stderr || refs.stdout}`);
     return [];

@@ -4,7 +4,7 @@
 # ## Why this file is hand-written and lives in `self/`
 #
 # Every other workflow under `.github/workflows/` is generated from
-# `src/workflows/` and shipped to adopters in `atoma-delivery.zip`. This one is
+# `src/workflows/` and shipped to adopters in `atomaton-delivery.zip`. This one is
 # neither. It is deliberately outside Atomaton's machinery:
 #
 #   - it is not in the deliverable, so no adopter receives a workflow naming a
@@ -32,7 +32,7 @@
 #
 # `ATOMA_SELF_DEPLOY_TOKEN` is a PAT with the `workflow` scope, set as a secret in
 # THIS repository only. It never reaches an agent: it appears in this file and
-# nowhere else, and `atoma-runner.yml` does not name it -- `atoma` gives a tool
+# nowhere else, and `atomaton-runner.yml` does not name it -- `atoma` gives a tool
 # server only the credentials that server's own entry under `tools.servers` declares.
 #
 # A PAT is acceptable here and not inside Atomaton because the thing holding it is a
@@ -127,7 +127,7 @@ jobs:
           TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release download "$TAG" --pattern atoma-delivery.zip --output /tmp/delivery.zip --clobber
+          gh release download "$TAG" --pattern atomaton-delivery.zip --output /tmp/delivery.zip --clobber
 
           # Deleted, not overwritten. `unzip -o` never removes, so a file the
           # release dropped would otherwise stay forever with no diff to see it by.
@@ -160,8 +160,8 @@ jobs:
           set -euo pipefail
           BRANCH="self-deploy/${TAG}"
 
-          git config user.name "atoma-self-deploy"
-          git config user.email "atoma-self-deploy@users.noreply.github.com"
+          git config user.name "atomaton-self-deploy"
+          git config user.email "atomaton-self-deploy@users.noreply.github.com"
           git checkout -q -b "$BRANCH"
           git add -A .github
 
@@ -176,7 +176,7 @@ jobs:
           {
             echo "deploy: apply ${TAG} to .github/"
             echo
-            echo "Prepared by self/workflows/atoma-self-deploy.yml, dispatched by ${ACTOR}."
+            echo "Prepared by self/workflows/atomaton-self-deploy.yml, dispatched by ${ACTOR}."
             echo
             echo ".github/ was deleted and rebuilt from ${TAG} with self/ copied over it,"
             echo "so a file the release no longer contains is gone rather than orphaned."
@@ -192,7 +192,7 @@ jobs:
           {
             echo "Applies [\`${TAG}\`](https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}) to this repository's own \`.github/\`."
             echo
-            echo "Prepared by \`self/workflows/atoma-self-deploy.yml\`, dispatched by @${ACTOR}. No agent was involved, and no agent can reach the token this used."
+            echo "Prepared by \`self/workflows/atomaton-self-deploy.yml\`, dispatched by @${ACTOR}. No agent was involved, and no agent can reach the token this used."
             echo
             echo "\`.github/\` was **deleted and rebuilt** from two sources:"
             echo

@@ -2,7 +2,7 @@
 /**
  * resolve_entry_agent.ts — Parse the "/agent-name" slash command from the
  * first visible line of a newly-opened issue's body, and emit
- * agent/number/type/notify as step outputs for atoma-entry.wac.ts.
+ * agent/number/type/notify as step outputs for atomaton-entry.wac.ts.
  *
  * Env: NUMBER, SENDER (issue number + the user who opened it), GITHUB_EVENT_PATH
  * Writes to $GITHUB_OUTPUT: agent, number, type, notify -- only if a valid
@@ -62,7 +62,7 @@ function main(): void {
   if (!agent) return;
 
   // The name is spliced into shell text downstream (`AGENT="${{ inputs.agent }}"`
-  // in atoma-runner) and into an agent-definition path, so anything that is not
+  // in atomaton-runner) and into an agent-definition path, so anything that is not
   // a bare name stops here. Emitting no output leaves the caller's
   // `if: steps.resolve.outputs.agent != ''` false, which is the same no-op as an
   // issue that opened with no slash command at all.

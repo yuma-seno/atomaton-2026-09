@@ -7,7 +7,7 @@
  *
  * Every mutation is logged to $ATOMATON_OPS_LOG (see lib/ops-log.ts) as a
  * general audit trail; dispatch decisions specifically are also what
- * atoma-runner.wac.ts's chain_continues detection reads.
+ * atomaton-runner.wac.ts's chain_continues detection reads.
  *
  * IMPORTANT: this process's `process.stdout` IS the JSON-RPC transport --
  * never `console.log()` anywhere in this file or in anything it calls
@@ -43,7 +43,7 @@ import { selectCommentRange } from "../../../domain/comment-range.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 function log(msg: string): void {
-  console.error(`[atoma-github] ${msg}`);
+  console.error(`[atomaton-github] ${msg}`);
 }
 
 // Same OS user as every other tool server, including the one that runs arbitrary
@@ -161,7 +161,7 @@ const ISSUE_COMMENTS_SCHEMA = z.object({
  * Models omit `number` entirely when they are already reasoning about a single
  * issue, which used to surface as `number: Required` and burn an iteration.
  * `ISSUE_NUMBER` is the number the runner resolved for this run (see
- * `atoma-runner.wac.ts`), and is already relied on elsewhere in this file.
+ * `atomaton-runner.wac.ts`), and is already relied on elsewhere in this file.
  */
 function issueContextNumber(args: { number?: number }): number {
   if (args.number !== undefined) return args.number;
@@ -267,7 +267,7 @@ const SEARCH_CODE_SCHEMA = z.object({
 });
 const GET_BRANCH_SCHEMA = z.object({
   // `branch`, not `name`, so this and `sync_branch` call one thing by one name.
-  branch: z.string().min(1).describe("Repository branch name, for example 'main' or 'atoma/issue-42'."),
+  branch: z.string().min(1).describe("Repository branch name, for example 'main' or 'atomaton/issue-42'."),
 });
 const GET_CHECK_RUNS_SCHEMA = z.object({
   ref: z.string().min(1).describe("Commit SHA, branch name, or tag whose GitHub check runs should be returned."),
@@ -677,7 +677,7 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
   // one behaviour that looked like one half each. The trigger was removed and
   // asking became explicit.
   //
-  // An empty name is a legitimate answer, and `atoma-validate-pr` already handles
+  // An empty name is a legitimate answer, and `atomaton-validate-pr` already handles
   // it: CI still runs, and nothing is dispatched afterwards. What it did not
   // handle is a person finding out, which is what `noticeNobodyIsComing` below is
   // for.
@@ -1011,8 +1011,8 @@ function searchCode(a: z.infer<typeof SEARCH_CODE_SCHEMA>): string {
  *
  * The comment below used to describe this as serving "a caller asking whether a
  * branch exists" while the only available answer to that question was a thrown 404.
- * Six calls in the recorded sessions asked about `atoma/issue-104`, `atoma/issue-190`
- * and `atoma/issue-219` before creating them, and each was charged an error for
+ * Six calls in the recorded sessions asked about `atomaton/issue-104`, `atomaton/issue-190`
+ * and `atomaton/issue-219` before creating them, and each was charged an error for
  * asking. A tool that cannot say "no" makes every correct check look like a fault,
  * and it buries the 404s that ARE faults among them.
  *
@@ -1155,7 +1155,7 @@ function checkMergeReadiness(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): s
  * the base by the time this runs, so the branch holds nothing the base does not.
  *
  * Deleting it is also what lets the next piece of work on the same issue take
- * the plain `atoma/issue-N` name again: with the merged branch gone, nothing is
+ * the plain `atomaton/issue-N` name again: with the merged branch gone, nothing is
  * left to count up from, and the new branch is cut from the base rather than
  * from released history — the same outcome the suffix exists to produce.
  *

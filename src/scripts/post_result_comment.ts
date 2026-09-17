@@ -268,7 +268,7 @@ export function buildCommentBody(args: {
   // Omitted rather than guessed when the repository is unknown, because a broken link
   // in every comment is worse than no link at all.
   const metrics = args.repo
-    ? ` · [metrics](https://github.com/${args.repo}/blob/atoma-data/metrics/report.md)`
+    ? ` · [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)`
     : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
   if (args.stopRequested === "true") {
@@ -323,7 +323,7 @@ function main(): void {
   // A net, not a control: see domain/redaction.ts on what a shape check cannot
   // catch. The reason it is here at all is that this is one of the two sinks that
   // publish unmasked text (the other is the failure excerpt in
-  // atoma-runner.wac.ts).
+  // atomaton-runner.wac.ts).
   // Required, not defaulted. A default would put the old relative path back and
   // restore the exact silence this is fixing: a caller that forgot the argument
   // would look in the work tree, find nothing, and report a session that ended via

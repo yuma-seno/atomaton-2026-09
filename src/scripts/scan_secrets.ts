@@ -5,7 +5,7 @@
  * Shipped as a default check, and it is the one kind of verification a template
  * can hand every adopter: a credential is a credential in every language, so
  * this needs to know nothing about what the project is written in. The commands
- * beside it in `checks.atoma_runs.commands` are the project's own and only the project can
+ * beside it in `checks.atomaton_runs.commands` are the project's own and only the project can
  * write them.
  *
  * ## Why this branch's commits and not the history
@@ -39,7 +39,7 @@ function log(message: string): void {
 
 /** The commits this branch adds, as a range gitleaks can be pointed at. */
 function branchRange(): string | undefined {
-  // `atoma-check.yml` checks out shallow, and a merge base cannot be computed
+  // `atomaton-check.yml` checks out shallow, and a merge base cannot be computed
   // from one commit. Tolerated rather than required: a repository that is
   // already complete refuses to unshallow, which is not a failure.
   gitRun("fetch", "--quiet", "--unshallow", "origin");

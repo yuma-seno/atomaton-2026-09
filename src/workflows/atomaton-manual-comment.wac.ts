@@ -6,7 +6,7 @@ import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/githu
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
-import { dispatchToAtomaRunner } from "./atoma-runner.wac.ts";
+import { dispatchToAtomaRunner } from "./atomaton-runner.wac.ts";
 import { ref as parseCommentCommandRef } from "../scripts/parse_comment_command.ts";
 import { ref as guardCommentRef } from "../scripts/guard_comment_during_run.ts";
 import { ref as requestStopRef } from "../scripts/request_stop.ts";
@@ -20,7 +20,7 @@ import { ref as resolveResumeAgentRef } from "../scripts/resolve_resume_agent.ts
 // run is actively working on this issue/PR.
 //
 // Job graph:
-//   parse --> run (atoma-runner.yml, reusable)
+//   parse --> run (atomaton-runner.yml, reusable)
 
 // Bot comments are never guarded (Atomaton's own comments, e.g. dispatch
 // confirmations, must never be self-deleted) -- only ever relevant for a
@@ -70,7 +70,7 @@ const parseCommandStep = new TypedOutputsStep(
  */
 const guardStep = new TypedOutputsStep(
   {
-    name: "Guard: reject comment while atoma/in-progress",
+    name: "Guard: reject comment while atomaton/in-progress",
     id: "guard",
     if: `(${IS_HUMAN_COMMENT}) && ${parseCommandStep.rawOutputs.control} != 'stop'`,
     shell: "bash",
@@ -194,8 +194,8 @@ const commandErrorStep = new TypedOutputsStep({
 `,
 });
 
-export const atomaManualComment = new Workflow("atoma-manual-comment", {
-  name: "Atoma Manual Comment",
+export const atomaManualComment = new Workflow("atomaton-manual-comment", {
+  name: "Atomaton Manual Comment",
   on: {
     issue_comment: { types: ["created"] },
   },
@@ -207,7 +207,7 @@ export const atomaManualComment = new Workflow("atoma-manual-comment", {
       "runs-on": "ubuntu-latest",
       // Broader than PARSE_ALLOWED on purpose: this job now also needs to
       // run for ANY human comment (regardless of association) so guardStep
-      // can reject it while atoma/in-progress is active -- actual
+      // can reject it while atomaton/in-progress is active -- actual
       // parsing/dispatch stays restricted to PARSE_ALLOWED via
       // parseCommandStep's own `if:` above.
       if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atoma:dispatch'))`,

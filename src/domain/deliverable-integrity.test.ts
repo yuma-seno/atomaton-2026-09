@@ -20,17 +20,17 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
 const SOUND = {
   base_branch: "",
   environment: { setup_commands: [] },
-  checks: { atoma_runs: { commands: [], secrets: [] } },
-  deploy: { atoma_runs: { targets: [], secrets: [] } },
+  checks: { atomaton_runs: { commands: [], secrets: [] } },
+  deploy: { atomaton_runs: { targets: [], secrets: [] } },
   merge: { policy: "auto" },
-  chain: { labels: { in_progress: "atoma/in-progress" } },
+  chain: { labels: { in_progress: "atomaton/in-progress" } },
   tools: { secrets: [] },
 };
 
 const facts = (config: unknown) => ({
   config,
   agentNames: ["engineer", "orchestrator", "reviewer"],
-  workflowFiles: [DEFAULT_CI_WORKFLOW, DEFAULT_CD_WORKFLOW, "atoma-runner.yml"],
+  workflowFiles: [DEFAULT_CI_WORKFLOW, DEFAULT_CD_WORKFLOW, "atomaton-runner.yml"],
 });
 
 const problemsFor = (config: unknown) => configProblems(facts(config));
@@ -55,11 +55,11 @@ describe("keys nothing reads", () => {
   });
 
   // The nested form is exactly as silent and rather more likely: the reader asks
-  // for `checks.atoma_runs.commands`, finds nothing, and runs no commands.
+  // for `checks.atomaton_runs.commands`, finds nothing, and runs no commands.
   test("a misspelled nested key is reported with its path", () => {
-    const problems = problemsFor({ ...SOUND, checks: { atoma_runs: { command: ["bun test"] } } });
+    const problems = problemsFor({ ...SOUND, checks: { atomaton_runs: { command: ["bun test"] } } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`checks.atoma_runs.command`");
+    expect(problems[0]).toContain("`checks.atomaton_runs.command`");
   });
 
   // `chain.labels` has an index signature: a project may name labels of its own, and
@@ -102,7 +102,7 @@ describe("keys nothing reads", () => {
 });
 
 /**
- * `atoma_runs` and `your_workflow` are alternatives, and the structure says so by
+ * `atomaton_runs` and `your_workflow` are alternatives, and the structure says so by
  * putting them side by side. The check says it again in a sentence, because "both
  * are set" is otherwise a precedence puzzle: one of the two is being ignored, and
  * nothing anywhere says which.
@@ -110,7 +110,7 @@ describe("keys nothing reads", () => {
 describe("two arms, and exactly one of them", () => {
   test("declaring both is reported, in either section", () => {
     for (const section of ["checks", "deploy"] as const) {
-      const problems = problemsFor({ ...SOUND, [section]: { atoma_runs: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
+      const problems = problemsFor({ ...SOUND, [section]: { atomaton_runs: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
       expect(problems, section).toHaveLength(1);
       expect(problems[0], section).toContain(`\`${section}\``);
     }
@@ -136,7 +136,7 @@ describe("the resolvers, run early", () => {
   });
 
   test("a malformed deploy target is reported", () => {
-    expect(problemsFor({ ...SOUND, deploy: { atoma_runs: { targets: [{ name: "Prod" }] } } }).length).toBeGreaterThan(
+    expect(problemsFor({ ...SOUND, deploy: { atomaton_runs: { targets: [{ name: "Prod" }] } } }).length).toBeGreaterThan(
       0,
     );
   });
@@ -150,8 +150,8 @@ describe("the resolvers, run early", () => {
   test("a reserved credential name is reported for every destination", () => {
     for (const [section, declaration] of [
       ["tools", { secrets: ["GH_TOKEN"] }],
-      ["checks", { atoma_runs: { secrets: ["GH_TOKEN"] } }],
-      ["deploy", { atoma_runs: { secrets: ["GH_TOKEN"] } }],
+      ["checks", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
+      ["deploy", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
     ] as const) {
       const problems = problemsFor({ ...SOUND, [section]: declaration });
       expect(problems.length, section).toBeGreaterThan(0);
@@ -214,7 +214,7 @@ describe("the workflows a dispatch names", () => {
   });
 
   test("the shipped defaults are what an unset value resolves to", () => {
-    const problems = configProblems({ ...facts(SOUND), workflowFiles: ["atoma-runner.yml"] });
+    const problems = configProblems({ ...facts(SOUND), workflowFiles: ["atomaton-runner.yml"] });
     expect(problems).toHaveLength(2);
     expect(problems.join(" ")).toContain(DEFAULT_CI_WORKFLOW);
     expect(problems.join(" ")).toContain(DEFAULT_CD_WORKFLOW);
@@ -245,7 +245,7 @@ describe("knownConfigKeys", () => {
     const keys = knownConfigKeys();
     expect(keys).toContain("chain.labels.*");
     expect(keys).toContain("chain.labels.in_progress");
-    expect(keys).toContain("checks.atoma_runs.commands");
+    expect(keys).toContain("checks.atomaton_runs.commands");
     expect(keys).toEqual([...keys].sort());
   });
 

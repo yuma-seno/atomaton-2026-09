@@ -394,9 +394,9 @@ describe("the metrics link in the footer", () => {
     usageLines: [] as string[],
   };
 
-  test("it points at the report on atoma-data", () => {
+  test("it points at the report on atomaton-data", () => {
     expect(buildCommentBody({ ...base, repo: "acme/widgets" })).toContain(
-      "[metrics](https://github.com/acme/widgets/blob/atoma-data/metrics/report.md)",
+      "[metrics](https://github.com/acme/widgets/blob/atomaton-data/metrics/report.md)",
     );
   });
 

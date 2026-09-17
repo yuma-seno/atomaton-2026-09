@@ -9,7 +9,7 @@
  * a model reading a tool result, and only one of them invites a retry.
  *
  * Usage:
- *   restore_workspace.ts --type issue|pr --number N --dest /tmp/atoma-workspace
+ *   restore_workspace.ts --type issue|pr --number N --dest /tmp/atomaton-workspace
  *     [--repo owner/name]
  *
  * Writes `root_issue` and `restored` to $GITHUB_OUTPUT so the save step at the end
@@ -19,7 +19,7 @@
  */
 import { appendFileSync, mkdirSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { restoreWorkspace, workspaceTargetPrefix } from "./lib/atoma-data.ts";
+import { restoreWorkspace, workspaceTargetPrefix } from "./lib/atomaton-data.ts";
 import { resolveWorkspaceScope } from "../lib/workspace-scope.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -64,8 +64,8 @@ function main(): void {
   }
   console.error(
     restored
-      ? `[atoma-workspace] restored ${prefix} into ${values.dest}`
-      : `[atoma-workspace] nothing stored at ${prefix} yet; ${values.dest} starts empty`,
+      ? `[atomaton-workspace] restored ${prefix} into ${values.dest}`
+      : `[atomaton-workspace] nothing stored at ${prefix} yet; ${values.dest} starts empty`,
   );
 }
 

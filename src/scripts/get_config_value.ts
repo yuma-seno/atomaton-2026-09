@@ -3,7 +3,7 @@
  * Print a dotted-path value from .github/atomaton/config.yaml.
  *
  * Thin CLI wrapper around lib/config.ts's loadConfig(), invoked as a
- * workflow step (via `scriptCommand` from atoma-runner.wac.ts). Every
+ * workflow step (via `scriptCommand` from atomaton-runner.wac.ts). Every
  * other callers import loadConfig() directly.
  *
  * Usage:
@@ -11,7 +11,7 @@
  *
  * Examples:
  *   bun run get_config_value.ts chain.after_handoffs 5
- *   bun run get_config_value.ts chain.labels.in_progress atoma/in-progress
+ *   bun run get_config_value.ts chain.labels.in_progress atomaton/in-progress
  */
 import { loadConfig } from "../lib/config.ts";
 import { defineScript } from "./lib/script-ref.ts";

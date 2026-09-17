@@ -19,19 +19,19 @@ const SETUP_STEP = "Run configured environment setup";
 /** The three jobs, and the step in each that runs what the project declared. */
 const JOBS = [
   {
-    workflow: "atoma-runner",
+    workflow: "atomaton-runner",
     job: "run",
     projectCommands: "Run agent",
     why: "the agent's own shell, which is the environment every other one is compared against",
   },
   {
-    workflow: "atoma-check",
-    job: "atoma-check",
+    workflow: "atomaton-check",
+    job: "atomaton-check",
     projectCommands: "Run the configured checks",
     why: "the verdict a pull request merges on",
   },
   {
-    workflow: "atoma-deploy",
+    workflow: "atomaton-deploy",
     job: "deploy",
     projectCommands: "Deploy the targets this run is for",
     why: "the least frequent and the most expensive to get wrong",

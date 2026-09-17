@@ -128,7 +128,7 @@ function handleLaunchSubAgent(args: z.infer<typeof LAUNCH_SUB_AGENT_SCHEMA>): Mc
       note: complete
         ? "Every sub-agent is running. This session ends here, and resumes when all sub-issues are closed."
         : "Some sub-agents were NOT dispatched, and nothing will retry them. This session stays open: " +
-          "re-dispatch the failures with atoma__launch_sub_agent, or the parent waits forever for sub-issues " +
+          "re-dispatch the failures with atomaton__launch_sub_agent, or the parent waits forever for sub-issues " +
           "nobody is working on.",
     }),
     meta: complete ? { session_ends: true } : {},
@@ -293,7 +293,7 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
       "Rebuild this project's environment and restart your run. Use it when something you need is missing " +
       "and you cannot install it yourself: a system package (you have no sudo), a globally installed CLI, or " +
       "a work tree you broke. YOUR SESSION ENDS IMMEDIATELY and a new run starts, so finish anything you were " +
-      "part-way through first -- commit what is worth keeping and leave notes in /tmp/atoma-workspace, which " +
+      "part-way through first -- commit what is worth keeping and leave notes in /tmp/atomaton-workspace, which " +
       "survives into the next run. " +
       "What it does: re-runs `environment.setup_commands` as a privileged workflow step, against the CURRENT " +
       "work tree. So a dependency you added to package.json, Cargo.toml or requirements.txt gets installed by " +

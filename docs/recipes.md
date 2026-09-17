@@ -16,7 +16,7 @@ line you edit.
 | [switch between the Chat Completions and Responses APIs](#switch-between-the-chat-completions-and-responses-apis) | `provider`, in an agent definition |
 | [reach a provider the table does not list](#reach-a-provider-the-table-does-not-list) | the `OPENAI_BASE_URL` repository variable |
 | [prefer particular upstream providers](#prefer-particular-upstream-providers) | `extra_body`, in an agent definition |
-| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.atoma_runs` and `deploy.atoma_runs` |
+| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.atomaton_runs` and `deploy.atomaton_runs` |
 | [have agents start your own CI and deployment](#have-agents-start-your-own-ci-and-deployment) | `checks.your_workflow` and `deploy.your_workflow` |
 | [make a workflow of your own work when Atomaton starts it](#make-a-workflow-of-your-own-work-when-atomaton-starts-it) | `workflow_dispatch`, in that workflow |
 | [check your config before pushing it](#check-your-config-before-pushing-it) | nothing — one command |
@@ -144,21 +144,21 @@ Write no workflow. Describe the pipeline as commands in `config.yaml`:
 
 ```yaml
 checks:
-  atoma_runs:
+  atomaton_runs:
     commands:
       - bun install --frozen-lockfile
       - bun run typecheck
       - bun test
 
 deploy:
-  atoma_runs:
+  atomaton_runs:
     targets:
       - name: staging
         on: merge
         commands: ["./scripts/deploy.sh staging"]
 ```
 
-Nothing needs pointing at these. `atoma-check.yml` and `atoma-deploy.yml` are what a
+Nothing needs pointing at these. `atomaton-check.yml` and `atomaton-deploy.yml` are what a
 section runs when it names no workflow of your own; fill in the commands and they run.
 
 This is the default arm because **an agent can write configuration and cannot write a
@@ -183,7 +183,7 @@ deploy:
 ```
 
 Name each file exactly as it is called, or the dispatch fails silently and every merge
-is refused for a missing check. **Delete the `atoma_runs` block in the section you name
+is refused for a missing check. **Delete the `atomaton_runs` block in the section you name
 a workflow in.** The two are alternatives: declaring both fails the pull request's
 check, naming the section, rather than resolving by a precedence rule.
 
@@ -287,9 +287,9 @@ not see. What you are shown when either limit fires, and how to resume afterward
 ```yaml
 chain:
   labels:
-    in_progress: atoma/in-progress
-    sub_issue: atoma/sub-issue
-    launched: atoma/launched
+    in_progress: atomaton/in-progress
+    sub_issue: atomaton/sub-issue
+    launched: atomaton/launched
 ```
 
 Change these only on a name collision with your own taxonomy — they are state one run
@@ -349,7 +349,7 @@ packages are in the deliverable and are not repeated there. See
 Steps 2 and 3 are two keys in the same file, which does not make them one step:
 authorising a credential does not deliver it. `checks` and `deploy` need no third step at
 all, because their commands run in a workflow of their own rather than beside an agent —
-a secret named in `checks.atoma_runs.secrets` is in that job's environment and there is
+a secret named in `checks.atomaton_runs.secrets` is in that job's environment and there is
 no server to route it to.
 
 You never edit a workflow for any of this, and there is no tools file to edit: the one
@@ -427,9 +427,9 @@ are generated and files that are yours to tune, and only you can say which of yo
 are deliberate. So treat it as vendoring, and let git do the merge:
 
 ```bash
-gh release download v0.1.115 -R yuma-seno/atomaton -p atoma-delivery.zip
-unzip -o atoma-delivery.zip   # the archive holds .github/, so run this at the repo root
-rm atoma-delivery.zip
+gh release download v0.1.115 -R yuma-seno/atomaton -p atomaton-delivery.zip
+unzip -o atomaton-delivery.zip   # the archive holds .github/, so run this at the repo root
+rm atomaton-delivery.zip
 git diff .github/            # every difference is now a decision
 git checkout -- .github/atomaton/config.yaml    # for anything you meant to keep
 ```
@@ -501,7 +501,7 @@ runner time, while an agent that starts and finds nothing to do costs a billed i
 
 **The last step is not optional.** An issue created with `GITHUB_TOKEN` raises no
 `issues` event, so the issue would appear and nothing would pick it up. The example
-therefore dispatches `atoma-runner.yml` explicitly. That is the same rule as everywhere
+therefore dispatches `atomaton-runner.yml` explicitly. That is the same rule as everywhere
 else in Atomaton — see [docs/operations.md](operations.md).
 
 **What it will cost.** One agent run per firing, whether or not there was anything to do,

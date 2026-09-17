@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { issueNumberOf, prunablePaths, pruneCommitMessage } from "./atoma-data-pruning.ts";
+import { issueNumberOf, prunablePaths, pruneCommitMessage } from "./atomaton-data-pruning.ts";
 
 describe("issueNumberOf", () => {
   test("reads a workspace path, in the layout the branch holds", () => {

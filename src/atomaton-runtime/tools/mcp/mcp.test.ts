@@ -76,16 +76,16 @@ function makeRemoteBranchFixture(): { root: string; seed: string; work: string }
   const remote = join(root, "remote.git");
   const seed = join(root, "seed");
   const work = join(root, "work");
-  git(root, "init", "--bare", "--initial-branch=atoma/issue-1", remote);
-  git(root, "init", "--initial-branch=atoma/issue-1", seed);
+  git(root, "init", "--bare", "--initial-branch=atomaton/issue-1", remote);
+  git(root, "init", "--initial-branch=atomaton/issue-1", seed);
   git(seed, "config", "user.name", "Atomaton Test");
-  git(seed, "config", "user.email", "atoma@example.com");
+  git(seed, "config", "user.email", "atomaton@example.com");
   writeFileSync(join(seed, "value.txt"), "one\n");
   git(seed, "add", "value.txt");
   git(seed, "commit", "-m", "initial");
   git(seed, "remote", "add", "origin", remote);
-  git(seed, "push", "-u", "origin", "atoma/issue-1");
-  git(root, "clone", "--branch", "atoma/issue-1", remote, work);
+  git(seed, "push", "-u", "origin", "atomaton/issue-1");
+  git(root, "clone", "--branch", "atomaton/issue-1", remote, work);
   return { root, seed, work };
 }
 
@@ -93,7 +93,7 @@ function advanceRemote(seed: string): string {
   writeFileSync(join(seed, "value.txt"), "two\n");
   git(seed, "add", "value.txt");
   git(seed, "commit", "-m", "remote update");
-  git(seed, "push", "origin", "atoma/issue-1");
+  git(seed, "push", "origin", "atomaton/issue-1");
   return git(seed, "rev-parse", "HEAD");
 }
 
@@ -124,7 +124,7 @@ describe("mcp/github.ts", () => {
       const response = await sendRequest(
         "github.ts",
         { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "sync_branch", arguments: {} } },
-        { BRANCH: "atoma/issue-1" },
+        { BRANCH: "atomaton/issue-1" },
         work,
       );
       const result = JSON.parse(response.result.content[0].text) as { status: string; behind: number };
@@ -149,7 +149,7 @@ describe("mcp/github.ts", () => {
           method: "tools/call",
           params: { name: "create_pr", arguments: { title: "Test PR" } },
         },
-        { BRANCH: "atoma/issue-1" },
+        { BRANCH: "atomaton/issue-1" },
         work,
       );
       expect(response.result.isError).toBe(true);
@@ -165,7 +165,7 @@ describe("mcp/github.ts", () => {
     try {
       advanceRemote(seed);
       git(work, "config", "user.name", "Atomaton Test");
-      git(work, "config", "user.email", "atoma@example.com");
+      git(work, "config", "user.email", "atomaton@example.com");
       writeFileSync(join(work, "local.txt"), "local\n");
       git(work, "add", "local.txt");
       git(work, "commit", "-m", "local update");
@@ -174,7 +174,7 @@ describe("mcp/github.ts", () => {
       const response = await sendRequest(
         "github.ts",
         { jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "sync_branch", arguments: {} } },
-        { BRANCH: "atoma/issue-1" },
+        { BRANCH: "atomaton/issue-1" },
         work,
       );
       const result = JSON.parse(response.result.content[0].text) as { status: string; ahead: number; behind: number };
@@ -282,7 +282,7 @@ describe("mcp/github.ts", () => {
           PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
           FAKE_GH_LOG: log,
           FAKE_GH_RESPONSES: JSON.stringify([
-            { match: ["label", "create", "atoma/sub-issue"] },
+            { match: ["label", "create", "atomaton/sub-issue"] },
             { match: ["issue", "create"], stdout: "https://github.com/owner/repo/issues/12" },
           ]),
         },
@@ -290,7 +290,7 @@ describe("mcp/github.ts", () => {
       expect(response.result.isError).toBe(false);
       const calls = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line) as string[]);
       expect(calls[0]).toContain("--force");
-      expect(calls[1]).toContain("atoma/sub-issue");
+      expect(calls[1]).toContain("atomaton/sub-issue");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -300,7 +300,7 @@ describe("mcp/github.ts", () => {
    * The readers built on `gh api` returned the response whole.
    *
    * That is not a small waste. A tool result joins the session on the
-   * `atoma-data` branch and is resent on every later inference in it, so an
+   * `atomaton-data` branch and is resent on every later inference in it, so an
    * unread field is rent charged for the rest of the issue's life. Measured on
    * this repository before these projections existed: `get_check_runs` returned
    * 24,954 bytes for eight check runs, of which the `app` object was 2,244 bytes
@@ -328,7 +328,7 @@ describe("mcp/github.ts", () => {
         check_runs: [
           {
             id: 1,
-            name: "atoma-check",
+            name: "atomaton-check",
             node_id: "CR_x",
             head_sha: "abc",
             external_id: "e",
@@ -352,7 +352,7 @@ describe("mcp/github.ts", () => {
       const runs = JSON.parse(r.result.content[0].text);
       expect(runs).toEqual([
         {
-          name: "atoma-check",
+          name: "atomaton-check",
           status: "completed",
           conclusion: "success",
           html_url: "https://github.com/owner/repo/actions/runs/1/job/2",
@@ -390,18 +390,18 @@ describe("mcp/github.ts", () => {
     /**
      * The branch that is not there.
      *
-     * Six recorded calls asked about `atoma/issue-104`, `atoma/issue-190` and
-     * `atoma/issue-219` before creating them, and every one was charged an error for
+     * Six recorded calls asked about `atomaton/issue-104`, `atomaton/issue-190` and
+     * `atomaton/issue-219` before creating them, and every one was charged an error for
      * asking a question this tool exists to answer. The property is that a missing
      * branch is a result -- not the exact wording of the field, which a later reader
      * may well improve.
      */
     test("a branch that does not exist is an answer, not an error", async () => {
-      const r = await call("get_branch", { branch: "atoma/issue-104" }, [
-        { match: ["branches/atoma/issue-104"], code: 1, stdout: "gh: Branch not found (HTTP 404)" },
+      const r = await call("get_branch", { branch: "atomaton/issue-104" }, [
+        { match: ["branches/atomaton/issue-104"], code: 1, stdout: "gh: Branch not found (HTTP 404)" },
       ]);
       expect(r.result.isError).toBe(false);
-      expect(JSON.parse(r.result.content[0].text)).toEqual({ branch: "atoma/issue-104", exists: false });
+      expect(JSON.parse(r.result.content[0].text)).toEqual({ branch: "atomaton/issue-104", exists: false });
     });
 
     /**
@@ -632,7 +632,7 @@ describe("mcp/github.ts", () => {
         "github.ts",
         {
           jsonrpc: "2.0", id: 24, method: "tools/call",
-          params: { name: "list_issues", arguments: { labels: "atoma/sub-issue", limit: "5" } },
+          params: { name: "list_issues", arguments: { labels: "atomaton/sub-issue", limit: "5" } },
         },
         {
           PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
@@ -644,7 +644,7 @@ describe("mcp/github.ts", () => {
       const calls = readFileSync(log, "utf8").trim().split("\n").map((line) => JSON.parse(line) as string[]);
       const issueList = calls[0] ?? [];
       expect(issueList).toContain("--label");
-      expect(issueList).toContain("atoma/sub-issue");
+      expect(issueList).toContain("atomaton/sub-issue");
       // The stringified limit passed validation and reached `gh` as 5.
       expect(issueList[issueList.indexOf("--limit") + 1]).toBe("5");
     } finally {
@@ -663,7 +663,7 @@ describe("mcp/shell.ts", () => {
     expect(result).toMatchObject({ status: "completed", exit_code: 0, stdout: "hello", stderr: "" });
   });
 
-  // The output goes into the session on the `atoma-data` branch and can be
+  // The output goes into the session on the `atomaton-data` branch and can be
   // quoted into an issue comment, neither of which GitHub Actions masks. So it
   // has to leave this process already redacted.
   test("keeps a credential in its output from reaching the caller", async () => {
@@ -692,16 +692,16 @@ describe("mcp/shell.ts", () => {
   });
 });
 
-describe("mcp/atoma.ts", () => {
+describe("mcp/atomaton.ts", () => {
   test("initialize returns server info", async () => {
-    const r = await sendRequest("atoma.ts", {
+    const r = await sendRequest("atomaton.ts", {
       jsonrpc: "2.0", id: 1, method: "initialize", params: INIT_PARAMS,
     });
     expect(r.result.serverInfo.name).toBe("atoma-mcp-server");
   });
 
   test("launch_sub_agent schema requires issue and agent", async () => {
-    const r = await sendRequest("atoma.ts", {
+    const r = await sendRequest("atomaton.ts", {
       jsonrpc: "2.0", id: 2, method: "tools/list", params: {},
     });
     const tool = r.result.tools.find((t: { name: string }) => t.name === "launch_sub_agent");
@@ -712,7 +712,7 @@ describe("mcp/atoma.ts", () => {
   });
 
   test("launch_sub_agent rejects empty tasks", async () => {
-    const r = await sendRequest("atoma.ts", {
+    const r = await sendRequest("atomaton.ts", {
       jsonrpc: "2.0", id: 3, method: "tools/call",
       params: { name: "launch_sub_agent", arguments: { tasks: [] } },
     });

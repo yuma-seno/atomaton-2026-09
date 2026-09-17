@@ -146,7 +146,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
    * Every hand-written workflow in the overlay must parse, and must declare a
    * trigger.
    *
-   * This is the test that was missing when it mattered. `atoma-self-deploy.yml`
+   * This is the test that was missing when it mattered. `atomaton-self-deploy.yml`
    * shipped with a `git commit -m` whose continuation lines started at column 0 --
    * which leaves the block scalar and makes the file invalid YAML. Everything
    * passed: typecheck, synth, all four overlay tests, all of CI.
@@ -188,8 +188,8 @@ describe("`self/` and `.github/` hold the same overlay", () => {
    * nothing in the deliverable knows about the secret.
    */
   test("the self-deploy workflow is this repository's own, and the deliverable never names its token", () => {
-    expect(existsSync(join(OVERLAY, "workflows/atoma-self-deploy.yml"))).toBe(true);
-    expect(existsSync(join(BUILT, "workflows/atoma-self-deploy.yml")), "it must not be shipped").toBe(false);
+    expect(existsSync(join(OVERLAY, "workflows/atomaton-self-deploy.yml"))).toBe(true);
+    expect(existsSync(join(BUILT, "workflows/atomaton-self-deploy.yml")), "it must not be shipped").toBe(false);
 
     // An adopter receiving a reference to this secret would get a workflow that
     // cannot run, and -- worse -- a name suggesting Atomaton expects a PAT.

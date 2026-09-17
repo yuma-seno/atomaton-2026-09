@@ -8,9 +8,9 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { ref as runDeployRef } from "../scripts/run_deploy.ts";
 
-// Runs whatever config.yaml's `deploy.atoma_runs.targets` says this project deploys.
+// Runs whatever config.yaml's `deploy.atomaton_runs.targets` says this project deploys.
 //
-// Same reason as atoma-check: GITHUB_TOKEN cannot write `.github/workflows/**`,
+// Same reason as atomaton-check: GITHUB_TOKEN cannot write `.github/workflows/**`,
 // so a deployment an agent is expected to author has to be configuration. This
 // is the fixed shell; the targets, their triggers and their commands are all in
 // config.yaml.
@@ -52,7 +52,7 @@ const runStep = new TypedOutputsStep({
     // The other half of `contents: write`. That permission is what lets a
     // deployment create a release or a tag, and this is what it uses to do it --
     // granting the one without the other is a permission nothing can reach.
-    // Reserved against `deploy.atoma_runs.secrets`, so a project cannot shadow it.
+    // Reserved against `deploy.atomaton_runs.secrets`, so a project cannot shadow it.
     GH_TOKEN: "${{ github.token }}",
     ...secretSlotEnv(),
     ATOMATON_DEPLOY_REF: "${{ github.ref }}",
@@ -68,8 +68,8 @@ ${scriptCommandWithArgs(runDeployRef, {
 `,
 });
 
-export const atomaDeploy = new Workflow("atoma-deploy", {
-  name: "Atoma Deploy",
+export const atomaDeploy = new Workflow("atomaton-deploy", {
+  name: "Atomaton Deploy",
   on: {
     workflow_dispatch: {
       inputs: {
@@ -87,7 +87,7 @@ export const atomaDeploy = new Workflow("atoma-deploy", {
         },
       },
     },
-    // Every tag, filtered by `deploy.atoma_runs.targets` at run time -- see above. The
+    // Every tag, filtered by `deploy.atomaton_runs.targets` at run time -- see above. The
     // branches are the default-branch merge path, narrowed again by the job's
     // `if:`.
     // `**`, not `*`. This filter is meant to start the run for every tag and let
@@ -100,13 +100,13 @@ export const atomaDeploy = new Workflow("atoma-deploy", {
     // Write because cutting a release is a deployment, and the commonest thing a
     // deployment does on GitHub itself is create a release or a tag. Read would
     // mean every project that ships that way needs a personal access token in
-    // `deploy.atoma_runs.secrets` instead -- a long-lived credential, manually rotated,
+    // `deploy.atomaton_runs.secrets` instead -- a long-lived credential, manually rotated,
     // usually scoped wider than this. The weaker-looking permission produces the
     // worse arrangement.
     //
     // This is the most privileged job in the system: it runs commands a project
     // wrote, with the credentials it declared, and can now write to the
-    // repository. That is what makes `deploy.atoma_runs.targets` a governed path worth
+    // repository. That is what makes `deploy.atomaton_runs.targets` a governed path worth
     // reading carefully, and why the declaration comes from the default branch
     // rather than from the branch under test.
     contents: "write",
@@ -122,7 +122,7 @@ export const atomaDeploy = new Workflow("atoma-deploy", {
     "deploy",
     {
       needs: [pick.name],
-      // From `deploy.atoma_runs.runs_on`, via the job above. One runner for the whole job:
+      // From `deploy.atomaton_runs.runs_on`, via the job above. One runner for the whole job:
       // the targets run in declared order and stop at the first failure, and that
       // ordering is the contract -- a runner per target would end it.
       "runs-on": `\${{ fromJSON(needs.${PICK_RUNNER_JOB}.outputs.runs_on) }}` as unknown as string,
@@ -135,7 +135,7 @@ export const atomaDeploy = new Workflow("atoma-deploy", {
       // Deployments queue rather than cancel. Cancelling one half way through
       // leaves the target in a state nobody chose, which is worse than waiting.
       concurrency: {
-        group: "atoma-deploy-${{ github.ref }}",
+        group: "atomaton-deploy-${{ github.ref }}",
         "cancel-in-progress": false,
       },
       permissions: { contents: "write", "id-token": "write" },

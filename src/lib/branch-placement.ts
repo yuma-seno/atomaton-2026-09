@@ -21,11 +21,11 @@ import { collectIssueBranches } from "./issue-branches.ts";
 export { parentIssueOf, type ParentIssue };
 
 function log(message: string): void {
-  console.error(`[atoma-github] ${message}`);
+  console.error(`[atomaton-github] ${message}`);
 }
 
 /** The prefix every Atomaton work branch carries; also how a parent's branch is named. */
-const BRANCH_PREFIX = "atoma/issue-";
+const BRANCH_PREFIX = "atomaton/issue-";
 
 /** A parent issue's branch name. */
 export function branchOfIssue(issue: number): string {

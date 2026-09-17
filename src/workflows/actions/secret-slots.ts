@@ -9,8 +9,8 @@
  * its secrets a workflow may see. See `domain/declared-secrets.ts` for what was
  * measured before relying on this.
  *
- * Three workflows need the identical arrangement (atoma-runner, atoma-check,
- * atoma-deploy) and getting it subtly wrong in one is invisible: the credential
+ * Three workflows need the identical arrangement (atomaton-runner, atomaton-check,
+ * atomaton-deploy) and getting it subtly wrong in one is invisible: the credential
  * simply never arrives, and only whatever needed it fails. So the slot `env:`
  * and the bash that renames the slots are built here, from the same constants,
  * rather than written out three times.

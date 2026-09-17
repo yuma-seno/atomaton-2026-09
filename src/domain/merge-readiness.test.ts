@@ -256,14 +256,14 @@ describe("decideMergeReadiness", () => {
   // a generated workflow is to change what CI does, and under Atomaton that is
   // configuration.
   test("touching a generated workflow says where CI actually gets configured", () => {
-    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atoma-check.yml"] }));
-    expect(blockers[0]?.detail).toContain("checks.atoma_runs.commands");
+    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atomaton-check.yml"] }));
+    expect(blockers[0]?.detail).toContain("checks.atomaton_runs.commands");
     expect(blockers[0]?.detail).toContain("config.yaml");
   });
 
   test("a governed change elsewhere gets no advice about CI", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atomaton/agent-definitions/x.md"] }));
-    expect(blockers[0]?.detail).not.toContain("checks.atoma_runs.commands");
+    expect(blockers[0]?.detail).not.toContain("checks.atomaton_runs.commands");
   });
 
   test("the blocker names a few paths rather than every one", () => {
@@ -436,7 +436,7 @@ describe("declared merge gates", () => {
  * with nothing in front of it, so Atomaton refuses in GitHub's place.
  */
 describe("a repository that cannot have branch rules", () => {
-  const failing = [{ name: "atoma-check", status: "completed", conclusion: "failure" }];
+  const failing = [{ name: "atomaton-check", status: "completed", conclusion: "failure" }];
 
   test("a failing check blocks the merge even though GitHub calls it mergeable", () => {
     const out = decideMergeReadiness(
@@ -468,7 +468,7 @@ describe("a repository that cannot have branch rules", () => {
         mergeStateStatus: "UNSTABLE",
         requiredChecksEnforceable: false,
         requiredChecks: [],
-        checks: [{ name: "atoma-check", status: "completed", conclusion: "success" }],
+        checks: [{ name: "atomaton-check", status: "completed", conclusion: "success" }],
       }),
     );
     expect(out.ready).toBe(true);
@@ -485,7 +485,7 @@ describe("a repository that cannot have branch rules", () => {
         mergeStateStatus: "UNSTABLE",
         requiredChecksEnforceable: false,
         requiredChecks: [],
-        checks: [{ name: "atoma-check", status: "in_progress", conclusion: null }],
+        checks: [{ name: "atomaton-check", status: "in_progress", conclusion: null }],
       }),
     );
     expect(out.blockers.map((b) => b.kind)).not.toContain("checks-failing");

@@ -71,7 +71,7 @@ import {
 // same way for the same reason: a runner has no other durable storage between
 // runs, and the push-retry loop already handles the races that sibling agents
 // cause.
-import { restoreFromBranch, saveAsOnlyCommit } from "../../../scripts/lib/atoma-data.ts";
+import { restoreFromBranch, saveAsOnlyCommit } from "../../../scripts/lib/atomaton-data.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 const REPO = process.env.GITHUB_REPOSITORY ?? "";
@@ -382,7 +382,7 @@ const CODE_SCHEMA = z.object({
         "",
         "Phrasing decides whether the answer comes back at all. Measured against this repository: 30 questions asked as sentences put the right file in the top five 70% of the time and in the top twenty 93.3%; the 142 regex patterns agents actually searched with reached 41.5% and 64.8%. Same index, same corpus — only the query changed.",
         "",
-        "  good: where is the atoma/in-progress label added to and removed from an issue",
+        "  good: where is the atomaton/in-progress label added to and removed from an issue",
         "  good: how does a run decide the base branch for a stacked pull request",
         "  bad:  in_progress label",
         "  bad:  createLabel|labels.create|ensureLabel",

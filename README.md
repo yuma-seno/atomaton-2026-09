@@ -23,10 +23,10 @@ archive holds `.github/`, so the files land where they belong:
 
 ```bash
 cd /path/to/your-repo
-curl -fsSL -o atoma-delivery.zip \
-  https://github.com/yuma-seno/atomaton/releases/latest/download/atoma-delivery.zip
-unzip -o atoma-delivery.zip
-rm atoma-delivery.zip
+curl -fsSL -o atomaton-delivery.zip \
+  https://github.com/yuma-seno/atomaton/releases/latest/download/atomaton-delivery.zip
+unzip -o atomaton-delivery.zip
+rm atomaton-delivery.zip
 ```
 
 Then commit it, and do the four things in **[Setup](docs/setup.md)** — the first run
@@ -40,8 +40,8 @@ With those done, open an issue whose first non-blank line names an agent:
 Build a plan to split this task into sub-issues.
 ```
 
-You have succeeded when `Atoma Entry` routes to `atoma-runner`, the issue carries
-`atoma/in-progress` while the run is going, and the agent comments back.
+You have succeeded when `Atomaton Entry` routes to `atomaton-runner`, the issue carries
+`atomaton/in-progress` while the run is going, and the agent comments back.
 
 ## Where to go next
 

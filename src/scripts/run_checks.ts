@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
- * run_checks.ts — run config.yaml's `checks.atoma_runs.commands`, in order,
+ * run_checks.ts — run config.yaml's `checks.atomaton_runs.commands`, in order,
  * stopping at the first failure.
  *
- * This is the body of `atoma-check.yml`. The verification itself is
+ * This is the body of `atomaton-check.yml`. The verification itself is
  * configuration rather than workflow YAML because an agent can write the former
  * and not the latter: GITHUB_TOKEN is refused on `.github/workflows/**` by
  * identity, on every path and every branch. A project whose checks an agent is
@@ -32,7 +32,7 @@ function main(): void {
   const commands = getCheckCommands();
   if (commands.length === 0) {
     console.log(
-      "::warning::This check verified nothing: `checks.atoma_runs.commands` in .github/atomaton/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.",
+      "::warning::This check verified nothing: `checks.atomaton_runs.commands` in .github/atomaton/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.",
     );
     return;
   }

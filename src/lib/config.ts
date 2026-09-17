@@ -21,7 +21,7 @@ import { CONFIG_FILE } from "../domain/machinery-layout.ts";
 /**
  * Where this project's configuration is read from.
  *
- * `ATOMATON_MACHINERY_ROOT` is set by `atoma-runner` to a checkout of the default
+ * `ATOMATON_MACHINERY_ROOT` is set by `atomaton-runner` to a checkout of the default
  * branch, and unset everywhere else. The difference matters on a pull request
  * run: that workspace is the pull request's own head, so reading configuration
  * from it would let a pull request decide how the run reviewing it behaves --
@@ -63,9 +63,9 @@ export function loadConfig(): AtomaConfig {
  * dispatched — with every run green.
  */
 export const DEFAULT_LABELS = {
-  sub_issue: "atoma/sub-issue",
-  launched: "atoma/launched",
-  in_progress: "atoma/in-progress",
+  sub_issue: "atomaton/sub-issue",
+  launched: "atomaton/launched",
+  in_progress: "atomaton/in-progress",
 } as const;
 
 /** A label key that has a default. */
@@ -194,11 +194,11 @@ export function getMergeGates(): MergeGatesResolution {
 /**
  * Commands that verify a change, in order.
  *
- * Empty means this project runs nothing through `atoma-check.yml`, which is the
+ * Empty means this project runs nothing through `atomaton-check.yml`, which is the
  * normal state for a repository pointing `checks.your_workflow` at its own workflow.
  */
 export function getCheckCommands(): readonly string[] {
-  return loadConfig().checks?.atoma_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
+  return loadConfig().checks?.atomaton_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
 }
 
 /**
@@ -209,7 +209,7 @@ export function getCheckCommands(): readonly string[] {
  * parse.
  */
 export function getDeployTargets(): DeployTargetsResolution {
-  return resolveDeployTargets(loadConfig().deploy?.atoma_runs?.targets);
+  return resolveDeployTargets(loadConfig().deploy?.atomaton_runs?.targets);
 }
 
 /**
@@ -276,21 +276,21 @@ export function getReloadLimit(): unknown {
  */
 export function getRunsOn(field: "checks" | "deploy"): unknown {
   const config = loadConfig();
-  // Inside `atoma_runs`, because the machine a step runs on is a property of the
+  // Inside `atomaton_runs`, because the machine a step runs on is a property of the
   // step Atomaton runs -- a project naming its own workflow decides that there.
-  return field === "checks" ? config.checks?.atoma_runs?.runs_on : config.deploy?.atoma_runs?.runs_on;
+  return field === "checks" ? config.checks?.atomaton_runs?.runs_on : config.deploy?.atomaton_runs?.runs_on;
 }
 
 /**
  * The dotted path `getRunsOn` reads, for the messages that name it.
  *
  * Here rather than at the caller. `resolve_runner.ts` built it as `${field}.runs_on`
- * and went on emitting `checks.runs_on` after the key moved under `atoma_runs` -- so
+ * and went on emitting `checks.runs_on` after the key moved under `atomaton_runs` -- so
  * the warning telling an adopter to fix their configuration named a key the validator
  * rejects, and following it failed their pull request. A path assembled where it is
  * used cannot notice that the reader moved; one that sits beside the reader can at
  * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.
  */
 export function runsOnPath(field: "checks" | "deploy"): string {
-  return `${field}.atoma_runs.runs_on`;
+  return `${field}.atomaton_runs.runs_on`;
 }

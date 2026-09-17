@@ -3,7 +3,7 @@
  * check_sub_issue_closure.ts — Determine whether a just-closed issue is an
  * Atomaton sub-issue (has an `<!-- atoma:parent=N -->` tag) and, if so,
  * whether it was already closed via a merged PR (in which case
- * atoma-pr-merged.wac.ts already handled aggregation, and this fallback
+ * atomaton-pr-merged.wac.ts already handled aggregation, and this fallback
  * path must skip to avoid dispatching the orchestrator twice).
  *
  * Env: CLOSED_NUM, GITHUB_EVENT_PATH, OWNER, REPO
@@ -38,7 +38,7 @@ function main(): void {
 
   console.error(`Sub-issue #${closedNum} closed — parent #${parent}`);
 
-  // atoma-pr-merged.wac.ts (pull_request_target: closed) is the PRIMARY
+  // atomaton-pr-merged.wac.ts (pull_request_target: closed) is the PRIMARY
   // aggregation path and already handles sub-issues auto-closed by a merged
   // PR's "Closes #N". This path is the fallback, and whether the two can both
   // fire for one completion turns on WHO performed the merge, because GitHub
@@ -51,7 +51,7 @@ function main(): void {
   // - A person merging from the GitHub UI — the only route under
   //   `merge.policy: manual`, and always available regardless — uses their
   //   own credentials, so the auto-close DOES fire this workflow while
-  //   atoma-pr-merged is already handling the same completion.
+  //   atomaton-pr-merged is already handling the same completion.
   //
   // The second case is why the check exists: without it the orchestrator gets
   // dispatched twice. lib/aggregation.ts's `atoma:aggregated` marker would
@@ -66,7 +66,7 @@ function main(): void {
     );
     const mergedPr = data.repository.issue.closedByPullRequestsReferences.nodes[0]?.number;
     if (mergedPr) {
-      console.error(`Closed via merged PR #${mergedPr} — already handled by atoma-pr-merged.yml. Skipping.`);
+      console.error(`Closed via merged PR #${mergedPr} — already handled by atomaton-pr-merged.yml. Skipping.`);
       closedViaPr = true;
     }
   } catch {

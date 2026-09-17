@@ -58,7 +58,7 @@ export const DEFAULT_RELOAD_LIMIT = 3;
  * Zero and nonsense mean the default, the rule every limit in this project shares
  * (see `dispatch-chain.ts` and `infra::timeouts` in atoma). A project that wants
  * no reloads at all is asking for a different thing -- that the tool not be
- * offered -- and would say so by removing `atoma_env` from the agent's `mcp_servers`.
+ * offered -- and would say so by removing `atomaton_env` from the agent's `mcp_servers`.
  */
 export function resolveReloadLimit(configured: unknown): number {
   const value = typeof configured === "number" ? configured : Number(configured);

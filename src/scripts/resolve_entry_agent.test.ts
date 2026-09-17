@@ -86,7 +86,7 @@ describe("resolve_entry_agent.ts", () => {
 
   // This is the regression test for a shell injection, not a tidiness check.
   // Whatever this script emits as `agent` is interpolated into shell text by
-  // atoma-runner (`AGENT="${{ inputs.agent }}"`) in a job holding the provider
+  // atomaton-runner (`AGENT="${{ inputs.agent }}"`) in a job holding the provider
   // API keys, and `issues.opened` carries a body the triggering user wrote. So
   // the assertion that matters is that nothing is emitted at all.
   test.each([

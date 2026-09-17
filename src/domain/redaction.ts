@@ -4,7 +4,7 @@
  * Applied where a command's output enters the run, because that output reaches
  * three places and only one of them is protected. GitHub Actions substitutes
  * `***` for registered secrets in the workflow LOG; it does nothing for the issue
- * comment a run posts, or for the session JSON saved to the `atoma-data` branch.
+ * comment a run posts, or for the session JSON saved to the `atomaton-data` branch.
  * Those two publish whatever they were given.
  *
  * Be clear about what this is not. It cannot catch a value derived from a secret

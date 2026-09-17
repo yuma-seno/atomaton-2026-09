@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 /**
  * decide_guard_release.ts — computes, via the pure domain rule in
- * domain/serialization-guard.ts, whether the atoma/in-progress
+ * domain/serialization-guard.ts, whether the atomaton/in-progress
  * SerializationGuard should be released after this run, and writes
  * `should_release=true|false` to $GITHUB_OUTPUT for the "Remove
- * atoma/in-progress label" step's `if:` to consume.
+ * atomaton/in-progress label" step's `if:` to consume.
  *
  * This step must run with `if: always()` in the workflow (see
- * atoma-runner.wac.ts) so the decision is computed even when the agent run
+ * atomaton-runner.wac.ts) so the decision is computed even when the agent run
  * itself failed or was skipped entirely -- shouldReleaseGuard()'s own rule
  * 1 handles that case (any non-'success' outcome releases the guard).
  * `--outcome` is expected to carry GitHub Actions' own `steps.atoma.outcome`

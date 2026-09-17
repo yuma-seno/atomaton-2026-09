@@ -24,7 +24,7 @@
  *
  * ## One mechanism, three destinations
  *
- * `tools.secrets`, `checks.atoma_runs.secrets` and `deploy.atoma_runs.secrets`
+ * `tools.secrets`, `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets`
  * are separate lists because they arrive in separate workflows, in separate jobs,
  * in separate processes. The nesting is the boundary and not a filing convention:
  * only `tools.secrets` enters the agent's own environment, so a prompt injection
@@ -123,7 +123,7 @@ export const RUN_CREDENTIALS: readonly string[] = [
 
 /**
  * The agent's own process: `RUN_CREDENTIALS`, plus the run context in the "Run
- * agent" step's `env:` (`atoma-runner.wac.ts`) and the names atoma derives for
+ * agent" step's `env:` (`atomaton-runner.wac.ts`) and the names atoma derives for
  * itself from the credentials file.
  *
  * The credentials are no longer in that step's environment — they are written to
@@ -174,16 +174,16 @@ export const TOOL_SECRETS: SecretDestination = {
  * declare, and refusing it bought nothing.
  */
 
-/** Mirrors the `env:` of the command step in `atoma-check.wac.ts`. */
+/** Mirrors the `env:` of the command step in `atomaton-check.wac.ts`. */
 export const CHECK_SECRETS: SecretDestination = {
-  field: "checks.atoma_runs.secrets",
+  field: "checks.atomaton_runs.secrets",
   reserved: new Set(["GH_TOKEN"]),
 };
 
 /**
  * The deploy job's own variables, from two places.
  *
- * `atoma-deploy.wac.ts` puts `GH_TOKEN` and the three `ATOMATON_DEPLOY_*` inputs in
+ * `atomaton-deploy.wac.ts` puts `GH_TOKEN` and the three `ATOMATON_DEPLOY_*` inputs in
  * the command step's `env:`, and `run_deploy.ts` sets `ATOMATON_DEPLOY_TARGET` per
  * command as it runs them. Both belong here: the declared slots are `export`ed
  * into that same shell before the command runs, so either could be replaced.
@@ -193,7 +193,7 @@ export const CHECK_SECRETS: SecretDestination = {
  * one would not leak anything, it would quietly redirect the deployment.
  */
 export const DEPLOY_SECRETS: SecretDestination = {
-  field: "deploy.atoma_runs.secrets",
+  field: "deploy.atomaton_runs.secrets",
   reserved: new Set([
     "ATOMATON_DEPLOY_REF",
     "ATOMATON_DEPLOY_TARGET",

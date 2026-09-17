@@ -7,7 +7,7 @@ import { selectTargets } from "./run_deploy.ts";
 
 const CONFIG = {
   deploy: {
-    atoma_runs: {
+    atomaton_runs: {
       targets: [
         { name: "staging", on: "merge", commands: ["echo deployed-staging"] },
         { name: "production", on: "tag", tags: ["v*"], commands: ["echo deployed-production"] },
@@ -27,7 +27,7 @@ function run(args: string[], config: Record<string, unknown> = CONFIG) {
 }
 
 describe("selectTargets", () => {
-  const { targets } = resolveDeployTargets(CONFIG.deploy.atoma_runs.targets);
+  const { targets } = resolveDeployTargets(CONFIG.deploy.atomaton_runs.targets);
 
   test("a named target wins over whatever the event would have chosen", () => {
     const selected = selectTargets(targets, { ref: "refs/tags/v1.0.0", trigger: "merge", target: "rollback" });
@@ -92,7 +92,7 @@ describe("run_deploy.ts", () => {
   test("names the target to the commands it runs", () => {
     const r = run(["--target", "staging"], {
       deploy: {
-        atoma_runs: { targets: [{ name: "staging", on: "merge", commands: ["echo target=$ATOMATON_DEPLOY_TARGET"] }] },
+        atomaton_runs: { targets: [{ name: "staging", on: "merge", commands: ["echo target=$ATOMATON_DEPLOY_TARGET"] }] },
       },
     });
     expect(r.stdout).toContain("target=staging");
@@ -108,7 +108,7 @@ describe("run_deploy.ts", () => {
   test("a failing command ends the run with its exit code", () => {
     const r = run(["--target", "staging"], {
       deploy: {
-        atoma_runs: {
+        atomaton_runs: {
           targets: [{ name: "staging", on: "merge", commands: ["echo starting", "exit 4", "echo after"] }],
         },
       },
@@ -122,7 +122,7 @@ describe("run_deploy.ts", () => {
   test("a failing target stops the ones after it", () => {
     const r = run(["--trigger", "merge", "--ref", "refs/heads/main"], {
       deploy: {
-        atoma_runs: {
+        atomaton_runs: {
           targets: [
             { name: "first", on: "merge", commands: ["exit 1"] },
             { name: "second", on: "merge", commands: ["echo second-ran"] },
@@ -136,7 +136,7 @@ describe("run_deploy.ts", () => {
 
   test("an unusable target list fails before deploying anything", () => {
     const r = run(["--trigger", "merge", "--ref", "refs/heads/main"], {
-      deploy: { atoma_runs: { targets: [{ name: "staging", on: "whenever", commands: ["echo x"] }] } },
+      deploy: { atomaton_runs: { targets: [{ name: "staging", on: "whenever", commands: ["echo x"] }] } },
     });
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("::error::");

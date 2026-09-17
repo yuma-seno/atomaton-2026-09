@@ -3,11 +3,11 @@
  *
  * `runs-on: ubuntu-latest` was hardcoded in eleven files, and `config.yaml` could
  * not reach any of them. For a project that builds on macOS, or that needs a
- * self-hosted runner for a licensed toolchain or a GPU, `atoma-check` and
- * `atoma-deploy` were simply unusable -- and fixing them meant editing
+ * self-hosted runner for a licensed toolchain or a GPU, `atomaton-check` and
+ * `atomaton-deploy` were simply unusable -- and fixing them meant editing
  * `.github/workflows/**`, the one place `GITHUB_TOKEN` cannot write. So neither an
  * agent nor a workflow could do it, and a hand-edited fork is overwritten by the
- * next upgrade. The same argument that put `checks.atoma_runs.commands` in
+ * next upgrade. The same argument that put `checks.atomaton_runs.commands` in
  * `config.yaml` applies: a fact a project owns was living where the project cannot
  * reach it.
  *
@@ -19,7 +19,7 @@
  * `ubuntu-latest` is 24.04 -- so the value genuinely decides the machine.
  *
  * A matrix was measured too, and rejected for now. The check run's NAME changes
- * under one: `atoma-check` becomes `atoma-check (ubuntu-latest)`, so the context a
+ * under one: `atomaton-check` becomes `atomaton-check (ubuntu-latest)`, so the context a
  * ruleset requires stops existing and every pull request waits forever on a check
  * that will never report. Avoiding that needs a third job to carry the required
  * name -- worth doing when somebody needs several runners at once, and not before.
@@ -29,7 +29,7 @@
  *
  * ## Not the agent's own runner
  *
- * `atoma-runner` stays on Linux and this does not apply to it. What isolates a tool
+ * `atomaton-runner` stays on Linux and this does not apply to it. What isolates a tool
  * server is Linux-only, top to bottom: `useradd` for the user with no sudo,
  * `setfacl` for POSIX ACLs granting traversal without read, `prctl(PR_SET_DUMPABLE)`
  * through libc, and `/proc/<pid>/environ` being the thing that has to be closed.

@@ -5,7 +5,7 @@
  * ## Why one place
  *
  * A tool result is not a return value that gets read once and discarded. It joins
- * the session on the `atoma-data` branch and is **resent on every later inference
+ * the session on the `atomaton-data` branch and is **resent on every later inference
  * in that session, across runs**. So a single large result is not a one-off cost:
  * it is a rent charged for the rest of the issue's life.
  *

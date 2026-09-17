@@ -9,7 +9,7 @@
  *
  * ## The argument half
  *
- * Before this, every MCP tool in mcp/github.ts and mcp/atoma.ts had TWO
+ * Before this, every MCP tool in mcp/github.ts and mcp/atomaton.ts had TWO
  * independent, hand-written descriptions of its own arguments: a JSON
  * Schema literal (the `inputSchema` sent to the LLM) and a handler body
  * full of unchecked `a.title as string` casts on a bare
@@ -66,7 +66,7 @@ export function positiveInt(description: string) {
 /**
  * An array of strings that also accepts a single bare string.
  *
- * Same rationale as [`positiveInt`]: models send `labels: "atoma/sub-issue"`
+ * Same rationale as [`positiveInt`]: models send `labels: "atomaton/sub-issue"`
  * for a one-element list. `z.preprocess` keeps the advertised schema an array,
  * so the model is still told the correct shape.
  */
@@ -349,7 +349,7 @@ export function unknownToolMessage(name: string, available: readonly string[]): 
  * `error` would get only errors without a line of code here.
  */
 export async function serveMcpServer(options: {
-  /** Server name reported in the MCP handshake, e.g. `atoma-web-mcp`. */
+  /** Server name reported in the MCP handshake, e.g. `atomaton-web-mcp`. */
   name: string;
   version: string;
   tools: Tool[];

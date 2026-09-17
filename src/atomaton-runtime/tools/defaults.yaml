@@ -83,24 +83,24 @@ servers:
       {}
     settings:
       reranker_model: onnx-community/bge-reranker-v2-m3-ONNX
-  atoma:
+  atomaton:
     description: "Atomaton's own operations: sub-issues, handoffs, stopping a run."
     command: bun
     args:
       - run
-      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atoma.ts"
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atomaton.ts"
     env:
       GH_TOKEN: "${GH_TOKEN}"
     hooks:
       {}
-  atoma_env:
+  atomaton_env:
     description: "Rebuilding the run's environment, and nothing else."
     command: bun
     args:
       - run
-      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atoma.ts"
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atomaton.ts"
     env:
       GH_TOKEN: "${GH_TOKEN}"
     hooks:
       tool_allowlist:
-        - atoma_env__reload_environment
+        - atomaton_env__reload_environment

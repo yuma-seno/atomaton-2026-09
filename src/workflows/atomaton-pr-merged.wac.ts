@@ -16,7 +16,7 @@ import { ref as parsePrMetadataRef } from "../scripts/parse_pr_metadata.ts";
 // This is the PRIMARY mechanism for sub-issue aggregation. It fires reliably
 // regardless of who/what merged the PR. The `issues: closed` event that also
 // fires when the merge auto-closes the linked issue is handled by
-// atoma-sub-issue-closed.wac.ts, which explicitly skips issues closed via a
+// atomaton-sub-issue-closed.wac.ts, which explicitly skips issues closed via a
 // merged PR (see its "Check if closed via a merged PR" step) to avoid
 // dispatching the orchestrator twice for the same completion.
 //
@@ -86,8 +86,8 @@ const resolveParentJob = new DefinedJob(
 // number) -- so this is the one place that lists that dependency.
 const NOTIFY_AND_AGGREGATE_NEEDS = [resolveParentJob, parseJob];
 
-export const atomaPrMerged = new Workflow("atoma-pr-merged", {
-  name: "Atoma PR Merged",
+export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
+  name: "Atomaton PR Merged",
   on: {
     pull_request_target: { types: ["closed"] },
   },

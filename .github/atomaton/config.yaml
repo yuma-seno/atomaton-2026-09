@@ -24,10 +24,10 @@ environment:
   max_reloads: 3
 
 
-# How a change is verified. Exactly one arm: fill in `atoma_runs`, or name
+# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name
 # `your_workflow` instead. Both is a configuration error.
 checks:
-  atoma_runs:
+  atomaton_runs:
     # In order, stopping at the first failure.
     commands:
       # The SOURCE, not the deployed copy. This repository builds the deliverable,
@@ -48,7 +48,7 @@ checks:
 
 # How a merged change ships. The same two arms.
 deploy:
-  atoma_runs:
+  atomaton_runs:
     # Each names an environment, when it ships, and the commands that ship it.
     targets:
       - name: release
@@ -83,9 +83,9 @@ chain:
   after_runs_without_change: 2      # runs that pushed, opened and merged nothing
   # State one run leaves for the next. Change only on a name collision.
   labels:
-    in_progress: atoma/in-progress
-    sub_issue: atoma/sub-issue
-    launched: atoma/launched
+    in_progress: atomaton/in-progress
+    sub_issue: atomaton/sub-issue
+    launched: atomaton/launched
 
 
 # What an agent can reach, and under what watch.
@@ -95,7 +95,7 @@ chain:
 # core reads. Most projects never edit past this line.
 tools:
   # Repository secrets the servers may reach. Separate from the lists under
-  # `checks.atoma_runs` and `deploy.atoma_runs`: only these enter an agent's own
+  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own
   # environment.
   secrets: []
 

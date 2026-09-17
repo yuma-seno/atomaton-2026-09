@@ -36,7 +36,7 @@ export interface AtomaConfig {
 
   /** How a change is verified. Exactly one arm; declaring both is a configuration error. */
   checks?: {
-    atoma_runs?: {
+    atomaton_runs?: {
       commands?: string[];
       secrets?: string[];
       runs_on?: string | string[];
@@ -46,7 +46,7 @@ export interface AtomaConfig {
 
   /** How a merged change ships. The same two arms. */
   deploy?: {
-    atoma_runs?: {
+    atomaton_runs?: {
       /** Validated by `resolveDeployTargets`, which owns what a malformed one means. */
       targets?: unknown;
       secrets?: string[];

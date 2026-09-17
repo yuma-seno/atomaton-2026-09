@@ -34,17 +34,17 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
-  // `checks` and `deploy` carry their list inside `atoma_runs`, the arm Atomaton
+  // `checks` and `deploy` carry their list inside `atomaton_runs`, the arm Atomaton
   // runs itself; `tools` has no arms, so its list stays at the top of the section.
   test("picks the destination's own list", () => {
     const config = `
 tools:
   secrets: [A]
 checks:
-  atoma_runs:
+  atomaton_runs:
     secrets: [B]
 deploy:
-  atoma_runs:
+  atomaton_runs:
     secrets: [C]
 `;
     expect(declarationIn(config, "tools")).toEqual(["A"]);
@@ -75,8 +75,8 @@ describe("read_secret_names.ts", () => {
   test("reads only the destination it was asked for", () => {
     const config = {
       tools: { secrets: ["SLACK_TOKEN"] },
-      checks: { atoma_runs: { secrets: ["NPM_TOKEN"] } },
-      deploy: { atoma_runs: { secrets: ["AWS_ROLE_ARN"] } },
+      checks: { atomaton_runs: { secrets: ["NPM_TOKEN"] } },
+      deploy: { atomaton_runs: { secrets: ["AWS_ROLE_ARN"] } },
     };
     expect(JSON.parse(run(config, "tools").outputs.names!)).toEqual(["SLACK_TOKEN"]);
     expect(JSON.parse(run(config, "checks").outputs.names!)).toEqual(["NPM_TOKEN"]);

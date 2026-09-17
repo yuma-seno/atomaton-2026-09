@@ -9,7 +9,7 @@ import {
   SECRET_SLOT_PREFIX,
   SECRET_SLOTS,
 } from "../../src/domain/declared-secrets.ts";
-import { CHECK_JOB_NAME } from "../../src/workflows/atoma-check.wac.ts";
+import { CHECK_JOB_NAME } from "../../src/workflows/atomaton-check.wac.ts";
 import { MODEL_CACHE_DIR } from "../../src/domain/model-cache.ts";
 
 describe("generated workflows", () => {
@@ -31,7 +31,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const workflow = Bun.YAML.parse(
-      readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8"),
+      readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8"),
     ) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
@@ -87,14 +87,14 @@ describe("generated workflows", () => {
       jobs?: Record<string, { outputs?: Record<string, string>; with?: Record<string, string>; steps?: WorkflowStep[] }>;
     };
 
-    const manual = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-manual-comment.yml", "utf8")) as WorkflowDocument;
+    const manual = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-manual-comment.yml", "utf8")) as WorkflowDocument;
     expect(manual.jobs?.parse?.outputs?.session_mode).toContain("session_mode");
     expect(manual.jobs?.run?.with?.session_mode).toContain("session_mode");
     expect(manual.jobs?.parse?.steps?.some((step) => step.name === "Report invalid slash command")).toBe(true);
 
-    const runner = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const runner = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     expect(runner.on?.workflow_call?.inputs?.session_mode).toBeDefined();
-    const restore = runner.jobs?.run?.steps?.find((step) => step.name === "Restore agent session from atoma-data");
+    const restore = runner.jobs?.run?.steps?.find((step) => step.name === "Restore agent session from atomaton-data");
     expect(restore?.run).toContain('--session-mode "${{ inputs.session_mode }}"');
   });
 
@@ -163,7 +163,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string; env?: Record<string, string> };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
     const watcher = steps.findIndex((s) => s.name === "Watch for a stop request");
     const agent = steps.findIndex((s) => s.name === "Run agent");
@@ -187,10 +187,10 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
     const step = steps.find((candidate) => candidate.name === "Check out the branch this run starts from");
-    expect(step, "atoma-runner issue branch step").toBeDefined();
+    expect(step, "atomaton-runner issue branch step").toBeDefined();
     expect(step?.run).toContain("refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}");
     expect(step?.run).toContain('git checkout -B "${BRANCH_NAME}" "refs/remotes/origin/${BRANCH_NAME}"');
     // Falls back to the adopter's configured base branch, not to a new branch.
@@ -207,14 +207,14 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
     const chmod = steps.findIndex((candidate) => candidate.name === "Make tool hooks executable");
-    expect(chmod, "atoma-runner hook chmod step").toBeGreaterThanOrEqual(0);
+    expect(chmod, "atomaton-runner hook chmod step").toBeGreaterThanOrEqual(0);
     expect(steps[chmod]?.run).toContain("chmod +x");
 
     const agent = steps.findIndex((candidate) => candidate.name === "Run agent");
-    expect(agent, "atoma-runner agent step").toBeGreaterThanOrEqual(0);
+    expect(agent, "atomaton-runner agent step").toBeGreaterThanOrEqual(0);
     expect(chmod, "hooks must be executable before the agent can call a tool").toBeLessThan(agent);
   });
 
@@ -224,7 +224,7 @@ describe("generated workflows", () => {
    * Three properties, and each one is a way the check could be present and useless.
    *
    * It must be unconditional. The validation has to run independently of
-   * `config.yaml`'s `checks.atoma_runs.commands` — an adopter's `atoma-check.yml` runs nothing
+   * `config.yaml`'s `checks.atomaton_runs.commands` — an adopter's `atomaton-check.yml` runs nothing
    * at all until they configure it, and whatever they put there is their pipeline.
    * An `if:` on this step would put our own integrity check back under their
    * control.
@@ -242,7 +242,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const workflow = Bun.YAML.parse(
-      readFileSync("dist/.github/workflows/atoma-validate-pr.yml", "utf8"),
+      readFileSync("dist/.github/workflows/atomaton-validate-pr.yml", "utf8"),
     ) as WorkflowDocument;
     const steps = workflow.jobs?.validate?.steps ?? [];
 
@@ -269,7 +269,7 @@ describe("generated workflows", () => {
    * enumerates what to pass — and the first version of that list was assembled from
    * the step's own `env:` block rather than from what the servers read.
    * `GITHUB_REPOSITORY` was missing, which makes every `search__*` call answer
-   * "there is no repository to search" and stops `atoma__request_close_issue`
+   * "there is no repository to search" and stops `atomaton__request_close_issue`
    * outright; `GITHUB_RUN_ID` was present while nothing read it. Both mistakes are
    * invisible until an agent runs.
    *
@@ -307,7 +307,7 @@ describe("generated workflows", () => {
       ["ATOMATON_DISPATCH_WORKFLOW", "an override nothing sets; the reader has a default"],
     ]);
 
-    const runner = readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8");
+    const runner = readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8");
     const start = runner.indexOf("AGENT_ENV=(");
     expect(start, "the agent step no longer builds an environment list").toBeGreaterThan(-1);
     const list = runner.slice(start, runner.indexOf("atoma run", start));
@@ -344,7 +344,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string; uses?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
     const closer = steps.findIndex((step) => (step.run ?? "").includes("chmod go-w"));
@@ -397,9 +397,9 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string; env?: Record<string, string>; if?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
-    expect(steps.length, "atoma-runner has steps").toBeGreaterThan(0);
+    expect(steps.length, "atomaton-runner has steps").toBeGreaterThan(0);
 
     const names = ["session.json", "events.json", "atomaton_ops.log", "atomaton_output.txt", "atomaton_logs.txt"];
     for (const step of steps) {
@@ -434,7 +434,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
     const created = steps.findIndex((step) => /mkdir -p "\$\{RUNNER_TEMP\}\/atomaton-run"/.test(step.run ?? ""));
@@ -530,7 +530,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string; with?: Record<string, unknown> };
     type WorkflowDocument = { jobs?: Record<string, { env?: Record<string, string>; steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const job = workflow.jobs?.run;
     const steps = job?.steps ?? [];
 
@@ -578,7 +578,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const workflow = Bun.YAML.parse(
-      readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8"),
+      readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8"),
     ) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
     const grep = steps
@@ -618,7 +618,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
     // Every step that posts a comment, found by what it does rather than by name:
@@ -704,9 +704,9 @@ describe("generated workflows", () => {
     // one that runs the agent -- see the test below for why that distinction is
     // the whole point.
     const carriers = [
-      { file: "atoma-runner.yml", job: "run", step: "Collect this run's credentials into a file" },
-      { file: "atoma-check.yml", job: CHECK_JOB_NAME, step: "Run the configured checks" },
-      { file: "atoma-deploy.yml", job: "deploy", step: "Deploy the targets this run is for" },
+      { file: "atomaton-runner.yml", job: "run", step: "Collect this run's credentials into a file" },
+      { file: "atomaton-check.yml", job: CHECK_JOB_NAME, step: "Run the configured checks" },
+      { file: "atomaton-deploy.yml", job: "deploy", step: "Deploy the targets this run is for" },
     ];
 
     for (const carrier of carriers) {
@@ -740,7 +740,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const directory = "dist/.github/workflows";
-    const carriers = ["atoma-runner.yml", "atoma-check.yml", "atoma-deploy.yml"];
+    const carriers = ["atomaton-runner.yml", "atomaton-check.yml", "atomaton-deploy.yml"];
 
     for (const file of carriers) {
       const workflow = Bun.YAML.parse(readFileSync(join(directory, file), "utf8")) as WorkflowDocument;
@@ -781,20 +781,20 @@ describe("generated workflows", () => {
       jobs?: Record<string, { if?: string; permissions?: Record<string, string>; steps?: { name?: string; env?: Record<string, string> }[] }>;
     };
 
-    const check = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-check.yml", "utf8")) as WorkflowDocument;
+    const check = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-check.yml", "utf8")) as WorkflowDocument;
 
     // Without this a person's pull request gets no check at all: an agent's is
     // dispatched, and `pull_request` never fires for a GITHUB_TOKEN-opened one.
     // Since this is what `checks.your_workflow` defaults to, the merge is then refused
     // for a required check that nothing ever ran.
-    expect(check.on?.pull_request, "atoma-check must fire for a person's pull request").toBeDefined();
+    expect(check.on?.pull_request, "atomaton-check must fire for a person's pull request").toBeDefined();
 
     // A check that cannot talk to GitHub is the only thing in the system that
     // cannot, and the failure reads as a broken command rather than no token.
     const runChecks = check.jobs?.[CHECK_JOB_NAME]?.steps?.find((s) => s.name === "Run the configured checks");
     expect(runChecks?.env?.GH_TOKEN).toBe("${{ github.token }}");
 
-    const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-deploy.yml", "utf8")) as WorkflowDocument;
+    const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
 
     // Cutting a release is a deployment. Read-only would push every project that
     // ships that way into keeping a personal access token instead.
@@ -810,7 +810,7 @@ describe("generated workflows", () => {
     // branch", so the literal branches get narrowed by the job's `if:` -- and
     // losing either half is silent: too wide deploys from a branch nobody meant,
     // too narrow deploys from none.
-    expect(deploy.on?.push?.branches, "atoma-deploy must listen for a merge landing").toContain("main");
+    expect(deploy.on?.push?.branches, "atomaton-deploy must listen for a merge landing").toContain("main");
     expect(deploy.jobs?.deploy?.if, "and must require it be the real default branch").toContain(
       "github.event.repository.default_branch",
     );
@@ -827,7 +827,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; env?: Record<string, string>; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const steps = workflow.jobs?.run?.steps ?? [];
 
     const writer = steps.findIndex((step) => step.name === "Collect this run's credentials into a file");
@@ -859,7 +859,7 @@ describe("generated workflows", () => {
     type WorkflowStep = { name?: string; run?: string; with?: Record<string, string> };
     type WorkflowDocument = { jobs?: Record<string, { env?: Record<string, string>; steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const job = workflow.jobs?.run;
     const steps = job?.steps ?? [];
 
@@ -919,7 +919,7 @@ describe("generated workflows", () => {
 
     // And the package list and the hook chmod, which decide what gets installed
     // and whether the fail-closed guard can run at all.
-    const workflow = readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8");
+    const workflow = readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8");
     // The deployed path, not the bare filename: the install step also names the
     // file in prose when it is absent, and a message is not a read.
     for (const path of [".github/atomaton-runtime/tools/packages.json", ".github/atomaton-runtime/tools/hooks"]) {
@@ -952,18 +952,18 @@ describe("generated workflows", () => {
       .filter((context): context is string => typeof context === "string");
     expect(contexts, "the shipped ruleset must require a check").not.toEqual([]);
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-check.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-check.yml", "utf8")) as WorkflowDocument;
     const jobNames = Object.keys(workflow.jobs ?? {});
 
     expect(jobNames).toContain(CHECK_JOB_NAME);
     for (const context of contexts) {
-      expect(jobNames, `ruleset requires "${context}", which no job in atoma-check.yml produces`).toContain(context);
+      expect(jobNames, `ruleset requires "${context}", which no job in atomaton-check.yml produces`).toContain(context);
     }
 
     // No strategy on the job whose name the ruleset requires.
     //
-    // A matrix renames the check run: `atoma-check` becomes
-    // `atoma-check (ubuntu-latest)`, and the bare name stops existing. Measured on
+    // A matrix renames the check run: `atomaton-check` becomes
+    // `atomaton-check (ubuntu-latest)`, and the bare name stops existing. Measured on
     // a throwaway branch -- `gh api.../check-runs` listed
     // `probe-check (macos-latest)` and `probe-check (ubuntu-latest)` and no
     // `probe-check`. So the required context would refer to nothing, and every pull
@@ -1000,8 +1000,8 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { "runs-on"?: unknown; needs?: unknown }> };
 
     for (const [file, workJob] of [
-      ["atoma-check", CHECK_JOB_NAME],
-      ["atoma-deploy", "deploy"],
+      ["atomaton-check", CHECK_JOB_NAME],
+      ["atomaton-deploy", "deploy"],
     ] as const) {
       const workflow = Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument;
       const jobs = workflow.jobs ?? {};
@@ -1027,9 +1027,9 @@ describe("generated workflows", () => {
     type WorkflowStep = { id?: string; env?: Record<string, string> };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
-    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8")) as WorkflowDocument;
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
     const step = workflow.jobs?.run?.steps?.find((candidate) => candidate.id === "post-result");
-    expect(step, "atoma-runner post-result step").toBeDefined();
+    expect(step, "atomaton-runner post-result step").toBeDefined();
     expect(step?.env?.GH_TOKEN).toBe("${{ github.token }}");
   });
 

@@ -6,7 +6,7 @@
  * three unrelated callers need them and one of those callers must not reach into
  * `lib/`. `lib/dispatch-targets.ts` was their home: a module that runs `gh`,
  * reads config.yaml off the disk and dispatches workflow runs. Importing it to
- * learn a default file name pulled all of that in — `atoma-validate-pr.wac.ts`
+ * learn a default file name pulled all of that in — `atomaton-validate-pr.wac.ts`
  * does exactly that today at generation time, and `domain/deliverable-integrity.ts`
  * cannot, being pure by construction.
  *
@@ -32,7 +32,7 @@
  * would fail, and every agent pull request would lose its required check with no
  * agent scheduled after it.
  */
-export const DEFAULT_CI_WORKFLOW = "atoma-check.yml";
+export const DEFAULT_CI_WORKFLOW = "atomaton-check.yml";
 
 /** Dispatched after a successful merge. No-ops with no merge targets. */
-export const DEFAULT_CD_WORKFLOW = "atoma-deploy.yml";
+export const DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";

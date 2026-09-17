@@ -4,7 +4,7 @@
  *
  * This module says nothing about GitHub, labels, or comments -- it is pure
  * decision logic, testable with plain objects. The actual MECHANISM that
- * enacts this decision (adding/removing the `atoma/in-progress` label,
+ * enacts this decision (adding/removing the `atomaton/in-progress` label,
  * deleting human comments made during the dispatch-to-label-landing gap)
  * lives in `src/scripts/manage_in_progress_label.ts` and
  * `src/scripts/guard_comment_during_run.ts` -- this is deliberately kept
@@ -13,7 +13,7 @@
  *
  * Before this module existed, the rule below was expressed only as a
  * string-concatenated GitHub Actions `if:` expression inside
- * atoma-runner.wac.ts (`REMOVE_LABEL_GUARD`) -- untestable, unnamed, and
+ * atomaton-runner.wac.ts (`REMOVE_LABEL_GUARD`) -- untestable, unnamed, and
  * only readable by parsing bash-adjacent expression syntax.
  */
 

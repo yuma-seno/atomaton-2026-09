@@ -287,7 +287,7 @@ describe("mcp-tool schema helpers", () => {
 });
 
 describe("issue-branches.ts collectIssueBranches", () => {
-  const REFS = JSON.stringify([{ ref: "refs/heads/atoma/issue-12" }, { ref: "refs/heads/atoma/issue-12-2" }]);
+  const REFS = JSON.stringify([{ ref: "refs/heads/atomaton/issue-12" }, { ref: "refs/heads/atomaton/issue-12-2" }]);
 
   function run(rules: FakeGhRule[]) {
     const configDir = makeConfigDir({});
@@ -310,14 +310,14 @@ describe("issue-branches.ts collectIssueBranches", () => {
   // unmerged and resume a branch whose commits are already released.
   test("asks about merged state per head branch, never as one repository-wide list", () => {
     const r = run([
-      { match: ["matching-refs/heads/atoma/issue-12"], stdout: REFS },
-      { match: ["head=owner:atoma/issue-12-2"], stdout: "[]" },
-      { match: ["head=owner:atoma/issue-12"], stdout: JSON.stringify([{ merged_at: "2026-01-01T00:00:00Z" }]) },
+      { match: ["matching-refs/heads/atomaton/issue-12"], stdout: REFS },
+      { match: ["head=owner:atomaton/issue-12-2"], stdout: "[]" },
+      { match: ["head=owner:atomaton/issue-12"], stdout: JSON.stringify([{ merged_at: "2026-01-01T00:00:00Z" }]) },
     ]);
 
     expect(JSON.parse(r.stdout.trim())).toEqual([
-      { name: "atoma/issue-12", merged: true },
-      { name: "atoma/issue-12-2", merged: false },
+      { name: "atomaton/issue-12", merged: true },
+      { name: "atomaton/issue-12-2", merged: false },
     ]);
     for (const call of r.ghCalls) {
       const pulls = call.find((arg) => arg.includes("/pulls?"));
@@ -334,10 +334,10 @@ describe("issue-branches.ts collectIssueBranches", () => {
 
   test("treats a branch whose pull requests cannot be read as unmerged", () => {
     const r = run([
-      { match: ["matching-refs/heads/atoma/issue-12"], stdout: JSON.stringify([{ ref: "refs/heads/atoma/issue-12" }]) },
-      { match: ["head=owner:atoma/issue-12"], code: 1 },
+      { match: ["matching-refs/heads/atomaton/issue-12"], stdout: JSON.stringify([{ ref: "refs/heads/atomaton/issue-12" }]) },
+      { match: ["head=owner:atomaton/issue-12"], code: 1 },
     ]);
-    expect(JSON.parse(r.stdout.trim())).toEqual([{ name: "atoma/issue-12", merged: false }]);
+    expect(JSON.parse(r.stdout.trim())).toEqual([{ name: "atomaton/issue-12", merged: false }]);
   });
 });
 
@@ -470,7 +470,7 @@ describe("nothingToCommit", () => {
   const result = (stdout: string, stderr = "") => ({ code: 1, stdout, stderr });
 
   test("recognises a clean tree", () => {
-    expect(nothingToCommit(result("On branch atoma/issue-104\nnothing to commit, working tree clean"))).toBe(true);
+    expect(nothingToCommit(result("On branch atomaton/issue-104\nnothing to commit, working tree clean"))).toBe(true);
   });
 
   test("recognises unstaged changes that were never added", () => {

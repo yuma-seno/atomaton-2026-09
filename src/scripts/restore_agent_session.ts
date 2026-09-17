@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * restore_agent_session.ts — Restore a per-agent session.json from the
- * `atoma-data` branch (if one exists yet for this type/number/agent),
+ * `atomaton-data` branch (if one exists yet for this type/number/agent),
  * without disturbing the current checkout.
  *
  * Usage: restore_agent_session.ts --type issue|pr --number N --agent NAME --out session.json
@@ -9,7 +9,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { archiveSession, restoreSession, sessionTargetPath } from "./lib/atoma-data.ts";
+import { archiveSession, restoreSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { shrinkIfNeeded, shrinkLogLine, stillTooBigLine } from "../domain/session-size.ts";
 import type { Session } from "../lib/session.ts";
@@ -67,7 +67,7 @@ function main(): void {
     }
     const archivedPath = archiveSession(values.type, values.number, values.agent, content);
     if (!archivedPath) throw new Error(`Failed to archive existing session before recovery: ${target}`);
-    console.error(`Archived session to atoma-data:${archivedPath}; starting fresh.`);
+    console.error(`Archived session to atomaton-data:${archivedPath}; starting fresh.`);
     return;
   }
   if (content !== undefined) {

@@ -17,7 +17,7 @@
  *
  * `AGENT_NAME_PATTERN` is exported as a bare pattern BODY rather than a
  * `RegExp` because two of its consumers cannot use one: `lib/tags.ts` embeds it
- * in a larger HTML-comment regex, and `workflows/atoma-runner.wac.ts` generates
+ * in a larger HTML-comment regex, and `workflows/atomaton-runner.wac.ts` generates
  * it into a bash `[[ =~ ]]` test. Generating the bash copy from this constant
  * is what makes the workflow's own check provably the same rule as the
  * TypeScript one, rather than a hand-kept-in-step transcription.

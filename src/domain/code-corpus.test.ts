@@ -26,7 +26,7 @@ describe("what the code search reads", () => {
     for (const path of [
       ".github/atomaton-runtime/tools/mcp/search.ts",
       ".github/atomaton-runtime/scripts/post_result_comment.ts",
-      ".github/workflows/atoma-runner.yml",
+      ".github/workflows/atomaton-runner.yml",
     ]) {
       expect(shouldIndex(path), path).toBe(false);
     }

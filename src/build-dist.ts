@@ -53,7 +53,7 @@ import { buildManifest } from "./domain/release-manifest.ts";
  * call, which is the worst of both.
  *
  * Anything added here has to be installed by the runner before an agent starts
- * — see `atoma-runtime/tools/packages.json`'s `bun` list and the step that reads it.
+ * — see `atomaton-runtime/tools/packages.json`'s `bun` list and the step that reads it.
  */
 const RUNTIME_INSTALLED = ["@huggingface/transformers"];
 

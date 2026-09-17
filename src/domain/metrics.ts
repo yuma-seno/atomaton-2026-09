@@ -4,7 +4,7 @@
  * ## Reading rather than recording
  *
  * Nothing here asks for a new record to be kept. Every number below is already in
- * `atoma-data`: a session holds every tool call an agent made, in order, with the
+ * `atomaton-data`: a session holds every tool call an agent made, in order, with the
  * arguments it passed and the result it got back. Half the work turned out to be
  * reading what is there, and the week that followed proved it three times — the search
  * guard's threshold, the cause of a 6.4M-token run, and the finding that the

@@ -6,10 +6,10 @@ import { join } from "node:path";
 import { runWithFakeGh, scriptPath, type FakeGhRule } from "./testing/harness.ts";
 
 /**
- * The script end to end: a real `atoma-data` to read, a fake `gh` to answer about the
+ * The script end to end: a real `atomaton-data` to read, a fake `gh` to answer about the
  * issues, and `--dry-run` so nothing is pushed.
  *
- * A unit test of `domain/atoma-data-pruning.ts` checks the decision and can never see
+ * A unit test of `domain/atomaton-data-pruning.ts` checks the decision and can never see
  * what this does — whether the file asks GitHub the right question at all. It exists
  * because it did not. `ghPaginated` takes the argv of a `gh` call and the first word has
  * to be `api`; the first version omitted it and every run died with
@@ -17,13 +17,13 @@ import { runWithFakeGh, scriptPath, type FakeGhRule } from "./testing/harness.ts
  * `...string[]`, and the failure only appeared when an issue was closed in production.
  *
  * The repository is built here rather than borrowed from the checkout, because a test
- * that reads the real `atoma-data` would depend on what that branch happens to hold and
+ * that reads the real `atomaton-data` would depend on what that branch happens to hold and
  * on the network being there.
  */
 const ISSUES = JSON.stringify([
   { number: 1, state: "open", labels: [] },
   { number: 2, state: "closed", labels: [] },
-  { number: 3, state: "closed", labels: [{ name: "atoma/in-progress" }] },
+  { number: 3, state: "closed", labels: [{ name: "atomaton/in-progress" }] },
 ]);
 
 let repo: string;
@@ -34,9 +34,9 @@ function git(cwd: string, ...args: string[]): void {
 
 beforeAll(() => {
   // One directory serving as both the checkout and its own `origin`, which is all the
-  // script needs: it fetches `origin/atoma-data` and lists it.
+  // script needs: it fetches `origin/atomaton-data` and lists it.
   repo = mkdtempSync(join(tmpdir(), "atomaton-prune-test-"));
-  git(repo, "init", "--quiet", "--initial-branch=atoma-data");
+  git(repo, "init", "--quiet", "--initial-branch=atomaton-data");
   git(repo, "config", "user.email", "test@example.com");
   git(repo, "config", "user.name", "Test");
   for (const path of [
@@ -52,7 +52,7 @@ beforeAll(() => {
   git(repo, "add", "--all");
   git(repo, "commit", "--quiet", "-m", "seed");
   git(repo, "remote", "add", "origin", repo);
-  git(repo, "fetch", "--quiet", "origin", "atoma-data");
+  git(repo, "fetch", "--quiet", "origin", "atomaton-data");
 });
 
 afterAll(() => {
@@ -60,7 +60,7 @@ afterAll(() => {
 });
 
 function run(rules: FakeGhRule[]) {
-  return runWithFakeGh(scriptPath("prune_atoma_data.ts"), ["--repo", "acme/widgets", "--dry-run"], {
+  return runWithFakeGh(scriptPath("prune_atomaton_data.ts"), ["--repo", "acme/widgets", "--dry-run"], {
     rules,
     cwd: repo,
     // git work happens in the temp repository above; `config.yaml` is read from the
@@ -71,7 +71,7 @@ function run(rules: FakeGhRule[]) {
   });
 }
 
-describe("prune_atoma_data.ts", () => {
+describe("prune_atomaton_data.ts", () => {
   test("asks the issues API the way gh expects to be asked", () => {
     const asked = run([{ match: ["api", "issues"], stdout: ISSUES }]).ghCalls.filter((argv) =>
       argv.some((part) => part.includes("issues")),
@@ -119,9 +119,9 @@ describe("prune_atoma_data.ts", () => {
    * sessions live jobs are writing.
    */
   test("--dry-run pushes nothing", () => {
-    const before = execFileSync("git", ["rev-parse", "atoma-data"], { cwd: repo, encoding: "utf8" });
+    const before = execFileSync("git", ["rev-parse", "atomaton-data"], { cwd: repo, encoding: "utf8" });
     run([{ match: ["api", "issues"], stdout: ISSUES }]);
-    const after = execFileSync("git", ["rev-parse", "atoma-data"], { cwd: repo, encoding: "utf8" });
+    const after = execFileSync("git", ["rev-parse", "atomaton-data"], { cwd: repo, encoding: "utf8" });
     expect(after).toBe(before);
   });
 });

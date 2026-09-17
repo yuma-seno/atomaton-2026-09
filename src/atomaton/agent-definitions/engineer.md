@@ -19,7 +19,7 @@ mcp_servers:
   # `reload_environment` only -- the same server the orchestrator has, with its
   # other two tools withheld, so an engineer cannot close the issue it is working
   # on. Atomaton ships both entries; neither is in config.yaml.
-  - atoma_env
+  - atomaton_env
 extra_body:
   # OpenRouter provider routing; see orchestrator.md for the full rationale.
   # Keep it advisory: `order` prefers the endpoints with the best uptime. Do not

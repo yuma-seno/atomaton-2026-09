@@ -3,7 +3,7 @@
  * probe-tool-servers.ts — do the tool servers actually start, at the layout a run
  * uses?
  *
- * `atoma-check` is scan_secrets → typecheck → synth → test, and **not one of those
+ * `atomaton-check` is scan_secrets → typecheck → synth → test, and **not one of those
  * starts a tool server as a process.** Four defects of one shape landed in a
  * single day, all green in CI, all found only after deploying: the worst was a path
  * where moving the machinery out of the work tree put `node_modules` out of reach
@@ -34,7 +34,7 @@
  *   - the libraries a server imports live at `${RUNNER_TEMP}/node_modules`, beside
  *     it rather than in the project's own tree
  *
- * -- and `assertLayoutStillMatches` fails if `atoma-runner.wac.ts` stops saying
+ * -- and `assertLayoutStillMatches` fails if `atomaton-runner.wac.ts` stops saying
  * either. A probe that quietly tested a layout the runner no longer uses would be
  * worse than no probe, which is the argument against fake servers.
  *
@@ -66,7 +66,7 @@ const HOOK_BASE = `${MACHINERY}/.github/atomaton-runtime/tools`;
  * config, rather than read one somebody left behind.
  */
 const TOOLS_FILE = `${RUNNER_TEMP}/probe-tools.yaml`;
-const RUNNER_WAC = "src/workflows/atoma-runner.wac.ts";
+const RUNNER_WAC = "src/workflows/atomaton-runner.wac.ts";
 
 /** Write the tools file this machinery's config describes, as `write_tools_file.ts` would. */
 function writeToolsFile(): void {

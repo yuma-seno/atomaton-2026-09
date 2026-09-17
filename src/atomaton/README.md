@@ -53,8 +53,8 @@ every run.
 | `github` | Issues, pull requests, comments, and every Git mutation. |
 | `web` | Fetches a URL. Searching the web is a skill, not a tool. |
 | `search` | Ranked search over this repository's issues and code. |
-| `atoma` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
-| `atoma_env` | Rebuilding the run's environment, and nothing else. |
+| `atomaton` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
+| `atomaton_env` | Rebuilding the run's environment, and nothing else. |
 
 An agent gets the ones its own `mcp_servers` names, and only those. A server
 nobody names is never started, so there is nothing to gain by removing one — which

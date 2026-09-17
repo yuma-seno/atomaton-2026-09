@@ -4,7 +4,7 @@
  * sub-issue's orchestrator parent is known. If any sibling sub-issues are
  * still open, just posts a progress comment. Once all siblings are done,
  * aggregates their results into the orchestrator's session (stored on the
- * orphan `atoma-data` branch) and re-dispatches the orchestrator.
+ * orphan `atomaton-data` branch) and re-dispatches the orchestrator.
  *
  * Thin CLI wrapper around lib/aggregation.ts's shared dispatch gate -- see that
  * module's doc comment for the other two callers of the same gate and for the
@@ -20,7 +20,7 @@ import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from 
 import { gatherSubResults, injectSummary } from "../lib/inject-sub-results.ts";
 import type { Session } from "../lib/session.ts";
 import { PARENT_TAG } from "../lib/tags.ts";
-import { restoreSession, saveSession, sessionTargetPath } from "./lib/atoma-data.ts";
+import { restoreSession, saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 
 export interface AggregateSubIssuesArgs {
   repo: string;
@@ -60,14 +60,14 @@ function linkedSubIssues(repo: string, parent: number): number[] {
 
 /**
  * Injects every linked sub-issue's result into the orchestrator's persisted
- * session on the `atoma-data` branch.
+ * session on the `atomaton-data` branch.
  *
- * Reads and writes through lib/atoma-data.ts rather than driving git here. That
+ * Reads and writes through lib/atomaton-data.ts rather than driving git here. That
  * module's `saveSession` already owns the part that is easy to get wrong -- it
  * creates the branch if absent, holds the push-retry loop for the races that are
  * expected when sibling agents finish together, and does all of it in a
  * throwaway worktree so the job's own checkout is untouched. This function used
- * to reimplement that with `git checkout -B atoma-data` in the main checkout
+ * to reimplement that with `git checkout -B atomaton-data` in the main checkout
  * (and `git rm -rf .` on the branch-missing path), which worked only because
  * nothing in this job reads a file afterwards.
  */
@@ -84,7 +84,7 @@ function injectResultsIntoOrchestratorSession(repo: string, parent: number): voi
   const updated = injectSummary(session, gatherSubResults(repo, subIssues));
   const message = `atoma: inject sub-issue results for parent #${parent}`;
   if (!saveSession(sessionPath, JSON.stringify(updated, null, 2), message)) {
-    console.error(`::warning::Failed to save session to atoma-data:${sessionPath} after all retries.`);
+    console.error(`::warning::Failed to save session to atomaton-data:${sessionPath} after all retries.`);
   }
 }
 

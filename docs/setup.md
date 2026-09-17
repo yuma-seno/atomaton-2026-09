@@ -43,7 +43,7 @@ environment:
 ```
 
 They run through `bash -c`, in order, and stop on first failure — before the agent
-starts, before `checks.atoma_runs.commands`, and before `deploy.atoma_runs.targets`.
+starts, before `checks.atomaton_runs.commands`, and before `deploy.atomaton_runs.targets`.
 One declaration, three jobs.
 
 The template ships this empty on purpose: it is language- and framework-agnostic, and
@@ -68,7 +68,7 @@ CI cannot. Creating or updating a ruleset goes through the repository administra
 API, and `administration` is not a permission a workflow can grant `GITHUB_TOKEN`.
 So applying it is a deliberate act by someone with admin — and **nothing will tell
 you if you skip it.** A check could only report, never enforce: if the ruleset were
-missing then `atoma-check` would no longer be a required context either, so a failing
+missing then `atomaton-check` would no longer be a required context either, so a failing
 check would block nothing.
 
 **From the web UI** — easiest, and needs nothing installed:
@@ -85,7 +85,7 @@ gh api --method POST repos/{owner}/{repo}/rulesets \
 
 If the import option is unavailable, create it through the form instead and set:
 target the default branch; restrict deletions; block force pushes; require a pull
-request with **0** required approvals; and require the `atoma-check` status check.
+request with **0** required approvals; and require the `atomaton-check` status check.
 Leave the bypass list empty.
 
 To change the rules later, edit the JSON in a pull request, then re-import (or
@@ -106,7 +106,7 @@ Atomaton starts the workflow behind a required check itself for an agent's pull 
 waits for it, and publishes the result. A workflow it cannot start leaves the check
 unfilled, and the pull request can never merge.
 
-The shipped `atoma-check.yml` already accepts `workflow_dispatch`. For a workflow of
+The shipped `atomaton-check.yml` already accepts `workflow_dispatch`. For a workflow of
 your own, keep whatever triggers you have and add that one:
 
 ```yaml
@@ -121,7 +121,7 @@ Either drop them from the ruleset's required list or give them a `workflow_dispa
 trigger too.
 
 Keep the two names in step. `.github/atomaton/rulesets/main.json` ships requiring the
-context `atoma-check`, which is the job name in `atoma-check.yml`; renaming one side
+context `atomaton-check`, which is the job name in `atomaton-check.yml`; renaming one side
 without the other does not fail a pull request — it leaves it waiting forever on a
 check that will never report, and re-running nothing fixes it.
 
@@ -131,9 +131,9 @@ check that will never report, and re-running nothing fixes it.
 you adopted and diff it later:
 
 ```bash
-gh release download v0.1.115 -R yuma-seno/atomaton -p atoma-delivery.zip
-unzip -o atoma-delivery.zip   # the archive holds .github/, so run this at the repo root
-rm atoma-delivery.zip
+gh release download v0.1.115 -R yuma-seno/atomaton -p atomaton-delivery.zip
+unzip -o atomaton-delivery.zip   # the archive holds .github/, so run this at the repo root
+rm atomaton-delivery.zip
 ```
 
 Record which one you took. Moving to a newer release is vendoring rather than

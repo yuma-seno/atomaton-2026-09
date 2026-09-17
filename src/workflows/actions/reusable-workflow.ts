@@ -1,8 +1,8 @@
 /**
  * reusable-workflow.ts — Type-safe calling convention for `workflow_call`
  * reusable workflows defined by another `*.wac.ts` file in this project
- * (i.e. `atoma-runner.wac.ts`, called from `atoma-entry.wac.ts`,
- * `atoma-auto-trigger.wac.ts`, `atoma-manual-comment.wac.ts`, and
+ * (i.e. `atomaton-runner.wac.ts`, called from `atomaton-entry.wac.ts`,
+ * `atoma-auto-trigger.wac.ts`, `atomaton-manual-comment.wac.ts`, and
  * `atoma-pr-review.wac.ts`).
  *
  * The upstream `ReusableWorkflowCallJob` (from `@github-actions-workflow-ts`)

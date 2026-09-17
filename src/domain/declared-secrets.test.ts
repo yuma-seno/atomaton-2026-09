@@ -58,8 +58,8 @@ describe("resolveDeclaredSecrets", () => {
   });
 
   test("every message names the field it came from", () => {
-    expect(resolveDeclaredSecrets(["bad name"], CHECK_SECRETS).problems[0]).toContain("checks.atoma_runs.secrets");
-    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atoma_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], CHECK_SECRETS).problems[0]).toContain("checks.atomaton_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atomaton_runs.secrets");
   });
 
   test("rejects a name that collides with the internal slots", () => {

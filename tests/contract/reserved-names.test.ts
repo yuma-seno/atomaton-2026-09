@@ -9,7 +9,7 @@ import {
   TOOL_SECRETS,
   type SecretDestination,
 } from "../../src/domain/declared-secrets.ts";
-import { CHECK_JOB_NAME } from "../../src/workflows/atoma-check.wac.ts";
+import { CHECK_JOB_NAME } from "../../src/workflows/atomaton-check.wac.ts";
 
 /**
  * A destination's `reserved` set is a claim about a generated workflow: these are
@@ -53,15 +53,15 @@ function expectAllReserved(destination: SecretDestination, keys: string[]): void
 
 describe("reserved names match the workflows they describe", () => {
   test("the agent's step", () => {
-    expectAllReserved(TOOL_SECRETS, carrierEnvKeys("atoma-runner.yml", "run", "Run agent"));
+    expectAllReserved(TOOL_SECRETS, carrierEnvKeys("atomaton-runner.yml", "run", "Run agent"));
   });
 
   test("the checks step", () => {
-    expectAllReserved(CHECK_SECRETS, carrierEnvKeys("atoma-check.yml", CHECK_JOB_NAME, "Run the configured checks"));
+    expectAllReserved(CHECK_SECRETS, carrierEnvKeys("atomaton-check.yml", CHECK_JOB_NAME, "Run the configured checks"));
   });
 
   test("the deploy step", () => {
-    expectAllReserved(DEPLOY_SECRETS, carrierEnvKeys("atoma-deploy.yml", "deploy", "Deploy the targets this run is for"));
+    expectAllReserved(DEPLOY_SECRETS, carrierEnvKeys("atomaton-deploy.yml", "deploy", "Deploy the targets this run is for"));
   });
 
   // The other half of the same contract, and the half that actually broke. These
@@ -96,10 +96,10 @@ describe("the credentials step and RUN_CREDENTIALS", () => {
 
   function stepEnv(): Record<string, string> {
     const doc = Bun.YAML.parse(
-      readFileSync("dist/.github/workflows/atoma-runner.yml", "utf8"),
+      readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8"),
     ) as { jobs?: Record<string, { steps?: { name?: string; env?: Record<string, string> }[] }> };
     const step = doc.jobs?.run?.steps?.find((candidate) => candidate.name === CREDENTIALS_STEP);
-    expect(step, `atoma-runner.yml has no step named "${CREDENTIALS_STEP}"`).toBeDefined();
+    expect(step, `atomaton-runner.yml has no step named "${CREDENTIALS_STEP}"`).toBeDefined();
     return step?.env ?? {};
   }
 

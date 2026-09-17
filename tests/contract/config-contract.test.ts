@@ -200,7 +200,7 @@ describe("config.yaml's recognised keys", () => {
   /**
    * Every settable key is written down somewhere a person can find it.
    *
-   * `checks.atoma_runs.runs_on`, `deploy.atoma_runs.targets` and the three
+   * `checks.atomaton_runs.runs_on`, `deploy.atomaton_runs.targets` and the three
    * `chain.labels` entries were each settable and each undocumented when this
    * test was written -- five keys an adopter could only find by reading the
    * validator's schema.
@@ -217,7 +217,7 @@ describe("config.yaml's recognised keys", () => {
    * The reverse, and the direction that does real damage: a key documented but not
    * read is one an adopter writes, and `validate_deliverable.ts` then fails their
    * pull request for following the documentation. This page said `checks.secrets`
-   * and `deploy.secrets` when both had moved under `atoma_runs`.
+   * and `deploy.secrets` when both had moved under `atomaton_runs`.
    *
    * Only dotted paths are policed. A bare leaf name in prose -- `policy`, `gates`
    * -- is a word as often as it is a key, and a test that cannot tell the two apart
@@ -273,7 +273,7 @@ describe("config.yaml's recognised keys", () => {
      * dropped, and requiring them to survive, can.
      */
     const examined = new Set(PAGES_THAT_NAME_KEYS.flatMap(configPathsNamedBy));
-    for (const path of ["tools.secrets", "checks.atoma_runs.commands"]) {
+    for (const path of ["tools.secrets", "checks.atomaton_runs.commands"]) {
       expect(examined.has(path), `${path} is documented, so the filters must not drop it`).toBe(true);
     }
   });
@@ -302,14 +302,14 @@ describe("config.yaml's recognised keys", () => {
 /**
  * The template ships one check, and it has to be one every adopter can run.
  *
- * `checks.atoma_runs.commands` was empty, which `run_checks.ts` reports as "this check
+ * `checks.atomaton_runs.commands` was empty, which `run_checks.ts` reports as "this check
  * verified nothing" -- true, and the first hour of an adoption is a poor time to learn it.
  * A credential is a credential in every language, so a secret scan is the one verification
  * a template can hand a project it knows nothing about. Everything beside it in that list
  * is the project's own and only the project can write it.
  */
 describe("the default checks a project inherits", () => {
-  const commands = shippedConfig().checks?.atoma_runs?.commands ?? [];
+  const commands = shippedConfig().checks?.atomaton_runs?.commands ?? [];
 
   test("there is at least one, so an adoption does not start verifying nothing", () => {
     expect(commands.length).toBeGreaterThan(0);

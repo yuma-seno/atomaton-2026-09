@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
- * run_deploy.ts — work out which of config.yaml's `deploy.atoma_runs.targets`
+ * run_deploy.ts — work out which of config.yaml's `deploy.atomaton_runs.targets`
  * this run is for, and run their commands.
  *
- * This is the body of `atoma-deploy.yml`. Selection happens here rather than in
+ * This is the body of `atomaton-deploy.yml`. Selection happens here rather than in
  * the workflow's `on:` because `on:` takes no expression: a tag pattern that an
  * agent can edit cannot live there. The workflow listens for every tag and this
  * decides whether any target wanted it.

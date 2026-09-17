@@ -6,15 +6,15 @@ import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/githu
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
-import { dispatchToAtomaRunner } from "./atoma-runner.wac.ts";
+import { dispatchToAtomaRunner } from "./atomaton-runner.wac.ts";
 import { ref as resolveEntryAgentRef } from "../scripts/resolve_entry_agent.ts";
 
 // Fires when a new issue is opened. Resolves which agent (if any) should
 // handle it from the issue body's first line, then hands off to the shared
-// atoma-runner reusable workflow.
+// atomaton-runner reusable workflow.
 //
 // Job graph:
-//   route --> run (atoma-runner.yml, reusable)
+//   route --> run (atomaton-runner.yml, reusable)
 
 const resolveStep = new TypedOutputsStep(
   {
@@ -30,8 +30,8 @@ const resolveStep = new TypedOutputsStep(
   ["agent", "number", "type", "notify"] as const,
 );
 
-export const atomaEntry = new Workflow("atoma-entry", {
-  name: "Atoma Entry",
+export const atomaEntry = new Workflow("atomaton-entry", {
+  name: "Atomaton Entry",
   on: {
     issues: { types: ["opened"] },
   },

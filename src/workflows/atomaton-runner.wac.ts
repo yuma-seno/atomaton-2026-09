@@ -54,8 +54,8 @@ import { ref as watchForStopRef } from "../scripts/watch_for_stop.ts";
 import { AGENT_NAME_PATTERN } from "../lib/agent-name.ts";
 import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 
-// The shared reusable workflow every entry-point workflow (atoma-entry,
-// atoma-auto-trigger, atoma-manual-comment, atoma-pr-review) hands off to via
+// The shared reusable workflow every entry-point workflow (atomaton-entry,
+// atoma-auto-trigger, atomaton-manual-comment, atoma-pr-review) hands off to via
 // `atomaRunnerWorkflow.call(...)` (see actions/reusable-workflow.ts) once
 // they've resolved an `agent`/`number`/`type`. Single job ("run"), step
 // sequence below mirrors execution order top to bottom:
@@ -64,7 +64,7 @@ import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 //   2. install runtime deps (atoma CLI, Bun, MCP server deps)
 //   3. run configured environment setup, set git identity
 //   4. resolve the `notify` login from config
-//   5. add atoma/in-progress label, resolve which repository secrets config.yaml
+//   5. add atomaton/in-progress label, resolve which repository secrets config.yaml
 //      lets the agent see, then RUN THE AGENT
 //   6. post the agent's result as a comment
 //   7. handle follow-ups: uncommitted-changes notice, limit-reached notice,
@@ -82,7 +82,7 @@ const SESSION_MODE_INPUT_DESC = "Session mode: continue restores history; recove
  * How many environment rebuilds this work has already had.
  *
  * An input rather than something the run works out, because there is nothing to
- * work it out from: `atoma_env__reload_environment` leaves no comment, so unlike the
+ * work it out from: `atomaton_env__reload_environment` leaves no comment, so unlike the
  * handoff tally in `domain/dispatch-chain.ts` there is no record on the issue to
  * count. The number has to be carried by whoever dispatches.
  *
@@ -90,12 +90,12 @@ const SESSION_MODE_INPUT_DESC = "Session mode: continue restores history; recove
  * with it, so an unbounded chain of reloads is an unbounded budget. That
  * is what this tool was blocked on.
  */
-const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt its environment (set by atoma_env__reload_environment; leave at 0)";
+const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt its environment (set by atomaton_env__reload_environment; leave at 0)";
 // The version this installs, the description of the input that overrides it, and the
 // two steps that install it live in `actions/atoma-cli.ts` -- along with the record of
 // what each raise of the pin was coupled to, which is the part worth not losing.
 //
-// They were here until `atoma-validate-pr` needed the same binary, to run
+// They were here until `atomaton-validate-pr` needed the same binary, to run
 // `atoma validate` against the agent definitions and tools file a pull request would
 // merge. Two workflows installing it from two copies of a download-and-chmod is two
 // places to move the pin, and the pin is coupled to `tools.servers`, to
@@ -239,7 +239,7 @@ echo "cache_key=atomaton-reranker-$(echo "\${MODEL}" | tr '/:' '--')" >> "$GITHU
  *     be told to an agent as one sentence.
  *
  * `RUNNER_TEMP` because a job does not keep it, which is right: none of these
- * outlives the run. The session is persisted to the `atoma-data` branch instead,
+ * outlives the run. The session is persisted to the `atomaton-data` branch instead,
  * and that is a deliberate save rather than a side effect of where a file happened
  * to sit.
  *
@@ -329,7 +329,7 @@ const resolveIssueBranchStep = new TypedOutputsStep(
 const TOOL_HOOKS_DIR = TOOL_HOOKS_DIRECTORY;
 
 // Every input this workflow takes is spliced into shell TEXT somewhere below:
-// `AGENT="${{ inputs.agent }}"`, `BRANCH="atoma/issue-${{ inputs.number }}"`,
+// `AGENT="${{ inputs.agent }}"`, `BRANCH="atomaton/issue-${{ inputs.number }}"`,
 // `VERSION="${{ inputs.atoma_version }}"`, and a dozen `--flag "${{ ... }}"`
 // script arguments. GitHub Actions substitutes `${{ }}` into the script before
 // bash ever parses it, so a value carrying a quote or a `$(...)` is not data --
@@ -358,7 +358,7 @@ const validateInputsStep = new TypedOutputsStep({
     NOTIFY: "${{ inputs.notify }}",
   },
   run: `reject() {
-  echo "::error::atoma-runner received an invalid \\\`$1\\\` input: '$2'. $3"
+  echo "::error::atomaton-runner received an invalid \\\`$1\\\` input: '$2'. $3"
   exit 1
 }
 
@@ -435,7 +435,7 @@ const fetchEventsStep = new TypedOutputsStep(
 );
 
 const restoreSessionStep = new TypedOutputsStep({
-  name: "Restore agent session from atoma-data",
+  name: "Restore agent session from atomaton-data",
   id: "restore-session",
   shell: "bash",
   run: `${scriptCommandWithArgs(restoreAgentSessionRef, {
@@ -643,7 +643,7 @@ const runAgentStep = new TypedOutputsStep(
       // creates a branch on an issue run and never on a pull request run, where
       // the checkout is already the branch under review.
       ATOMATON_RUN_TYPE: "${{ inputs.type }}",
-      // The tally this run arrived with. `atoma_env__reload_environment` reads it to
+      // The tally this run arrived with. `atomaton_env__reload_environment` reads it to
       // decide whether it may rebuild again -- and a contract test requires every
       // `process.env` a tool server reads to appear in AGENT_ENV, because a missing
       // one reads as zero and silently buys extra reloads.
@@ -814,7 +814,7 @@ RESULT_EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
 ${scriptCommandWithArgs(extractDirectiveRef, { "output-file": `${RUN_DIR}/atomaton_output.txt`, "def-dir": `${MACHINERY}/${AGENT_DEF_DIR}` })}
 
 # Detect whether a tool call already triggered an automatic follow-up
-# dispatch during this run (atoma__launch_sub_agent, github__create_pr ->
+# dispatch during this run (atomaton__launch_sub_agent, github__create_pr ->
 # reviewer, github__merge_pr -> orchestrator-or-re-invoked-agent), as
 # opposed to the agent genuinely finishing with nothing further happening.
 # Every dispatch site writes a structured \`{"op":"dispatch",...}\` entry to
@@ -965,7 +965,7 @@ const recordRunMetadataStep = new TypedOutputsStep({
  * the session and starts fresh, so keeping it leaves a person both options.
  */
 const saveSessionStep = new TypedOutputsStep({
-  name: "Save session to atoma-data branch",
+  name: "Save session to atomaton-data branch",
   if: `always() && ${runAgentStep.rawOutcome} != 'skipped'`,
   shell: "bash",
   run: `${scriptCommandWithArgs(saveAgentSessionRef, {
@@ -1045,7 +1045,7 @@ const loopControlStep = new TypedOutputsStep(
   ["auto_dispatch_count", "loop_limit_reached", "handoff_limit", "runs_without_change", "stop_reason"] as const,
 );
 
-// Whether the atoma/in-progress SerializationGuard should be released after
+// Whether the atomaton/in-progress SerializationGuard should be released after
 // this run is a real domain decision (see domain/serialization-guard.ts's
 // shouldReleaseGuard() for the actual rule + rationale), not something to
 // express as a hand-built GitHub Actions `if:` boolean expression. This
@@ -1073,7 +1073,7 @@ const decideGuardReleaseStep = new TypedOutputsStep(
 );
 
 const removeLabelStep = new TypedOutputsStep({
-  name: "Remove atoma/in-progress label on completion",
+  name: "Remove atomaton/in-progress label on completion",
   if: `always() && ${decideGuardReleaseStep.rawOutputs.should_release} == 'true'`,
   shell: "bash",
   env: {
@@ -1105,10 +1105,10 @@ const dispatchNextAgentStep = new TypedOutputsStep({
   exit 1
 fi
 
-echo "Dispatching '\${DIRECTIVE}' on \${TYPE} #\${NUMBER} via atoma-runner.yml ..."
+echo "Dispatching '\${DIRECTIVE}' on \${TYPE} #\${NUMBER} via atomaton-runner.yml ..."
 # Use gh workflow run with the current GH_TOKEN (caller's token, e.g. from issue_comment event).
 # This preserves the caller's token permissions (PR creation OK for issue_comment events).
-gh workflow run atoma-runner.yml \\
+gh workflow run atomaton-runner.yml \\
   --field agent="$DIRECTIVE" \\
   --field number="$NUMBER" \\
   --field type="$TYPE" \\
@@ -1158,7 +1158,7 @@ fi
 // dispatched it (github__create_pr's own dispatch, the pull_request auto-
 // trigger workflows, or a manual /reviewer comment) -- one single place
 // covering every path, rather than duplicating this in each dispatcher.
-// The atoma/in-progress label (added just above, before this step) already
+// The atomaton/in-progress label (added just above, before this step) already
 // gives ongoing at-a-glance status; this comment gives a concrete, timestamped
 // entry in the PR's own history of a review actually starting.
 const reviewerStartCommentStep = new TypedOutputsStep({
@@ -1463,7 +1463,7 @@ git config user.email "atoma-\${{ inputs.agent }}@users.noreply.github.com"
     // hood. Gated on the same condition as "Run agent" so the label isn't
     // added for no-op runs that will be skipped entirely
     // (new_event_count == '0').
-    name: "Add atoma/in-progress label",
+    name: "Add atomaton/in-progress label",
     if: `${buildContextStep.rawOutputs.new_event_count} != '0'`,
     shell: "bash",
     env: {
@@ -1722,8 +1722,8 @@ echo "tool servers will run as ${TOOL_USER} (no sudo), caches in ${TOOL_CACHE}"
   loopLimitCommentStep,
 ]);
 
-export const atomaRunner = new Workflow("atoma-runner", {
-  name: "Atoma Runner",
+export const atomaRunner = new Workflow("atomaton-runner", {
+  name: "Atomaton Runner",
   // Cast: the generated `WorkflowDispatchInput.default` type is an upstream
   // json-schema-to-typescript quirk (typed as a generic object, not the
   // string/boolean/number the real schema allows) -- see
@@ -1757,8 +1757,8 @@ export const atomaRunner = new Workflow("atoma-runner", {
 
 /**
  * The `workflow_call.inputs` contract above, mirrored as a TS type. This is
- * the single source of truth every caller (`atoma-entry.wac.ts`,
- * `atoma-auto-trigger.wac.ts`, `atoma-manual-comment.wac.ts`,
+ * the single source of truth every caller (`atomaton-entry.wac.ts`,
+ * `atoma-auto-trigger.wac.ts`, `atomaton-manual-comment.wac.ts`,
  * `atoma-pr-review.wac.ts`) is checked against -- required vs. optional here
  * matches `required`/`default` above, so a caller forgetting `agent` (or
  * typo-ing it) is a compile error, not a silent no-op input.
@@ -1776,10 +1776,10 @@ export interface AtomaRunnerInputs {
 export const atomaRunnerWorkflow = defineCallableWorkflow<AtomaRunnerInputs>(atomaRunner);
 
 /**
- * Every caller of this workflow (`atoma-entry`, `atoma-auto-trigger`,
- * `atoma-manual-comment`, `atoma-pr-review`) follows the exact same shape:
+ * Every caller of this workflow (`atomaton-entry`, `atoma-auto-trigger`,
+ * `atomaton-manual-comment`, `atoma-pr-review`) follows the exact same shape:
  * a "route" job resolves `agent`/`number`/`type`/`notify` as its own job
- * outputs, then hands off to `atoma-runner` gated on `agent` being non-empty.
+ * outputs, then hands off to `atomaton-runner` gated on `agent` being non-empty.
  * That `needs:`/`if:`/`with:` wiring was near-identically hand-copied 4
  * times -- this collapses it to one call. The route job itself still needs
  * a name at the call site (GitHub Actions' own job graph requires a stable

@@ -53,7 +53,7 @@ You added a dependency to a manifest and want it installed by the project's own
 command. Or you deleted `node_modules` and want it back. Or an install left
 something half-done.
 
-**`atoma_env__reload_environment`.** It re-runs `environment.setup_commands` as a
+**`atomaton_env__reload_environment`.** It re-runs `environment.setup_commands` as a
 privileged step against your current work tree, then starts a new run.
 
 The split is what makes it safe and what makes it useful: **the commands come from
@@ -63,7 +63,7 @@ installed by a command you did not write and cannot change.
 Two things to know before you call it:
 
 - **Your session ends immediately.** Commit what is worth keeping first. Leave
-  notes in `/tmp/atoma-workspace`, which survives into the next run.
+  notes in `/tmp/atomaton-workspace`, which survives into the next run.
 - **There is a limit**, because each reload starts a new run and resets the
   run's time budget. The tool tells you where you stand. When it refuses, report
   what you found — that is the useful thing left.

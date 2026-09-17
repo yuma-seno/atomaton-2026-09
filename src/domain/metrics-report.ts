@@ -2,7 +2,7 @@
  * metrics-report.ts — the metrics as something a person reads.
  *
  * Markdown, because it is rendered where it is stored and needs nothing installed to
- * read. It lives on `atoma-data` rather than in the repository: the working tree is the
+ * read. It lives on `atomaton-data` rather than in the repository: the working tree is the
  * deliverable, and a file that changes on every run would arrive in every pull request
  * for somebody to read past. Its own commit history is the trend line — the same
  * property that makes a diff of last week against this week free.
@@ -74,7 +74,7 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
   const out = ["## Runs", ""];
   if (runs.length === 0) {
     out.push(
-      "No run has recorded itself yet. Atomaton writes `atoma_runs` into a session from " +
+      "No run has recorded itself yet. Atomaton writes `atomaton_runs` into a session from " +
         "v0.1.28; sessions older than that carry no times, and there is no way to backfill " +
         "one that would not be a guess.",
       "",

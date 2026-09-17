@@ -33,7 +33,7 @@ environment:
 
 Write it here once and every job runs it: the agent's own shell, the checks, and
 the deployment. That is the point of the separate block. Putting `bun install` at
-the front of `checks.atoma_runs.commands` instead looks equivalent and is not —
+the front of `checks.atomaton_runs.commands` instead looks equivalent and is not —
 the agent's shell then has the dependencies and CI installs them again, or the
 reverse, and the two environments drift. A test that passes for the agent and
 fails in CI comes back to an engineer as a defect that does not reproduce.
@@ -43,18 +43,18 @@ a run.
 
 ## Verification
 
-`checks` has two arms and takes exactly one. Fill in `atoma_runs` and the shipped
+`checks` has two arms and takes exactly one. Fill in `atomaton_runs` and the shipped
 workflow runs your commands:
 
 ```yaml
 checks:
-  atoma_runs:
+  atomaton_runs:
     commands:
       - bun run typecheck
       - bun test
 ```
 
-They run in order in `atoma-check.yml`, after the environment setup above, and the
+They run in order in `atomaton-check.yml`, after the environment setup above, and the
 first failure ends the run.
 Whatever a contributor would type to check the project locally is what belongs
 here — read the README, the package manifest's scripts, and any CONTRIBUTING
@@ -62,18 +62,18 @@ file before writing this, rather than guessing a stack.
 
 **If `checks.your_workflow` already names a workflow, that one is correct.** A
 repository with its own CI has it for reasons that are not in front of you. Leave
-both alone, and in particular do not add `atoma_runs` beside it: a section
+both alone, and in particular do not add `atomaton_runs` beside it: a section
 carrying both arms is reported as a configuration error rather than resolved by a
 precedence rule, so the change comes back rejected instead of half-applied.
 
 ## Deployment
 
-The same two arms, and the same rule — `deploy.atoma_runs.targets`, or
+The same two arms, and the same rule — `deploy.atomaton_runs.targets`, or
 `deploy.your_workflow`, never both.
 
 ```yaml
 deploy:
-  atoma_runs:
+  atomaton_runs:
     targets:
       - name: staging
         on: merge
@@ -101,15 +101,15 @@ the place that needs it:
 
 ```yaml
 checks:
-  atoma_runs:
+  atomaton_runs:
     secrets: ["NPM_TOKEN"]
 deploy:
-  atoma_runs:
+  atomaton_runs:
     secrets: ["AWS_ROLE_ARN"]
 ```
 
 It arrives as an environment variable under that name. The three lists —
-`checks.atoma_runs.secrets`, `deploy.atoma_runs.secrets` and `tools.secrets` —
+`checks.atomaton_runs.secrets`, `deploy.atomaton_runs.secrets` and `tools.secrets` —
 are separate on purpose and must not be merged: each reaches only its own
 destination, and the nesting is what says so.
 
@@ -133,7 +133,7 @@ project adds, and overrides of the ones Atomaton ships. `slack` above is an addi
 so it declares the server in full, starting with the `command` that starts it.
 
 **To route a credential to a server Atomaton ships** — `shell`, `github`, `web`,
-`search`, `atoma`, `atoma_env`, `filesystem`, `filesystem_readonly` — write its
+`search`, `atomaton`, `atomaton_env`, `filesystem`, `filesystem_readonly` — write its
 name with an `env` and nothing else. A shipped name is merged field by field, so
 the command, the hooks and the timeout stay as they ship:
 
@@ -177,7 +177,7 @@ is intended. Do not conclude the mechanism is broken and work around it, and do
 not try to test it by reading the value — say in your report which secret the
 work now needs.
 
-Prefer no credential at all where the platform allows it. `atoma-deploy.yml`
+Prefer no credential at all where the platform allows it. `atomaton-deploy.yml`
 declares `id-token: write`, so a cloud provider's OIDC login is available and is
 better than any long-lived key.
 
@@ -203,7 +203,7 @@ commands; write them.
 
 If a ruleset requires a status check, its `context` must equal the job name that
 produces it. `.github/atomaton/rulesets/main.json` ships already matched to
-`atoma-check.yml`. **Do not edit either side to make them agree** — a mismatch
+`atomaton-check.yml`. **Do not edit either side to make them agree** — a mismatch
 does not fail a pull request, it leaves it waiting forever on a check that will
 never report, and no amount of re-running fixes it. If they appear mismatched,
 report it.

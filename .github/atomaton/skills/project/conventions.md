@@ -80,7 +80,7 @@ values that exist only after manual setup, so the JSON would stop describing the
 whole configuration.
 
 The workflows that run agents are generated from `src/workflows/` and shipped.
-`self/workflows/` holds the two that are not: `atoma-self-deploy.yml` and
+`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and
 `probe-dumpable.yml`.
 
 ## Adding a static file to the deliverable
@@ -99,7 +99,7 @@ the moment it merges. Two breakages reached the running system exactly that way.
 
 ### Applying a release
 
-Dispatch **Atomaton Self Deploy** (`self/workflows/atoma-self-deploy.yml`) from the
+Dispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the
 Actions tab. It opens a pull request and merges nothing. `.github/**` is in
 `merge.governed_paths`, so a person reviews it.
 
@@ -119,7 +119,7 @@ stayed in the tree with no diff to notice it by.
 It needs `ATOMA_SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because
 `GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by
 path. No agent can reach that token: it is named in one file outside the
-deliverable, and `atoma-runner.yml` does not mention it.
+deliverable, and `atomaton-runner.yml` does not mention it.
 
 ### Changing something in `self/`
 
