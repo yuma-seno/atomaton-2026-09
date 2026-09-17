@@ -23,11 +23,11 @@
  *
  * # What recovery does
  *
- * Looks for an `<!-- atoma:notify=LOGIN -->` tag in the body -- embedded by
+ * Looks for an `<!-- atomaton:notify=LOGIN -->` tag in the body -- embedded by
  * mcp/github.ts at creation time, carrying the requester the creating run knew.
  *
  * Falls back to the issue/PR's own author when no tag is present and the author is
- * a human. If neither is available, walks up the `atoma:parent`/`atoma:parent-issue`
+ * a human. If neither is available, walks up the `atomaton:parent`/`atomaton:parent-issue`
  * chain and retries on the parent. Measured over all 255 issues in this repository,
  * no issue would need that walk: every one resolves by its own tag or its own
  * author. It is kept for a repository whose history is not this one.

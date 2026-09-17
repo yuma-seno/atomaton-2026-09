@@ -78,7 +78,7 @@ export function dispatchPrValidation(repo: string, prNumber: number, branch: str
  * After a pull request merges, re-invoke the agent that created it on the linked
  * sub-issue, instead of silently closing that sub-issue here.
  *
- * The agent is named by the `atoma:origin-agent` tag the pull request body
+ * The agent is named by the `atomaton:origin-agent` tag the pull request body
  * carries. Returns whether the dispatch was sent; the caller falls back to
  * closing the issue directly when it was not.
  */

@@ -62,7 +62,7 @@ function runningChildren(repo: string, parent: number): number[] {
   const label = getLabel("in_progress");
   const { code, stdout } = gh(
     "issue", "list", "--repo", repo, "--state", "open", "--limit", "200",
-    "--search", `atoma:parent=${parent} in:body`,
+    "--search", `atomaton:parent=${parent} in:body`,
     "--label", label,
     "--json", "number,body",
   );
@@ -70,7 +70,7 @@ function runningChildren(repo: string, parent: number): number[] {
   try {
     const issues = JSON.parse(stdout || "[]") as { number: number; body?: string }[];
     // The search is a prefilter, not the predicate: GitHub tokenizes, so a query for
-    // `atoma:parent=5` also returns the sub-issues of #50. `PARENT_TAG.read` is
+    // `atomaton:parent=5` also returns the sub-issues of #50. `PARENT_TAG.read` is
     // anchored on the tag's real wire format. Same trap as `aggregate_sub_issues.ts`.
     return issues.filter((i) => PARENT_TAG.read(i.body ?? "") === parent).map((i) => i.number);
   } catch {

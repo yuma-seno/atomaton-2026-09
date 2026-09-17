@@ -200,21 +200,21 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 101,
         event_type: "issue_comment",
-        content: "<!-- atoma:agent=orchestrator -->\n/orchestrator handled",
+        content: "<!-- atomaton:agent=orchestrator -->\n/orchestrator handled",
         author: "github-actions[bot]",
         created_at: "2026-05-27T10:00:00Z",
       },
       {
         id: 102,
         event_type: "issue_comment",
-        content: "<!-- atoma:agent=engineer -->\n/engineer please implement",
+        content: "<!-- atomaton:agent=engineer -->\n/engineer please implement",
         author: "github-actions[bot]",
         created_at: "2026-05-27T10:01:00Z",
       },
       {
         id: 103,
         event_type: "issue_comment",
-        content: "<!-- atoma:sub-result:#7 -->\n/orchestrator sub-task #7 completed.",
+        content: "<!-- atomaton:sub-result:#7 -->\n/orchestrator sub-task #7 completed.",
         author: "github-actions[bot]",
         created_at: "2026-05-27T10:02:00Z",
       },
@@ -253,7 +253,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 301,
         event_type: "issue_comment",
-        content: "<!-- atoma:agent=orchestrator -->\nComment copied by a human",
+        content: "<!-- atomaton:agent=orchestrator -->\nComment copied by a human",
         author: "alice",
         created_at: "2026-05-27T12:00:00Z",
       },
@@ -270,7 +270,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 302,
         event_type: "issue_comment",
-        content: "<!-- atoma:llm-context=exclude -->\nAtomaton: Agent `engineer` dispatched.",
+        content: "<!-- atomaton:llm-context=exclude -->\nAtomaton: Agent `engineer` dispatched.",
         author: "github-actions[bot]",
         created_at: "2026-05-27T12:00:00Z",
       },
@@ -284,7 +284,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 304,
         event_type: "issue_comment",
-        content: "<!-- atoma:llm-context=exclude -->\nHuman instruction must still be visible.",
+        content: "<!-- atomaton:llm-context=exclude -->\nHuman instruction must still be visible.",
         author: "alice",
         created_at: "2026-05-27T12:02:00Z",
       },
@@ -295,7 +295,7 @@ describe("reconcile_github_session.ts", () => {
     expect(eventCount).toBe(2);
     expect(mergedSession.messages?.map((message) => message.content)).toEqual([
       "@alice Atomaton ran out of time. Please review and retry.",
-      "<!-- atoma:llm-context=exclude -->\nHuman instruction must still be visible.",
+      "<!-- atomaton:llm-context=exclude -->\nHuman instruction must still be visible.",
     ]);
   });
 

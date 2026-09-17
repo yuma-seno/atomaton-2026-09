@@ -197,8 +197,8 @@ describe("`self/` and `.github/` hold the same overlay", () => {
       if (!/\.(ts|yml|yaml|md|json)$/.test(file)) continue;
       expect(
         body(join("src", file)),
-        `src/${file} names ATOMA_SELF_DEPLOY_TOKEN; that secret is this repository's own`,
-      ).not.toContain("ATOMA_SELF_DEPLOY_TOKEN");
+        `src/${file} names SELF_DEPLOY_TOKEN; that secret is this repository's own`,
+      ).not.toContain("SELF_DEPLOY_TOKEN");
     }
   });
 });

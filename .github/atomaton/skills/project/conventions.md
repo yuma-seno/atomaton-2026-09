@@ -116,7 +116,7 @@ remembering to. Before `self/` existed this was a `cp -r` followed by
 `git checkout -- .github/atomaton/config.yaml`, and a file the template had removed
 stayed in the tree with no diff to notice it by.
 
-It needs `ATOMA_SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because
+It needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because
 `GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by
 path. No agent can reach that token: it is named in one file outside the
 deliverable, and `atomaton-runner.yml` does not mention it.

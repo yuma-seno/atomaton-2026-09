@@ -145,11 +145,11 @@ Deleting first makes an upstream removal ordinary.
 branch: the push is refused on **identity**, measured here. This deploy replaces
 those files, so no arrangement of paths avoids it.
 
-So the workflow needs `ATOMA_SELF_DEPLOY_TOKEN` — a fine-grained or classic PAT
+So the workflow needs `SELF_DEPLOY_TOKEN` — a fine-grained or classic PAT
 with the `workflow` scope, set as an Actions secret in this repository:
 
 ```bash
-gh secret set ATOMA_SELF_DEPLOY_TOKEN
+gh secret set SELF_DEPLOY_TOKEN
 ```
 
 **No agent can reach it.** It is named in `self/workflows/atomaton-self-deploy.yml`

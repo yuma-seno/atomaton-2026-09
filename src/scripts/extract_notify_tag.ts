@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * extract_notify_tag.ts — Extract the `<!-- atoma:notify=LOGIN -->` tag
+ * extract_notify_tag.ts — Extract the `<!-- atomaton:notify=LOGIN -->` tag
  * (embedded by mcp/github.ts) directly from an already-fetched
  * PR body, if present. Unlike resolve_notify.ts (which calls the GitHub API
  * and walks up the parent-issue chain), this is a pure, offline string

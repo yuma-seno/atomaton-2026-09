@@ -10,7 +10,7 @@ describe("check_sub_issue_closure.ts", () => {
     try {
       const eventFile = join(dir, "event.json");
       const outputFile = join(dir, "out");
-      writeFileSync(eventFile, JSON.stringify({ issue: { body: "<!-- atoma:parent=3 -->\nsome body" } }));
+      writeFileSync(eventFile, JSON.stringify({ issue: { body: "<!-- atomaton:parent=3 -->\nsome body" } }));
       writeFileSync(outputFile, "");
       runWithFakeGh(scriptPath("check_sub_issue_closure.ts"), [], {
         env: { GITHUB_EVENT_PATH: eventFile, GITHUB_OUTPUT: outputFile, CLOSED_NUM: "9", OWNER: "owner", REPO: "repo" },
@@ -37,7 +37,7 @@ describe("check_sub_issue_closure.ts", () => {
     try {
       const eventFile = join(dir, "event.json");
       const outputFile = join(dir, "out");
-      writeFileSync(eventFile, JSON.stringify({ issue: { body: "<!-- atoma:parent=3 -->\nsome body" } }));
+      writeFileSync(eventFile, JSON.stringify({ issue: { body: "<!-- atomaton:parent=3 -->\nsome body" } }));
       writeFileSync(outputFile, "");
       runWithFakeGh(scriptPath("check_sub_issue_closure.ts"), [], {
         env: { GITHUB_EVENT_PATH: eventFile, GITHUB_OUTPUT: outputFile, CLOSED_NUM: "9", OWNER: "owner", REPO: "repo" },
@@ -57,7 +57,7 @@ describe("check_sub_issue_closure.ts", () => {
     }
   });
 
-  test("reports is_sub_issue=false when there is no atoma:parent tag", () => {
+  test("reports is_sub_issue=false when there is no atomaton:parent tag", () => {
     const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const eventFile = join(dir, "event.json");

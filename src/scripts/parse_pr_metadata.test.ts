@@ -14,7 +14,7 @@ describe("parse_pr_metadata.ts", () => {
       encoding: "utf8",
       env: {
         ...process.env,
-        PR_BODY: "<!-- atoma:parent-issue=42 -->\nCloses #7\nsome body",
+        PR_BODY: "<!-- atomaton:parent-issue=42 -->\nCloses #7\nsome body",
         PR_NUMBER: "99",
         GITHUB_OUTPUT: outputFile,
       },

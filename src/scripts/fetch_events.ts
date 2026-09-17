@@ -19,7 +19,7 @@
  *
  * Requires GITHUB_REPOSITORY (owner/repo) in the environment.
  * Writes `resolved_type` / `resolved_number` to $GITHUB_OUTPUT. A PR linked
- * via `<!-- atoma:parent-issue=N -->` resolves to that canonical Issue so
+ * via `<!-- atomaton:parent-issue=N -->` resolves to that canonical Issue so
  * Issue and PR runs share one serial conversation/session.
  */
 import { appendFileSync, writeFileSync } from "node:fs";
@@ -266,7 +266,7 @@ function fetchPrEvents(owner: string, repo: string, number: number, maxDiffChars
 function linkedPrNumbers(owner: string, repo: string, issueNumber: number): number[] {
   const prs = ghJson<{ number: number }[]>(
     "pr", "list", "--repo", `${owner}/${repo}`, "--state", "all",
-    "--search", `atoma:parent-issue=${issueNumber} in:body`,
+    "--search", `atomaton:parent-issue=${issueNumber} in:body`,
     "--limit", "1000", "--json", "number",
   ) ?? [];
   if (prs.length === 1000) {

@@ -4,7 +4,7 @@
  * An agent name is not decoration: it is spliced into a filesystem path
  * (`--agent-def .github/atomaton/agent-definitions/<name>.md`), into shell text
  * inside generated workflow YAML, into `gh workflow run --field agent=<name>`,
- * and into the `atoma:agent`/`atoma:dispatch`/`atoma:origin-agent` comment
+ * and into the `atomaton:agent`/`atomaton:dispatch`/`atomaton:origin-agent` comment
  * tags. So "what counts as a name" is a security boundary, and it was
  * previously written out five separate times -- four TypeScript regexes and one
  * bash ERE -- with no link between them.

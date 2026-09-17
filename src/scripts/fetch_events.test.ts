@@ -197,7 +197,7 @@ describe("fetch_events.ts", () => {
         stdout: JSON.stringify({
           number: 10,
           title: "Implement fix",
-          body: "<!-- atoma:parent-issue=5 -->\nCloses #5",
+          body: "<!-- atomaton:parent-issue=5 -->\nCloses #5",
           user: { login: "engineer" },
           created_at: "2026-01-02T00:00:00Z",
           updated_at: "2026-01-02T06:00:00Z",
@@ -214,7 +214,7 @@ describe("fetch_events.ts", () => {
         stdout: JSON.stringify({
           number: 11,
           title: "Follow-up fix",
-          body: "<!-- atoma:parent-issue=5 -->\nFollow-up",
+          body: "<!-- atomaton:parent-issue=5 -->\nFollow-up",
           user: { login: "engineer" },
           created_at: "2026-01-05T00:00:00Z",
           updated_at: "2026-01-05T01:00:00Z",

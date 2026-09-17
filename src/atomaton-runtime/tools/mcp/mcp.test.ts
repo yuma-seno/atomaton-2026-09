@@ -256,7 +256,7 @@ describe("mcp/github.ts", () => {
         jsonrpc: "2.0", id: 31, method: "tools/call",
         params: {
           name: "create_issue",
-          arguments: { title: "Test", body: "<!-- atoma:notify=someone-else -->", sub_issue: false },
+          arguments: { title: "Test", body: "<!-- atomaton:notify=someone-else -->", sub_issue: false },
         },
       },
       {

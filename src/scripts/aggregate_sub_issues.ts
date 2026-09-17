@@ -34,10 +34,10 @@ export const ref = defineScript<AggregateSubIssuesArgs>(import.meta.url);
  * Every sub-issue linked to `parent`, open or closed.
  *
  * The `--search` narrows server-side, but GitHub's issue search tokenizes, so it
- * is a prefilter and not the predicate: the same query returns `atoma:parent=50`
+ * is a prefilter and not the predicate: the same query returns `atomaton:parent=50`
  * for a query of `5`. `PARENT_TAG.read` is the predicate, because it is anchored
  * on the tag's real wire format. The previous version filtered with jq
- * `contains("atoma:parent=<n>")`, an unanchored substring test, so aggregating
+ * `contains("atomaton:parent=<n>")`, an unanchored substring test, so aggregating
  * a parent collected every sub-issue of a numeric range and fed their results
  * into the parent's orchestrator session.
  *
@@ -48,7 +48,7 @@ export const ref = defineScript<AggregateSubIssuesArgs>(import.meta.url);
 function linkedSubIssues(repo: string, parent: number): number[] {
   const { code, stdout, stderr } = gh(
     "issue", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `atoma:parent=${parent} in:body`,
+    "--search", `atomaton:parent=${parent} in:body`,
     "--json", "number,body",
   );
   if (code !== 0) {
