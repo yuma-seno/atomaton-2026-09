@@ -169,6 +169,17 @@ export interface FailureTally extends Tally {
   failed: number;
   /** Calls the machinery refused. A guard working, counted apart from a tool breaking. */
   refused: number;
+  /**
+   * When a session that saw this tool fail was last written, or undefined if it never
+   * failed.
+   *
+   * Without it a rate is a number over all time and reads as a number about now.
+   * `shell__terminal_operate` sits at 53.3%, which is 67.2% before issue 200 and 1.8%
+   * since -- a fault that stopped hundreds of runs ago, indistinguishable in the table
+   * from one happening today. The degraded table had this column and this warning
+   * already; the table people read first did not.
+   */
+  lastFailed?: string;
 }
 
 export interface Distribution {
@@ -240,13 +251,23 @@ export function metricsOf(
   tokens: readonly TokenRecord[],
 ): Metrics {
   const calls = sessions.flatMap((s) => s.calls);
+  // Per session rather than over the flattened calls, because the date a failure was
+  // last seen lives on the session and is the thing that tells a live fault from a
+  // fixed one.
   const byTool = new Map<string, FailureTally>();
-  for (const call of calls) {
-    const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0, refused: 0 };
-    row.count += 1;
-    if (call.failed) row.failed += 1;
-    if (call.refused) row.refused += 1;
-    byTool.set(call.tool, row);
+  for (const session of sessions) {
+    for (const call of session.calls) {
+      const row = byTool.get(call.tool) ?? { name: call.tool, count: 0, failed: 0, refused: 0 };
+      row.count += 1;
+      if (call.failed) {
+        row.failed += 1;
+        if (session.at && (row.lastFailed === undefined || session.at > row.lastFailed)) {
+          row.lastFailed = session.at;
+        }
+      }
+      if (call.refused) row.refused += 1;
+      byTool.set(call.tool, row);
+    }
   }
 
   // Counted per problem rather than per tool: the same fault appears under whichever
