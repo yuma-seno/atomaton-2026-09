@@ -24,19 +24,19 @@ No session ran in this window.
 
 ## All time
 
-365 sessions.
+366 sessions.
 
-**136,893,418 tokens** over 423 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**136,961,489 tokens** over 424 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,624 | 302,887 | 6,403,430 | 39,737,697 | 136,893,418 |
-| messages per session | 10 | 99 | 524 | 1,408 | 15,186 |
+| tokens per run | 24,629 | 302,887 | 6,403,430 | 39,737,697 | 136,961,489 |
+| messages per session | 10 | 99 | 524 | 1,408 | 15,204 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 238 | 65.2% |
-| `engineer` | 90 | 24.7% |
+| `reviewer` | 239 | 65.3% |
+| `engineer` | 90 | 24.6% |
 | `orchestrator` | 37 | 10.1% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
@@ -48,12 +48,12 @@ No session ran in this window.
 | `filesystem__read_text_file` | 582 | 43 | 24 | 7.4% |
 | `filesystem_readonly__read_file` | 351 | 11 | 5 | 3.1% |
 | `filesystem__list_directory` | 255 | 6 | 0 | 2.4% |
-| `github__check_merge_readiness` | 224 | 2 | 0 | 0.9% |
+| `github__check_merge_readiness` | 225 | 2 | 0 | 0.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
 | `github__get_issue` | 187 | 22 | 2 | 11.8% |
-| `atoma_builtin__load_skill` | 183 | 77 | 0 | 42.1% |
+| `atoma_builtin__load_skill` | 184 | 77 | 0 | 41.8% |
 | `filesystem_readonly__list_directory` | 171 | 0 | 0 | 0% |
-| `github__submit_pr_review` | 109 | 29 | 0 | 26.6% |
+| `github__submit_pr_review` | 110 | 29 | 0 | 26.4% |
 | `search__search_code` | 99 | 0 | 0 | 0% |
 | `github__commit_and_push` | 92 | 55 | 0 | 59.8% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
@@ -68,8 +68,8 @@ No session ran in this window.
 | `github__get_issue_comments` | 42 | 8 | 0 | 19% |
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
 | `search__search_issues` | 35 | 4 | 0 | 11.4% |
+| `github__merge_pr` | 34 | 1 | 0 | 2.9% |
 | `github__close_issue` | 33 | 1 | 14 | 3% |
-| `github__merge_pr` | 33 | 1 | 0 | 3% |
 | `github__list_issues` | 31 | 3 | 0 | 9.7% |
 | `github__get_branch` | 30 | 13 | 0 | 43.3% |
 | `filesystem_readonly__read_text_file` | 29 | 0 | 29 | 0% |
@@ -128,11 +128,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | skill | loads | share |
 | --- | ---: | ---: |
-| `review/quick-quality-gate` | 36 | 33.6% |
-| `project/conventions` | 26 | 24.3% |
-| `delivery/implementation-handoff` | 20 | 18.7% |
-| `engineering/tdd` | 9 | 8.4% |
-| `delivery/issue-decomposition` | 8 | 7.5% |
+| `review/quick-quality-gate` | 37 | 34.3% |
+| `project/conventions` | 26 | 24.1% |
+| `delivery/implementation-handoff` | 20 | 18.5% |
+| `engineering/tdd` | 9 | 8.3% |
+| `delivery/issue-decomposition` | 8 | 7.4% |
 | `engineering/debugging` | 3 | 2.8% |
 | `engineering/environment` | 2 | 1.9% |
 | `research/web-search` | 2 | 1.9% |
@@ -144,7 +144,6 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-17 | `shell` | 1 | 1 | [atoma-shell] exec: rm -rf /tmp/envtest && bun test src/scripts/run_environment_setup.test.ts src/scripts/run_checks.tes |
 | 2026-09-17 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
 | 2026-09-17 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
 | 2026-09-17 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
@@ -155,6 +154,7 @@ A tool can answer and report that it answered badly — a search that came back 
 | 2026-09-17 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
 | 2026-09-17 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
 | 2026-09-17 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
+| 2026-09-17 | `shell` | 1 | 1 | [atoma-shell] exec: rm -rf /tmp/envtest && bun test src/scripts/run_environment_setup.test.ts src/scripts/run_checks.tes |
 
 ## Never used
 
