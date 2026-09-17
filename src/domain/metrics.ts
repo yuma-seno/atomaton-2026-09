@@ -144,9 +144,14 @@ export interface Metrics {
   byTool: FailureTally[];
   bySkill: Tally[];
   byAct: Tally[];
-  /** Declared servers that nothing called. See `metricsOf` for why servers and not tools. */
-  neverUsedServers: string[];
-  neverLoaded: string[];
+  /**
+   * Declared servers that nothing called, or `undefined` when the declared list could
+   * not be read. See `metricsOf` for why servers and not tools, and why the two states
+   * are not the same answer.
+   */
+  neverUsedServers: string[] | undefined;
+  /** Declared skills that nothing loaded, or `undefined` when the list could not be read. */
+  neverLoaded: string[] | undefined;
   refusals: number;
   /** Answers that arrived degraded, worst-recurring first. See `DegradedTally`. */
   degraded: DegradedTally[];
@@ -217,6 +222,12 @@ function tally(names: readonly string[]): Tally[] {
  * a skill's description are in the prompt of every single run, so something never used is
  * paid for every time and returns nothing.
  *
+ * `undefined` for either list means it could not be read, which is NOT the same answer as
+ * an empty list. They were the same for a while: the skill list is built by listing a
+ * directory, the listing came back empty while that directory was being renamed, and the
+ * report said every skill had been loaded. A skill nobody had ever loaded sat behind that
+ * sentence. A check whose input is missing has to say so rather than pass.
+ *
  * Servers rather than individual tools, because `tools.yaml` declares servers and only a
  * running server can list its tools. Comparing the declared names against call names
  * directly is what the first version did, and since a call is `filesystem__read_text_file`
@@ -224,8 +235,8 @@ function tally(names: readonly string[]): Tally[] {
  */
 export function metricsOf(
   sessions: readonly SessionRecord[],
-  declaredServers: readonly string[],
-  declaredSkills: readonly string[],
+  declaredServers: readonly string[] | undefined,
+  declaredSkills: readonly string[] | undefined,
   tokens: readonly TokenRecord[],
 ): Metrics {
   const calls = sessions.flatMap((s) => s.calls);
@@ -273,8 +284,8 @@ export function metricsOf(
     byTool: [...byTool.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     bySkill: tally(calls.flatMap((c) => (c.skill ? [c.skill] : []))),
     byAct: tally(calls.flatMap((c) => (c.act ? [c.act] : []))),
-    neverUsedServers: declaredServers.filter((s) => !usedServers.has(s)).sort(),
-    neverLoaded: declaredSkills.filter((s) => !loaded.has(s)).sort(),
+    neverUsedServers: declaredServers?.filter((s) => !usedServers.has(s)).sort(),
+    neverLoaded: declaredSkills?.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
     degraded: [...degraded.values()]
       .map(({ seen, ...row }) => ({ ...row, sessions: seen.size }))
