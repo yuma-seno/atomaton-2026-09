@@ -36,7 +36,7 @@ import {
 } from "../../../domain/environment-reload.ts";
 
 function log(msg: string): void {
-  console.error(`[atoma-mcp] ${msg}`);
+  console.error(`[atomaton-mcp] ${msg}`);
 }
 
 // Same OS user as every other tool server, including the one that runs arbitrary
@@ -310,8 +310,8 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
 ]);
 
 async function main(): Promise<void> {
-  log("Starting atoma-mcp-server (stdio transport)");
-  await serveMcpServer({ name: "atoma-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log });
+  log("Starting atomaton-mcp-server (stdio transport)");
+  await serveMcpServer({ name: "atomaton-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log });
 }
 
 if (import.meta.main) void main();

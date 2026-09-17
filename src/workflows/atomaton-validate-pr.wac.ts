@@ -63,7 +63,7 @@ const PR_HEAD_DIR = "pr-head";
  * Outside the workspace, so neither checkout can have placed it and nothing commits
  * it.
  */
-const DELIVERABLE_REPORT = "${RUNNER_TEMP}/atoma-deliverable-problems.txt";
+const DELIVERABLE_REPORT = "${RUNNER_TEMP}/atomaton-deliverable-problems.txt";
 
 /**
  * Check the deliverable, and let a red verdict through to the next step.

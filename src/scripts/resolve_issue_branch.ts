@@ -33,7 +33,7 @@ export interface ResolveIssueBranchArgs {
 export const ref = defineScript<ResolveIssueBranchArgs>(import.meta.url);
 
 function log(message: string): void {
-  console.error(`[atoma-issue-branch] ${message}`);
+  console.error(`[atomaton-issue-branch] ${message}`);
 }
 
 function main(): void {

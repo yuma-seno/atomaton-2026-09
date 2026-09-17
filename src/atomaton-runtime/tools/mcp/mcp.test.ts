@@ -102,7 +102,7 @@ describe("mcp/github.ts", () => {
     const r = await sendRequest("github.ts", {
       jsonrpc: "2.0", id: 1, method: "initialize", params: INIT_PARAMS,
     });
-    expect(r.result.serverInfo.name).toBe("atoma-github-mcp");
+    expect(r.result.serverInfo.name).toBe("atomaton-github-mcp");
   });
 
   test("tools/list exposes the expected tool set", async () => {
@@ -457,7 +457,7 @@ describe("mcp/github.ts", () => {
           "github.ts",
           {
             jsonrpc: "2.0", id: 45, method: "tools/call",
-            params: { name: "search_code", arguments: { query: "atoma_github" } },
+            params: { name: "search_code", arguments: { query: "atomaton_github" } },
           },
           {
             PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
@@ -466,12 +466,12 @@ describe("mcp/github.ts", () => {
               // A wait GitHub states in milliseconds keeps the test honest and quick:
               // the code reads the stated number rather than using its own backoff.
               { match: ["search", "code"], attempt: 1, code: 1, stdout: "HTTP 429: try again in 0.01s" },
-              { match: ["search", "code"], stdout: "main.rs:12: atoma_github" },
+              { match: ["search", "code"], stdout: "main.rs:12: atomaton_github" },
             ]),
           },
         );
         expect(r.result.isError).toBe(false);
-        expect(r.result.content[0].text).toContain("atoma_github");
+        expect(r.result.content[0].text).toContain("atomaton_github");
         // Asked twice, which is the whole point.
         expect(readFileSync(log, "utf8").split("\n").filter(Boolean).length).toBe(2);
       } finally {
@@ -697,7 +697,7 @@ describe("mcp/atomaton.ts", () => {
     const r = await sendRequest("atomaton.ts", {
       jsonrpc: "2.0", id: 1, method: "initialize", params: INIT_PARAMS,
     });
-    expect(r.result.serverInfo.name).toBe("atoma-mcp-server");
+    expect(r.result.serverInfo.name).toBe("atomaton-mcp-server");
   });
 
   test("launch_sub_agent schema requires issue and agent", async () => {
@@ -731,7 +731,7 @@ describe("mcp/atomaton.ts", () => {
 describe("mcp/web.ts", () => {
   test("initializes and advertises fetch", async () => {
     const init = await sendRequest("web.ts", INIT_REQUEST);
-    expect(init.result.serverInfo.name).toBe("atoma-web-mcp");
+    expect(init.result.serverInfo.name).toBe("atomaton-web-mcp");
 
     const list = await sendRequest("web.ts", { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
     const names = list.result.tools.map((t: { name: string }) => t.name);

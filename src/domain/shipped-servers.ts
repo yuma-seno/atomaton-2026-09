@@ -61,7 +61,7 @@ export interface ToolDefaults {
  * -- and they do not. Bundling flattens `src/domain/` into the script that imports
  * it, so `import.meta.url` in a deployed tree is the SCRIPT's location, and `..`
  * from `<runtime>/scripts/` is `<runtime>`, which already ends in `atomaton-runtime`.
- * The path came out as `atoma-runtime/atoma-runtime/tools/defaults.yaml` and every
+ * The path came out as `atomaton-runtime/atomaton-runtime/tools/defaults.yaml` and every
  * agent run died on it.
  *
  * So a caller that knows where it is running passes the path, and

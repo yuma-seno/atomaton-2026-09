@@ -31,7 +31,7 @@ import { PARENT_TAG } from "./tags.ts";
 export type ParentIssue = { known: true; parent: number } | { known: false; why: string };
 
 function log(message: string): void {
-  console.error(`[atoma-parent] ${message}`);
+  console.error(`[atomaton-parent] ${message}`);
 }
 
 /** GitHub's native sub-issue parent, or undefined when there is none or it could not be asked. */

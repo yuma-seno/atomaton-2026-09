@@ -1178,7 +1178,7 @@ const runJob = new NormalJob("run", {
   "runs-on": "ubuntu-latest",
   "timeout-minutes": JOB_TIMEOUT_MINUTES,
   concurrency: {
-    group: "atoma-${{ inputs.type }}-${{ inputs.number }}",
+    group: "atomaton-${{ inputs.type }}-${{ inputs.number }}",
     "cancel-in-progress": false,
   },
   permissions: ATOMATON_WORKFLOW_PERMISSIONS,
@@ -1364,7 +1364,7 @@ if [ -n "$BUN_PKGS" ]; then
   # A manifest of its own, so \`bun add\` has somewhere to work and does not read a
   # project's. \`--no-save\` still applies; this only gives it a directory to own.
   if [ ! -f "\${RUNNER_TEMP}/package.json" ]; then
-    echo '{"name":"atoma-mcp-libraries","private":true}' > "\${RUNNER_TEMP}/package.json"
+    echo '{"name":"atomaton-mcp-libraries","private":true}' > "\${RUNNER_TEMP}/package.json"
   fi
   (cd "\${RUNNER_TEMP}" && bun add --no-save $BUN_PKGS)
   echo "MCP libraries installed at \${RUNNER_TEMP}/node_modules, beside the machinery"
@@ -1442,8 +1442,8 @@ fi
   new TypedOutputsStep({
     name: "Configure git identity",
     shell: "bash",
-    run: `git config user.name "atoma-\${{ inputs.agent }}"
-git config user.email "atoma-\${{ inputs.agent }}@users.noreply.github.com"
+    run: `git config user.name "atomaton-\${{ inputs.agent }}"
+git config user.email "atomaton-\${{ inputs.agent }}@users.noreply.github.com"
 `,
   }),
   notifyStep,

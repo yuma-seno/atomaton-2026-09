@@ -89,7 +89,7 @@ interface ApiComment {
 }
 
 function log(message: string): void {
-  console.error(`[atoma-search] ${message}`);
+  console.error(`[atomaton-search] ${message}`);
 }
 
 /** Longest issue body kept. Beyond this an issue is a document, not a discussion. */

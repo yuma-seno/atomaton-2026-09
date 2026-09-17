@@ -12,7 +12,7 @@ import { gh } from "./gh.ts";
 import type { IssueBranch } from "../domain/issue-branch.ts";
 
 function log(message: string): void {
-  console.error(`[atoma-issue-branch] ${message}`);
+  console.error(`[atomaton-issue-branch] ${message}`);
 }
 
 /**
