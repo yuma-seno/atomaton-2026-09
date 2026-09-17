@@ -270,7 +270,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 302,
         event_type: "issue_comment",
-        content: "<!-- atoma:llm-context=exclude -->\nAtoma: Agent `engineer` dispatched.",
+        content: "<!-- atoma:llm-context=exclude -->\nAtomaton: Agent `engineer` dispatched.",
         author: "github-actions[bot]",
         created_at: "2026-05-27T12:00:00Z",
       },

@@ -698,7 +698,7 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
         : "Running CI. No reviewer was named, so nothing is scheduled afterwards.";
     gh(
       "issue", "comment", currentIssue, "--repo", REPO,
-      "--body", `${LLM_CONTEXT_TAG.write("exclude")}\nAtoma: PR #${num} created (${stdout.trim()}). ${next}`,
+      "--body", `${LLM_CONTEXT_TAG.write("exclude")}\nAtomaton: PR #${num} created (${stdout.trim()}). ${next}`,
     );
   }
 

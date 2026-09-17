@@ -81,11 +81,11 @@ describe("deployment contract", () => {
   });
 
   test("src/atomaton/ and the shipped dist tree hold the same static files", () => {
-    const distAtoma = join(process.cwd(), "dist/.github/atomaton");
+    const distAtomaton = join(process.cwd(), "dist/.github/atomaton");
     let shipped: string[];
     try {
-      statSync(distAtoma);
-      shipped = walk(distAtoma).map((f) => f.replace("dist/.github/atomaton/", ""));
+      statSync(distAtomaton);
+      shipped = walk(distAtomaton).map((f) => f.replace("dist/.github/atomaton/", ""));
     } catch {
       // `dist/` is not tracked, so a fresh checkout has none until synth runs.
       // ci.yml builds it before `test` for exactly this reason -- if this branch

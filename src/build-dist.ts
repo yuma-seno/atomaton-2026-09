@@ -119,9 +119,9 @@ function copyDirectoryFresh(source: string, destination: string): void {
   cpSync(source, destination, { recursive: true });
 }
 
-function copyStaticAtomaContent(): void {
-  const srcAtomaDir = join(SRC_DIR, USER_DIR);
-  const distAtomaDir = join(DIST_GITHUB_DIR, USER_DIR);
+function copyStaticAtomatonContent(): void {
+  const srcAtomatonDir = join(SRC_DIR, USER_DIR);
+  const distAtomatonDir = join(DIST_GITHUB_DIR, USER_DIR);
 
   // Every static file the generated workflows read at runtime must be listed
   // here, or it never reaches `dist/` and so never reaches an adopter. A file
@@ -146,7 +146,7 @@ function copyStaticAtomaContent(): void {
   //
   // The subdirectories of `atoma/` itself are replaced wholesale below, so files at
   // these two levels are all that can be orphaned.
-  const sweep: Array<[string, readonly string[]]> = [[distAtomaDir, filesCopiedVerbatim]];
+  const sweep: Array<[string, readonly string[]]> = [[distAtomatonDir, filesCopiedVerbatim]];
   for (const [dir, keep] of sweep) {
     if (!existsSync(dir)) continue;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -158,15 +158,15 @@ function copyStaticAtomaContent(): void {
   }
 
   for (const file of filesCopiedVerbatim) {
-    cpSync(join(srcAtomaDir, file), join(distAtomaDir, file));
+    cpSync(join(srcAtomatonDir, file), join(distAtomatonDir, file));
   }
-  copyDirectoryFresh(join(srcAtomaDir, "agent-definitions"), join(distAtomaDir, "agent-definitions"));
-  copyDirectoryFresh(join(srcAtomaDir, "skills"), join(distAtomaDir, "skills"));
+  copyDirectoryFresh(join(srcAtomatonDir, "agent-definitions"), join(distAtomatonDir, "agent-definitions"));
+  copyDirectoryFresh(join(srcAtomatonDir, "skills"), join(distAtomatonDir, "skills"));
   // Not read by anything at runtime -- an adopter applies it once with `gh api`.
   // It ships because the required check it names is produced by a workflow that
   // also ships, and a ruleset written by hand against a remembered job name is
   // the failure `generated-workflows.test.ts` exists to prevent.
-  copyDirectoryFresh(join(srcAtomaDir, "rulesets"), join(distAtomaDir, "rulesets"));
+  copyDirectoryFresh(join(srcAtomatonDir, "rulesets"), join(distAtomatonDir, "rulesets"));
 
   // The runtime's own data, beside the scripts that read it and outside the directory
   // an adopter edits. `defaults.yaml` is read by `write_tools_file.ts` at the start of
@@ -191,7 +191,7 @@ function copyStaticAtomaContent(): void {
   // moment the file is written, and that moment is now in the adopter's run, where
   // this build cannot see it.
 
-  console.log(`build-dist: copied static content: ${srcAtomaDir} -> ${distAtomaDir}`);
+  console.log(`build-dist: copied static content: ${srcAtomatonDir} -> ${distAtomatonDir}`);
 }
 
 /**
@@ -232,7 +232,7 @@ async function main(): Promise<void> {
     join(DIST_GITHUB_DIR, RUNTIME_DIR, "tools"),
     new Set(["lib"]),
   );
-  copyStaticAtomaContent();
+  copyStaticAtomatonContent();
   writeManifest();
 }
 
