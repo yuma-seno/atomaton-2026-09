@@ -37,7 +37,7 @@ describe("dispatch_if_siblings_done.ts", () => {
           cwd: configDir,
           rules: [
             { match: ["issue", "list"], stdout: "[]" },
-            { match: ["issue", "view", "comments"], stdout: "<!-- atoma:aggregated=9 -->\nAtomaton: All sub-tasks completed." },
+            { match: ["issue", "view", "comments"], stdout: "<!-- atomaton:aggregated=9 -->\nAtomaton: All sub-tasks completed." },
           ],
         },
       );

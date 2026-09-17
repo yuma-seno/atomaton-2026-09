@@ -4,7 +4,7 @@
  * The I/O half of `domain/workspace.ts`'s `workspaceScope`, which holds the rule.
  * Here is the walking: one hop at a time through `parentIssueOf`, and for a pull
  * request one extra hop first, because a pull request's link to its issue is the
- * `atoma:parent-issue` tag rather than a sub-issue relationship.
+ * `atomaton:parent-issue` tag rather than a sub-issue relationship.
  */
 import { gh } from "./gh.ts";
 import { parentIssueOf } from "./parent-issue.ts";

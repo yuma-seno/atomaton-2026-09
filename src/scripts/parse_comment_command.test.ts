@@ -26,8 +26,8 @@ describe("parse_comment_command.ts", () => {
     expect(result.error).toContain("Unknown command syntax");
   });
 
-  test("parses the atoma:dispatch= comment form", () => {
-    expect(parseCommentCommand("<!-- atoma:dispatch=engineer -->")).toEqual({
+  test("parses the atomaton:dispatch= comment form", () => {
+    expect(parseCommentCommand("<!-- atomaton:dispatch=engineer -->")).toEqual({
       agent: "engineer",
       control: "",
       sessionMode: "continue",

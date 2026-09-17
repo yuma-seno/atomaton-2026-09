@@ -161,13 +161,26 @@ describe("agent prompt contracts", () => {
 
   /**
    * And nothing may tell an agent to expand a variable to find it. `ls
-   * $ATOMA_WORKSPACE` with the variable unset returns nothing, which reads exactly
-   * like an empty directory -- so the failure and the ordinary case become
-   * indistinguishable in the one place a model is looking.
+   * $SOMETHING_WORKSPACE` with the variable unset returns nothing, which reads
+   * exactly like an empty directory -- so the failure and the ordinary case become
+   * indistinguishable in the one place a model is looking. The path is written out.
+   *
+   * This watched for one spelling, `ATOMA_WORKSPACE`, which is the name the
+   * variable would have had. Renaming the project left it watching for a string
+   * nobody would write, which is a guard that cannot fail rather than a guard that
+   * passes. The mistake has a shape -- a variable expansion with WORKSPACE in its
+   * name -- and the shape is what is checked now, whatever the project is called.
    */
   test("the workspace is never named through a variable", () => {
     for (const file of ["src/atomaton/prompt-template.md", "src/atomaton-runtime/tools/mcp/shell.ts"]) {
-      expect(readFileSync(file, "utf8"), `${file}`).not.toContain("ATOMA_WORKSPACE");
+      const expansions = readFileSync(file, "utf8").match(
+        /\$\{?[A-Za-z_]*WORKSPACE[A-Za-z_]*\}?/g,
+      );
+      expect(
+        expansions ?? [],
+        `${file} names the workspace through a variable. Unset, it expands to nothing and ` +
+          `reads as an empty directory; write the path out`,
+      ).toEqual([]);
     }
   });
 });

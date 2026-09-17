@@ -16,7 +16,7 @@
  * Idempotency: two of the three can race for the SAME completion -- a PR merge
  * triggers the event-driven aggregate_sub_issues.ts AND, asynchronously, an
  * origin-agent re-invocation that eventually closes the sub-issue itself and
- * reaches the first path. The `atoma:aggregated` marker check below makes
+ * reaches the first path. The `atomaton:aggregated` marker check below makes
  * whichever caller gets here first win and the other a no-op.
  */
 import { gh } from "./gh.ts";
@@ -70,7 +70,7 @@ export interface DispatchGateOptions {
  * that the return type cannot say what happened.
  */
 export type DispatchGateResult =
-  /** Not this issue's business: it carries no `atoma:parent` tag. */
+  /** Not this issue's business: it carries no `atomaton:parent` tag. */
   | { kind: "not-tracked" }
   /** Siblings are still open. `remaining` is how many. */
   | { kind: "waiting"; remaining: number }
@@ -218,14 +218,14 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
     repo: opts.repo,
   });
 
-  // Reported rather than assumed. The `atoma:aggregated` marker above is already
+  // Reported rather than assumed. The `atomaton:aggregated` marker above is already
   // written at this point, so a failed dispatch cannot be retried by the racing
   // caller either -- saying so is the only way it reaches a human.
   return dispatched ? { kind: "dispatched" } : { kind: "dispatch-failed" };
 }
 
 /**
- * Resolves `subIssueNum`'s orchestrator parent from its own `atoma:parent`
+ * Resolves `subIssueNum`'s orchestrator parent from its own `atomaton:parent`
  * tag, then runs the dispatch gate on it with retry enabled (GitHub's
  * search index is only eventually consistent -- the sub-issue we just
  * closed a moment ago may still be reported as open for a second or two).
@@ -240,11 +240,11 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
  * spawned the now-removed dispatch_orchestrator_if_ready.ts script).
  */
 export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssueNum: number): Promise<DispatchGateResult> {
-  // Deliberately the `atoma:parent` tag alone, NOT `lib/parent-issue.ts`, which
+  // Deliberately the `atomaton:parent` tag alone, NOT `lib/parent-issue.ts`, which
   // prefers GitHub's native sub-issue link.
   //
   // This module is tag-based end to end: `countOpenSiblings` finds siblings with
-  // `atoma:parent=N in:body`, so a parent discovered through the native link
+  // `atomaton:parent=N in:body`, so a parent discovered through the native link
   // would have no countable siblings and the gate would conclude "all done" on
   // the strength of a search that could never have found any. Reading the richer
   // answer here would make the two halves disagree about what a sibling is.
@@ -263,7 +263,7 @@ export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssue
   }
   const parent = PARENT_TAG.read(stdout);
   if (parent === undefined) {
-    console.error(`issue #${subIssueNum} has no atoma:parent tag, nothing to do`);
+    console.error(`issue #${subIssueNum} has no atomaton:parent tag, nothing to do`);
     return { kind: "not-tracked" };
   }
   return dispatchOrchestratorIfReady({ repo, parent, closedNum: subIssueNum, retry: true });

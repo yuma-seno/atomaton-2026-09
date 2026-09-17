@@ -30,7 +30,7 @@
 # branch -- the push is refused on identity, measured in this repository. This
 # deploy replaces those files, so no arrangement of paths avoids it.
 #
-# `ATOMA_SELF_DEPLOY_TOKEN` is a PAT with the `workflow` scope, set as a secret in
+# `SELF_DEPLOY_TOKEN` is a PAT with the `workflow` scope, set as a secret in
 # THIS repository only. It never reaches an agent: it appears in this file and
 # nowhere else, and `atomaton-runner.yml` does not name it -- `atoma` gives a tool
 # server only the credentials that server's own entry under `tools.servers` declares.
@@ -88,10 +88,10 @@ jobs:
 
       - name: Check the token is present
         env:
-          TOKEN: ${{ secrets.ATOMA_SELF_DEPLOY_TOKEN }}
+          TOKEN: ${{ secrets.SELF_DEPLOY_TOKEN }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::error::ATOMA_SELF_DEPLOY_TOKEN is unset. It needs a PAT with the 'workflow' scope; GITHUB_TOKEN cannot write .github/workflows/**. See CONTRIBUTING.md."
+            echo "::error::SELF_DEPLOY_TOKEN is unset. It needs a PAT with the 'workflow' scope; GITHUB_TOKEN cannot write .github/workflows/**. See CONTRIBUTING.md."
             exit 1
           fi
 
@@ -100,7 +100,7 @@ jobs:
         with:
           # The PAT, so the push later in this job carries an identity allowed to
           # write workflow files.
-          token: ${{ secrets.ATOMA_SELF_DEPLOY_TOKEN }}
+          token: ${{ secrets.SELF_DEPLOY_TOKEN }}
 
       - name: Resolve the release
         id: release
@@ -153,7 +153,7 @@ jobs:
         env:
           # The PAT again, and for the same reason: creating a pull request from a
           # branch that changes a workflow is refused for `GITHUB_TOKEN`.
-          GH_TOKEN: ${{ secrets.ATOMA_SELF_DEPLOY_TOKEN }}
+          GH_TOKEN: ${{ secrets.SELF_DEPLOY_TOKEN }}
           TAG: ${{ steps.release.outputs.tag }}
           ACTOR: ${{ github.triggering_actor }}
         run: |

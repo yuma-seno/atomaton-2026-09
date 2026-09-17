@@ -27,7 +27,7 @@ const COMMAND_RE = new RegExp(`^\\/(${AGENT_NAME_PATTERN})(?:\\s+(.*))?$`);
 // tolerance around `=` is likewise wider than the tag writer ever emits --
 // it costs nothing and this is the one place reading a marker a human may
 // have retyped by hand.
-const DISPATCH_RE = new RegExp(`^<!--\\s*atoma:dispatch\\s*=\\s*(${AGENT_NAME_PATTERN})\\s*-->`);
+const DISPATCH_RE = new RegExp(`^<!--\\s*atomaton:dispatch\\s*=\\s*(${AGENT_NAME_PATTERN})\\s*-->`);
 
 export interface ParsedCommentCommand {
   agent: string;

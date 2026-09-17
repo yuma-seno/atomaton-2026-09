@@ -15,7 +15,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
       output: "All done.",
       usageLines: [],
     });
-    expect(body).toContain("<!-- atoma:agent=orchestrator -->");
+    expect(body).toContain("<!-- atomaton:agent=orchestrator -->");
     expect(body).toContain("All done.");
     expect(body).toContain("@octocat");
     expect(body).toContain("_run by [orchestrator](http://example.com/run/1)_");
@@ -235,7 +235,7 @@ describe("post_result_comment.ts main", () => {
           cwd: dir,
           env: { GITHUB_REPOSITORY: "owner/repo" },
           rules: [
-            { match: ["issue", "view", "5"], stdout: JSON.stringify({ state: "CLOSED", body: "<!-- atoma:parent=4 -->" }) },
+            { match: ["issue", "view", "5"], stdout: JSON.stringify({ state: "CLOSED", body: "<!-- atomaton:parent=4 -->" }) },
             { match: ["api", "comments"], stdout: "42" },
           ],
         },

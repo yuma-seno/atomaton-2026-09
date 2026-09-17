@@ -38,7 +38,7 @@ const dispatched = (calls: string[][]) => calls.some((c) => c.includes("workflow
 
 /** Did it claim the completion by writing the idempotency marker? */
 const wroteMarker = (calls: string[][]) =>
-  calls.some((c) => c.includes("comment") && c.some((a) => a.includes("atoma:aggregated")));
+  calls.some((c) => c.includes("comment") && c.some((a) => a.includes("atomaton:aggregated")));
 
 const NO_SIBLINGS: FakeGhRule = { match: ["issue", "list"], stdout: "[]" };
 const NO_MARKER: FakeGhRule = { match: ["issue", "view"], stdout: "some unrelated comment" };
@@ -74,7 +74,7 @@ describe("aggregation.ts dispatch gate", () => {
   test("another caller's marker makes this one a no-op", () => {
     const { kind, ghCalls } = runGate([
       NO_SIBLINGS,
-      { match: ["issue", "view"], stdout: "<!-- atoma:aggregated=10 -->" },
+      { match: ["issue", "view"], stdout: "<!-- atomaton:aggregated=10 -->" },
     ]);
     expect(kind).toBe("already-aggregated");
     expect(dispatched(ghCalls)).toBe(false);

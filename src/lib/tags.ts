@@ -1,5 +1,5 @@
 /**
- * tags.ts — canonical encode/decode for every `<!-- atoma:xxx=... -->`
+ * tags.ts — canonical encode/decode for every `<!-- atomaton:xxx=... -->`
  * HTML-comment marker Atomaton embeds in issue/PR bodies and comments to carry
  * state across otherwise-stateless GitHub Actions workflow runs.
  *
@@ -9,7 +9,18 @@
  */
 import { AGENT_NAME_PATTERN } from "./agent-name.ts";
 
-export interface AtomaTag<T> {
+/**
+ * The prefix every tag carries, written once.
+ *
+ * It was written twice -- once in the regex and once in the renderer -- and the
+ * two agreed, so a rename that moved every literal `atoma:<key>` in the codebase
+ * left both of these behind: `atoma:${key}` has a `$` after the colon, not a
+ * letter, so a pattern written for the literals could not see them. The readers
+ * then expected one prefix and the writer produced the other.
+ */
+const TAG_PREFIX = `atomaton:`;
+
+export interface AtomatonTag<T> {
   /** Render this tag's HTML-comment form, ready to prepend/embed in a body or comment. */
   write(value: T): string;
   /** Extract this tag's value from anywhere in `text`, or undefined if absent. */
@@ -18,10 +29,10 @@ export interface AtomaTag<T> {
   has(text: string): boolean;
 }
 
-function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T, render: (value: T) => string): AtomaTag<T> {
-  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
+function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T, render: (value: T) => string): AtomatonTag<T> {
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
-    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
     read: (text) => {
       const m = re.exec(text);
       return m ? parse(m[1]!) : undefined;
@@ -30,13 +41,13 @@ function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T
   };
 }
 
-/** Numeric-valued tag, e.g. `atoma:foo=42`. */
-function numericTag(key: string): AtomaTag<number> {
+/** Numeric-valued tag, e.g. `atomaton:foo=42`. */
+function numericTag(key: string): AtomatonTag<number> {
   return makeTag(key, "\\d+", Number, String);
 }
 
-/** String-valued tag, e.g. `atoma:foo=bar-baz`. */
-function stringTag(key: string, valuePattern: string): AtomaTag<string> {
+/** String-valued tag, e.g. `atomaton:foo=bar-baz`. */
+function stringTag(key: string, valuePattern: string): AtomatonTag<string> {
   return makeTag(key, valuePattern, (raw) => raw, (value) => value);
 }
 
@@ -96,8 +107,8 @@ export const SUB_RESULT_TAG = numericTag("sub-result");
 export const CI_RETRY_TAG = numericTag("ci-retry");
 
 /**
- * Resolve a `parent` link from EITHER `atoma:parent` (issue -> issue) or
- * `atoma:parent-issue` (PR -> issue), preferring whichever is present --
+ * Resolve a `parent` link from EITHER `atomaton:parent` (issue -> issue) or
+ * `atomaton:parent-issue` (PR -> issue), preferring whichever is present --
  * mirrors the original combined regex used by resolve_notify.ts's
  * parent-chain walk, where a body may carry either form depending on
  * whether it's an issue or a PR.

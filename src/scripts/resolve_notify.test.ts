@@ -18,7 +18,7 @@ describe("resolve_notify.ts", () => {
 
   test("a notify tag beats the author", () => {
     const r = run([
-      { match: ["api"], stdout: JSON.stringify({ body: "<!-- atoma:notify=requester -->", login: "someone-else", type: "User" }) },
+      { match: ["api"], stdout: JSON.stringify({ body: "<!-- atomaton:notify=requester -->", login: "someone-else", type: "User" }) },
     ]);
     expect(r.stdout.trim()).toBe("requester");
   });

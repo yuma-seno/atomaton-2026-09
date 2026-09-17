@@ -37,7 +37,7 @@ const IS_HUMAN_COMMENT = `${githubEventRaw<IssueCommentCreatedEvent>((e) => e.co
 // do its job; this step refuses to parse or dispatch for them.
 const PARSE_ALLOWED =
   `(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' &&\n` +
-  ` contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atoma:dispatch')) ||\n` +
+  ` contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch')) ||\n` +
   `(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} != 'Bot' &&\n` +
   ` ${isRepositoryMember(githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.author_association))})`;
 
@@ -210,7 +210,7 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
       // can reject it while atomaton/in-progress is active -- actual
       // parsing/dispatch stays restricted to PARSE_ALLOWED via
       // parseCommandStep's own `if:` above.
-      if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atoma:dispatch'))`,
+      if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch'))`,
       outputs: {
         agent: dispatchStep.outputs.agent,
         session_mode: parseCommandStep.outputs.session_mode,

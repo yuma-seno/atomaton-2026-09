@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * parse_pr_metadata.ts — Parse the `<!-- atoma:parent-issue=N -->` tag and
+ * parse_pr_metadata.ts — Parse the `<!-- atomaton:parent-issue=N -->` tag and
  * the `Closes #N` sub-issue reference from a merged PR's body.
  *
  * Env: PR_BODY, PR_NUMBER

@@ -12,7 +12,7 @@ describe("extract_notify_tag.ts", () => {
     writeFileSync(outputFile, "");
     const r = spawnSync("bun", ["run", `${SCRIPTS_DIR}/extract_notify_tag.ts`], {
       encoding: "utf8",
-      env: { ...process.env, PR_BODY: "<!-- atoma:notify=octocat -->\nsome body", GITHUB_OUTPUT: outputFile },
+      env: { ...process.env, PR_BODY: "<!-- atomaton:notify=octocat -->\nsome body", GITHUB_OUTPUT: outputFile },
     });
     expect(r.status).toBe(0);
     const out = parseGithubOutput(await Bun.file(outputFile).text());

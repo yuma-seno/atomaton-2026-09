@@ -8,7 +8,7 @@ describe("claimsToClose", () => {
   // invisible -- and a sub-issue is exactly where "we decided X" sits above an
   // unmerged pull request.
   test("finds a closing keyword for the issue", () => {
-    expect(claimsToClose("<!-- atoma:parent-issue=281 -->\nCloses #281\n\nAdds a section.", 281)).toBe(true);
+    expect(claimsToClose("<!-- atomaton:parent-issue=281 -->\nCloses #281\n\nAdds a section.", 281)).toBe(true);
   });
 
   test("accepts the keywords GitHub accepts, in any case", () => {

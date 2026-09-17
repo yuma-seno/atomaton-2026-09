@@ -28,7 +28,7 @@ describe("aggregate_sub_issues.ts", () => {
       expect(r.stderr).toContain("1 sibling(s)");
       expect(r.stderr).toContain("No action needed");
       const commentCall = r.ghCalls.find((c) => c.includes("comment"));
-      expect(commentCall?.join(" ")).toContain("atoma:sub-result=9");
+      expect(commentCall?.join(" ")).toContain("atomaton:sub-result=9");
       // The full aggregation path (siblingCount === 0) additionally performs
       // real `git` operations against an `atomaton-data` branch/remote
       // (checkout --orphan, commit, push-with-retry-on-race) -- deliberately

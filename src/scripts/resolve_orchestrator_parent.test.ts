@@ -12,11 +12,11 @@ describe("resolve_orchestrator_parent.ts", () => {
     expect(r.stdout.trim()).toBe("3");
   });
 
-  test("falls back to the atoma:parent body comment when GraphQL has no parent", () => {
+  test("falls back to the atomaton:parent body comment when GraphQL has no parent", () => {
     const r = runWithFakeGh(scriptPath("resolve_orchestrator_parent.ts"), ["--repo", "owner/repo", "--sub", "9"], {
       rules: [
         { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
-        { match: ["issue", "view"], stdout: "<!-- atoma:parent=4 -->" },
+        { match: ["issue", "view"], stdout: "<!-- atomaton:parent=4 -->" },
       ],
     });
     expect(r.stdout.trim()).toBe("4");

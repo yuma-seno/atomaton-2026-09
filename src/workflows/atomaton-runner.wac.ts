@@ -392,7 +392,7 @@ echo "Inputs validated: \${TYPE} #\${NUMBER}, agent=\${AGENT}, session_mode=\${S
 const notifyStep = new TypedOutputsStep(
   {
     // Defense in depth: inputs.notify *should* already carry the human to
-    // ping (see resolve_notify.ts / atoma:notify= tag propagation), but if
+    // ping (see resolve_notify.ts / atomaton:notify= tag propagation), but if
     // it ever arrives empty (a missed dispatch path, a new caller that
     // forgot to wire it, etc.) we do a live fallback lookup here so a run
     // that ends with neither a next-agent directive nor a notify never goes

@@ -39,7 +39,7 @@ export function countOpenSiblings(opts: CountOpenSiblingsOptions): number {
     "--state", "open",
     "--label", label,
     "--label", launchedLabel,
-    "--search", `atoma:parent=${opts.parent} in:body`,
+    "--search", `atomaton:parent=${opts.parent} in:body`,
     "--json", "number",
   );
 

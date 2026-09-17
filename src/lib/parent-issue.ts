@@ -2,7 +2,7 @@
  * parent-issue.ts — the one reader for "which issue is this one a child of".
  *
  * There were three, and they disagreed. `branch-placement.ts` read the body's
- * `atoma:parent` tag; `aggregation.ts` read the same tag through its own copy of
+ * `atomaton:parent` tag; `aggregation.ts` read the same tag through its own copy of
  * the same `gh` call; `scripts/resolve_orchestrator_parent.ts` issued its own
  * GraphQL query for GitHub's native sub-issue `parent` field and fell back to the
  * tag. Nothing recorded why one of the three had the richer rule.
@@ -55,7 +55,7 @@ function nativeParent(repo: string, issue: number): number | undefined {
 /**
  * The parent issue this one was split out of.
  *
- * GitHub's native link first, then the `atoma:parent` tag `create_issue` writes.
+ * GitHub's native link first, then the `atomaton:parent` tag `create_issue` writes.
  * A failure to read the body is `known: false`; a body with no tag and no native
  * parent is a root issue.
  */

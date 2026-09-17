@@ -157,23 +157,23 @@ describe("tags.ts", () => {
   test("PARENT_TAG round-trips with the canonical numeric format", async () => {
     const { PARENT_TAG } = await import("./tags.ts");
     const written = PARENT_TAG.write(42);
-    expect(written).toBe("<!-- atoma:parent=42 -->");
+    expect(written).toBe("<!-- atomaton:parent=42 -->");
     expect(PARENT_TAG.read(`intro\n${written}\nmore text`)).toBe(42);
-    expect(PARENT_TAG.read("<!-- atoma:parent=#42 -->")).toBeUndefined();
+    expect(PARENT_TAG.read("<!-- atomaton:parent=#42 -->")).toBeUndefined();
   });
 
   test("PARENT_ISSUE_TAG and readAnyParentTag", async () => {
     const { PARENT_ISSUE_TAG, readAnyParentTag } = await import("./tags.ts");
-    expect(PARENT_ISSUE_TAG.write(7)).toBe("<!-- atoma:parent-issue=7 -->");
-    expect(readAnyParentTag("<!-- atoma:parent-issue=7 -->")).toBe(7);
-    expect(readAnyParentTag("<!-- atoma:parent=8 -->")).toBe(8);
+    expect(PARENT_ISSUE_TAG.write(7)).toBe("<!-- atomaton:parent-issue=7 -->");
+    expect(readAnyParentTag("<!-- atomaton:parent-issue=7 -->")).toBe(7);
+    expect(readAnyParentTag("<!-- atomaton:parent=8 -->")).toBe(8);
     expect(readAnyParentTag("no tags here")).toBeUndefined();
   });
 
   test("AGGREGATED_TAG idempotency marker", async () => {
     const { AGGREGATED_TAG } = await import("./tags.ts");
     const marker = AGGREGATED_TAG.write(9);
-    expect(marker).toBe("<!-- atoma:aggregated=9 -->");
+    expect(marker).toBe("<!-- atomaton:aggregated=9 -->");
     expect(AGGREGATED_TAG.has(`some comment\n${marker}`)).toBe(true);
     expect(AGGREGATED_TAG.has("some other comment")).toBe(false);
   });
@@ -181,7 +181,7 @@ describe("tags.ts", () => {
   test("LLM_CONTEXT_TAG marks human-visible notifications for exclusion", async () => {
     const { LLM_CONTEXT_TAG } = await import("./tags.ts");
     const marker = LLM_CONTEXT_TAG.write("exclude");
-    expect(marker).toBe("<!-- atoma:llm-context=exclude -->");
+    expect(marker).toBe("<!-- atomaton:llm-context=exclude -->");
     expect(LLM_CONTEXT_TAG.read(`${marker}\nAtomaton: operation started.`)).toBe("exclude");
   });
 });

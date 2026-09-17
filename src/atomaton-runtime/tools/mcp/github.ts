@@ -371,7 +371,7 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
       );
       log(`Linked sub-issue #${num} to parent #${parentNum} via official sub-issues API`);
     } catch (e) {
-      // Not a report: the `atoma:parent` tag is what aggregation reads and it was
+      // Not a report: the `atomaton:parent` tag is what aggregation reads and it was
       // written; this call is the cosmetic half, as the comment below says. No
       // severity word, for the reason `search.ts` gives at its own remaining log
       // line.
@@ -382,12 +382,12 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
   logOp("create_issue", { number: num, title, sub_issue: sub });
   // `parent` is returned because asking for a sub-issue does not guarantee
   // getting one. With `sub_issue: true` and no `ISSUE_NUMBER` -- a run that is
-  // not working on an issue -- the label goes on and no `atoma:parent` tag is
+  // not working on an issue -- the label goes on and no `atomaton:parent` tag is
   // written, producing an issue that looks like a child and that no aggregation
   // will ever pick up. `{number, url}` reported that as plain success.
   //
   // The tag is what matters, not the native link: `lib/aggregation.ts` counts
-  // siblings with `atoma:parent=N in:body`, and the `addSubIssue` call above is
+  // siblings with `atomaton:parent=N in:body`, and the `addSubIssue` call above is
   // best-effort precisely because it is the cosmetic half.
   const parent = sub && parentNum ? Number(parentNum) : null;
   return JSON.stringify({
@@ -530,7 +530,7 @@ function closeIssue(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
  * confirming its own work -- checks phase-gating/aggregation for its
  * parent, so it fires regardless of which path closed the issue.
  * dispatchOrchestratorIfSubIssueReady no-ops harmlessly if #num has no
- * atoma:parent tag. Awaited by every caller (matching the original
+ * atomaton:parent tag. Awaited by every caller (matching the original
  * Bun.spawnSync-based blocking behavior) so the tool response isn't
  * returned before phase-gating has actually run.
  */
