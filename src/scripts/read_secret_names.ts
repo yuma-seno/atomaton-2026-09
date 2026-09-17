@@ -32,13 +32,24 @@
  * controls.
  *
  * `--config` is deliberately NOT required, though the workflow always passes it.
- * Requiring it made a deployment break itself: a deploy pull request is reviewed
- * by a run whose workflow YAML comes from the base branch and whose scripts come
- * from the pull request, so the release that first passed `--config` met the
- * previous release's workflow, which did not, and exited 2. A missing argument
- * is a degradation worth logging, not one worth failing a run over — and
- * `generated-workflows.test.ts` pins the workflow side, so it cannot be dropped
- * there without CI saying so.
+ * Requiring it made a deployment break itself: the release that first passed
+ * `--config` met the previous release's workflow, which did not, and exited 2.
+ * A missing argument is a degradation worth logging, not one worth failing a
+ * run over — and `generated-workflows.test.ts` pins the workflow side, so it
+ * cannot be dropped there without CI saying so.
+ *
+ * The record of that incident (issue #353) describes the failing run as reading
+ * its workflow YAML from the base branch and its scripts from the pull request
+ * — the split that made the previous release's workflow run against the new
+ * release's scripts. For a `pull_request` event that description did not
+ * reproduce: a workflow file that existed only in a pull request ran for that
+ * pull request, so a `pull_request` run reads the workflow YAML from the merge
+ * ref, not from the base branch. What is recorded from the incident and holds
+ * regardless of the event is the ordering — a release whose workflow starts
+ * passing a flag the previous release's workflow did not pass can break its own
+ * deploy review — and that is the breakage requiring `--config` is kept
+ * non-required against. The event-specific explanation is not repeated here
+ * because it did not reproduce.
  *
  * An unusable declaration does fail the run. Delivering the names that happen to
  * be valid turns a typo into a failure much later, somewhere that points nowhere
