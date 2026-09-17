@@ -3079,10 +3079,10 @@
   {
     "path": "sessions/issue-739/engineer.json",
     "agent": "engineer",
-    "messages": 524,
-    "calls": 266,
-    "failed": 14,
-    "refused": 6,
+    "messages": 532,
+    "calls": 267,
+    "failed": 2,
+    "refused": 1,
     "skills": [
       "project/conventions",
       "delivery/implementation-handoff"
@@ -3102,7 +3102,8 @@
       "github__sync_branch": 5,
       "github__get_branch": 2,
       "github__check_merge_readiness": 1,
-      "github__submit_pr_review": 1
+      "github__submit_pr_review": 1,
+      "github__close_issue": 1
     },
     "acts": {
       "other": 43,
