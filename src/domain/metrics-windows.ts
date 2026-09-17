@@ -7,7 +7,7 @@
  *
  * ## What a window can be cut by
  *
- * `atomaton_runs` in each session, written by atoma from v0.1.28: when a run started, when
+ * `atoma_runs` in each session, written by atoma from v0.1.28: when a run started, when
  * it ended, why it ended. Before that, sessions carried no time at all — a session
  * records what was said and nothing about the saying of it.
  *

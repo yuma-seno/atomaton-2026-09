@@ -74,7 +74,7 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
   const out = ["## Runs", ""];
   if (runs.length === 0) {
     out.push(
-      "No run has recorded itself yet. Atomaton writes `atomaton_runs` into a session from " +
+      "No run has recorded itself yet. Atomaton writes `atoma_runs` into a session from " +
         "v0.1.28; sessions older than that carry no times, and there is no way to backfill " +
         "one that would not be a guess.",
       "",

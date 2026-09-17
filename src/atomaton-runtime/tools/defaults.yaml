@@ -33,10 +33,19 @@ servers:
       {}
     hooks:
       tool_allowlist:
+        # Measured: this list refused 64 calls that were all reads. It was written as
+        # five names rather than as the read operations, so every read the server has
+        # that nobody thought of on the day was refused by a server whose whole purpose
+        # is reading -- `read_text_file` 29 times, `search_files` 21, and
+        # `list_allowed_directories` 14. `directory_tree` stays out on purpose: it is
+        # denied on `filesystem` too, because its output crowds out the context.
         - filesystem_readonly__read_file
+        - filesystem_readonly__read_text_file
         - filesystem_readonly__read_multiple_files
         - filesystem_readonly__read_media_file
         - filesystem_readonly__list_directory
+        - filesystem_readonly__list_allowed_directories
+        - filesystem_readonly__search_files
         - filesystem_readonly__get_file_info
       after_tool: ./hooks/note_file_opened.ts
   shell:
