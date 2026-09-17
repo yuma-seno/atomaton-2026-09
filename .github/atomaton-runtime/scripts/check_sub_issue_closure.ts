@@ -64,10 +64,11 @@ var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
 // src/lib/tags.ts
+var TAG_PREFIX = `atomaton:`;
 function makeTag(key, valuePattern, parse, render) {
-  const re = new RegExp(`<!--\\s*atoma:${key}=(${valuePattern})\\s*-->`);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
-    write: (value) => `<!-- atoma:${key}=${render(value)} -->`,
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
     read: (text) => {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
