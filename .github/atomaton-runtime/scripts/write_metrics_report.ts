@@ -632,10 +632,10 @@ function main() {
     return;
   }
   if (!saveSession(ROWS_PATH, `${JSON.stringify(rowsOf(sessions), null, 2)}
-`, `atoma: metric rows from ${sessions.length} sessions`)) {
+`, `atomaton: metric rows from ${sessions.length} sessions`)) {
     log("could not write the rows; the report is unaffected");
   }
-  if (!saveSession(REPORT_PATH, report, `atoma: metrics from ${sessions.length} sessions`)) {
+  if (!saveSession(REPORT_PATH, report, `atomaton: metrics from ${sessions.length} sessions`)) {
     log("could not write the report; the run is unaffected");
   }
 }

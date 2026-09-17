@@ -294,7 +294,7 @@ ${opts.progressMessage(remaining)}`);
   if (opts.beforeDispatch)
     await opts.beforeDispatch();
   const marker = gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${AGGREGATED_TAG.write(opts.closedNum)}
-Atoma: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
+Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
   if (marker.code !== 0) {
     const why = `could not write the aggregation marker on #${opts.parent}: ${marker.stderr.trim() || marker.stdout.trim()}`;
     console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
@@ -457,7 +457,7 @@ function injectResultsIntoOrchestratorSession(repo, parent) {
   const existing = restoreSession(sessionPath);
   const session = existing ? JSON.parse(existing) : { messages: [] };
   const updated = injectSummary(session, gatherSubResults(repo, subIssues));
-  const message = `atoma: inject sub-issue results for parent #${parent}`;
+  const message = `atomaton: inject sub-issue results for parent #${parent}`;
   if (!saveSession(sessionPath, JSON.stringify(updated, null, 2), message)) {
     console.error(`::warning::Failed to save session to atomaton-data:${sessionPath} after all retries.`);
   }

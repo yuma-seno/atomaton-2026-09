@@ -18213,7 +18213,7 @@ function loadIndex() {
     updatedThrough: newestTimestamp(fresh, since ?? "1970-01-01T00:00:00Z"),
     issues
   });
-  if (!saveAsOnlyCommit(INDEX_BRANCH, INDEX_PATH, JSON.stringify(index), `atoma: issue search index (${issues.length} issues)`)) {
+  if (!saveAsOnlyCommit(INDEX_BRANCH, INDEX_PATH, JSON.stringify(index), `atomaton: issue search index (${issues.length} issues)`)) {
     report("warning", "could not save the search index; every search from here rebuilds it");
   }
   return index;

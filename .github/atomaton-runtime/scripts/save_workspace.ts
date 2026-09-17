@@ -122,7 +122,7 @@ function main() {
   }
   const count = readdirSync2(source).length;
   const prefix = workspaceTargetPrefix(root);
-  const saved = saveWorkspace(prefix, source, `atoma: workspace for issue #${root}${values.agent ? ` (${values.agent})` : ""} \u2014 ${count} entries`);
+  const saved = saveWorkspace(prefix, source, `atomaton: workspace for issue #${root}${values.agent ? ` (${values.agent})` : ""} \u2014 ${count} entries`);
   console.error(saved ? `[atomaton-workspace] saved ${count} entries to ${prefix}` : `[atomaton-workspace] WARN could not save ${prefix}; the next run on this issue starts without these files`);
 }
 if (import.meta.main)

@@ -159,7 +159,7 @@ function prunablePaths(paths, isOver) {
 function pruneCommitMessage(decision) {
   const files = `${decision.paths.length} file${decision.paths.length === 1 ? "" : "s"}`;
   const listed = decision.issues.map((n) => `#${n}`).join(", ");
-  return `atoma: prune ${files} from closed issues (${listed})`;
+  return `atomaton: prune ${files} from closed issues (${listed})`;
 }
 
 // src/scripts/lib/script-ref.ts
