@@ -3161,10 +3161,10 @@
   {
     "path": "sessions/issue-754/engineer.json",
     "agent": "engineer",
-    "messages": 97,
-    "calls": 53,
+    "messages": 107,
+    "calls": 55,
     "failed": 0,
-    "refused": 0,
+    "refused": 1,
     "skills": [
       "project/conventions",
       "delivery/implementation-handoff"
@@ -3179,7 +3179,9 @@
       "shell__shell_execute": 33,
       "filesystem__edit_file": 1,
       "github__commit_and_push": 1,
-      "github__create_pr": 1
+      "github__create_pr": 1,
+      "github__get_pr": 1,
+      "github__close_issue": 1
     },
     "acts": {
       "search": 8,
