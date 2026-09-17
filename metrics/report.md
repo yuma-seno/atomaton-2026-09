@@ -26,12 +26,12 @@ No session ran in this window.
 
 368 sessions.
 
-**137,144,267 tokens** over 426 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**137,276,205 tokens** over 427 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 24,639 | 302,887 | 6,403,430 | 39,737,697 | 137,144,267 |
-| messages per session | 10 | 99 | 532 | 1,408 | 15,322 |
+| tokens per run | 24,639 | 302,887 | 6,403,430 | 39,737,697 | 137,276,205 |
+| messages per session | 10 | 102 | 532 | 1,408 | 15,332 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -57,7 +57,7 @@ No session ran in this window.
 | `search__search_code` | 99 | 0 | 0 | 0% |
 | `github__commit_and_push` | 93 | 53 | 0 | 57% |
 | `github__search_code` | 84 | 31 | 0 | 36.9% |
-| `github__get_pr` | 73 | 10 | 0 | 13.7% |
+| `github__get_pr` | 74 | 10 | 0 | 13.5% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 62 | 6 | 0 | 9.7% |
 | `github__create_pr` | 58 | 24 | 0 | 41.4% |
@@ -67,9 +67,9 @@ No session ran in this window.
 | `github__get_pr_diff` | 47 | 4 | 0 | 8.5% |
 | `github__get_issue_comments` | 43 | 8 | 0 | 18.6% |
 | `search__search_issues` | 39 | 4 | 0 | 10.3% |
+| `github__close_issue` | 35 | 1 | 16 | 2.9% |
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
 | `github__merge_pr` | 35 | 1 | 0 | 2.9% |
-| `github__close_issue` | 34 | 1 | 15 | 2.9% |
 | `github__list_issues` | 31 | 3 | 0 | 9.7% |
 | `github__get_branch` | 30 | 13 | 0 | 43.3% |
 | `filesystem_readonly__read_text_file` | 29 | 0 | 29 | 0% |
