@@ -292,7 +292,7 @@ function tallyTable(rows, of, what, unit) {
 function runSection(runs, now) {
   const out = ["## Runs", ""];
   if (runs.length === 0) {
-    out.push("No run has recorded itself yet. Atomaton writes `atomaton_runs` into a session from " + "v0.1.28; sessions older than that carry no times, and there is no way to backfill " + "one that would not be a guess.", "");
+    out.push("No run has recorded itself yet. Atomaton writes `atoma_runs` into a session from " + "v0.1.28; sessions older than that carry no times, and there is no way to backfill " + "one that would not be a guess.", "");
     return out;
   }
   out.push("| window | runs | gave up | median seconds | longest |");
@@ -517,7 +517,7 @@ function sessionFrom(path, raw) {
       });
     }
   }
-  const runs = Array.isArray(parsed.atomaton_runs) ? parsed.atomaton_runs : [];
+  const runs = Array.isArray(parsed.atoma_runs) ? parsed.atoma_runs : [];
   return { path, agent, messages: messages.length, calls, runs };
 }
 function shellAct(command) {
