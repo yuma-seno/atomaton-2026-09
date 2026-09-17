@@ -2,7 +2,7 @@
 #
 # release.sh — publish the deliverable as a release asset.
 #
-# The deployment this project declares in `deploy.atoma_runs.targets`. Everything a release
+# The deployment this project declares in `deploy.atomaton_runs.targets`. Everything a release
 # does is here, in a file an agent can write, rather than in a workflow file it
 # cannot — which is the whole reason the pipeline moved into configuration.
 #
@@ -51,14 +51,14 @@ fi
 # the dotfile entry.
 #
 # Deliberately a fixed asset name rather than one carrying the version: it is
-# what makes `releases/latest/download/atoma-delivery.zip` a stable URL, and the
+# what makes `releases/latest/download/atomaton-delivery.zip` a stable URL, and the
 # version is already carried by the release itself.
-(cd dist && zip -qr ../atoma-delivery.zip .github)
-unzip -l atoma-delivery.zip | tail -1
+(cd dist && zip -qr ../atomaton-delivery.zip .github)
+unzip -l atomaton-delivery.zip | tail -1
 
 # `--target` is what creates the tag, so there is no separate tag push and no
 # window where a tag exists without a release behind it.
-gh release create "$TAG" atoma-delivery.zip \
+gh release create "$TAG" atomaton-delivery.zip \
   --title "$TAG" \
   --target "$GITHUB_SHA" \
   --generate-notes

@@ -8,7 +8,7 @@ import { withEditableSource } from "./generated-file-hint.ts";
  */
 describe("withEditableSource", () => {
   test("a message naming the generated file says where the source is", () => {
-    const out = withEditableSource('Failed to parse tools YAML: ".github/atoma/tools/tools.yaml"');
+    const out = withEditableSource('Failed to parse tools YAML: ".github/atomaton/tools/tools.yaml"');
     expect(out).toContain("tools.servers");
     expect(out).toContain("config.yaml");
     expect(out, "and says why editing the named file will not work").toContain("rewritten");
@@ -21,9 +21,9 @@ describe("withEditableSource", () => {
    */
   test("a missing hook script says what the path is relative to, and where it is declared", () => {
     const out = withEditableSource(
-      "Hook script not found: '.github/atoma/tools/./scripts/hooks/mine.ts' (resolved from './scripts/hooks/mine.ts')",
+      "Hook script not found: '.github/atomaton/tools/./scripts/hooks/mine.ts' (resolved from './scripts/hooks/mine.ts')",
     );
-    expect(out).toContain(".github/atoma/tools/");
+    expect(out).toContain(".github/atomaton/tools/");
     expect(out).toContain("tools.servers");
     expect(out, "the file-wide slot is a different key and has to be named").toContain("tools.watch");
   });

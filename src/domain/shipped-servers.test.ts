@@ -8,23 +8,23 @@ import { toolDefaults, whatEachIsFor } from "./shipped-servers.ts";
  * the change rather than documentation of it, and this holds them to it.
  *
  * Both pages, because they answer different questions from different places.
- * `.github/atoma/README.md` ships INTO an adopted repository and is what somebody
+ * `.github/atomaton/README.md` ships INTO an adopted repository and is what somebody
  * opens when they are standing in the directory; `docs/configuration.md` is the
  * reference they reach from the config's own header comment. A server missing from
  * either is a server that is invisible from one of the two doors.
  */
-const PAGES = ["src/atoma/README.md", "docs/configuration.md"];
+const PAGES = ["src/atomaton/README.md", "docs/configuration.md"];
 
-describe("the servers Atoma ships", () => {
+describe("the servers Atomaton ships", () => {
   test("every one has a line saying what it is for", () => {
     for (const name of Object.keys(toolDefaults().servers)) {
       const what = whatEachIsFor()[name];
       expect(what, `${name} needs a description; it is the only thing a reader gets`).toBeTruthy();
       // Not the argv. The config used to "show" these as
-      // `bun run ${ATOMA_MACHINERY_ROOT}/...`, which is how they are started rather
+      // `bun run ${ATOMATON_MACHINERY_ROOT}/...`, which is how they are started rather
       // than what they are for, and replacing one unreadable thing with another
       // would be the whole point missed.
-      expect(what, `${name}'s description should not be its command line`).not.toContain("ATOMA_MACHINERY_ROOT");
+      expect(what, `${name}'s description should not be its command line`).not.toContain("ATOMATON_MACHINERY_ROOT");
     }
   });
 
@@ -51,7 +51,7 @@ describe("the servers Atoma ships", () => {
    */
   test("the file-wide hooks are described where the servers are", () => {
     expect(Object.keys(toolDefaults().watch).length, "there is at least one").toBeGreaterThan(0);
-    const readme = readFileSync("src/atoma/README.md", "utf8");
+    const readme = readFileSync("src/atomaton/README.md", "utf8");
     expect(readme, "the README says hooks of your own are added rather than replacing").toContain("tools.watch");
   });
 

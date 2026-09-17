@@ -47,7 +47,7 @@ export class TypedOutputsStep<TOutputs extends string = never> extends Step {
    *
    * `outcome` is not a `$GITHUB_OUTPUT` value -- GitHub sets it -- but it is
    * referenced by step id exactly like one, so it belongs to the same problem
-   * this class exists to solve. Seven `if:` conditions in `atoma-runner.wac.ts`
+   * this class exists to solve. Seven `if:` conditions in `atomaton-runner.wac.ts`
    * spelled `steps.atoma.outcome` as a literal, which is the one thing renaming
    * a step id does not update.
    *
@@ -147,7 +147,7 @@ export class DefinedJob<TOutputsMap extends Record<string, string> = Record<neve
  * call, `chainJob(name, props, steps, next)`, with `next` as a positional
  * argument -- that reads fine when `next` is a one-liner (as above), but
  * once `next` itself builds a whole multi-line job (see
- * atoma-sub-issue-closed.wac.ts), it degenerates into a callback buried
+ * atomaton-sub-issue-closed.wac.ts), it degenerates into a callback buried
  * inside another call's argument list -- nested callback-pyramid style, not
  * an actual chain. `.then(...)` fixes that: it's a real method call that
  * can be stacked one after another, each one visually independent.
@@ -161,7 +161,7 @@ export class DefinedJob<TOutputsMap extends Record<string, string> = Record<neve
  *
  * Only fits a genuinely LINEAR producer -> consumer chain, where each link
  * depends on exactly the one immediately before it. A real multi-hop DAG
- * (e.g. atoma-pr-merged.wac.ts, where two downstream jobs each need both
+ * (e.g. atomaton-pr-merged.wac.ts, where two downstream jobs each need both
  * their immediate predecessor AND its predecessor) still needs actual named
  * handles -- that's an honest reflection of a real graph, not something a
  * linear chain can flatten away.

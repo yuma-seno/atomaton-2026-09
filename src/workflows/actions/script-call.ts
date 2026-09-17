@@ -3,7 +3,7 @@
  * `src/scripts/` (deployed flat into `.github/scripts/*.ts` by
  * `build-dist.ts`) from inside a workflow step's `run:` bash.
  *
- * NOT `.github/atoma/tools/scripts/`, which this file used to name. That is a
+ * NOT `.github/atomaton/tools/scripts/`, which this file used to name. That is a
  * real, different tree -- the MCP servers and the `before_tool` hook, which
  * `build-dist.ts` deploys separately and chmods executable for the agent's own
  * process to spawn. These workflow scripts are invoked by workflow steps and
@@ -34,12 +34,12 @@ import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
  * Unset means the checkout, which is what every workflow but one wants. The
  * runner sets it, because a pull request run checks out the pull request and its
  * scripts would then be the pull request's own -- letting it decide how the agent
- * reviewing it behaves. See `atoma-runner.wac.ts`.
+ * reviewing it behaves. See `atomaton-runner.wac.ts`.
  *
  * A shell default rather than a generation-time choice, so one generated file
  * serves both: the workflows that never set it are byte-identical to before.
  */
-export const MACHINERY_ROOT = "${ATOMA_MACHINERY_ROOT:-.}";
+export const MACHINERY_ROOT = "${ATOMATON_MACHINERY_ROOT:-.}";
 
 /**
  * Build a `bun run <deployed-path> [argv...]` command for a script that

@@ -4,7 +4,7 @@ import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 
 describe("report_run_failure.ts", () => {
   /**
-   * The new fact, and the one somebody who has used Atoma before will assume the
+   * The new fact, and the one somebody who has used Atomaton before will assume the
    * opposite of. If this line goes, a person reads a failure as lost work and
    * re-does it.
    */

@@ -42,7 +42,7 @@ function main(): void {
 
   if (values.action === "add") {
     // Create the label if it does not exist yet.
-    gh("label", "create", label, "--force", "-c", "0366d6", "-d", "Issue is being worked on by an Atoma agent");
+    gh("label", "create", label, "--force", "-c", "0366d6", "-d", "Issue is being worked on by an Atomaton agent");
     const { code } = gh("issue", "edit", values.number, "--add-label", label);
     if (code !== 0) console.error(`Warning: failed to add '${label}' label to #${values.number}`);
   } else {

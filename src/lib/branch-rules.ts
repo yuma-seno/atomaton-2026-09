@@ -63,7 +63,7 @@ export type RequiredChecks =
  * Status-check contexts the branch's protection requires.
  *
  * Read from the repository rather than hardcoded, so editing
- * `.github/atoma/rulesets/*.json` changes what is enforced with no code change.
+ * `.github/atomaton/rulesets/*.json` changes what is enforced with no code change.
  */
 export function readRequiredChecks(repo: string, baseRef: string): RequiredChecks {
   if (!baseRef) return { known: false, why: "no base branch was given" };

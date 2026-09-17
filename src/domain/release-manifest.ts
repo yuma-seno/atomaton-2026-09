@@ -6,7 +6,7 @@
  * **"Which release am I on?"** `docs/recipes.md` tells an adopter to name a
  * version rather than `latest`, and to record which one they took, because that is
  * what makes the next diff readable. It never gave them anywhere to record it, and
- * nothing in `.github/atoma/` said. So the answer was memory, or downloading a zip
+ * nothing in `.github/atomaton/` said. So the answer was memory, or downloading a zip
  * and diffing.
  *
  * **"What did upstream delete?"** The documented upgrade is `unzip -o` over the
@@ -28,8 +28,7 @@
  * would have to be upgraded to be believed.
  */
 
-/** The file the release carries, at the root of what it ships. */
-export const MANIFEST_PATH = ".github/atoma-release.json";
+import { RELEASE_MANIFEST } from "./machinery-layout.ts";
 
 export interface ReleaseManifest {
   /** The release this tree came from, as the tag names it: `v0.1.77`. */
@@ -51,7 +50,7 @@ export interface ReleaseManifest {
  */
 export function buildManifest(version: string, files: Iterable<string>): ReleaseManifest {
   const all = new Set([...files].map((path) => path.replace(/\\/g, "/")));
-  all.add(MANIFEST_PATH);
+  all.add(RELEASE_MANIFEST);
   return { version, files: [...all].sort() };
 }
 

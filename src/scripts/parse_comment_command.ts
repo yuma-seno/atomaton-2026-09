@@ -8,7 +8,7 @@
  * `/engineer recover`. Instructions belong on following lines. Internal
  * dispatch comments remain accepted for automation.
  *
- * Env: ATOMA_COMMENT_BODY
+ * Env: ATOMATON_COMMENT_BODY
  * Writes `matched`, `agent`, `control`, `session_mode`, and `error` to
  * $GITHUB_OUTPUT.
  */
@@ -75,7 +75,7 @@ export function parseCommentCommand(body: string): ParsedCommentCommand {
 }
 
 function main(): void {
-  const body = process.env.ATOMA_COMMENT_BODY ?? "";
+  const body = process.env.ATOMATON_COMMENT_BODY ?? "";
   const { agent, control, sessionMode, error } = parseCommentCommand(body);
   const matched = agent ? "true" : "false";
 

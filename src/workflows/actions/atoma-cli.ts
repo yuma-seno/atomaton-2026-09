@@ -2,7 +2,7 @@
  * atoma-cli.ts — the steps that put the `atoma` binary on a runner, and the
  * version they install by default.
  *
- * Two workflows need it now. `atoma-runner` runs agents with it; `atoma-validate-pr`
+ * Two workflows need it now. `atomaton-runner` runs agents with it; `atomaton-validate-pr`
  * calls `atoma validate` on the agent definitions and tools file a pull request
  * would merge, so that a name resolving to nothing is a red check rather than a
  * failure on whoever triggers the next run. Both install it the same way, from one
@@ -33,7 +33,7 @@ import { TypedOutputsStep } from "./base.ts";
  * v0.1.12 adds the same coupling for `args`: it expands `${NAME}` there, from the
  * environment, which is how a tool server is read from the machinery checkout
  * rather than from the pull request under review. To v0.1.11 an `args` entry
- * carrying `${ATOMA_MACHINERY_ROOT:-.}` is a literal path that does not exist, so
+ * carrying `${ATOMATON_MACHINERY_ROOT:-.}` is a literal path that does not exist, so
  * this pin and `tools.servers` move together here too.
  *
  * v0.1.13 is a third coupling, and this one is with the repository's SECRETS.
@@ -61,7 +61,7 @@ import { TypedOutputsStep } from "./base.ts";
  * weakness -- `issue_number` for `number`, `form` for `from`, `label` for `labels`.
  *
  * And a `vision: false` agent had pictures replaced before the message entered the
- * session, so what atoma-data recorded was not what happened: resuming with
+ * session, so what atomaton-data recorded was not what happened: resuming with
  * `vision: true` could never get them back.
  *
  * v0.1.17 is a fourth coupling, this one with `tools.servers` again, and the

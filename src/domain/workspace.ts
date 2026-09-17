@@ -45,7 +45,7 @@
  *
  * ## A literal path, not a variable
  *
- * `/tmp/atoma-workspace`, spelled out. An environment variable would mean
+ * `/tmp/atomaton-workspace`, spelled out. An environment variable would mean
  * `ls $ATOMA_WORKSPACE` returning nothing when the expansion failed, which reads
  * exactly like an empty directory. A form where "the variable was not set" and
  * "there is nothing there" are indistinguishable is a hallucination waiting to be
@@ -59,7 +59,7 @@
 /**
  * The one path. Absolute and constant, so it can be quoted verbatim to an agent.
  */
-export const WORKSPACE_PATH = "/tmp/atoma-workspace";
+export const WORKSPACE_PATH = "/tmp/atomaton-workspace";
 
 /**
  * What an agent is told about it. One sentence, and this is the whole contract.

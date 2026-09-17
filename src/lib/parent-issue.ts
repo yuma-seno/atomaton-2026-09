@@ -8,7 +8,7 @@
  * tag. Nothing recorded why one of the three had the richer rule.
  *
  * The richer rule is the right one and is now everyone's. GitHub's own parent
- * link is authoritative when it exists, and the tag is what Atoma writes itself
+ * link is authoritative when it exists, and the tag is what Atomaton writes itself
  * -- an issue created by `create_issue` carries the tag whether or not the native
  * link was established, and `addSubIssue` is best-effort.
  *
@@ -47,7 +47,7 @@ function nativeParent(repo: string, issue: number): number | undefined {
   } catch {
     // Not an answer either way: the field is unavailable on some plans and the
     // query fails on a transient error. The tag below is the fallback, and it is
-    // the one Atoma writes for itself.
+    // the one Atomaton writes for itself.
     return undefined;
   }
 }

@@ -15,7 +15,7 @@ import type { AtomaConfig } from "../../src/lib/types.ts";
  * signature so a test can also ask about a key the interface does NOT have.
  */
 function shippedConfig(): AtomaConfig & Record<string, unknown> {
-  return Bun.YAML.parse(readFileSync("src/atoma/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
+  return Bun.YAML.parse(readFileSync("src/atomaton/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
 }
 
 describe("config.yaml", () => {
@@ -69,7 +69,7 @@ describe("merge.gates documentation", () => {
   });
 
   test("the reviewer knows what to do with the blockers a gate produces", () => {
-    const reviewer = readFileSync("src/atoma/agent-definitions/reviewer.md", "utf8");
+    const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
     for (const kind of ["merge-gate", "gate-config-invalid"]) {
       expect(reviewer, `${kind} must be in the reviewer's blocker table`).toContain(`\`${kind}\``);
     }
@@ -200,7 +200,7 @@ describe("config.yaml's recognised keys", () => {
   /**
    * Every settable key is written down somewhere a person can find it.
    *
-   * `checks.atoma_runs.runs_on`, `deploy.atoma_runs.targets` and the three
+   * `checks.atomaton_runs.runs_on`, `deploy.atomaton_runs.targets` and the three
    * `chain.labels` entries were each settable and each undocumented when this
    * test was written -- five keys an adopter could only find by reading the
    * validator's schema.
@@ -217,7 +217,7 @@ describe("config.yaml's recognised keys", () => {
    * The reverse, and the direction that does real damage: a key documented but not
    * read is one an adopter writes, and `validate_deliverable.ts` then fails their
    * pull request for following the documentation. This page said `checks.secrets`
-   * and `deploy.secrets` when both had moved under `atoma_runs`.
+   * and `deploy.secrets` when both had moved under `atomaton_runs`.
    *
    * Only dotted paths are policed. A bare leaf name in prose -- `policy`, `gates`
    * -- is a word as often as it is a key, and a test that cannot tell the two apart
@@ -273,7 +273,7 @@ describe("config.yaml's recognised keys", () => {
      * dropped, and requiring them to survive, can.
      */
     const examined = new Set(PAGES_THAT_NAME_KEYS.flatMap(configPathsNamedBy));
-    for (const path of ["tools.secrets", "checks.atoma_runs.commands"]) {
+    for (const path of ["tools.secrets", "checks.atomaton_runs.commands"]) {
       expect(examined.has(path), `${path} is documented, so the filters must not drop it`).toBe(true);
     }
   });
@@ -290,7 +290,7 @@ describe("config.yaml's recognised keys", () => {
     expect(
       configProblems({
         config: shippedConfig(),
-        agentNames: readdirSync("src/atoma/agent-definitions")
+        agentNames: readdirSync("src/atomaton/agent-definitions")
           .filter((file) => file.endsWith(".md"))
           .map((file) => file.slice(0, -".md".length)),
         workflowFiles: readdirSync("dist/.github/workflows"),
@@ -302,14 +302,14 @@ describe("config.yaml's recognised keys", () => {
 /**
  * The template ships one check, and it has to be one every adopter can run.
  *
- * `checks.atoma_runs.commands` was empty, which `run_checks.ts` reports as "this check
+ * `checks.atomaton_runs.commands` was empty, which `run_checks.ts` reports as "this check
  * verified nothing" -- true, and the first hour of an adoption is a poor time to learn it.
  * A credential is a credential in every language, so a secret scan is the one verification
  * a template can hand a project it knows nothing about. Everything beside it in that list
  * is the project's own and only the project can write it.
  */
 describe("the default checks a project inherits", () => {
-  const commands = shippedConfig().checks?.atoma_runs?.commands ?? [];
+  const commands = shippedConfig().checks?.atomaton_runs?.commands ?? [];
 
   test("there is at least one, so an adoption does not start verifying nothing", () => {
     expect(commands.length).toBeGreaterThan(0);
@@ -325,7 +325,7 @@ describe("the default checks a project inherits", () => {
    * The path is built from `SCRIPTS_DIR` rather than written out again.
    *
    * It was a literal `.github/scripts/`, and when the scripts moved under
-   * `.github/atoma-runtime/` the shipped default check went on naming a directory
+   * `.github/atomaton-runtime/` the shipped default check went on naming a directory
    * that no longer exists -- in the one command every adopter inherits, and in this
    * repository's own pipeline. This test stayed green throughout, because a stale
    * pattern matched a stale path and agreed with it. Its failure message had already
@@ -340,7 +340,7 @@ describe("the default checks a project inherits", () => {
       expect(named, `${command} names no script under ${SCRIPTS_DIR}/`).not.toBeNull();
       expect(existsSync(`src/scripts/${named![1]}`), `src/scripts/${named![1]} must exist`).toBe(true);
       expect(command, "the machinery root indirection every other invocation uses").toContain(
-        "${ATOMA_MACHINERY_ROOT:-.}",
+        "${ATOMATON_MACHINERY_ROOT:-.}",
       );
     }
   });
@@ -348,7 +348,7 @@ describe("the default checks a project inherits", () => {
   /**
    * The adopter's own commands go beside this one, not instead of it -- so a default
    * that assumed a language would be a default most adopters delete. Nothing here may
-   * name a package manager or a runtime beyond the one Atoma already requires.
+   * name a package manager or a runtime beyond the one Atomaton already requires.
    */
   test("no default assumes what the project is written in", () => {
     for (const command of commands) {

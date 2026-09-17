@@ -53,17 +53,17 @@ describe("resolveDeclaredSecrets", () => {
   // A deployment never sees the provider key, and may legitimately carry one.
   test("what is reserved depends on the destination", () => {
     expect(resolveDeclaredSecrets(["OPENAI_API_KEY"], DEPLOY_SECRETS).names).toEqual(["OPENAI_API_KEY"]);
-    expect(resolveDeclaredSecrets(["ATOMA_DEPLOY_TARGET"], DEPLOY_SECRETS).problems).toHaveLength(1);
-    expect(resolveDeclaredSecrets(["ATOMA_DEPLOY_TARGET"], CHECK_SECRETS).names).toEqual(["ATOMA_DEPLOY_TARGET"]);
+    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], DEPLOY_SECRETS).problems).toHaveLength(1);
+    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], CHECK_SECRETS).names).toEqual(["ATOMATON_DEPLOY_TARGET"]);
   });
 
   test("every message names the field it came from", () => {
-    expect(resolveDeclaredSecrets(["bad name"], CHECK_SECRETS).problems[0]).toContain("checks.atoma_runs.secrets");
-    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atoma_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], CHECK_SECRETS).problems[0]).toContain("checks.atomaton_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atomaton_runs.secrets");
   });
 
   test("rejects a name that collides with the internal slots", () => {
-    expect(resolveDeclaredSecrets(["ATOMA_SECRET_0"], TOOL_SECRETS).problems).toHaveLength(1);
+    expect(resolveDeclaredSecrets(["ATOMATON_SECRET_0"], TOOL_SECRETS).problems).toHaveLength(1);
   });
 
   test("rejects a duplicate", () => {

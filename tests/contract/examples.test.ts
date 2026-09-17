@@ -7,7 +7,7 @@ const EXAMPLES_DIR = "examples/workflows";
 /**
  * `examples/` is for the adopter to copy, and must never become deliverable.
  *
- * The whole point of the recurring-work example is that Atoma does not install
+ * The whole point of the recurring-work example is that Atomaton does not install
  * it: `on:` takes no expression, so a schedule cannot come from configuration,
  * and an agent cannot write `.github/workflows/**` at all. If one of these files
  * ever reached `dist/.github/workflows/`, every adopter would start running a
@@ -48,7 +48,7 @@ describe("examples are examples", () => {
   // event for an issue its own token created.
   test("the scheduled example dispatches the runner explicitly", () => {
     const yaml = readFileSync(join(EXAMPLES_DIR, "scheduled-issue.yml"), "utf8");
-    expect(yaml).toContain("gh workflow run atoma-runner.yml");
+    expect(yaml).toContain("gh workflow run atomaton-runner.yml");
     expect(yaml).toContain("issues: write");
     // And it does not create a second issue while the first is still open.
     expect(yaml).toContain("--state open");

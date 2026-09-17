@@ -277,7 +277,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 303,
         event_type: "issue_comment",
-        content: "@alice Atoma ran out of time. Please review and retry.",
+        content: "@alice Atomaton ran out of time. Please review and retry.",
         author: "github-actions[bot]",
         created_at: "2026-05-27T12:01:00Z",
       },
@@ -294,7 +294,7 @@ describe("reconcile_github_session.ts", () => {
 
     expect(eventCount).toBe(2);
     expect(mergedSession.messages?.map((message) => message.content)).toEqual([
-      "@alice Atoma ran out of time. Please review and retry.",
+      "@alice Atomaton ran out of time. Please review and retry.",
       "<!-- atoma:llm-context=exclude -->\nHuman instruction must still be visible.",
     ]);
   });
@@ -303,7 +303,7 @@ describe("reconcile_github_session.ts", () => {
    * Two tests here used to configure a per-agent `shared_context` include/exclude
    * policy and assert it filtered by event type. The policy was read from
    * `agents.<name>.shared_context` in the config, and no config has ever had an
-   * `agents` key — the validator reports one as a setting Atoma does not read. So
+   * `agents` key — the validator reports one as a setting Atomaton does not read. So
    * the filter was reachable only from a test, and the events it dropped were
    * dropped for nobody.
    *

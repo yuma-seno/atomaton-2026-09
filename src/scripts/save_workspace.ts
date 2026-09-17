@@ -8,7 +8,7 @@
  * workspace than the one the agent read from, and nothing would say so.
  *
  * Usage:
- *   save_workspace.ts --root-issue N --source /tmp/atoma-workspace [--agent NAME]
+ *   save_workspace.ts --root-issue N --source /tmp/atomaton-workspace [--agent NAME]
  *
  * Best effort. A failure costs the next run its notes, and must not cost this run
  * its result -- the work is already committed and the report already posted by the
@@ -16,7 +16,7 @@
  */
 import { existsSync, readdirSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { saveWorkspace, workspaceTargetPrefix } from "./lib/atoma-data.ts";
+import { saveWorkspace, workspaceTargetPrefix } from "./lib/atomaton-data.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface SaveWorkspaceArgs {
@@ -45,7 +45,7 @@ function main(): void {
   }
 
   if (!existsSync(source)) {
-    console.error(`[atoma-workspace] ${source} does not exist; nothing to save`);
+    console.error(`[atomaton-workspace] ${source} does not exist; nothing to save`);
     return;
   }
 
@@ -62,8 +62,8 @@ function main(): void {
 
   console.error(
     saved
-      ? `[atoma-workspace] saved ${count} entries to ${prefix}`
-      : `[atoma-workspace] WARN could not save ${prefix}; the next run on this issue starts without these files`,
+      ? `[atomaton-workspace] saved ${count} entries to ${prefix}`
+      : `[atomaton-workspace] WARN could not save ${prefix}; the next run on this issue starts without these files`,
   );
 }
 

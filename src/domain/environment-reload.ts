@@ -5,7 +5,7 @@
  * ## What reloading is for
  *
  * `environment.setup_commands` runs as a workflow step, as `runner`, which has
- * passwordless sudo. The agent runs as `atoma-tools`, which does not. So there is a
+ * passwordless sudo. The agent runs as `atomaton-tools`, which does not. So there is a
  * set of things an agent cannot do to its own environment at all:
  *
  *   - install a system package (`apt-get`)
@@ -58,7 +58,7 @@ export const DEFAULT_RELOAD_LIMIT = 3;
  * Zero and nonsense mean the default, the rule every limit in this project shares
  * (see `dispatch-chain.ts` and `infra::timeouts` in atoma). A project that wants
  * no reloads at all is asking for a different thing -- that the tool not be
- * offered -- and would say so by removing `atoma_env` from the agent's `mcp_servers`.
+ * offered -- and would say so by removing `atomaton_env` from the agent's `mcp_servers`.
  */
 export function resolveReloadLimit(configured: unknown): number {
   const value = typeof configured === "number" ? configured : Number(configured);
@@ -87,7 +87,7 @@ export function reloadRefusal(soFar: number, limit: number): string | undefined 
     `unbounded chain of them is an unbounded chain of runs. ` +
     `Report what you found instead -- say which dependency or tool is missing and what you were trying to do -- ` +
     `and a person can decide. If the answer is a system package, it belongs in ` +
-    `\`environment.setup_commands\` in .github/atoma/config.yaml, which needs a human merge either way.`
+    `\`environment.setup_commands\` in .github/atomaton/config.yaml, which needs a human merge either way.`
   );
 }
 

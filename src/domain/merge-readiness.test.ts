@@ -253,17 +253,17 @@ describe("decideMergeReadiness", () => {
 
   // Refusing the merge is the control; saying where the change belongs is what
   // stops the same pull request being opened again. The commonest reason to edit
-  // a generated workflow is to change what CI does, and under Atoma that is
+  // a generated workflow is to change what CI does, and under Atomaton that is
   // configuration.
   test("touching a generated workflow says where CI actually gets configured", () => {
-    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atoma-check.yml"] }));
-    expect(blockers[0]?.detail).toContain("checks.atoma_runs.commands");
+    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atomaton-check.yml"] }));
+    expect(blockers[0]?.detail).toContain("checks.atomaton_runs.commands");
     expect(blockers[0]?.detail).toContain("config.yaml");
   });
 
   test("a governed change elsewhere gets no advice about CI", () => {
-    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atoma/agent-definitions/x.md"] }));
-    expect(blockers[0]?.detail).not.toContain("checks.atoma_runs.commands");
+    const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atomaton/agent-definitions/x.md"] }));
+    expect(blockers[0]?.detail).not.toContain("checks.atomaton_runs.commands");
   });
 
   test("the blocker names a few paths rather than every one", () => {
@@ -284,10 +284,10 @@ describe("decideMergeReadiness", () => {
 
 describe("governedPathsIn", () => {
   test("claims everything under a named directory", () => {
-    const files = [".github/workflows/ci.yml", ".github/atoma/config.yaml", "src/index.ts"];
+    const files = [".github/workflows/ci.yml", ".github/atomaton/config.yaml", "src/index.ts"];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual([
       ".github/workflows/ci.yml",
-      ".github/atoma/config.yaml",
+      ".github/atomaton/config.yaml",
     ]);
   });
 
@@ -298,16 +298,16 @@ describe("governedPathsIn", () => {
   // already obey it.
   test("covers the runner's own control scripts", () => {
     const files = [
-      ".github/atoma-runtime/scripts/decide_guard_release.ts",
-      ".github/atoma-runtime/scripts/manage_dispatch_loop.ts",
-      ".github/atoma-runtime/scripts/save_agent_session.ts",
+      ".github/atomaton-runtime/scripts/decide_guard_release.ts",
+      ".github/atomaton-runtime/scripts/manage_dispatch_loop.ts",
+      ".github/atomaton-runtime/scripts/save_agent_session.ts",
     ];
     expect(governedPathsIn(files, DEFAULT_GOVERNED_PATHS)).toEqual(files);
   });
 
   // A project that wants the old, narrower behaviour can still name parts.
   test("a project can narrow the default back to particular directories", () => {
-    expect(governedPathsIn([".github/atoma-runtime/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
+    expect(governedPathsIn([".github/atomaton-runtime/scripts/x.ts", ".github/workflows/ci.yml"], [".github/workflows/**"])).toEqual([
       ".github/workflows/ci.yml",
     ]);
   });
@@ -319,9 +319,9 @@ describe("governedPathsIn", () => {
   // The default names an adopter's deployed tree. A template repository develops
   // the same files under `src/`, where they are ordinary source until deployed.
   test("the default covers the deployed tree, not a template's source", () => {
-    expect(governedPathsIn(["src/atoma/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
-    expect(governedPathsIn(["src/atoma/agent-definitions/engineer.md"], ["src/atoma/**"])).toEqual([
-      "src/atoma/agent-definitions/engineer.md",
+    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
+    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], ["src/atomaton/**"])).toEqual([
+      "src/atomaton/agent-definitions/engineer.md",
     ]);
   });
 
@@ -334,7 +334,7 @@ describe("governedPathsIn", () => {
   });
 });
 
-// `merge.governed_paths` is Atoma's own gate; these are the project's. Same outcome —
+// `merge.governed_paths` is Atomaton's own gate; these are the project's. Same outcome —
 // the agent reviews and reports, a person merges — reached from a condition
 // nothing here could have guessed.
 describe("declared merge gates", () => {
@@ -433,10 +433,10 @@ describe("declared merge gates", () => {
  * The consequence is narrow and easy to miss: a failing check that no rule requires
  * makes a pull request UNSTABLE, and UNSTABLE is mergeable. On a repository that HAS
  * rules that is somebody's decision. Where rules cannot exist it is just a red build
- * with nothing in front of it, so Atoma refuses in GitHub's place.
+ * with nothing in front of it, so Atomaton refuses in GitHub's place.
  */
 describe("a repository that cannot have branch rules", () => {
-  const failing = [{ name: "atoma-check", status: "completed", conclusion: "failure" }];
+  const failing = [{ name: "atomaton-check", status: "completed", conclusion: "failure" }];
 
   test("a failing check blocks the merge even though GitHub calls it mergeable", () => {
     const out = decideMergeReadiness(
@@ -455,11 +455,11 @@ describe("a repository that cannot have branch rules", () => {
    * The refusal has to say why GitHub is not the one refusing, or the obvious next move
    * is to go looking for the branch rule that did it.
    */
-  test("the refusal says that Atoma is standing in for GitHub", () => {
+  test("the refusal says that Atomaton is standing in for GitHub", () => {
     const out = decideMergeReadiness(
       signals({ mergeStateStatus: "UNSTABLE", requiredChecksEnforceable: false, requiredChecks: [], checks: failing }),
     );
-    expect(formatBlockers(out.blockers)).toContain("Atoma does");
+    expect(formatBlockers(out.blockers)).toContain("Atomaton does");
   });
 
   test("a passing check still merges", () => {
@@ -468,7 +468,7 @@ describe("a repository that cannot have branch rules", () => {
         mergeStateStatus: "UNSTABLE",
         requiredChecksEnforceable: false,
         requiredChecks: [],
-        checks: [{ name: "atoma-check", status: "completed", conclusion: "success" }],
+        checks: [{ name: "atomaton-check", status: "completed", conclusion: "success" }],
       }),
     );
     expect(out.ready).toBe(true);
@@ -485,7 +485,7 @@ describe("a repository that cannot have branch rules", () => {
         mergeStateStatus: "UNSTABLE",
         requiredChecksEnforceable: false,
         requiredChecks: [],
-        checks: [{ name: "atoma-check", status: "in_progress", conclusion: null }],
+        checks: [{ name: "atomaton-check", status: "in_progress", conclusion: null }],
       }),
     );
     expect(out.blockers.map((b) => b.kind)).not.toContain("checks-failing");

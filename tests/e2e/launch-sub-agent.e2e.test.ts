@@ -1,10 +1,10 @@
 /**
  * launch-sub-agent.e2e.test.ts — real end-to-end test for the
- * `atoma__launch_sub_agent` tool: the actual `atoma` binary, its real
+ * `atomaton__launch_sub_agent` tool: the actual `atoma` binary, its real
  * inference loop and real MCP client, driven against the REAL, compiled
- * `dist/.github/atoma-runtime/tools/mcp/atoma.ts` MCP server over real
+ * `dist/.github/atomaton-runtime/tools/mcp/atomaton.ts` MCP server over real
  * stdio JSON-RPC, with a fake `gh` CLI so the real dispatch chain
- * (mcp/atoma.ts -> dispatchSubAgent -> config/gh helpers)
+ * (mcp/atomaton.ts -> dispatchSubAgent -> config/gh helpers)
  * runs without touching the real GitHub API or triggering a real
  * `gh workflow run`.
  *
@@ -19,28 +19,28 @@ import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
 
-const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atoma-runtime/tools/mcp/atoma.ts");
+const ATOMA_MCP_SCRIPT = join(REPO_ROOT, "dist/.github/atomaton-runtime/tools/mcp/atomaton.ts");
 
-describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atoma.ts", () => {
-  test("agent calls atoma__launch_sub_agent through the real MCP server", async () => {
+describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atomaton.ts", () => {
+  test("agent calls atomaton__launch_sub_agent through the real MCP server", async () => {
     const mock = startMockLlmServer([
       {
         toolCalls: [
-          { id: "call_1", name: "atoma__launch_sub_agent", arguments: { tasks: [{ issue: 7, agent: "engineer" }] } },
+          { id: "call_1", name: "atomaton__launch_sub_agent", arguments: { tasks: [{ issue: 7, agent: "engineer" }] } },
         ],
       },
     ]);
     // Real invocations the real dispatch chain makes, in order:
     //   1. dispatchSubAgent: `gh issue comment 7 --body ...`
-    //   2. dispatchSubAgent: `gh issue edit 7 --add-label atoma/launched`
-    //   3. dispatchSubAgent: `gh workflow run atoma-runner.yml ...`
+    //   2. dispatchSubAgent: `gh issue edit 7 --add-label atomaton/launched`
+    //   3. dispatchSubAgent: `gh workflow run atomaton-runner.yml ...`
     const fakeGh = setupFakeGh([
       { match: ["issue", "comment"] },
       { match: ["issue", "edit"] },
       { match: ["workflow", "run"] },
     ]);
 
-    const dir = mkdtempSync(join(tmpdir(), "atoma-e2e-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-e2e-"));
     try {
       writeFileSync(
         join(dir, "agent.md"),
@@ -49,7 +49,7 @@ name: e2e-test-orchestrator
 description: Minimal orchestrator agent for E2E testing.
 model: test-model
 provider: openai
-mcp_servers: ["atoma"]
+mcp_servers: ["atomaton"]
 ---
 You are a test orchestrator agent.
 `,
@@ -72,7 +72,7 @@ You are a test orchestrator agent.
         outSessionPath: join(dir, "session.json"),
         env: {
           ...fakeGh.env,
-          // dispatchSubAgent reads .github/atoma/config.yaml relative to this
+          // dispatchSubAgent reads .github/atomaton/config.yaml relative to this
           // test's cwd (the repository root).
           OPENAI_BASE_URL: mock.url,
           OPENAI_API_KEY: "dummy-test-key",
@@ -94,14 +94,14 @@ You are a test orchestrator agent.
       const commentCall = calls.find((c) => c.includes("comment"));
       expect(commentCall?.join(" ")).toContain("engineer");
       const editCall = calls.find((c) => c.includes("edit"));
-      expect(editCall).toContain("atoma/launched");
+      expect(editCall).toContain("atomaton/launched");
       const workflowCall = calls.find((c) => c[0] === "workflow" && c[1] === "run");
       expect(workflowCall?.join(" ")).toContain("agent=engineer");
       expect(workflowCall?.join(" ")).toContain("number=7");
 
       // launch_sub_agent's real response sets _meta.session_ends: true (it
       // ends the orchestrator session immediately, by design -- see
-      // mcp/atoma.ts's doc comment), so the atoma binary should NOT loop
+      // mcp/atomaton.ts's doc comment), so the atoma binary should NOT loop
       // back to the LLM for a second turn; only the one request is made.
       expect(mock.requests.length).toBe(1);
       const session = JSON.parse(readFileSync(join(dir, "session.json"), "utf8")) as {

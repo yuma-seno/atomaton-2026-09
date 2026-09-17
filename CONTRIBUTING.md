@@ -13,10 +13,10 @@ The deliverable:
 - `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
-- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atoma_runs.targets`
+- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atomaton_runs.targets`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
-  every adopter as `.github/atoma-runtime/scripts/scan_secrets.ts`; this repository
+  every adopter as `.github/atomaton-runtime/scripts/scan_secrets.ts`; this repository
   runs the shipped one, so a defect in it fails here before it reaches anybody else.
 
 This repository's own:
@@ -42,22 +42,22 @@ When changing template behavior, treat `src/` as canonical.
 
 ## Branch protection
 
-What may reach `main` is declared in `.github/atoma/rulesets/main.json`: no direct
+What may reach `main` is declared in `.github/atomaton/rulesets/main.json`: no direct
 pushes, no force-pushes, no branch deletion, and a pull request that cannot merge
-until the `atoma-check` job passes.
+until the `atomaton-check` job passes.
 
 How an adopter applies that file, and the two settings they must get right, are in
 [docs/setup.md](docs/setup.md#5-if-you-use-a-branch-ruleset) — it is their work, not
 a contributor's. What follows is this repository's own, and the reasoning behind
 what the shipped file contains.
 
-**The required context is a string, matched by hand.** `atoma-check` is the job name
-in `atoma-check.yml`, and the two are joined by nothing else.
+**The required context is a string, matched by hand.** `atomaton-check` is the job name
+in `atomaton-check.yml`, and the two are joined by nothing else.
 `generated-workflows.test.ts` holds the shipped pair together; this repository's copy
 of the ruleset is applied by hand, so renaming either side means applying it again:
 
 ```bash
-gh api -X PUT repos/{owner}/{repo}/rulesets/{id} --input .github/atoma/rulesets/main.json
+gh api -X PUT repos/{owner}/{repo}/rulesets/{id} --input .github/atomaton/rulesets/main.json
 ```
 
 **Nothing needs a bypass.** No workflow writes to `main` — the release deployment
@@ -77,7 +77,7 @@ which is not an app installable on a repository and therefore not a valid
 an invalid actor`, and the entry was never applied at all.
 
 **There is deliberately no workflow checking that the ruleset is in place.** A check
-could only report, never enforce: if the ruleset were missing then `atoma-check`
+could only report, never enforce: if the ruleset were missing then `atomaton-check`
 would no longer be a required context either, so a failing check would block nothing
 — a permanently red mark that stops nobody, which is worse than no mark at all.
 
@@ -92,25 +92,25 @@ The version is the single declaration, and `scripts/release.sh` derives the tag
 from it, so there is no tag to push and nothing that can disagree. Releasing is an
 ordinary reviewed change rather than a separate act of remembering.
 
-That script is this project's one `deploy.atoma_runs.targets` entry, declared `on: merge` in
-`.github/atoma/config.yaml`. It runs after every merge and is idempotent: it reads
+That script is this project's one `deploy.atomaton_runs.targets` entry, declared `on: merge` in
+`.github/atomaton/config.yaml`. It runs after every merge and is idempotent: it reads
 the declared version, finds a release already exists for it, and stops before
 installing anything. Only a merge that changes the version reaches the build,
-where it packages `dist/` as `atoma-delivery.zip` with `.github/` at the archive
+where it packages `dist/` as `atomaton-delivery.zip` with `.github/` at the archive
 root and creates the release — the tag included, via `--target`, so a tag never
 exists without a release behind it.
 
 Nothing writes to main, so none of this needs a ruleset bypass.
 
 Both kinds of merge reach it, by different routes. Yours fires `push` on the
-default branch, which `atoma-deploy.yml` listens for. An agent's fires nothing —
+default branch, which `atomaton-deploy.yml` listens for. An agent's fires nothing —
 GitHub starts no workflow run for events its own token triggers — so `mergePr`
 dispatches the workflow explicitly.
 
 To publish by hand, or to retry a failed run:
 
 ```bash
-gh workflow run atoma-deploy.yml --ref main -f target=release
+gh workflow run atomaton-deploy.yml --ref main -f target=release
 ```
 
 ## Applying a release to this repository
@@ -119,10 +119,10 @@ A release does not change how this repository's own agents run. `.github/` has t
 be rebuilt from it, which is a second, deliberate step.
 
 ```bash
-gh workflow run atoma-self-deploy.yml --ref main -f version=latest
+gh workflow run atomaton-self-deploy.yml --ref main -f version=latest
 ```
 
-Or press **Run workflow** on **Atoma Self Deploy** in the Actions tab. It opens a
+Or press **Run workflow** on **Atomaton Self Deploy** in the Actions tab. It opens a
 pull request and merges nothing: `.github/**` is in `merge.governed_paths`, so a person
 reviews it.
 
@@ -130,7 +130,7 @@ What the job does, in three lines:
 
 ```bash
 rm -rf .github            # a file the release DELETED is gone, not orphaned
-unzip atoma-delivery.zip  # the deliverable
+unzip atomaton-delivery.zip  # the deliverable
 cp -r self/. .github/     # this repository's own, at the same paths
 ```
 
@@ -152,8 +152,8 @@ with the `workflow` scope, set as an Actions secret in this repository:
 gh secret set ATOMA_SELF_DEPLOY_TOKEN
 ```
 
-**No agent can reach it.** It is named in `self/workflows/atoma-self-deploy.yml`
-and nowhere else; `atoma-runner.yml` does not mention it, and `atoma` hands a tool
+**No agent can reach it.** It is named in `self/workflows/atomaton-self-deploy.yml`
+and nowhere else; `atomaton-runner.yml` does not mention it, and `atoma` hands a tool
 server only the credentials that server's own `env` declares. The workflow also
 refuses a bot as `triggering_actor`, because the agent runner's token carries
 `actions: write` and could therefore dispatch a workflow in principle —
@@ -161,7 +161,7 @@ an agent has no route to it today (`gh` and `curl` are both refused by the shell
 guard, and no MCP tool dispatches anything), but that is a denylist, and this token
 can rewrite workflows.
 
-A PAT is acceptable here and not inside Atoma because what holds it is a person
+A PAT is acceptable here and not inside Atomaton because what holds it is a person
 pressing a button. The line in #353 — a pull request may not decide its own
 execution environment — is not crossed: nothing an agent produces reaches it.
 
@@ -208,7 +208,7 @@ What each command proves:
 - `test:e2e`: end-to-end checks in `tests/e2e`.
 
 `test:e2e` runs against the built tree, so `bun run synth` has to come first — it
-reads `dist/.github/atoma-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
+reads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does
 not have until you build it.
 
 ## Generated-file discipline
@@ -220,7 +220,7 @@ not have until you build it.
   deliverable still builds.
 - `dist/.github/*` is generated: never hand-edit it.
 - `.github/*` is *deployed*, not generated on merge. It is a release plus `self/`
-  copied over it, rebuilt by [Atoma Self Deploy](#applying-a-release-to-this-repository).
+  copied over it, rebuilt by [Atomaton Self Deploy](#applying-a-release-to-this-repository).
   So a change under `src/` does not reach the live agents until someone
   dispatches that, and CI does not reject a diff that touches `.github/`.
 - What is genuinely yours to edit lives in `self/`, not in `.github/`. Edit both,
@@ -232,7 +232,7 @@ not have until you build it.
 
 - Describe behavior changes from an adopter perspective.
 - Include exact commands you ran and outcomes.
-- Do not include `.github/atoma`; it is upgraded deliberately, not per pull
+- Do not include `.github/atomaton`; it is upgraded deliberately, not per pull
   request. `dist/` cannot appear at all — it is gitignored.
 - Avoid unrelated refactors in the same PR.
 - If you changed workflow dispatch semantics, call out backward compatibility impact explicitly.

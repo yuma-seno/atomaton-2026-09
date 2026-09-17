@@ -8,7 +8,7 @@
  *
  * ## Why a generator rather than a second file
  *
- * A project configures Atoma; it does not configure the binary Atoma runs. Two
+ * A project configures Atomaton; it does not configure the binary Atomaton runs. Two
  * files made an adopter answer a question they have no way to answer -- which of
  * these two is mine? -- and the answer was never "both", it was "the boundary is
  * an implementation detail of the thing you adopted".

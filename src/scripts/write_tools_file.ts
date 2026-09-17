@@ -29,7 +29,7 @@
  * execution environment" rule, crossed at its widest point.
  *
  * `--config` is therefore given the machinery checkout's config, which
- * `atoma-runner.yml` takes from the default branch. This script does no fetching and
+ * `atomaton-runner.yml` takes from the default branch. This script does no fetching and
  * makes no decision about trust: it writes what it is pointed at, and the caller is
  * responsible for pointing it at something a person merged.
  *

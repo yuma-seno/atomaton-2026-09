@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /**
- * validate_deliverable.ts — checks that a tree's `.github/atoma/` is internally
+ * validate_deliverable.ts — checks that a tree's `.github/atomaton/` is internally
  * consistent, before a pull request that changes it can merge.
  *
  * ## The gap this closes
  *
- * Nothing checked the deliverable's own consistency at pull-request time. Atoma
+ * Nothing checked the deliverable's own consistency at pull-request time. Atomaton
  * resolves every name in an agent's `mcp_servers` against tools.yaml and aborts
  * the whole run before a single MCP server starts if one is missing — so that
  * failure surfaced AFTER the merge, on whoever triggered the next run, rather
@@ -13,7 +13,7 @@
  *
  * `tests/contract/agent-definitions.test.ts` does check that one rule, but
  * adopters never receive it: `build-dist.ts` excludes `*.test.ts` by design. And
- * `config.yaml`'s `checks.atoma_runs.commands` ships empty, so an adopter's `atoma-check.yml`
+ * `config.yaml`'s `checks.atomaton_runs.commands` ships empty, so an adopter's `atomaton-check.yml`
  * runs nothing at all until they configure it — and whatever they put there is
  * their pipeline, not a place to hide this.
  *
@@ -35,7 +35,7 @@
  *
  * `--root` is the tree to validate, and on a pull request it is a checkout of the
  * pull request's HEAD — the content that would merge. This script itself comes
- * from the default branch. The pull request's `.github/atoma/` is data here and
+ * from the default branch. The pull request's `.github/atomaton/` is data here and
  * never code: nothing under `--root` is executed, and the atoma binary is
  * downloaded by the workflow rather than taken from the tree being checked.
  *
@@ -49,7 +49,7 @@
  *   1  problems found — they are printed, and written to `--report` if given
  *   2  the check could not be performed (no such root, atoma would not run)
  *
- * `atoma-validate-pr.yml` treats 1 as a red check handed back to the engineer and
+ * `atomaton-validate-pr.yml` treats 1 as a red check handed back to the engineer and
  * 2 as a broken job, because a validation that did not happen must not read as one
  * that passed. Run by hand — `bun run .github/scripts/validate_deliverable.ts` —
  * it is the same check the pull request is judged by.
@@ -126,8 +126,8 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
  * Write the tools file this tree's config describes, and return its path.
  *
  * Both halves come from the tree under review: the project's own `tools.servers`
- * from `.github/atoma/config.yaml`, and the shipped servers from
- * `.github/atoma-runtime/tools/defaults.yaml`. The hook base is that same runtime
+ * from `.github/atomaton/config.yaml`, and the shipped servers from
+ * `.github/atomaton-runtime/tools/defaults.yaml`. The hook base is that same runtime
  * directory, so the paths the core then checks for existence point at the scripts
  * this pull request would deploy — which is the thing being validated.
  *
@@ -136,8 +136,8 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
  * being judged, and a pull request must not be able to redirect the judging.
  */
 function writeToolsFileFor(root: string): string {
-  const atomaDir = join(root, ".github", "atoma");
-  const runtimeTools = join(root, ".github", "atoma-runtime", "tools");
+  const atomaDir = join(root, ".github", "atomaton");
+  const runtimeTools = join(root, ".github", "atomaton-runtime", "tools");
 
   const config = Bun.YAML.parse(readFileSync(join(atomaDir, "config.yaml"), "utf8")) as {
     tools?: ToolsSection;
@@ -146,7 +146,7 @@ function writeToolsFileFor(root: string): string {
   if (collisions.length > 0) {
     throw new Error(`\`tools.servers\` may not be named ${collisions.join(", ")} — reserved by the core`);
   }
-  const out = join(mkdtempSync(join(tmpdir(), "atoma-validate-")), "tools.yaml");
+  const out = join(mkdtempSync(join(tmpdir(), "atomaton-validate-")), "tools.yaml");
   writeFileSync(
     out,
     Bun.YAML.stringify(
@@ -175,7 +175,7 @@ function workflowFiles(workflowDir: string): string[] {
 function collect(root: string, atoma: string): string[] {
   if (!existsSync(root)) throw new CannotCheck(`--root ${root} does not exist`);
 
-  const atomaDir = join(root, ".github", "atoma");
+  const atomaDir = join(root, ".github", "atomaton");
   const agentDir = join(atomaDir, "agent-definitions");
   const configFile = join(atomaDir, "config.yaml");
 
@@ -249,7 +249,7 @@ function main(): void {
     problems = collect(root, atoma);
   } catch (error) {
     if (!(error instanceof CannotCheck)) throw error;
-    console.error(`[atoma-validate-deliverable] cannot check: ${error.message}`);
+    console.error(`[atomaton-validate-deliverable] cannot check: ${error.message}`);
     process.exit(2);
   }
 

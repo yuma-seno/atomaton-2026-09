@@ -26,7 +26,7 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/shipped-work
 // about dispatching, so they moved to where a pure module can reach them.
 
 function log(message: string): void {
-  console.error(`[atoma-github] ${message}`);
+  console.error(`[atomaton-github] ${message}`);
 }
 
 /**
@@ -62,7 +62,7 @@ function log(message: string): void {
 export function dispatchPrValidation(repo: string, prNumber: number, branch: string, reviewer: string): boolean {
   return dispatchWorkflow(
     `dispatchPrValidation: validating PR #${prNumber}`,
-    "atoma-validate-pr.yml",
+    "atomaton-validate-pr.yml",
     [
       "--repo", repo,
       "-f", `number=${prNumber}`,
@@ -86,7 +86,7 @@ export function dispatchPostMergeAgent(repo: string, subIssueNum: number, agent:
   const notify = resolveNotify(repo, subIssueNum);
   const { code, stdout, stderr } = gh(
     "issue", "comment", String(subIssueNum), "--repo", repo,
-    "--body", "Atoma: Your PR was merged. Please confirm completion and close this sub-task.",
+    "--body", "Atomaton: Your PR was merged. Please confirm completion and close this sub-task.",
   );
   if (code) {
     log(`dispatchPostMergeAgent: could not post trigger comment on #${subIssueNum}: ${stderr || stdout}`);
@@ -116,7 +116,7 @@ export function dispatchCi(branch: string): boolean {
  * runs.
  *
  * A project either names its own workflow in `deploy.your_workflow`, or declares
- * `deploy.atoma_runs.targets` and lets `atoma-deploy.yml` run them. In the second
+ * `deploy.atomaton_runs.targets` and lets `atomaton-deploy.yml` run them. In the second
  * case the decision is made HERE rather than in the workflow: a dispatch that
  * starts a runner only to discover that nothing deploys on merge is a wasted run
  * on every single merge, and this is the one trigger where the question can be
@@ -140,7 +140,7 @@ export function dispatchCd(baseRef: string): boolean {
   if (!configured) {
     const { targets, problems } = getDeployTargets();
     if (problems.length === 0 && targetsForMerge(targets).length === 0) {
-      log("dispatchCd: no deploy.atoma_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
+      log("dispatchCd: no deploy.atomaton_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
       return false;
     }
   }

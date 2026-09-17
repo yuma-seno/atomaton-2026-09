@@ -15,11 +15,11 @@
  *
  * ## Why the checkout, and why the machinery root
  *
- * `config.yaml` has to be read from somewhere. `atoma-check` reads the pull
+ * `config.yaml` has to be read from somewhere. `atomaton-check` reads the pull
  * request's OWN configuration on purpose -- that is what lets an agent change the
  * runner and prove the change in the same pull request, exactly as
  * `environment-setup.ts` argues for `environment.setup_commands`. It grants
- * nothing new: the job already runs that branch's `checks.atoma_runs.commands`.
+ * nothing new: the job already runs that branch's `checks.atomaton_runs.commands`.
  */
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./base.ts";

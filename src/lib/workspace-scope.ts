@@ -21,7 +21,7 @@ import { workspaceScope, type WorkspaceScope } from "../domain/workspace.ts";
 const MAX_HOPS = 6;
 
 function log(message: string): void {
-  console.error(`[atoma-workspace] ${message}`);
+  console.error(`[atomaton-workspace] ${message}`);
 }
 
 /** The issue a pull request was opened for, or undefined when it says nothing. */

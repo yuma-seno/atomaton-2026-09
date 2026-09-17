@@ -13,7 +13,7 @@
  *
  * ## What changed about what it says
  *
- * **The session now survives a failure**. Anyone who has used Atoma
+ * **The session now survives a failure**. Anyone who has used Atomaton
  * before will assume the opposite, so the notice says it outright and gives the
  * two ways forward — continue with the history, or archive it and start clean.
  * Which of those is right is a judgement about the work, and it belongs to the
@@ -82,7 +82,7 @@ export function failureNotice(
   const mention = notify ? `@${notify} ` : "";
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
-    `${mention}Atoma: \`${agent}\` did not finish — the run failed.`,
+    `${mention}Atomaton: \`${agent}\` did not finish — the run failed.`,
     "",
     "**The session was saved.** What this run worked out is still there.",
     "",

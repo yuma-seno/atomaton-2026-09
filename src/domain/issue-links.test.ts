@@ -3,7 +3,7 @@ import { claimsToClose, closedIssueNumber, closingKeywordRefusal, closingReferen
 
 describe("claimsToClose", () => {
   // The case this exists for. PR #284 carried `Closes #281` and targeted
-  // `atoma/issue-280`, so GitHub formed no closing link and `willCloseTarget`
+  // `atomaton/issue-280`, so GitHub formed no closing link and `willCloseTarget`
   // reported false. Without reading the body, a sub-issue's pull request is
   // invisible -- and a sub-issue is exactly where "we decided X" sits above an
   // unmerged pull request.

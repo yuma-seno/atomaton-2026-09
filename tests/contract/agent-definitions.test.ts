@@ -15,7 +15,7 @@
  * ## This is the dev-time half of a pair
  *
  * The authoritative check is `atoma validate --agent-def X.md --tools-file`, which
- * `atoma-validate-pr.yml` now runs against every agent definition a pull request
+ * `atomaton-validate-pr.yml` now runs against every agent definition a pull request
  * would merge — the core's own code, applying the same resolution a run applies.
  *
  * This test stays because it runs where that binary is not: `bun test` on a laptop
@@ -28,11 +28,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { toolDefaults } from "../../src/domain/shipped-servers.ts";
 
-const AGENT_DIR = join(process.cwd(), "src/atoma/agent-definitions");
-const CONFIG = join(process.cwd(), "src/atoma/config.yaml");
+const AGENT_DIR = join(process.cwd(), "src/atomaton/agent-definitions");
+const CONFIG = join(process.cwd(), "src/atomaton/config.yaml");
 
 /**
- * Every server name a run would resolve: the ones Atoma ships, plus whatever this
+ * Every server name a run would resolve: the ones Atomaton ships, plus whatever this
  * project added.
  *
  * Both halves, because both halves are real. It read only `tools.servers` while the

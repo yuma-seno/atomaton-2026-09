@@ -7,12 +7,12 @@
  *
  * ## What a window can be cut by
  *
- * `atoma_runs` in each session, written by atoma from v0.1.28: when a run started, when
+ * `atomaton_runs` in each session, written by atoma from v0.1.28: when a run started, when
  * it ended, why it ended. Before that, sessions carried no time at all — a session
  * records what was said and nothing about the saying of it.
  *
  * So the windows fill in from the first run after that version and not before. There is
- * no retrofit: git's commit dates on `atoma-data` looked like a free answer and are not,
+ * no retrofit: git's commit dates on `atomaton-data` looked like a free answer and are not,
  * because restoring the sessions that a prune had removed rewrote 97 of them to the same
  * afternoon. A date that is wrong is worse here than a date that is missing, because a
  * window silently containing the wrong runs reads exactly like one containing the right

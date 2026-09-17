@@ -10,23 +10,23 @@ describe("what the code search reads", () => {
       "cmd/serve/main.go",
       "lib/parser.py",
       "docs/configuration.md",
-      "src/atoma/config.yaml",
+      "src/atomaton/config.yaml",
     ]) {
       expect(shouldIndex(path), path).toBe(true);
     }
   });
 
   /**
-   * `.github/atoma/**` is generated from `src/` by `build-dist.ts`. Indexing it serves
+   * `.github/atomaton/**` is generated from `src/` by `build-dist.ts`. Indexing it serves
    * neither kind of repository: here it is a second copy of the source, so a search
-   * returns the copy; in an adopter's, it is Atoma's implementation, so a question
+   * returns the copy; in an adopter's, it is Atomaton's implementation, so a question
    * about their project is answered with ours.
    */
   test("the deployed machinery is not the project's source", () => {
     for (const path of [
-      ".github/atoma-runtime/tools/mcp/search.ts",
-      ".github/atoma-runtime/scripts/post_result_comment.ts",
-      ".github/workflows/atoma-runner.yml",
+      ".github/atomaton-runtime/tools/mcp/search.ts",
+      ".github/atomaton-runtime/scripts/post_result_comment.ts",
+      ".github/workflows/atomaton-runner.yml",
     ]) {
       expect(shouldIndex(path), path).toBe(false);
     }
@@ -70,7 +70,7 @@ describe("the corpus", () => {
       corpusFrom([
         "src/b.ts",
         "src/a.ts",
-        ".github/atoma/config.yaml",
+        ".github/atomaton/config.yaml",
         "bun.lock",
         "docs/readme.md",
         "",

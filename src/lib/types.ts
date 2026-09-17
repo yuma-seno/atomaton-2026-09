@@ -14,7 +14,7 @@
 // keep working. `domain/` is the definition; this is a doorway to it, not a
 // second copy.
 /**
- * `.github/atoma/config.yaml`, as the readers in `lib/config.ts` see it.
+ * `.github/atomaton/config.yaml`, as the readers in `lib/config.ts` see it.
  *
  * Grouped by who consumes the value. Every field is optional because a project
  * that declares nothing still runs -- the readers carry the defaults, in one place
@@ -36,7 +36,7 @@ export interface AtomaConfig {
 
   /** How a change is verified. Exactly one arm; declaring both is a configuration error. */
   checks?: {
-    atoma_runs?: {
+    atomaton_runs?: {
       commands?: string[];
       secrets?: string[];
       runs_on?: string | string[];
@@ -46,7 +46,7 @@ export interface AtomaConfig {
 
   /** How a merged change ships. The same two arms. */
   deploy?: {
-    atoma_runs?: {
+    atomaton_runs?: {
       /** Validated by `resolveDeployTargets`, which owns what a malformed one means. */
       targets?: unknown;
       secrets?: string[];
@@ -77,7 +77,7 @@ export interface AtomaConfig {
   };
 
   /**
-   * What an agent can reach beyond what Atoma ships, and under what extra watch.
+   * What an agent can reach beyond what Atomaton ships, and under what extra watch.
    *
    * Additive. The eight servers a run starts with and the hooks that watch all of
    * them are in `domain/shipped-servers.ts`, not here: deleting one breaks a run, and
@@ -86,7 +86,7 @@ export interface AtomaConfig {
    * degrades.
    *
    * `servers` is passed through to the core's own tools-file format verbatim, so a
-   * key the core gains works here the day it ships. A name Atoma ships is overridden
+   * key the core gains works here the day it ships. A name Atomaton ships is overridden
    * field by field; a name it does not is added. `settings` is the one key this
    * project reserves inside a server entry: the generator strips it, and the server
    * reads it back through `lib/config.ts`.

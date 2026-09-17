@@ -2,7 +2,7 @@
  * agent-name.ts — the one definition of what a valid agent name looks like.
  *
  * An agent name is not decoration: it is spliced into a filesystem path
- * (`--agent-def .github/atoma/agent-definitions/<name>.md`), into shell text
+ * (`--agent-def .github/atomaton/agent-definitions/<name>.md`), into shell text
  * inside generated workflow YAML, into `gh workflow run --field agent=<name>`,
  * and into the `atoma:agent`/`atoma:dispatch`/`atoma:origin-agent` comment
  * tags. So "what counts as a name" is a security boundary, and it was
@@ -17,7 +17,7 @@
  *
  * `AGENT_NAME_PATTERN` is exported as a bare pattern BODY rather than a
  * `RegExp` because two of its consumers cannot use one: `lib/tags.ts` embeds it
- * in a larger HTML-comment regex, and `workflows/atoma-runner.wac.ts` generates
+ * in a larger HTML-comment regex, and `workflows/atomaton-runner.wac.ts` generates
  * it into a bash `[[ =~ ]]` test. Generating the bash copy from this constant
  * is what makes the workflow's own check provably the same rule as the
  * TypeScript one, rather than a hand-kept-in-step transcription.

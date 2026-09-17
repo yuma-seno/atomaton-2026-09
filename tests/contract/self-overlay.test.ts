@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { CONFIG_FILE } from "../../src/domain/machinery-layout.ts";
 
 /**
  * `self/` and `.github/` do not drift apart.
@@ -13,7 +14,7 @@ import { join, relative } from "node:path";
  *
  * - a file the upstream release had **deleted** stayed in the tree. `unzip -o`
  *   overwrites and never removes, so there was no diff to notice it by. The old
- *   `conventions.md` said to "look for orphans under `.github/atoma/` yourself".
+ *   `conventions.md` said to "look for orphans under `.github/atomaton/` yourself".
  * - the preserve list lived in a person's memory. `config.yaml` was restored every
  *   time because it was remembered, not because anything checked.
  *
@@ -59,6 +60,13 @@ import { join, relative } from "node:path";
 const OVERLAY = "self";
 const DEPLOYED = ".github";
 const BUILT = "dist/.github";
+
+/**
+ * The one path `self/` is allowed to shadow, as a path under `.github/` rather
+ * than as a second spelling of it. It was spelled out, and renaming the layout
+ * turned the deliberate exception into a violation of the rule it exempts.
+ */
+const OVERRIDABLE = relative(DEPLOYED, CONFIG_FILE).replaceAll("\\", "/");
 
 function filesUnder(root: string): string[] {
   if (!existsSync(root)) return [];
@@ -125,7 +133,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
     }
     const shadowed = filesUnder(OVERLAY)
       .filter((file) => existsSync(join(BUILT, file)))
-      .filter((file) => file !== "atoma/config.yaml");
+      .filter((file) => file !== OVERRIDABLE);
     expect(
       shadowed,
       `the deliverable ships these too, so ${OVERLAY}/ silently overrides them. If the intent is ` +
@@ -138,7 +146,7 @@ describe("`self/` and `.github/` hold the same overlay", () => {
    * Every hand-written workflow in the overlay must parse, and must declare a
    * trigger.
    *
-   * This is the test that was missing when it mattered. `atoma-self-deploy.yml`
+   * This is the test that was missing when it mattered. `atomaton-self-deploy.yml`
    * shipped with a `git commit -m` whose continuation lines started at column 0 --
    * which leaves the block scalar and makes the file invalid YAML. Everything
    * passed: typecheck, synth, all four overlay tests, all of CI.
@@ -180,11 +188,11 @@ describe("`self/` and `.github/` hold the same overlay", () => {
    * nothing in the deliverable knows about the secret.
    */
   test("the self-deploy workflow is this repository's own, and the deliverable never names its token", () => {
-    expect(existsSync(join(OVERLAY, "workflows/atoma-self-deploy.yml"))).toBe(true);
-    expect(existsSync(join(BUILT, "workflows/atoma-self-deploy.yml")), "it must not be shipped").toBe(false);
+    expect(existsSync(join(OVERLAY, "workflows/atomaton-self-deploy.yml"))).toBe(true);
+    expect(existsSync(join(BUILT, "workflows/atomaton-self-deploy.yml")), "it must not be shipped").toBe(false);
 
     // An adopter receiving a reference to this secret would get a workflow that
-    // cannot run, and -- worse -- a name suggesting Atoma expects a PAT.
+    // cannot run, and -- worse -- a name suggesting Atomaton expects a PAT.
     for (const file of filesUnder("src")) {
       if (!/\.(ts|yml|yaml|md|json)$/.test(file)) continue;
       expect(

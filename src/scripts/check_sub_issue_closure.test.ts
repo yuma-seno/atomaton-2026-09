@@ -6,7 +6,7 @@ import { parseGithubOutput, runWithFakeGh, scriptPath } from "./testing/harness.
 
 describe("check_sub_issue_closure.ts", () => {
   test("detects a sub-issue and reports closed_via_pr=false when not closed via PR", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const eventFile = join(dir, "event.json");
       const outputFile = join(dir, "out");
@@ -33,7 +33,7 @@ describe("check_sub_issue_closure.ts", () => {
   });
 
   test("reports closed_via_pr=true when the sub-issue was already closed by a merged PR", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const eventFile = join(dir, "event.json");
       const outputFile = join(dir, "out");
@@ -58,7 +58,7 @@ describe("check_sub_issue_closure.ts", () => {
   });
 
   test("reports is_sub_issue=false when there is no atoma:parent tag", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const eventFile = join(dir, "event.json");
       const outputFile = join(dir, "out");

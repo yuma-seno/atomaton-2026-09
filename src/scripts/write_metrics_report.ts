@@ -4,7 +4,7 @@
  *
  * Runs at the end of an agent run, where the branch is already being written to and the
  * cost is a few seconds on a job that took minutes. See `domain/metrics.ts` for what is
- * counted and `domain/metrics-report.ts` for why it is Markdown on `atoma-data`.
+ * counted and `domain/metrics-report.ts` for why it is Markdown on `atomaton-data`.
  *
  * Usage:
  *   write_metrics_report.ts [--repo OWNER/REPO] [--stdout]
@@ -22,7 +22,7 @@ import { parseArgs } from "node:util";
 import { readFileSync } from "node:fs";
 import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
-import { saveSession } from "./lib/atoma-data.ts";
+import { saveSession } from "./lib/atomaton-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
 import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
 import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
@@ -31,7 +31,7 @@ import { renderReport } from "../domain/metrics-report.ts";
 
 export const ref = defineScript(import.meta.url);
 
-const BRANCH = "atoma-data";
+const BRANCH = "atomaton-data";
 
 /** Where the report lives. Beside the data it is read from, not in the deliverable. */
 export const REPORT_PATH = "metrics/report.md";
@@ -170,7 +170,7 @@ function looksFailed(content: string): boolean {
 function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   let parsed: {
     messages?: { role?: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown[] }[];
-    atoma_runs?: unknown;
+    atomaton_runs?: unknown;
   };
   try {
     parsed = JSON.parse(raw);
@@ -220,10 +220,10 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
       });
     }
   }
-  // `atoma_runs` is atoma's own, written from v0.1.28. Anything unreadable is no
+  // `atomaton_runs` is atoma's own, written from v0.1.28. Anything unreadable is no
   // runs rather than a failure: a session from before it is the normal case.
-  const runs = Array.isArray((parsed as { atoma_runs?: unknown }).atoma_runs)
-    ? ((parsed as { atoma_runs: RunRecord[] }).atoma_runs)
+  const runs = Array.isArray((parsed as { atomaton_runs?: unknown }).atomaton_runs)
+    ? ((parsed as { atomaton_runs: RunRecord[] }).atomaton_runs)
     : [];
   return { path, agent, messages: messages.length, calls, runs };
 }
@@ -278,7 +278,7 @@ function tokensReported(repo: string): TokenRecord[] {
 
 /** The tools and skills the repository offers, so the report can name what is unused. */
 function declared(): { tools: string[]; skills: string[] } {
-  const root = process.env.ATOMA_MACHINERY_ROOT?.trim() || ".";
+  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   const tools: string[] = [];
   const skills: string[] = [];
   try {

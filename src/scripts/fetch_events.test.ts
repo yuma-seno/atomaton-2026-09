@@ -7,7 +7,7 @@ import { parseGithubOutput, runWithFakeGh, scriptPath } from "./testing/harness.
 
 describe("fetch_events.ts", () => {
   test("fetches issue events (body + comments) sorted by created_at", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const outFile = join(dir, "events.json");
       const outputFile = join(dir, "out");
@@ -62,7 +62,7 @@ describe("fetch_events.ts", () => {
   // every agent run at this step -- and a pull request an agent opened was
   // therefore never reviewed.
   test("a degraded context endpoint costs context, not the run", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const outFile = join(dir, "events.json");
       const outputFile = join(dir, "out");
@@ -119,7 +119,7 @@ describe("fetch_events.ts", () => {
   // fails, and says which call failed rather than reporting a JSON parse error
   // about the empty output of that call.
   test("a missing pull request still fails, and names the call", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-test-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     try {
       const outputFile = join(dir, "out");
       writeFileSync(outputFile, "");
@@ -141,7 +141,7 @@ describe("fetch_events.ts", () => {
   });
 
   test("keeps Issue-local context when linked PR search fails", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-fetch-search-failure-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-fetch-search-failure-"));
     const eventsFile = join(dir, "events.json");
     const outputFile = join(dir, "output.txt");
     writeFileSync(outputFile, "");
@@ -179,7 +179,7 @@ describe("fetch_events.ts", () => {
   });
 
   test("Issue and linked PR runs produce the same serial context and canonical key", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-fetch-linked-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-fetch-linked-"));
     const issueEventsFile = join(dir, "issue-events.json");
     const prEventsFile = join(dir, "pr-events.json");
     const issueOutput = join(dir, "issue-output.txt");

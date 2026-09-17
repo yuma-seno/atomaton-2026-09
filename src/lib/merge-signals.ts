@@ -161,7 +161,7 @@ function readChangedFiles(repo: string, num: number): ChangedFilesRead {
       // calling an addition next, and the failure would be invisible.
       return {
         files: [],
-        problem: `GitHub reported file status '${status}' for #${num}, which Atoma does not recognise`,
+        problem: `GitHub reported file status '${status}' for #${num}, which Atomaton does not recognise`,
       };
     }
     // A rename is an addition at the new path and a removal at the old one. Read
@@ -278,7 +278,7 @@ export function gatherMergeSignals(
       // safe reading is "do not merge this for someone", not "merge it".
       authoredByAgent: pr?.author?.is_bot ?? false,
       state: pr?.state ?? "UNKNOWN",
-      // Unknown reads as enforceable, which is the cautious direction: it keeps Atoma
+      // Unknown reads as enforceable, which is the cautious direction: it keeps Atomaton
       // from standing in for GitHub on a repository where GitHub is in fact blocking,
       // and so from reporting one refusal twice.
       requiredChecksEnforceable: required.known ? required.enforceable : true,

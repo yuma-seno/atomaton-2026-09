@@ -7,7 +7,7 @@ import {
   type WorkspaceUsage,
 } from "./workspace-size.ts";
 
-const PATH = "/tmp/atoma-workspace";
+const PATH = "/tmp/atomaton-workspace";
 
 function usage(over: Partial<WorkspaceUsage> = {}): WorkspaceUsage {
   return { bytes: 1_000, files: 5, largest: [{ path: `${PATH}/notes.md`, bytes: 600 }], ...over };

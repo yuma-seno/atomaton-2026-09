@@ -3,7 +3,7 @@
  * probe-tool-servers.ts — do the tool servers actually start, at the layout a run
  * uses?
  *
- * `atoma-check` is scan_secrets → typecheck → synth → test, and **not one of those
+ * `atomaton-check` is scan_secrets → typecheck → synth → test, and **not one of those
  * starts a tool server as a process.** Four defects of one shape landed in a
  * single day, all green in CI, all found only after deploying: the worst was a path
  * where moving the machinery out of the work tree put `node_modules` out of reach
@@ -30,11 +30,11 @@
  * defect is entirely about WHERE the files are. So this reproduces the two facts
  * the runner's install step establishes --
  *
- *   - the machinery lives at `${RUNNER_TEMP}/atoma-machinery`, out of the work tree
+ *   - the machinery lives at `${RUNNER_TEMP}/atomaton-machinery`, out of the work tree
  *   - the libraries a server imports live at `${RUNNER_TEMP}/node_modules`, beside
  *     it rather than in the project's own tree
  *
- * -- and `assertLayoutStillMatches` fails if `atoma-runner.wac.ts` stops saying
+ * -- and `assertLayoutStillMatches` fails if `atomaton-runner.wac.ts` stops saying
  * either. A probe that quietly tested a layout the runner no longer uses would be
  * worse than no probe, which is the argument against fake servers.
  *
@@ -53,9 +53,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
 
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
-const MACHINERY = `${RUNNER_TEMP}/atoma-machinery`;
-const CONFIG_FILE = `${MACHINERY}/.github/atoma/config.yaml`;
-const HOOK_BASE = `${MACHINERY}/.github/atoma-runtime/tools`;
+const MACHINERY = `${RUNNER_TEMP}/atomaton-machinery`;
+const CONFIG_FILE = `${MACHINERY}/.github/atomaton/config.yaml`;
+const HOOK_BASE = `${MACHINERY}/.github/atomaton-runtime/tools`;
 
 /**
  * Where this probe writes the tools file, the way a run does.
@@ -66,7 +66,7 @@ const HOOK_BASE = `${MACHINERY}/.github/atoma-runtime/tools`;
  * config, rather than read one somebody left behind.
  */
 const TOOLS_FILE = `${RUNNER_TEMP}/probe-tools.yaml`;
-const RUNNER_WAC = "src/workflows/atoma-runner.wac.ts";
+const RUNNER_WAC = "src/workflows/atomaton-runner.wac.ts";
 
 /** Write the tools file this machinery's config describes, as `write_tools_file.ts` would. */
 function writeToolsFile(): void {
@@ -100,7 +100,7 @@ function result(name: string, value: unknown): void {
 async function assertLayoutStillMatches(): Promise<boolean> {
   const wac = await Bun.file(RUNNER_WAC).text();
   const expectations: [string, string][] = [
-    ["machinery_out_of_the_work_tree", "RUNNER_TEMP}/atoma-machinery"],
+    ["machinery_out_of_the_work_tree", "RUNNER_TEMP}/atomaton-machinery"],
     ["libraries_beside_the_machinery", 'RUNNER_TEMP}" && bun add'],
   ];
   let held = true;
@@ -162,10 +162,10 @@ async function probe(): Promise<number> {
   // The runner sets these on every run rather than trusting the checkout: the mode
   // is decided wherever the repository was committed from. `before_tool` is
   // fail-closed, so a hook that cannot start denies the tool outright.
-  await Bun.$`chmod -R +x ${MACHINERY}/.github/atoma-runtime/tools/hooks`.quiet().nothrow();
+  await Bun.$`chmod -R +x ${MACHINERY}/.github/atomaton-runtime/tools/hooks`.quiet().nothrow();
   result("machinery_at", MACHINERY);
 
-  const packages = (await Bun.file(`${MACHINERY}/.github/atoma-runtime/tools/packages.json`).json()) as {
+  const packages = (await Bun.file(`${MACHINERY}/.github/atomaton-runtime/tools/packages.json`).json()) as {
     npm?: string[];
     bun?: string[];
   };
@@ -184,7 +184,7 @@ async function probe(): Promise<number> {
   const bunPackages = packages.bun ?? [];
   if (bunPackages.length > 0) {
     // Beside the machinery, which is the whole of that defect: resolution walks up from
-    // the importing file, so from `${RUNNER_TEMP}/atoma-machinery/...` it reaches
+    // the importing file, so from `${RUNNER_TEMP}/atomaton-machinery/...` it reaches
     // `${RUNNER_TEMP}` and stops. Not the work tree, ever.
     const manifest = Bun.file(`${RUNNER_TEMP}/package.json`);
     if (!(await manifest.exists())) {
@@ -243,7 +243,7 @@ async function probe(): Promise<number> {
     {
       env: {
         ...process.env,
-        ATOMA_MACHINERY_ROOT: MACHINERY,
+        ATOMATON_MACHINERY_ROOT: MACHINERY,
         OPENAI_API_KEY: "probe-key",
         OPENAI_BASE_URL: `http://127.0.0.1:${llm.port}`,
         ATOMA_PROVIDER: "openai",

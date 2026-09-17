@@ -11,7 +11,7 @@
  *
  * ## Why the trigger is here and not in the workflow
  *
- * `atoma-deploy.yml` listens for every tag, and asks this module whether any
+ * `atomaton-deploy.yml` listens for every tag, and asks this module whether any
  * target wanted that one. It cannot listen selectively, because `on:` takes no
  * expression and so cannot be driven from configuration. Filtering after the
  * fact costs a few seconds of runner time on a tag nobody deploys, which is the
@@ -87,7 +87,7 @@ function readCommands(raw: unknown, where: string, problems: string[]): string[]
 }
 
 /**
- * Validate `deploy.atoma_runs.targets`.
+ * Validate `deploy.atomaton_runs.targets`.
  *
  * Returns targets only when every one of them is usable. A half-honoured
  * deployment list is the worst outcome available: the run reports success having
@@ -96,7 +96,7 @@ function readCommands(raw: unknown, where: string, problems: string[]): string[]
 export function resolveDeployTargets(raw: unknown): DeployTargetsResolution {
   if (raw === undefined || raw === null) return { targets: [], problems: [] };
   if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.atoma_runs.targets` must be an array."] };
+    return { targets: [], problems: ["`deploy.atomaton_runs.targets` must be an array."] };
   }
 
   const problems: string[] = [];
@@ -104,7 +104,7 @@ export function resolveDeployTargets(raw: unknown): DeployTargetsResolution {
   const seen = new Set<string>();
 
   raw.forEach((entry, index) => {
-    const where = `\`deploy.atoma_runs.targets[${index}]\``;
+    const where = `\`deploy.atomaton_runs.targets[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;

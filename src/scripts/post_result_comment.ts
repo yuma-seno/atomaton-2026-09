@@ -4,7 +4,7 @@
  * comment, including token usage and (when nothing further will
  * happen automatically) a mention.
  *
- * Reads atoma_output.txt (required) and atoma_logs.txt (optional, for the
+ * Reads atomaton_output.txt (required) and atomaton_logs.txt (optional, for the
  * ATOMA_TOKEN_USAGE: line) from the current directory.
  *
  * Usage:
@@ -48,8 +48,8 @@ export interface PostResultCommentArgs {
    *
    * Arguments rather than the bare names this used to open. Those were relative
    * paths, correct only while the run's files sat in the repository root -- they
-   * moved them to `$RUNNER_TEMP/atoma-run` and every result comment since was
-   * silently dropped, because `existsSync("atoma_output.txt")` was false and the
+   * moved them to `$RUNNER_TEMP/atomaton-run` and every result comment since was
+   * silently dropped, because `existsSync("atomaton_output.txt")` was false and the
    * skip branch reads exactly like a session that ended via a tool call.
    *
    * Two full releases went out that way. The step reported success, the agent wrote
@@ -268,7 +268,7 @@ export function buildCommentBody(args: {
   // Omitted rather than guessed when the repository is unknown, because a broken link
   // in every comment is worse than no link at all.
   const metrics = args.repo
-    ? ` · [metrics](https://github.com/${args.repo}/blob/atoma-data/metrics/report.md)`
+    ? ` · [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)`
     : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
   if (args.stopRequested === "true") {
@@ -323,7 +323,7 @@ function main(): void {
   // A net, not a control: see domain/redaction.ts on what a shape check cannot
   // catch. The reason it is here at all is that this is one of the two sinks that
   // publish unmasked text (the other is the failure excerpt in
-  // atoma-runner.wac.ts).
+  // atomaton-runner.wac.ts).
   // Required, not defaulted. A default would put the old relative path back and
   // restore the exact silence this is fixing: a caller that forgot the argument
   // would look in the work tree, find nothing, and report a session that ended via
@@ -335,9 +335,9 @@ function main(): void {
   }
   const redacted = redact(existsSync(outputFile) ? readFileSync(outputFile, "utf8") : "");
 
-  // `atoma_output.txt` is empty whenever the run ended via a session-ending
+  // `atomaton_output.txt` is empty whenever the run ended via a session-ending
   // tool call (launch_sub_agent, request_close_issue, create_pr -- see
-  // src/atoma/tools/scripts/mcp/{atoma,github}.ts's `_meta.session_ends`):
+  // src/atomaton/tools/scripts/mcp/{atoma,github}.ts's `_meta.session_ends`):
   // atoma's own inference loop stops immediately in that case, before the
   // model ever gets a further turn to produce text. Each of those tools
   // already posts its OWN dedicated, meaningful comment (e.g. "Launched
@@ -367,7 +367,7 @@ function main(): void {
   }
 
   if (!output.trim()) {
-    console.error("atoma_output.txt is empty (session ended via a tool call) -- skipping result comment.");
+    console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
     return;
   }
 

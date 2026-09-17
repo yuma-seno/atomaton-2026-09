@@ -39,7 +39,7 @@
  * relying on it.
  *
  * Usage:
- *   write_credentials_file.ts --out "$RUNNER_TEMP/atoma-credentials.json"
+ *   write_credentials_file.ts --out "$RUNNER_TEMP/atomaton-credentials.json"
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
@@ -104,7 +104,7 @@ function main(): void {
   // What actually protects it is that atoma deletes it before starting any server.
   // That delete needs write permission on the containing DIRECTORY, which is why
   // the runner creates that directory owned by the tool user — see
-  // `CREDENTIALS_DIR` in atoma-runner.wac.ts. Put this file somewhere the tool user
+  // `CREDENTIALS_DIR` in atomaton-runner.wac.ts. Put this file somewhere the tool user
   // cannot unlink from and every credential in it stays readable for the whole run,
   // because the core's delete is best-effort and only warns.
   writeFileSync(values.out, JSON.stringify(credentials), { mode: 0o600 });

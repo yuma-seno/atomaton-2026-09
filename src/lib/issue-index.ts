@@ -20,7 +20,7 @@ import { buildIndex, splitBody, type Bm25Index, type Chunk } from "../domain/bm2
 /**
  * The branch the index lives on, which is its own and holds one commit.
  *
- * It used to be a path on `atoma-data` beside the sessions, and the two want opposite
+ * It used to be a path on `atomaton-data` beside the sessions, and the two want opposite
  * things. A session is appended to, so git's delta compression works on it, and its
  * old versions are worth keeping -- `/resume` restores one. The index is rewritten
  * whole, its old versions are worth nothing (they are snapshots of a repository with
@@ -37,7 +37,7 @@ import { buildIndex, splitBody, type Bm25Index, type Chunk } from "../domain/bm2
  * each carries a complete index, and the loser's additions come back on the next
  * refresh through `?since=`.
  */
-export const INDEX_BRANCH = "atoma-index";
+export const INDEX_BRANCH = "atomaton-index";
 
 /** The index's name on its own branch, at the root because nothing else is there. */
 export const INDEX_PATH = "issue-index.json";

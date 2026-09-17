@@ -107,7 +107,7 @@
  *
  * So it is built per search, and the freshness question does not exist: the agent
  * edits a file and the next search sees the edit. The issue index is cached on
- * `atoma-data` for a reason that does not apply here — fetching issues needs the
+ * `atomaton-data` for a reason that does not apply here — fetching issues needs the
  * network, and code is already on disk. The two share the word "index" and nothing
  * else.
  */

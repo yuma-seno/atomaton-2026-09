@@ -5,7 +5,7 @@
  *
  * `/stop` and `/resume` look exactly like `/engineer`, and that is deliberate: a
  * person typing into a GitHub comment should not have to remember two syntaxes for
- * "tell Atoma to do something". The cost is that they occupy names in the agent
+ * "tell Atomaton to do something". The cost is that they occupy names in the agent
  * namespace, which is what this module is for.
  *
  * `parse_comment_command.ts` checks this list before it reads a name as an agent, so

@@ -1,6 +1,6 @@
 # Operations
 
-This page is for somebody who already has Atoma running: how the machinery behaves,
+This page is for somebody who already has Atomaton running: how the machinery behaves,
 and how to work out why it just did that.
 
 ## How work starts
@@ -36,15 +36,15 @@ issues, comments, pull requests and merges are all made with that token, so noth
 an agent does raises an event, and everything downstream of an agent's action is
 dispatched explicitly instead.
 
-- `create_pr` dispatches `atoma-validate-pr.yml`. It cannot listen for the pull
+- `create_pr` dispatches `atomaton-validate-pr.yml`. It cannot listen for the pull
   request it just opened.
 - A merge is followed by an explicit dispatch of CI and deployment. Nothing
   downstream of it fires by itself, so a deployment chained off CI or off a push to
   the base branch would otherwise silently never run.
 - A workflow that creates an issue — a weekly schedule, say — has to dispatch
-  `atoma-runner.yml` itself, in a last step that is not optional.
+  `atomaton-runner.yml` itself, in a last step that is not optional.
 
-`atoma-pr-merged.yml` is the one path that listens rather than being dispatched: it
+`atomaton-pr-merged.yml` is the one path that listens rather than being dispatched: it
 uses `pull_request_target`, so a merge is detected whoever or whatever performed it.
 
 ### When nobody is named to look at it
@@ -65,10 +65,10 @@ Addressed to whoever the run resolves as the person to notify.
 
 Entry workflows:
 
-- `atoma-entry.yml` for `issues.opened`
-- `atoma-manual-comment.yml` for `issue_comment.created`
-- `atoma-pr-merged.yml` for merged PR aggregation
-- `atoma-sub-issue-closed.yml` for manual sub-issue close fallback
+- `atomaton-entry.yml` for `issues.opened`
+- `atomaton-manual-comment.yml` for `issue_comment.created`
+- `atomaton-pr-merged.yml` for merged PR aggregation
+- `atomaton-sub-issue-closed.yml` for manual sub-issue close fallback
 
 `atoma-auto-trigger.yml` and `atoma-pr-review.yml` are gone. They listened
 for `pull_request_target` and `pull_request_review.submitted` to start a reviewer or
@@ -77,21 +77,21 @@ an engineer, and nothing now starts from a pull request event. See
 
 Dispatched, not event-driven:
 
-- `atoma-validate-pr.yml` runs the configured CI against an agent's pull request,
+- `atomaton-validate-pr.yml` runs the configured CI against an agent's pull request,
   publishes the result as a check run, and dispatches whoever comes next.
   `create_pr` starts it.
 
 Shared executor:
 
-- `atoma-runner.yml` is a reusable workflow called by routing workflows.
+- `atomaton-runner.yml` is a reusable workflow called by routing workflows.
 
 ## Lifecycle
 
 ```mermaid
 flowchart TD
     A[GitHub event or slash command] --> B[Routing workflow]
-    B --> C[atoma-runner reusable workflow]
-    C --> D[Restore session from atoma-data]
+    B --> C[atomaton-runner reusable workflow]
+    C --> D[Restore session from atomaton-data]
     D --> E[Run Atoma agent]
     E --> F[Post result and save session]
     F --> G{Directive or tool-triggered dispatch?}
@@ -133,11 +133,11 @@ this under-fire rather than over-fire: a run that ends by opening a pull request
 posts no result comment of its own, so its progress is invisible to this count and
 the runs either side of it must not read as consecutive.
 
-## Session persistence (`atoma-data` branch)
+## Session persistence (`atomaton-data` branch)
 
 - Active sessions are stored by context and agent: `sessions/<type>-<number>/<agent>.json`.
 - Recovery archives are stored beside the active sessions as `sessions/<type>-<number>/archive/<agent>-N.json`, where `N` is the next per-agent sequence number.
-- Restore uses `git fetch` + `git show` from `origin/atoma-data` without checkout changes.
+- Restore uses `git fetch` + `git show` from `origin/atomaton-data` without checkout changes.
 - Save uses an isolated git worktree and push-retry loop to handle concurrent writes safely.
 - **A session is saved whatever ended the run**, including a failure. What this run
   worked out is still there; `/<agent> recover` archives it and starts fresh when that
@@ -154,7 +154,7 @@ the runs either side of it must not read as consecutive.
 Notes, a script to check something, an intermediate dump — an agent writes these on
 the way to an implementation, and they do not belong in your repository.
 
-`/tmp/atoma-workspace` is where they go. It is restored at the start of every run
+`/tmp/atomaton-workspace` is where they go. It is restored at the start of every run
 on an issue and saved at the end, so a file left there is available to the next run
 and to the other agents working on the same issue. Sub-issues and the pull request
 share the root issue's workspace, because that is one piece of work even though it
@@ -167,27 +167,27 @@ The rule an agent is given is one sentence, and it is the reason this is a
 directory rather than a pair of "stash this" / "fetch that" tools:
 
 > Everything in the repository is part of the work. Anything under
-> `/tmp/atoma-workspace` survives; nothing else outside the repository does.
+> `/tmp/atomaton-workspace` survives; nothing else outside the repository does.
 
 A tool pair would make the agent remember which side each file is on — two verbs
 and a piece of state held in the model's head rather than visible in the path it
 types. A directory puts that state in the string it already writes, and lets it
 read, write and *run* those files with the tools it already has.
 
-It is not durable storage. It lives on the `atoma-data` branch alongside session
+It is not durable storage. It lives on the `atomaton-data` branch alongside session
 state, is replaced wholesale each run (so a file an agent deletes is gone), and is
 not somewhere to keep anything you would mind losing. If something must persist for
 the project, it belongs in the repository or in `environment.setup_commands`.
 
-## Work branches (`atoma/issue-N`)
+## Work branches (`atomaton/issue-N`)
 
 - A branch is created at the first commit, not at the start of a run. A run that
   only reports, confirms a merge, or closes an issue leaves no branch behind.
-- The name is `atoma/issue-N`. A merge deletes the branch, so the same issue's
+- The name is `atomaton/issue-N`. A merge deletes the branch, so the same issue's
   next piece of work takes that name again, cut fresh from the base branch.
 - If a merged branch is still there — a deletion that failed, or a merge made
-  some other way — the next name counts up instead: `atoma/issue-N-2`, then
-  `atoma/issue-N-3`. Work never resumes on merged history.
+  some other way — the next name counts up instead: `atomaton/issue-N-2`, then
+  `atomaton/issue-N-3`. Work never resumes on merged history.
 - When an unmerged branch is left behind, the issue's next run resumes it
   instead of starting from the base branch.
 - A sub-issue's branch is cut from its parent's and merges back into it, so
@@ -200,19 +200,19 @@ the project, it belongs in the repository or in `environment.setup_commands`.
 
 ### Release pull requests
 
-Atoma has no notion of a release: the promotion pull request — `develop` into
+Atomaton has no notion of a release: the promotion pull request — `develop` into
 `main`, or whatever your equivalent is — is yours to open, from the GitHub UI or
 `gh pr create --base main --head develop`. It carries the merge of many issues and
 is where you decide a set of work is ready to ship, which is a judgement no agent
 is positioned to make.
 
-Nothing about that pull request is special to Atoma. It is reviewed by whoever
+Nothing about that pull request is special to Atomaton. It is reviewed by whoever
 reviews releases, and merging it runs whatever your `main` branch already runs.
 
 ## Serialization guard and labels
 
 - Runner uses workflow concurrency group per `<type>-<number>`.
-- Runner adds `atoma/in-progress` label before agent execution.
+- Runner adds `atomaton/in-progress` label before agent execution.
 - Manual comments during active runs are guarded:
   - comment can be deleted
   - commenter is notified to retry after completion
@@ -225,9 +225,9 @@ Three labels are applied, and only the first is about the guard:
 
 | label | what it means |
 | --- | --- |
-| `atoma/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |
-| `atoma/sub-issue` | this issue is a child delivery task Atoma created, with an `atoma:parent=N` tag in its body saying whose |
-| `atoma/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |
+| `atomaton/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |
+| `atomaton/sub-issue` | this issue is a child delivery task Atomaton created, with an `atoma:parent=N` tag in its body saying whose |
+| `atomaton/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |
 
 The last two are read together, and that is why there are two. A parent is
 re-invoked once no open sibling carries **both**: a sub-issue created as a later
@@ -272,7 +272,7 @@ Three things are worth knowing about it.
 
 **It is not immediate.** The running job polls for the request every 30 seconds, and
 the agent stops at its next turn — so it can finish the tool call it is in and start
-one more. Expect up to a minute or two. The comment Atoma posts in reply says this,
+one more. Expect up to a minute or two. The comment Atomaton posts in reply says this,
 because a command that appears to do nothing looks broken.
 
 **Nothing is lost.** The agent stops between turns, where the conversation is
@@ -281,12 +281,12 @@ exists rather than a note saying "cancel the workflow run": a cancelled job neve
 reaches the step that saves the session, so cancelling means discarding.
 
 **Your `/stop` comment is deleted.** It must not become part of what the agent reads
-when it resumes — a paused run is not a run that was told something. Atoma's reply
+when it resumes — a paused run is not a run that was told something. Atomaton's reply
 carries the record of who asked and when, and is itself excluded from the agent's
 context.
 
 A stopped run has ended and handed back to a person, which is the same terminal
-state as an agent that finished its turn or ran out of time. So the `atoma/in-progress`
+state as an agent that finished its turn or ran out of time. So the `atomaton/in-progress`
 label comes off, nothing is dispatched next, and the issue is open for comment again.
 There is no separate "paused" state to get stuck in.
 
@@ -315,7 +315,7 @@ separate, and stopping work nobody asked to stop is the worse mistake.
   stops a chain, and what you see when it does, is under
   [What bounds a chain of runs](#what-bounds-a-chain-of-runs). See
   `domain/dispatch-chain.ts`.
-- `create_pr` dispatches `atoma-validate-pr.yml`, which runs the configured CI on the branch, writes the result as a check run, then dispatches the agent the result calls for — the reviewer NAMED IN THE CALL on green, the engineer on failure. No reviewer named means CI runs and nothing follows; `create_pr` then leaves a notice on the pull request saying nobody is scheduled.
+- `create_pr` dispatches `atomaton-validate-pr.yml`, which runs the configured CI on the branch, writes the result as a check run, then dispatches the agent the result calls for — the reviewer NAMED IN THE CALL on green, the engineer on failure. No reviewer named means CI runs and nothing follows; `create_pr` then leaves a notice on the pull request saying nobody is scheduled.
 - PR merge path is the primary sub-issue aggregation trigger.
 - Manual issue-close path is fallback and skips when closure already came from merged PR.
 - Aggregation is idempotent via marker tags so racing paths do not dispatch orchestrator twice.
@@ -323,24 +323,24 @@ separate, and stopping work nobody asked to stop is the worse mistake.
 ## What a pull request is checked against
 
 Every pull request an agent opens is checked for one thing before your CI is asked
-to run at all: whether the `.github/atoma/` it would merge can still start a run.
+to run at all: whether the `.github/atomaton/` it would merge can still start a run.
 
 This is not your pipeline and it is not configurable. It runs whether or not
-`checks.atoma_runs.commands` is set, and it reads nothing from `checks` or `deploy`
+`checks.atomaton_runs.commands` is set, and it reads nothing from `checks` or `deploy`
 to decide what to check — those describe what YOU verify. This one answers a
 narrower question that only has one right answer.
 
 What it checks:
 
 - Every `mcp_servers` name in every agent definition exists in the tools file the
-  run would write — the servers Atoma ships, plus whatever `tools.servers` adds —
+  run would write — the servers Atomaton ships, plus whatever `tools.servers` adds —
   along with `knows_about` targets and `extra_body` keys. This part runs
   `atoma validate`, so it is the same resolution a run performs rather than an
   imitation of it.
-- `config.yaml` uses only keys Atoma reads.
-- `checks` and `deploy` each declare one arm. `atoma_runs` and `your_workflow`
+- `config.yaml` uses only keys Atomaton reads.
+- `checks` and `deploy` each declare one arm. `atomaton_runs` and `your_workflow`
   together are reported here rather than resolved by a precedence rule.
-- `merge.gates`, `deploy.atoma_runs.targets` and the three `secrets` lists parse.
+- `merge.gates`, `deploy.atomaton_runs.targets` and the three `secrets` lists parse.
   These were already validated, but at merge time, at deploy time, and when
   a credential was handed out. Nothing new is being judged; it is being judged
   earlier.
@@ -363,7 +363,7 @@ while an agent still names it.
 
 **Where those names come from.** There is no tools file in your repository to
 open. It is written at the start of each run into the runner's temp directory,
-from the servers Atoma ships and whatever `tools.servers` in `config.yaml` adds or
+from the servers Atomaton ships and whatever `tools.servers` in `config.yaml` adds or
 overrides. So a name resolves if it is one of the shipped eight or one you added;
 when it is neither, `atoma` says so and lists the servers that do exist. The check
 above writes a tools file the same way, from the pull request's own config, so
@@ -378,7 +378,7 @@ default branch rather than from the pull request.
 You can run the same check yourself, against a checkout or a worktree:
 
 ```bash
-bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .
+bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .
 ```
 
 ## Checks, deployment, and the jobs you will see
@@ -388,12 +388,12 @@ reads `config.yaml` first and the real job takes its output. It costs a few seco
 and always runs on `ubuntu-latest` — it is the job that finds out what your runner
 is, so it cannot be on it.
 
-`atoma-check` reads the **pull request's own** `config.yaml`, as it does for
+`atomaton-check` reads the **pull request's own** `config.yaml`, as it does for
 `environment.setup_commands`: an agent can change the runner and prove the change in
 the same pull request rather than waiting for a merge to find out.
 
-Two shipped workflows run what `checks.atoma_runs` and `deploy.atoma_runs` declare
-— `atoma-check.yml` and `atoma-deploy.yml`. Neither changes per project, which is
+Two shipped workflows run what `checks.atomaton_runs` and `deploy.atomaton_runs` declare
+— `atomaton-check.yml` and `atomaton-deploy.yml`. Neither changes per project, which is
 the whole point: **an agent can write configuration and cannot write a workflow.**
 GitHub refuses `GITHUB_TOKEN` on `.github/workflows/**` by identity, on every path
 and every branch, and no permission grants it. So a repository whose pipeline lives
@@ -452,7 +452,7 @@ credential you give a third-party server is readable by the shell tool.
 
 If that matters for a particular credential, the options are to give it only to a
 server shipped here, or not to route it at all and let the tool that needs it be a
-step in `checks.atoma_runs.commands`, which runs in its own job.
+step in `checks.atomaton_runs.commands`, which runs in its own job.
 
 ### What the filesystem does
 
@@ -504,7 +504,7 @@ thing that catches the accident rather than the thing that makes it safe.
 It exists because two of the three places a run's output lands are otherwise
 unprotected: GitHub Actions substitutes `***` for registered secrets in the
 workflow log, and does nothing for the issue comment a run posts or for the
-session JSON on the `atoma-data` branch.
+session JSON on the `atomaton-data` branch.
 
 **How much it may print** is a separate limit, and it is not configurable. A long
 stdout or stderr keeps its beginning and its **end**, with a marker naming how
@@ -528,7 +528,7 @@ can read that comment with `github__get_issue_comments(number=..., from=3)`
 rather than pulling a whole conversation in.
 
 Nothing needs configuring for this to work. The index is built on the first
-search, stored on the `atoma-data` branch, and brought up to date on each
+search, stored on the `atomaton-data` branch, and brought up to date on each
 call by asking GitHub only for what changed.
 
 **The question's language matters**, and it is the usual reason a search found
@@ -543,7 +543,7 @@ this in the tool's own description.
 prose rather than markup; `raw: true` returns the markup, and a URL that
 resolves to an image comes back as an image for agents with `vision: true`.
 
-Searching is a skill rather than a tool: `.github/atoma/skills/research/web-search.md`
+Searching is a skill rather than a tool: `.github/atomaton/skills/research/web-search.md`
 tells agents to fetch a search engine's results page and read the links out of it.
 Changing or removing that is in [recipes.md](recipes.md).
 
@@ -561,7 +561,7 @@ needs is not installed, it has two ways out and they are different:
 | --- | --- |
 | a library your project declares | edits the manifest and installs it — ordinary work, committed with the change |
 | a system package, or a global CLI | adds it to `environment.setup_commands`, reports, and **stops**. That file needs your merge |
-| the environment is broken, or needs what it just declared | calls `atoma_env__reload_environment` |
+| the environment is broken, or needs what it just declared | calls `atomaton_env__reload_environment` |
 
 The reload re-runs `environment.setup_commands` as a privileged step against the
 current work tree, then starts a new run. **The commands come from the default
@@ -588,17 +588,17 @@ of the run, so the agent still has a turn in which to say what it found.
 | Nothing happened at all when an issue or comment asked for an agent | The person who triggered it is not a repository member — only `OWNER`, `MEMBER` and `COLLABORATOR` dispatch a run | A member comments `/<agent>` on the issue. This is by design; see [Security boundaries](#security-boundaries) |
 | Agent exits immediately with provider error | Missing/invalid API credential or provider mismatch | Verify secrets and optional `ATOMA_PROVIDER` variable |
 | `More than one provider credential is set` | Two provider secrets exist, so the credentials do not decide which to use | Remove the one this repository does not use, or name the provider in `ATOMA_PROVIDER` |
-| `atoma/in-progress` label remains | Run chain still continuing or release step skipped by failure chain | Inspect `decide_guard_release` output and rerun after fixing upstream failure |
+| `atomaton/in-progress` label remains | Run chain still continuing or release step skipped by failure chain | Inspect `decide_guard_release` output and rerun after fixing upstream failure |
 | Repeated handoffs stop automatically | One of the two chain limits fired — `chain.after_handoffs`, or `chain.after_runs_without_change` when runs stopped changing anything | Read `stop_reason`, which says which. Then trigger the next agent with a comment command |
 | Agent repeatedly reproduces stale or invalid tool behavior | Persisted conversation history is no longer useful | Run `/<agent> recover` on its own line, with any new instruction on following lines |
 | Manual command reports invalid syntax | Instruction text was placed on the `/agent` line, or an unsupported modifier was used | Use a standalone `/<agent>` line, or `/<agent> recover`; put instructions below it |
-| Parent orchestrator not re-invoked after sub-issue completion | Sibling sub-issues still open, or aggregation already handled by another path | Check sibling labels/tags and parent comments for aggregation marker. A sibling is only counted while it carries both `atoma/sub-issue` and `atoma/launched` |
+| Parent orchestrator not re-invoked after sub-issue completion | Sibling sub-issues still open, or aggregation already handled by another path | Check sibling labels/tags and parent comments for aggregation marker. A sibling is only counted while it carries both `atomaton/sub-issue` and `atomaton/launched` |
 | Comment disappeared during run | Guard deleted human comment while in-progress label active | Repost comment after current run ends |
 | Draft pull request will not merge | PR is in draft and reviewer reports a `draft` blocker by design | Author marks the PR ready for review |
-| Required check goes red and your CI never ran | The `.github/atoma/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/atoma-runtime/scripts/validate_deliverable.ts --root .` |
+| Required check goes red and your CI never ran | The `.github/atomaton/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .` |
 | Agent's pull request shows a check stuck at `action_required` | GitHub holds `pull_request` runs for pull requests opened with `GITHUB_TOKEN` | Expected; the merge does not depend on it, and the pull request settles at `UNSTABLE`, which a ruleset permits. Approve it to clear the display, but never delete the run — that breaks the commit's check rollup in a way no re-run repairs, and the pull request becomes permanently unmergeable |
-| Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atoma cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
-| Agent reports a missing dependency instead of installing it | `atoma_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [configuration.md](configuration.md#environment) only if the rebuilds were making progress |
+| Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atomaton cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
+| Agent reports a missing dependency instead of installing it | `atomaton_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [configuration.md](configuration.md#environment) only if the rebuilds were making progress |
 | Agent run takes longer than expected or consumes excessive tokens | High number of shell tool round trips, or large tool output size | Read the `[atoma-shell]` lines in the workflow log; each records the command, exit code, duration, and output byte size |
 
 ## Security boundaries

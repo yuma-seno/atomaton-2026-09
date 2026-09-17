@@ -17,7 +17,7 @@
  * ## What the numbers are, and what they are not
  *
  * Measured over every issue this repository has run: the whole `workspace/` tree on
- * `atoma-data` is **five files and 142 bytes**. The limits below are not tuned against
+ * `atomaton-data` is **five files and 142 bytes**. The limits below are not tuned against
  * that distribution, because there is nothing there to tune against — they are set where
  * a legitimate use cannot reach and an accident lands immediately.
  *

@@ -7,7 +7,7 @@ import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 describe("aggregate_sub_issues.ts", () => {
   test("posts a progress comment and returns early when siblings remain open", () => {
     // Needs BOTH a real git repo (the gitRun("config", ...) calls at the top
-    // of main() need one) AND a .github/atoma/config.yaml (the nested
+    // of main() need one) AND a .github/atomaton/config.yaml (the nested
     // check_open_siblings.ts call inherits this same cwd and reads config.yaml
     // via getLabel()) in the SAME directory.
     const dir = makeConfigDir({});
@@ -30,7 +30,7 @@ describe("aggregate_sub_issues.ts", () => {
       const commentCall = r.ghCalls.find((c) => c.includes("comment"));
       expect(commentCall?.join(" ")).toContain("atoma:sub-result=9");
       // The full aggregation path (siblingCount === 0) additionally performs
-      // real `git` operations against an `atoma-data` branch/remote
+      // real `git` operations against an `atomaton-data` branch/remote
       // (checkout --orphan, commit, push-with-retry-on-race) -- deliberately
       // not covered here; it would need a full git remote fixture for
       // comparatively low additional confidence over this early-return path.

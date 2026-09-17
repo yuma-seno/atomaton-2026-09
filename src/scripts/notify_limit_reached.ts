@@ -50,8 +50,8 @@ function main(): void {
   // that up, and the direction is the wrong one -- failing makes the context
   // heavier, and a heavier context fails more.
   const notice = values.notify
-    ? `@${values.notify} Atoma: \`${values.agent}\` ran out of time. Review the issue and comment \`/${values.agent}\` to retry.`
-    : `Atoma: \`${values.agent}\` ran out of time. Comment \`/${values.agent}\` to retry.`;
+    ? `@${values.notify} Atomaton: \`${values.agent}\` ran out of time. Review the issue and comment \`/${values.agent}\` to retry.`
+    : `Atomaton: \`${values.agent}\` ran out of time. Comment \`/${values.agent}\` to retry.`;
 
   // What it spent it on, so a person can tell a run that was going round from one
   // that was making progress -- without opening the workflow log or the session.

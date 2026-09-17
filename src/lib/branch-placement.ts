@@ -21,18 +21,18 @@ import { collectIssueBranches } from "./issue-branches.ts";
 export { parentIssueOf, type ParentIssue };
 
 function log(message: string): void {
-  console.error(`[atoma-github] ${message}`);
+  console.error(`[atomaton-github] ${message}`);
 }
 
-/** The prefix every Atoma work branch carries; also how a parent's branch is named. */
-const BRANCH_PREFIX = "atoma/issue-";
+/** The prefix every Atomaton work branch carries; also how a parent's branch is named. */
+const BRANCH_PREFIX = "atomaton/issue-";
 
 /** A parent issue's branch name. */
 export function branchOfIssue(issue: number): string {
   return `${BRANCH_PREFIX}${issue}`;
 }
 
-/** Whether a branch name is one of Atoma's work branches. */
+/** Whether a branch name is one of Atomaton's work branches. */
 export function isIssueBranch(name: string): boolean {
   return name.startsWith(BRANCH_PREFIX);
 }
@@ -183,7 +183,7 @@ export function stackedPrBase(repo: string): string | undefined {
  * and treating it as an issue moves work off the branch under review.
  */
 function runIssueNumber(): number | undefined {
-  if (process.env.ATOMA_RUN_TYPE !== "issue") return undefined;
+  if (process.env.ATOMATON_RUN_TYPE !== "issue") return undefined;
   const issue = Number((process.env.ISSUE_NUMBER ?? "").trim());
   return Number.isInteger(issue) && issue > 0 ? issue : undefined;
 }

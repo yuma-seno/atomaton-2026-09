@@ -33,7 +33,7 @@ export function toArgv<T extends Record<string, string | number | boolean | unde
     //
     // What makes these call sites safe is therefore the value's provenance, not
     // this function. Values reaching a generated `run:` must be validated
-    // before they get here -- see atoma-runner.wac.ts's "Validate workflow
+    // before they get here -- see atomaton-runner.wac.ts's "Validate workflow
     // inputs" step, which is the boundary for every input that workflow splices
     // into shell text.
     argv.push(`--${flag}`, `"${String(value)}"`);

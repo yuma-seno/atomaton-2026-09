@@ -1,7 +1,7 @@
 # Recurring work, as a recurring issue.
 #
 # COPY THIS FILE into your own `.github/workflows/`. It is an example, not part
-# of the Atoma deliverable: nothing generates it, upgrading will not touch it,
+# of the Atomaton deliverable: nothing generates it, upgrading will not touch it,
 # and it will not appear in your repository unless you put it there.
 #
 # You have to copy it by hand, and that is structural rather than an oversight.
@@ -110,7 +110,7 @@ jobs:
       # GitHub does not start workflows from events its own token caused. So the
       # issue would sit there and nothing would pick it up.
       #
-      # Atoma hits this in three other places and handles it the same way: agent
+      # Atomaton hits this in three other places and handles it the same way: agent
       # pull requests use `pull_request_target`, and agent merges are followed by
       # an explicit dispatch from `dispatchCi`/`dispatchCd`. This is that pattern,
       # not a new mechanism.
@@ -124,7 +124,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh workflow run atoma-runner.yml --repo "${{ github.repository }}" \
+          gh workflow run atomaton-runner.yml --repo "${{ github.repository }}" \
             -f agent=engineer \
             -f type=issue \
             -f number="${{ steps.create.outputs.number }}"

@@ -13,7 +13,7 @@ describe("manage_in_progress_label.ts", () => {
       expect(r.status).toBe(0);
       const editCall = r.ghCalls.find((c) => c.includes("edit"));
       expect(editCall).toContain("--add-label");
-      expect(editCall).toContain("atoma/in-progress");
+      expect(editCall).toContain("atomaton/in-progress");
     } finally {
       rmSync(configDir, { recursive: true, force: true });
     }

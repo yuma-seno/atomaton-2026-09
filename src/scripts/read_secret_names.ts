@@ -11,10 +11,10 @@
  *
  * ## Why this reads a file it is handed, and not the checkout
  *
- * Every other script here reads `.github/atoma/config.yaml` through
+ * Every other script here reads `.github/atomaton/config.yaml` through
  * `lib/config.ts`, which resolves it against the working tree. This one must
  * not. On a pull request run the working tree is the pull request's own head --
- * `atoma-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
+ * `atomaton-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
  * from there would let a pull request decide which of the repository's secrets
  * are handed to the run reviewing it. The governance gate does not help: it
  * blocks the merge, and the run happens before the merge.
@@ -70,18 +70,18 @@ export const ref = defineScript<ReadSecretNamesArgs>(import.meta.url);
 export function declarationIn(configText: string, destination: SecretDestinationName): unknown {
   // Parsed here rather than through `lib/config.ts` on purpose: this text comes
   // from the default branch's object store, not from a file on disk, and the
-  // separation is what keeps a missing ATOMA_MACHINERY_ROOT from downgrading a
+  // separation is what keeps a missing ATOMATON_MACHINERY_ROOT from downgrading a
   // credential decision to the working tree.
   const config = Bun.YAML.parse(configText) as {
     tools?: { secrets?: unknown };
-    checks?: { atoma_runs?: { secrets?: unknown } };
-    deploy?: { atoma_runs?: { secrets?: unknown } };
+    checks?: { atomaton_runs?: { secrets?: unknown } };
+    deploy?: { atomaton_runs?: { secrets?: unknown } };
   };
-  // `checks` and `deploy` carry theirs inside `atoma_runs`: a secret is reached by
-  // the step Atoma runs, and a project naming its own workflow gives that workflow
-  // its secrets itself. `tools` has no arms -- the servers are always Atoma's.
+  // `checks` and `deploy` carry theirs inside `atomaton_runs`: a secret is reached by
+  // the step Atomaton runs, and a project naming its own workflow gives that workflow
+  // its secrets itself. `tools` has no arms -- the servers are always Atomaton's.
   if (destination === "tools") return config.tools?.secrets;
-  return (destination === "checks" ? config.checks : config.deploy)?.atoma_runs?.secrets;
+  return (destination === "checks" ? config.checks : config.deploy)?.atomaton_runs?.secrets;
 }
 
 function main(): void {
@@ -111,7 +111,7 @@ function main(): void {
 
   if (problems.length > 0) {
     for (const problem of problems) {
-      console.error(`::error::.github/atoma/config.yaml: ${problem}`);
+      console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
     }
     process.exit(1);
   }

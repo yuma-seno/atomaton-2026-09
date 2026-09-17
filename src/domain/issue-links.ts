@@ -7,8 +7,8 @@
  * pull request carrying X is merged, and as a proposal when it is still open.
  * Neither is recoverable from the comment text.
  *
- * These are read from GitHub's own relationships rather than from Atoma's
- * markers, because an issue a person drove by hand has no Atoma markers on it
+ * These are read from GitHub's own relationships rather than from Atomaton's
+ * markers, because an issue a person drove by hand has no Atomaton markers on it
  * and is exactly the case that must not silently come back empty.
  *
  * Pure. The GraphQL half lives in `lib/issue-links.ts`.
@@ -58,9 +58,9 @@ export interface IssueLinks {
  * Matching these ourselves is not a preference for reinventing the parser. It
  * is the only way to see a sub-issue's pull request at all: GitHub forms its
  * own closing link only for pull requests that target the default branch, and
- * Atoma aims a sub-issue's pull request at its parent's branch. Measured on
+ * Atomaton aims a sub-issue's pull request at its parent's branch. Measured on
  * this repository, #281's `Closes #281` in PR #284 produced no native link
- * because the pull request targeted `atoma/issue-280`, while the parent's did because its pull
+ * because the pull request targeted `atomaton/issue-280`, while the parent's did because its pull
  * request targeted `main`.
  */
 /**

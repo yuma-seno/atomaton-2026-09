@@ -7,7 +7,7 @@
  * in the web UI; the pull requests come from two places that have to be unioned,
  * for the reason `claimsToClose` explains.
  *
- * Nothing here reads an Atoma marker. The relationships have to survive an
+ * Nothing here reads an Atomaton marker. The relationships have to survive an
  * issue a person opened, decomposed and closed without an agent ever touching
  * it, and markers only exist where an agent has been.
  */
@@ -81,7 +81,7 @@ export function issueLinks(repo: string, number: number): IssueLinks {
     issue = ghGraphql<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issue ?? null;
   } catch (error) {
     const why = (error as Error).message;
-    console.error(`[atoma-github] WARN could not read links for #${number}: ${why}`);
+    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
     return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
   }
   // A null issue is not a failure: the number may simply not exist. Said as

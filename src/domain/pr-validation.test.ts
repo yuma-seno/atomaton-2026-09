@@ -116,7 +116,7 @@ describe("decideValidationOutcome", () => {
 });
 
 /**
- * A pull request whose own `.github/atoma/` cannot start a run.
+ * A pull request whose own `.github/atomaton/` cannot start a run.
  *
  * Judged before the CI conclusion, and treated as a red CI run rather than as a
  * broken job: failing checks so the merge is blocked, and the engineer dispatched

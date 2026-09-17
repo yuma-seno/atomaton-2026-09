@@ -72,12 +72,12 @@
  *
  * `--deliverable-report` names the file `validate_deliverable.ts` wrote for this
  * pull request. A non-empty one means the pull request would merge a
- * `.github/atoma/` that cannot start a run, and this script then writes the failing
+ * `.github/atomaton/` that cannot start a run, and this script then writes the failing
  * checks and hands it back WITHOUT dispatching CI — there is nothing to learn from
  * running a pipeline against a deliverable that cannot be loaded.
  *
  * Usage:
- *   validate_pull_request.ts --repo owner/name --number N --branch atoma/issue-N
+ *   validate_pull_request.ts --repo owner/name --number N --branch atomaton/issue-N
  *     --workflow ci.yml --reviewer reviewer --engineer engineer
  *     --deliverable-report FILE [--timeout-seconds 1800]
  */
@@ -115,7 +115,7 @@ export interface ValidatePullRequestArgs {
 export const ref = defineScript<ValidatePullRequestArgs>(import.meta.url);
 
 function log(message: string): void {
-  console.error(`[atoma-validate-pr] ${message}`);
+  console.error(`[atomaton-validate-pr] ${message}`);
 }
 
 export interface RunRef {
@@ -183,7 +183,7 @@ function reportFailure(
   const body = [
     LLM_CONTEXT_TAG.write("include"),
     CI_RETRY_TAG.write(attempt),
-    `Atoma: ${summary}`,
+    `Atomaton: ${summary}`,
     ...(details.length > 0 ? ["", ...details.map((detail) => `- ${detail}`)] : []),
     "",
     runUrl ? `Failing run: ${runUrl}` : "",
@@ -198,7 +198,7 @@ function reportFailure(
  * Dispatch CI and wait for it, returning what it concluded.
  *
  * A function rather than the body of `main`, so the one caller that must NOT run it
- * — a pull request whose own `.github/atoma/` is broken — can skip it by not
+ * — a pull request whose own `.github/atomaton/` is broken — can skip it by not
  * calling it, instead of by an early return that would also skip writing the
  * checks and the comment.
  *
@@ -325,14 +325,14 @@ function main(): void {
     // concluded, so a red run still fails, still posts its brief, and still advances
     // the retry tally. What is gone is GitHub refusing the merge -- github__merge_pr
     // holds that line instead, and says so.
-    log(`::notice::${required.why}. Atoma enforces the CI result itself when merging.`);
+    log(`::notice::${required.why}. Atomaton enforces the CI result itself when merging.`);
   } else if (requiredContexts.length === 0) {
     // A different situation, and worth saying once: the rules ARE readable and
     // require nothing. That is usually a ruleset nobody imported rather than a
     // decision, so it reads as a warning where the case above reads as a notice.
     log(
       `::warning::${baseRef} requires no status checks, so CI results gate nothing here. ` +
-        "Import .github/atoma/rulesets/main.json if that was not intended.",
+        "Import .github/atomaton/rulesets/main.json if that was not intended.",
     );
   }
 

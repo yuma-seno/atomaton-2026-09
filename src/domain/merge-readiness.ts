@@ -5,7 +5,7 @@
  * The verdict comes from the repository's own branch protection, not from an
  * opinion held here. GitHub computes `mergeStateStatus` against whatever the
  * active ruleset requires, and the ruleset is a reviewed file
- * (`.github/atoma/rulesets/*.json`), so changing what "mergeable" means is a change to
+ * (`.github/atomaton/rulesets/*.json`), so changing what "mergeable" means is a change to
  * that file — this module and the tools built on it follow automatically, with no
  * second definition to keep in step.
  *
@@ -15,7 +15,7 @@
  * governed only the agent path — a person merging from the GitHub UI walked past
  * it entirely. Protection now applies to both, and this reports it.
  *
- * The remaining local input is `merge.policy`, which is Atoma's own concept and
+ * The remaining local input is `merge.policy`, which is Atomaton's own concept and
  * has no GitHub equivalent.
  */
 
@@ -86,7 +86,7 @@ export interface MergeSignals {
    * tells them apart.
    */
   requiredChecksEnforceable: boolean;
-  /** `merge.policy` from config.yaml. Atoma's own gate, not GitHub's. */
+  /** `merge.policy` from config.yaml. Atomaton's own gate, not GitHub's. */
   mergePolicy: string;
   /**
    * Paths this pull request changes that govern how agents run — workflows,
@@ -113,8 +113,8 @@ export interface MergeSignals {
   /**
    * Gates from `merge.gates` that apply to this pull request.
    *
-   * The project's own conditions, not Atoma's. `governancePaths` above is the one
-   * Atoma declares for itself; these are whatever an adopter wanted kept out of
+   * The project's own conditions, not Atomaton's. `governancePaths` above is the one
+   * Atomaton declares for itself; these are whatever an adopter wanted kept out of
    * an agent's hands — a migration, a release note, a labelled change — said in
    * configuration rather than in code here.
    */
@@ -234,7 +234,7 @@ function isGeneratedWorkflow(path: string): boolean {
  * Which of `files` a pattern claims.
  *
  * The matcher itself moved to `path-patterns.ts`, which explains the one pattern
- * form Atoma accepts and why. `merge.gates` needed the same comparison, and two
+ * form Atomaton accepts and why. `merge.gates` needed the same comparison, and two
  * copies of a security-shaped one is the arrangement that drifts.
  */
 export function governedPathsIn(files: string[], patterns: readonly string[]): string[] {
@@ -296,7 +296,7 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
       // allowed. Where rules cannot exist, nobody decided anything: it is just a red
       // build with nothing standing in front of it, and letting an agent merge that
       // would make "we handle the free private case" mean "we quietly stopped
-      // checking". Atoma refuses in GitHub's place.
+      // checking". Atomaton refuses in GitHub's place.
       if (!signals.requiredChecksEnforceable) {
         for (const run of signals.checks) {
           if (run.status !== "completed") continue;
@@ -307,7 +307,7 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
             detail:
               `check "${run.name}" concluded ${run.conclusion}${where}. ` +
               "Branch rules are unavailable on this repository, so GitHub does not " +
-              "block this merge and Atoma does.",
+              "block this merge and Atomaton does.",
           });
         }
       }
@@ -406,11 +406,11 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
         "review it and report, but leave the merge to a person" +
         // Said here because this is the moment someone is looking. The commonest
         // reason to touch a generated workflow is to change what CI or a
-        // deployment does, and under Atoma that is not where those live -- so
+        // deployment does, and under Atomaton that is not where those live -- so
         // name the place it does live rather than only refusing the merge.
         (signals.governancePaths.some(isGeneratedWorkflow)
           ? ". If the intent was to change what CI or deployment does, that belongs in " +
-            "`.github/atoma/config.yaml` (`checks.atoma_runs.commands`, `deploy.atoma_runs.targets`) rather than in a " +
+            "`.github/atomaton/config.yaml` (`checks.atomaton_runs.commands`, `deploy.atomaton_runs.targets`) rather than in a " +
             "workflow file — an agent can write config and cannot write a workflow. If this is an " +
             "upgrade of the generated deliverable, it is exactly what a person should be merging"
           : ""),
@@ -420,7 +420,7 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
   // The project's own version of the gate above. Same shape, same outcome — the
   // agent reviews and reports, a person merges — but the condition comes from
   // `merge.gates` in config.yaml rather than from this file, because what must
-  // not be merged unread is a property of the project and not of Atoma. A
+  // not be merged unread is a property of the project and not of Atomaton. A
   // migration, a change to a pricing table, a release note: nothing here could
   // have guessed them.
   //

@@ -11,11 +11,11 @@ import { declarationIn } from "./read_secret_names.ts";
  * Run the script against a config file it is handed.
  *
  * Deliberately not `makeConfigDir`: this script must not read
- * `.github/atoma/config.yaml` from the working directory, and a harness that
+ * `.github/atomaton/config.yaml` from the working directory, and a harness that
  * puts one there would hide a regression that reintroduced it.
  */
 function run(config: Record<string, unknown> | null, destination = "tools") {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-declared-"));
   const configPath = join(dir, "trusted-config.yaml");
   const outputPath = join(dir, "github_output");
   // YAML, like the file the workflow materialises from the default branch.
@@ -34,17 +34,17 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
-  // `checks` and `deploy` carry their list inside `atoma_runs`, the arm Atoma
+  // `checks` and `deploy` carry their list inside `atomaton_runs`, the arm Atomaton
   // runs itself; `tools` has no arms, so its list stays at the top of the section.
   test("picks the destination's own list", () => {
     const config = `
 tools:
   secrets: [A]
 checks:
-  atoma_runs:
+  atomaton_runs:
     secrets: [B]
 deploy:
-  atoma_runs:
+  atomaton_runs:
     secrets: [C]
 `;
     expect(declarationIn(config, "tools")).toEqual(["A"]);
@@ -57,7 +57,7 @@ deploy:
   });
 
   // The other arm: a project that names its own workflow gives that workflow its
-  // secrets itself, so there is nothing here for Atoma's step to be handed.
+  // secrets itself, so there is nothing here for Atomaton's step to be handed.
   test("a section on the your_workflow arm declares nothing", () => {
     expect(declarationIn("checks:\n  your_workflow: ci.yml\n", "checks")).toBeUndefined();
   });
@@ -75,8 +75,8 @@ describe("read_secret_names.ts", () => {
   test("reads only the destination it was asked for", () => {
     const config = {
       tools: { secrets: ["SLACK_TOKEN"] },
-      checks: { atoma_runs: { secrets: ["NPM_TOKEN"] } },
-      deploy: { atoma_runs: { secrets: ["AWS_ROLE_ARN"] } },
+      checks: { atomaton_runs: { secrets: ["NPM_TOKEN"] } },
+      deploy: { atomaton_runs: { secrets: ["AWS_ROLE_ARN"] } },
     };
     expect(JSON.parse(run(config, "tools").outputs.names!)).toEqual(["SLACK_TOKEN"]);
     expect(JSON.parse(run(config, "checks").outputs.names!)).toEqual(["NPM_TOKEN"]);
@@ -134,7 +134,7 @@ describe("read_secret_names.ts", () => {
   // no credentials -- and never reaches for the working tree, which is the thing
   // a pull request controls.
   test("declares nothing, loudly, when not told which config to trust", () => {
-    const dir = mkdtempSync(join(tmpdir(), "atoma-declared-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-declared-"));
     const outputPath = join(dir, "github_output");
     writeFileSync(outputPath, "");
     // A config where the working tree keeps one -- `CONFIG_FILE`, so this stays

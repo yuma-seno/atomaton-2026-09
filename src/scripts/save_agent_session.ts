@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * save_agent_session.ts — Save session.json to the atoma-data branch (via
- * lib/atoma-data.ts's saveSession(), which handles push-race retries using
+ * save_agent_session.ts — Save session.json to the atomaton-data branch (via
+ * lib/atomaton-data.ts's saveSession(), which handles push-race retries using
  * an isolated git worktree).
  *
  * Caps each tool result on the way out, so a session never grows past what a model
@@ -13,7 +13,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { saveSession, sessionTargetPath } from "./lib/atoma-data.ts";
+import { saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 import { capToolResults, shrinkLogLine } from "../domain/session-size.ts";
 import type { Session } from "../lib/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
@@ -51,9 +51,9 @@ function main(): void {
   const runId = process.env.GITHUB_RUN_ID ?? "";
   const saved = saveSession(target, content, `session: ${values.agent} on ${values.type} ${values.number} (run ${runId})`);
   if (!saved) {
-    console.log(`::warning::Failed to save session to atoma-data:${target} after all retries.`);
+    console.log(`::warning::Failed to save session to atomaton-data:${target} after all retries.`);
   } else {
-    console.error(`Session saved to atoma-data:${target}`);
+    console.error(`Session saved to atomaton-data:${target}`);
   }
 }
 

@@ -12,8 +12,8 @@
  *
  * More seriously, two of them ignored the exit code and wrote the ops-log
  * dispatch entry unconditionally. That entry is not bookkeeping: it is the
- * signal `atoma-runner`'s `chain_continues` output reads to decide whether work
- * is still in flight, and `shouldReleaseGuard` keeps the `atoma/in-progress`
+ * signal `atomaton-runner`'s `chain_continues` output reads to decide whether work
+ * is still in flight, and `shouldReleaseGuard` keeps the `atomaton/in-progress`
  * label held whenever it is set. So a dispatch that failed -- a bad token, a
  * renamed workflow, a rate limit -- reported a chain that had started when none
  * had, and left the issue locked with nothing on the way to unlock it.
@@ -27,7 +27,7 @@ import { logDispatch } from "./ops-log.ts";
 
 /** The reusable workflow every agent run enters through. */
 function runnerWorkflow(): string {
-  return process.env.ATOMA_DISPATCH_WORKFLOW || "atoma-runner.yml";
+  return process.env.ATOMATON_DISPATCH_WORKFLOW || "atomaton-runner.yml";
 }
 
 export interface RunnerDispatch {

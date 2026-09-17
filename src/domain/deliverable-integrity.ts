@@ -1,5 +1,5 @@
 /**
- * deliverable-integrity.ts — whether the `.github/atoma/` a pull request would
+ * deliverable-integrity.ts — whether the `.github/atomaton/` a pull request would
  * merge is internally consistent, decided from its content and nothing else.
  *
  * ## What this is for
@@ -23,7 +23,7 @@
  * adds no opinion, it moves an existing one earlier.
  *
  * Anything that needs a run to find out is out of scope and stays out. Whether a
- * `checks.atoma_runs.commands` entry passes, whether a deploy target's shell
+ * `checks.atomaton_runs.commands` entry passes, whether a deploy target's shell
  * works, whether a model answers — none of that is knowable from the files, and
  * pretending otherwise would make this a second, worse CI.
  *
@@ -50,7 +50,7 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
  * does not describe.
  *
  * `null` is not "anything goes" — it is "the key is recognised and something else
- * decides what may be in it". `merge.gates` and `deploy.atoma_runs.targets`
+ * decides what may be in it". `merge.gates` and `deploy.atomaton_runs.targets`
  * are both `null` here and both validated below by their own resolver.
  */
 interface Section {
@@ -84,13 +84,13 @@ const CONFIG_SCHEMA: Section = {
     environment: { children: { setup_commands: null, max_reloads: null } },
     checks: {
       children: {
-        atoma_runs: { children: { commands: null, secrets: null, runs_on: null } },
+        atomaton_runs: { children: { commands: null, secrets: null, runs_on: null } },
         your_workflow: null,
       },
     },
     deploy: {
       children: {
-        atoma_runs: { children: { targets: null, secrets: null, runs_on: null } },
+        atomaton_runs: { children: { targets: null, secrets: null, runs_on: null } },
         your_workflow: null,
       },
     },
@@ -117,15 +117,15 @@ const CONFIG_SCHEMA: Section = {
 };
 
 /**
- * The `atoma_runs` arm of a `checks` or `deploy` section, or an empty one.
+ * The `atomaton_runs` arm of a `checks` or `deploy` section, or an empty one.
  *
  * Both sections have two arms and only one can be filled. The other arm names a
- * workflow of the project's own, and nothing inside it is Atoma's to validate --
- * so an absent `atoma_runs` is a project that made the other choice, not a fault.
+ * workflow of the project's own, and nothing inside it is Atomaton's to validate --
+ * so an absent `atomaton_runs` is a project that made the other choice, not a fault.
  */
 function arm(section: unknown): Record<string, unknown> {
   if (!isRecord(section)) return {};
-  return isRecord(section.atoma_runs) ? section.atoma_runs : {};
+  return isRecord(section.atomaton_runs) ? section.atomaton_runs : {};
 }
 
 /**
@@ -188,7 +188,7 @@ export interface DeliverableFacts {
   readonly config: unknown;
   /** Agent names available, one per `agent-definitions/<name>.md`. */
   readonly agentNames: readonly string[];
-  /** File names present in `.github/workflows/`, e.g. `atoma-check.yml`. */
+  /** File names present in `.github/workflows/`, e.g. `atomaton-check.yml`. */
   readonly workflowFiles: readonly string[];
 }
 
@@ -220,25 +220,25 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // undefined, takes the default, and the setting the author wrote has no effect
   // at all.
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
-    problems.push(`\`${key}\` in config.yaml is not a setting Atoma reads. Check the spelling.`);
+    problems.push(`\`${key}\` in config.yaml is not a setting Atomaton reads. Check the spelling.`);
   }
 
   // ── two arms, and exactly one of them ─────────────────────────────────────
   //
-  // `atoma_runs` and `your_workflow` are alternatives, and the structure says so by
+  // `atomaton_runs` and `your_workflow` are alternatives, and the structure says so by
   // putting them side by side. Saying it again here is what turns "both are set"
   // from a precedence puzzle -- which one wins, and does the reader remember? --
   // into a sentence naming the one to delete.
   for (const section of ["checks", "deploy"] as const) {
     const value = config[section];
     if (!isRecord(value)) continue;
-    if (value.atoma_runs !== undefined && value.your_workflow !== undefined) {
+    if (value.atomaton_runs !== undefined && value.your_workflow !== undefined) {
       problems.push(
         "`" +
           section +
-          "` sets both `atoma_runs` and `your_workflow`. They are alternatives: " +
+          "` sets both `atomaton_runs` and `your_workflow`. They are alternatives: " +
           "`your_workflow` dispatches a workflow of your own and nothing reads " +
-          "`atoma_runs`. Remove whichever you did not mean.",
+          "`atomaton_runs`. Remove whichever you did not mean.",
       );
     }
   }
@@ -250,15 +250,15 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // `deploy` and `checks` are read for their SHAPE only, which is not the same as
   // taking direction from them. Letting an adopter's pipeline configure this
   // validation — running their commands, deciding what to check from their config
-  // — is ruled out. Asking whether `deploy.atoma_runs.targets` is a well-formed
+  // — is ruled out. Asking whether `deploy.atomaton_runs.targets` is a well-formed
   // array of targets is this deliverable validating itself, and the alternative is
   // what happens today: `resolveDeployTargets` reports it after the merge, from
   // the deploy run, where nobody is watching.
   //
-  // `checks` and `deploy` carry theirs inside `atoma_runs` -- the arm that declares
-  // what Atoma runs also declares what that run may reach. A project naming its own
+  // `checks` and `deploy` carry theirs inside `atomaton_runs` -- the arm that declares
+  // what Atomaton runs also declares what that run may reach. A project naming its own
   // workflow hands that workflow its own secrets. `tools` has no arms: the servers
-  // are always Atoma's.
+  // are always Atomaton's.
   const deployRuns = arm(config.deploy);
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
 
@@ -287,7 +287,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // directory was not there, and reporting every agent as missing would bury the
   // one problem that matters under noise.
   if (agentNames.length === 0) {
-    problems.push("No agent definitions were found. `.github/atoma/agent-definitions/*.md` is empty or missing.");
+    problems.push("No agent definitions were found. `.github/atomaton/agent-definitions/*.md` is empty or missing.");
   }
 
   // ── the two workflows a dispatch names ────────────────────────────────────
@@ -299,7 +299,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   if (workflowFiles.length > 0) {
     const present = new Set(workflowFiles);
     // The other arm of `checks` and `deploy`, not a section of its own: a project
-    // either hands Atoma its commands or hands it a workflow.
+    // either hands Atomaton its commands or hands it a workflow.
     for (const [section, fallback] of [
       ["checks", DEFAULT_CI_WORKFLOW],
       ["deploy", DEFAULT_CD_WORKFLOW],

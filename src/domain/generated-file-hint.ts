@@ -4,7 +4,7 @@
  *
  * # The problem
  *
- * `atoma validate` is given `.github/atoma/tools/tools.yaml` and reports on it by name.
+ * `atoma validate` is given `.github/atomaton/tools/tools.yaml` and reports on it by name.
  * That is correct for atoma, which knows nothing about this template: the tools file is
  * its input, and naming your input is what a validator does.
  *
@@ -29,7 +29,7 @@
  */
 
 /** Where an adopter actually writes what ends up in the tools file. */
-const EDITABLE_SOURCE = "`tools.servers` in .github/atoma/config.yaml";
+const EDITABLE_SOURCE = "`tools.servers` in .github/atomaton/config.yaml";
 
 /**
  * The core's problem, with a line naming the editable source when it needs one.
@@ -52,7 +52,7 @@ export function withEditableSource(problem: string): string {
   // the adopter never named and cannot see from their config.
   if (problem.startsWith("Hook script not found")) {
     return (
-      `${problem} — hook paths are resolved against .github/atoma/tools/, and are ` +
+      `${problem} — hook paths are resolved against .github/atomaton/tools/, and are ` +
       `declared in ${EDITABLE_SOURCE} (per server) or \`tools.watch\` (file-wide).`
     );
   }

@@ -293,7 +293,7 @@ export function shrinkNotice(changed: number): SessionMessage {
       "what came back: file contents, command output, search results. Call again for the ones you still",
       "need — do not answer from memory of something you can no longer see.",
     ].join("\n"),
-    atoma_metadata: { source: "atoma", layer: "session-shrink", changed },
+    atoma_metadata: { source: "atomaton", layer: "session-shrink", changed },
   };
 }
 

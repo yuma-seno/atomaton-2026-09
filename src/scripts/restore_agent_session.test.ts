@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { findAgentSession } from "./restore_agent_session.ts";
-import { nextArchiveSessionPath, sessionTargetPath } from "./lib/atoma-data.ts";
+import { nextArchiveSessionPath, sessionTargetPath } from "./lib/atomaton-data.ts";
 
 describe("restore_agent_session.ts", () => {
   test("uses context directories and allocates per-agent archive sequence numbers", () => {

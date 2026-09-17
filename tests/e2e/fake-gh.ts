@@ -30,7 +30,7 @@ export interface FakeGh {
 }
 
 export function setupFakeGh(rules: FakeGhRule[]): FakeGh {
-  const dir = mkdtempSync(join(tmpdir(), "atoma-e2e-fakegh-"));
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-e2e-fakegh-"));
   const logPath = join(dir, "gh-calls.jsonl");
   writeFileSync(logPath, "");
   return {

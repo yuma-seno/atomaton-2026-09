@@ -4,7 +4,7 @@ import { pathMatches, pathPatternProblem } from "./path-patterns.ts";
 describe("pathMatches", () => {
   test("a directory pattern claims everything under it", () => {
     expect(pathMatches(".github/workflows/ci.yml", ".github/**")).toBe(true);
-    expect(pathMatches(".github/atoma-runtime/scripts/deep/nested.ts", ".github/**")).toBe(true);
+    expect(pathMatches(".github/atomaton-runtime/scripts/deep/nested.ts", ".github/**")).toBe(true);
   });
 
   test("a literal pattern claims exactly one path", () => {

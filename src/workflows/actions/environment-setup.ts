@@ -15,7 +15,7 @@
  * failure that exists only on the other machine.
  *
  * The workaround, which this repository was itself using, is to put the setup at
- * the front of `checks.atoma_runs.commands` -- `bun install --frozen-lockfile`
+ * the front of `checks.atomaton_runs.commands` -- `bun install --frozen-lockfile`
  * before the tests -- and remember to keep it in step with
  * `environment.setup_commands`. Two statements of one fact, either of which can
  * be updated alone.
@@ -25,7 +25,7 @@
  *
  * ## What each job reads
  *
- * `ATOMA_MACHINERY_ROOT` decides, and it differs on purpose:
+ * `ATOMATON_MACHINERY_ROOT` decides, and it differs on purpose:
  *
  *   the agent's run    the default branch. A pull request must not choose how the
  *                      agent reviewing it is set up.
@@ -33,14 +33,14 @@
  *                      agent add a dependency and prove the addition works in the
  *                      same pull request, rather than waiting for a merge to find
  *                      out. It grants nothing new: this job already runs
- *                      `checks.atoma_runs.commands` from that same branch.
+ *                      `checks.atomaton_runs.commands` from that same branch.
  *   deployment         the tag or the default branch, both of them post-merge.
  *
  * ## No credentials
  *
  * Setup runs before any secret enters the environment, in every one of the three.
  * That is deliberate in the agent's case -- see the ordering in
- * `atoma-runner.wac.ts` -- and it falls out of step order in the other two.
+ * `atomaton-runner.wac.ts` -- and it falls out of step order in the other two.
  */
 import { TypedOutputsStep } from "./base.ts";
 import { scriptCommand } from "./script-call.ts";
