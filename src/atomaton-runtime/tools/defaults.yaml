@@ -55,10 +55,12 @@ servers:
       # that write are the ones left out.
       #
       # A pattern here that matches nothing is reported at startup, in the run's log,
-      # so this list cannot quietly stop applying. Not by a check before the run:
-      # `atoma validate --with-live-tools` would answer it, and nothing runs that
-      # anywhere yet — see the issue on where it can safely live, since starting a
-      # pull request's declared servers is not something the deliverable check may do.
+      # so this list cannot quietly stop applying. It is checked against the live
+      # server before a release ships too -- `atoma validate --with-live-tools` asks
+      # this server what it offers and holds every pattern here to it. That runs
+      # after a merge, against the artifact being published, and not on a pull
+      # request: starting a pull request's declared servers is not something a
+      # check that reads its configuration as data may do.
       tool_allowlist:
         - read
         - grep
