@@ -34,10 +34,9 @@
  *   2. HARDENING — exactly one rule, for the one real threat nothing else
  *      covers. Honest about being partial. See PROCESS_ENVIRONMENT_READ.
  */
-import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import { classifyShellAct, nextStreak, refusalReason } from "../../../domain/search-streak.ts";
-import { streakFile } from "../lib/search-streak-file.ts";
+import { readStreak, streakFile, writeStreak } from "../lib/search-streak-file.ts";
 
 /**
  * Commands that have a proper route through an MCP tool.
@@ -323,36 +322,6 @@ function checkInvocation(invocation: ShellInvocation): GuardVerdict {
     if (reason) return { allow: false, reason };
   }
   return ALLOWED;
-}
-
-
-
-/**
- * The streak so far, or zero.
- *
- * Every failure reads as zero. This hook is fail-closed by contract -- a non-zero exit
- * or unparseable output is taken as a refusal -- so a bug in reading a counter would
- * refuse every shell call the agent makes. Zero means the rule does not fire, which is
- * the only safe direction for it to be wrong in.
- */
-function readStreak(file: string | undefined): number {
-  if (!file) return 0;
-  try {
-    const n = Number(readFileSync(file, "utf8").trim());
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-
-/** Silent on failure, for the same reason. */
-function writeStreak(file: string | undefined, streak: number): void {
-  if (!file) return;
-  try {
-    writeFileSync(file, String(streak));
-  } catch {
-    // Nothing to do about it, and nothing worth failing a tool call over.
-  }
 }
 
 /**

@@ -86,13 +86,14 @@ repository has no copy of the file to read or edit; it receives the servers with
 the cap already compiled into them. For a server of your own, the number is one to
 copy, not one to look up.
 
-**What is not covered.** `filesystem*` is a third-party server
-(`@modelcontextprotocol/server-filesystem`), and a server's `hooks` can allow or
-deny a tool but not touch its output — so `read_file` on a large file has no cap
-this project can impose. That server's heaviest tool, `directory_tree`, is on its denylist for that
-reason. `search_files` sat beside it and was let back in once atoma v0.1.21
-capped every tool result: what kept it out was unbounded output, not what it does. For a large file, have the
-agent read a range with `shell_execute` (`sed -n`, `head`) instead.
+**What is not covered.** A server's `hooks` can allow or deny a tool but not touch
+its output, so a third-party server's cap is whatever that server decided. This
+used to be the hole under `@modelcontextprotocol/server-filesystem`, whose
+`read_file` had no cap this project could impose and no way to ask for part of a
+file; the answer was to have the agent read a range with `shell_execute`. The
+shipped `files` server replaced it, and its `read` takes `offset` and `limit` and
+names the offset to continue from — so the workaround is gone along with the
+server that needed it. The hole itself remains for anything else you add.
 
 ## How long your tool has to answer
 

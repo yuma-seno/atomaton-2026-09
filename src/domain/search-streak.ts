@@ -129,9 +129,13 @@ export function classifyShellAct(command: string): ShellAct {
  * Listing is not opening. `list_directory` and `directory_tree` answer where things
  * are, which is what a search answers, and clearing the streak on them would let a run
  * enumerate for ever without reading anything — the shape this whole module exists to
- * catch.
+ * catch. Neither is `grep` or `glob`, for the same reason.
+ *
+ * `read` is the shipped `files` server, which gives its tools their own names. The
+ * alternation already allowed a bare name and a test already fixed that; what it did
+ * not have was this one, because no server was called `read` until there was one.
  */
-const TOOLS_THAT_OPEN = /(^|__)(read_text_file|read_media_file|read_multiple_files|read_file)$/;
+const TOOLS_THAT_OPEN = /(^|__)(read|read_text_file|read_media_file|read_multiple_files|read_file)$/;
 
 /** Whether a completed tool call counts as having opened something. */
 export function toolOpens(tool: string): boolean {

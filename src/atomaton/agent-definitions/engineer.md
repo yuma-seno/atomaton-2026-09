@@ -8,7 +8,7 @@ knows_about:
   - reviewer
   - orchestrator
 mcp_servers:
-  - filesystem
+  - files
   - shell
   - github
   - web
