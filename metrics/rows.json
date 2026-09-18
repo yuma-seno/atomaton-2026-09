@@ -3587,6 +3587,44 @@
     ]
   },
   {
+    "path": "sessions/issue-766/reviewer.json",
+    "agent": "reviewer",
+    "messages": 197,
+    "calls": 135,
+    "failed": 7,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate",
+      "project/conventions"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "github__check_merge_readiness": 1,
+      "github__get_pr_reviews": 1,
+      "github__get_pr": 1,
+      "github__get_pr_diff": 1,
+      "read": 41,
+      "grep": 58,
+      "glob": 6,
+      "web__fetch": 11,
+      "list": 10,
+      "github__get_check_runs": 1,
+      "github__submit_pr_review": 1,
+      "github__merge_pr": 1
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-18T14:20:45Z",
+        "ended_because": "completed",
+        "iterations": 50,
+        "messages": 197,
+        "seconds": 2291,
+        "started": "2026-09-18T13:42:34Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-769/engineer.json",
     "agent": "engineer",
     "messages": 80,
