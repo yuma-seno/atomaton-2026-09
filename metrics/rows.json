@@ -3720,6 +3720,43 @@
     ]
   },
   {
+    "path": "sessions/issue-788/engineer.json",
+    "agent": "engineer",
+    "messages": 122,
+    "calls": 79,
+    "failed": 2,
+    "refused": 1,
+    "skills": [
+      "project/conventions"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "search__search_code": 2,
+      "grep": 14,
+      "glob": 2,
+      "read": 27,
+      "search__search_issues": 3,
+      "list": 1,
+      "web__fetch": 18,
+      "shell__shell_execute": 11
+    },
+    "acts": {
+      "search": 7,
+      "other": 2,
+      "open": 2
+    },
+    "runs": [
+      {
+        "ended": "2026-09-18T19:05:05Z",
+        "ended_because": "completed",
+        "iterations": 40,
+        "messages": 122,
+        "seconds": 1166,
+        "started": "2026-09-18T18:45:39Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
