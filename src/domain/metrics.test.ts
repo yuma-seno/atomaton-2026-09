@@ -39,7 +39,13 @@ const SESSIONS: SessionRecord[] = [
   { path: "sessions/issue-2/reviewer.json", agent: "reviewer", messages: 40, runs: [], calls: [call("github__get_pr")] },
 ];
 
-const SERVERS = ["shell", "filesystem", "github", "web", "search"];
+const SERVERS = [
+  { name: "shell" },
+  { name: "filesystem" },
+  { name: "github" },
+  { name: "web" },
+  { name: "search" },
+];
 const SKILLS = ["engineering/tdd", "delivery/pipeline-setup"];
 const TOKENS = [
   { issue: 1, total: 1000, prompt: 980, completion: 20, cached: 490 },
@@ -93,6 +99,36 @@ describe("metricsOf", () => {
     const none = metricsOf(SESSIONS, [], [], TOKENS);
     expect(none.neverUsedServers).toEqual([]);
     expect(none.neverLoaded).toEqual([]);
+  });
+
+  /**
+   * An unprefixed server's tools arrive under their own names -- `read`, `grep` --
+   * so no call names the server. Calling that unused would state the opposite of the
+   * truth about the most-used server there is.
+   */
+  test("a server a call cannot name is not reported as one nothing called", () => {
+    const servers = [...SERVERS, { name: "files", unprefixed: true }];
+    const sessions: SessionRecord[] = [
+      {
+        path: "sessions/issue-1/engineer.json",
+        agent: "engineer",
+        messages: 10,
+        runs: [],
+        calls: [call("read"), call("grep"), call("github__get_pr")],
+      },
+    ];
+
+    const m = metricsOf(sessions, servers, SKILLS, []);
+    expect(m.neverUsedServers).not.toContain("files");
+    // And not quietly dropped either: unchecked has to read as unchecked.
+    expect(m.unrecognisableServers).toEqual(["files"]);
+  });
+
+  test("the report names what it could not check rather than passing it", () => {
+    const servers = [...SERVERS, { name: "files", unprefixed: true }];
+    const text = render(metricsOf(SESSIONS, servers, SKILLS, TOKENS), new Date("2026-09-13T00:00:00Z"));
+    expect(text).toContain("Not checked, because a call does not name them");
+    expect(text).toContain("`files`");
   });
 
   test("failures and refusals are counted apart", () => {

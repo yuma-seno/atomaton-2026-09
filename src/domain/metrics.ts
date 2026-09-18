@@ -146,6 +146,19 @@ export interface TokenRecord {
   at?: string;
 }
 
+/**
+ * A tool server as `config.yaml` declares it.
+ *
+ * `unprefixed` is here because it decides whether this server can be recognised in
+ * a call at all. A prefixed server's tools arrive as `name__tool`, so a call names
+ * its server; an unprefixed server's arrive bare -- `read`, `grep` -- and nothing
+ * in the call says which server answered.
+ */
+export interface DeclaredServer {
+  name: string;
+  unprefixed?: boolean;
+}
+
 /** Everything the report is rendered from. */
 export interface Metrics {
   sessions: number;
@@ -154,6 +167,17 @@ export interface Metrics {
   byTool: FailureTally[];
   bySkill: Tally[];
   byAct: Tally[];
+  /**
+   * Declared servers whose use cannot be decided from a call, or `undefined` when the
+   * declared list could not be read.
+   *
+   * An unprefixed server's tools arrive under their own names, so nothing in a call
+   * says which server answered it. Listing such a server as unused would state the
+   * opposite of the truth about the most-used server there is, and leaving it out
+   * silently would let "not checked" pass as "checked and fine" -- so it is named,
+   * as the thing this could not check.
+   */
+  unrecognisableServers?: string[];
   /**
    * Declared servers that nothing called, or `undefined` when the declared list could
    * not be read. See `metricsOf` for why servers and not tools, and why the two states
@@ -258,7 +282,7 @@ function tally(names: readonly string[]): Tally[] {
  */
 export function metricsOf(
   sessions: readonly SessionRecord[],
-  declaredServers: readonly string[] | undefined,
+  declaredServers: readonly DeclaredServer[] | undefined,
   declaredSkills: readonly string[] | undefined,
   tokens: readonly TokenRecord[],
 ): Metrics {
@@ -297,6 +321,9 @@ export function metricsOf(
     }
   }
 
+  // A call names its server only when the server is prefixed. An unprefixed one's
+  // tools arrive bare, so this set cannot contain it however much it was used --
+  // which is why the two kinds are answered separately below rather than together.
   const usedServers = new Set(calls.map((c) => c.tool.split("__")[0] ?? ""));
   const loaded = new Set(calls.flatMap((c) => (c.skill ? [c.skill] : [])));
 
@@ -307,7 +334,14 @@ export function metricsOf(
     byTool: [...byTool.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     bySkill: tally(calls.flatMap((c) => (c.skill ? [c.skill] : []))),
     byAct: tally(calls.flatMap((c) => (c.act ? [c.act] : []))),
-    neverUsedServers: declaredServers?.filter((s) => !usedServers.has(s)).sort(),
+    neverUsedServers: declaredServers
+      ?.filter((s) => !s.unprefixed && !usedServers.has(s.name))
+      .map((s) => s.name)
+      .sort(),
+    unrecognisableServers: declaredServers
+      ?.filter((s) => s.unprefixed)
+      .map((s) => s.name)
+      .sort(),
     neverLoaded: declaredSkills?.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
     degraded: [...degraded.values()]
