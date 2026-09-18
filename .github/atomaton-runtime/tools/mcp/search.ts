@@ -6600,9 +6600,6 @@ var require_dist = __commonJS(function(exports, module) {
   exports.default = formatsPlugin;
 });
 
-// src/atomaton-runtime/tools/mcp/search.ts
-import { AutoTokenizer, AutoModelForSequenceClassification, env as transformersEnv } from "@huggingface/transformers";
-
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util) {
@@ -18233,6 +18230,7 @@ function cacheDirectory() {
   return `${base}/${MODEL_CACHE_DIR}`;
 }
 async function loadRerankerOnce() {
+  const { AutoTokenizer, AutoModelForSequenceClassification, env: transformersEnv } = await import("@huggingface/transformers");
   transformersEnv.cacheDir = cacheDirectory();
   log2(`model cache: ${transformersEnv.cacheDir}`);
   const model = getRerankerModel();
@@ -18323,7 +18321,7 @@ var CODE_SCHEMA = objectType({
     "In the language the code and its comments are written in. The first stage matches character bigrams, so a question in another language shares none with them and scores near zero \u2014 the answer never reaches the second stage, which would have recognised it."
   ].join(`
 `)),
-  limit: positiveInt("How many files to return. Defaults to 3. Each carries a line range, so three of them " + "is three places to read rather than three files to open.").optional()
+  limit: positiveInt("How many files to return. Defaults to 3. Each carries a line range, so three of them is three places to read rather than three files to open.").optional()
 });
 function codePassages() {
   const listed = gitRun("ls-files", "-z");

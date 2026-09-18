@@ -295,19 +295,24 @@ function runSection(runs, now) {
     out.push("No run has recorded itself yet. Atomaton writes `atoma_runs` into a session from " + "v0.1.28; sessions older than that carry no times, and there is no way to backfill " + "one that would not be a guess.", "");
     return out;
   }
-  out.push("| window | runs | gave up | median seconds | longest |");
-  out.push("| --- | ---: | ---: | ---: | ---: |");
+  out.push("| window | runs | gave up | median seconds | longest | median round trips | median seconds each |");
+  out.push("| --- | ---: | ---: | ---: | ---: | ---: | ---: |");
   for (const window of WINDOWS) {
     const inside = runs.filter((run) => within(run.ended, window, now));
     if (inside.length === 0) {
-      out.push(`| ${window.label} | 0 | \u2014 | \u2014 | \u2014 |`);
+      out.push(`| ${window.label} | 0 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 |`);
       continue;
     }
     const seconds = inside.map((r) => r.seconds).sort((a, b) => a - b);
     const median = seconds[Math.floor(seconds.length / 2)] ?? 0;
     const share = Math.round(gaveUpShare(inside) * 1000) / 10;
     const longest = seconds[seconds.length - 1] ?? 0;
-    out.push(`| ${window.label} | ${n(inside.length)} | ${share}% | ${n(median)} | ${n(longest)} |`);
+    const counted = inside.filter((r) => (r.iterations ?? 0) > 0);
+    const trips = counted.map((r) => r.iterations ?? 0).sort((a, b) => a - b);
+    const medianTrips = trips[Math.floor(trips.length / 2)];
+    const each = counted.map((r) => r.seconds / (r.iterations ?? 1)).sort((a, b) => a - b);
+    const medianEach = each[Math.floor(each.length / 2)];
+    out.push(`| ${window.label} | ${n(inside.length)} | ${share}% | ${n(median)} | ${n(longest)} | ` + `${medianTrips === undefined ? "\u2014" : n(medianTrips)} | ` + `${medianEach === undefined ? "\u2014" : medianEach.toFixed(1)} |`);
   }
   out.push("");
   out.push("**Gave up** is every ending that is not `completed` \u2014 a ceiling reached, a person " + "asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding " + "the run should not continue, which is worth watching whether or not it was right.");

@@ -54,8 +54,11 @@ servers:
       # purpose is reading -- 64 calls, all of them reads. Six tools now, and the three
       # that write are the ones left out.
       #
-      # A pattern here that matches nothing is reported at startup and fails
-      # `atoma validate --with-live-tools`, so this list cannot quietly stop applying.
+      # A pattern here that matches nothing is reported at startup, in the run's log,
+      # so this list cannot quietly stop applying. Not by a check before the run:
+      # `atoma validate --with-live-tools` would answer it, and nothing runs that
+      # anywhere yet — see the issue on where it can safely live, since starting a
+      # pull request's declared servers is not something the deliverable check may do.
       tool_allowlist:
         - read
         - grep

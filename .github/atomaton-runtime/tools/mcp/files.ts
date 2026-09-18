@@ -17782,17 +17782,21 @@ ${out.join(`
 }
 var GREP_SCHEMA = objectType({
   pattern: stringType().describe("Extended regular expression, as `grep -E` reads it."),
-  path: stringType().optional().describe("File or directory to search. Default: the working directory."),
+  path: unionType([stringType(), arrayType(stringType()).min(1)]).optional().describe("File or directory to search, or several of them. Default: the working directory."),
   glob: stringType().optional().describe("Only search files whose name matches this shell glob, such as `*.ts`. Matched against the file name, not the whole path."),
+  exclude: arrayType(stringType()).optional().describe("Skip files and directories whose name matches any of these globs, such as `node_modules` or `*.min.js`."),
   context: numberType().int().min(0).max(20).optional().describe("Lines of surrounding context to include with each match. Default 0."),
   max_matches: numberType().int().min(1).optional().describe(`How many lines to return. Default ${DEFAULT_MAX_MATCHES}. With context set, the surrounding lines count towards it. The result says when it stopped early.`),
   case_sensitive: booleanType().optional().default(true).describe("Match case. Default true.")
 });
 function grepFiles(a) {
-  const full = within(a.path ?? ".");
+  const asked = a.path === undefined ? ["."] : Array.isArray(a.path) ? a.path : [a.path];
   const limit = a.max_matches ?? DEFAULT_MAX_MATCHES;
-  const rel = relative(process.cwd(), full);
-  const target = rel === "" ? "." : rel.startsWith("..") ? full : rel.split(sep).join("/");
+  const targets = asked.map((one) => {
+    const full = within(one);
+    const rel = relative(process.cwd(), full);
+    return rel === "" ? "." : rel.startsWith("..") ? full : rel.split(sep).join("/");
+  });
   const args = ["-E", "-n", "-I", "-r"];
   if (!a.case_sensitive)
     args.push("-i");
@@ -17800,7 +17804,10 @@ function grepFiles(a) {
     args.push(`-C${a.context}`);
   if (a.glob)
     args.push(`--include=${a.glob}`);
-  args.push(`-m${limit + 1}`, "-e", a.pattern, "--", target);
+  for (const skip of a.exclude ?? []) {
+    args.push(`--exclude=${skip}`, `--exclude-dir=${skip}`);
+  }
+  args.push(`-m${limit + 1}`, "-e", a.pattern, "--", ...targets);
   const run = spawnSync("grep", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (run.error)
     throw new Error(`grep could not be run: ${run.error.message}`);
@@ -17811,7 +17818,7 @@ function grepFiles(a) {
 `).filter((line) => line.length > 0);
   if (found.length === 0) {
     return {
-      text: `No match for ${a.pattern}${a.glob ? ` in ${a.glob} files` : ""} under ${shown(full)}.`
+      text: `No match for ${a.pattern}${a.glob ? ` in ${a.glob} files` : ""} under ${targets.join(", ")}.`
     };
   }
   const kept = [];
@@ -17828,7 +17835,7 @@ function grepFiles(a) {
 [${dropped} or more further lines. Narrow the pattern, set glob, or raise max_matches.]` : "";
   const what = a.context ? "line(s), match and context," : "matching line(s)";
   log(`grep ${a.pattern} -> ${kept.length} line(s)${dropped > 0 ? `, ${dropped} dropped` : ""}`);
-  return { text: `${kept.length} ${what} under ${shown(full)}:
+  return { text: `${kept.length} ${what} under ${targets.join(", ")}:
 
 ${kept.join(`
 `)}${note}` };
@@ -17941,7 +17948,7 @@ var { tools, dispatch } = buildMcpTools([
   }),
   defineMcpTool({
     name: "grep",
-    description: "Search file contents for an extended regular expression, returning file, line number and the matching line. Set glob to restrict which files are searched, and context to include surrounding lines. Prefer this over grep through the shell. A search says where something is, not what it means: when it finds the place, read the file around it rather than searching again with a different pattern.",
+    description: "Search file contents for an extended regular expression, returning file, line number and the matching line. path takes one place to look or several. Set glob to restrict which files are searched, exclude to skip directories such as node_modules, and context to include surrounding lines. Prefer this over grep through the shell. A search says where something is, not what it means: when it finds the place, read the file around it rather than searching again with a different pattern.",
     schema: GREP_SCHEMA,
     handler: grepFiles
   }),
