@@ -48,7 +48,8 @@ import { TypedOutputsStep } from "./base.ts";
  * v0.1.14 gives each router a name for each dialect it serves, which is what the
  * agent definitions here needed: they read `provider: openai-responses # openrouter`,
  * a row that in v0.1.13 means OpenAI itself. So this pin moves with
- * `agent-definitions/*.md` as well.
+ * `agent-definitions/*.md` as well. The comment is gone today: all three ship
+ * `provider: orcarouter-responses`, a name that says where the request goes.
  *
  * v0.1.16 carries two fixes that are about THIS repository's runs specifically.
  *
