@@ -207,8 +207,24 @@ async function probe(): Promise<number> {
   // hooks that apply to every server. Asking for it as one aborts the whole probe with
   // `Tool 'hooks' not found in tools file`, which is what the run below would say about any
   // agent that named it -- so the exclusion belongs here rather than in the agent stub.
-  const servers = Object.keys(toolsYaml).filter((name) => name !== "hooks");
+  const declared = Object.keys(toolsYaml).filter((name) => name !== "hooks");
+
+  // At most one server that names its tools without a prefix, because atoma refuses two
+  // of them offering the same name -- `files` and `files_readonly` are the same program
+  // and both offer `read`. That refusal is correct and this probe met it: no agent
+  // declares both, and this stub declares everything.
+  //
+  // Starting one of a pair proves what this probe asks. They are the same `command` and
+  // the same `args`; what differs is an allowlist, which the core applies after the
+  // server is already up. Skipping is said out loud rather than done quietly: a probe
+  // that silently tested fewer servers than it claims is the shape it exists to catch.
+  const unprefixed = declared.filter((name) => (toolsYaml[name] as { unprefixed?: boolean })?.unprefixed);
+  const skipped = unprefixed.slice(1);
+  const servers = declared.filter((name) => !skipped.includes(name));
   result("servers_declared", servers.join(" "));
+  if (skipped.length > 0) {
+    result("servers_skipped_same_program_as_an_unprefixed_peer", skipped.join(" "));
+  }
 
   const dir = `${RUNNER_TEMP}/probe-tool-servers`;
   await Bun.$`rm -rf ${dir}`.quiet();
@@ -269,7 +285,19 @@ async function probe(): Promise<number> {
   say("4. which servers registered tools");
   let everyServerCameUp = true;
   for (const server of servers) {
-    const count = captured.tools.filter((name) => name.startsWith(`${server}__`)).length;
+    // A server that sets `unprefixed` gives its tools their own names, so counting
+    // `server__` finds none of them and reads as a server that never came up. Only one
+    // unprefixed server is in this stub -- the filter above guarantees it -- so the
+    // tools with no `__` are exactly its tools, with nothing to confuse them with.
+    //
+    // Keying on the naming convention was right until the convention gained a second
+    // shape, and this said `tools_from_files=0` about a server that had registered six.
+    // It failed rather than passed, which is the difference between a check that has
+    // stopped applying and one that has stopped saying so.
+    const unprefixedHere = (toolsYaml[server] as { unprefixed?: boolean })?.unprefixed;
+    const count = captured.tools.filter((name) =>
+      unprefixedHere ? !name.includes("__") : name.startsWith(`${server}__`),
+    ).length;
     result(`tools_from_${server}`, count);
     if (count === 0) everyServerCameUp = false;
   }

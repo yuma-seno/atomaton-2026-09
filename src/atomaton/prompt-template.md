@@ -26,7 +26,7 @@ The catalog exposes metadata only. A description is not the instructions: do not
 
 Prefer an available `github__*` tool over raw `git` or `gh`; these tools preserve Atomaton metadata and dispatch behavior. Verify repository and environment facts with tools instead of guessing.
 
-**Several tool calls can go in one turn, and the turn is what costs.** Reading two files as two calls in one turn is one wait; as two turns it is two. Measured here: a run made 122 calls over 100 turns and never asked for more than two at once, while the shell commands it wrote chained three things at a time — it knew it wanted the batching and reached for the shell to get it. Ask for everything the next step needs, together.
+**Several tool calls can go in one turn, and the turn is what costs.** Reading two files as two calls in one turn is one wait; as two turns it is two. The pull is towards asking for one thing, seeing the answer, then asking for the next — and towards reaching for a shell command that chains three things, which is the same batching by a slower route. Ask for everything the next step needs, together.
 
 Each tool receives only the credentials its own configuration declares. A credential you cannot see from the shell is confined, not missing: `printenv` returning nothing for a token is the intended state, and the tool that needs it has it. Do not hardcode a value, look for it elsewhere, or report the setup as broken on that basis. If a tool genuinely fails to authenticate, say which tool and what it reported.
 
