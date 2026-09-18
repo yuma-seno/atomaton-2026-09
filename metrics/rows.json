@@ -3772,6 +3772,41 @@
     ]
   },
   {
+    "path": "sessions/issue-788/reviewer.json",
+    "agent": "reviewer",
+    "messages": 160,
+    "calls": 112,
+    "failed": 3,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__check_merge_readiness": 1,
+      "github__get_pr_reviews": 1,
+      "github__get_pr": 1,
+      "read": 43,
+      "grep": 53,
+      "glob": 7,
+      "github__get_check_runs": 1,
+      "github__get_pr_diff": 1,
+      "list": 1,
+      "github__submit_pr_review": 2
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-18T20:40:05Z",
+        "ended_because": "completed",
+        "iterations": 40,
+        "messages": 160,
+        "seconds": 1368,
+        "started": "2026-09-18T20:17:17Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
