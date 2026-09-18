@@ -26,6 +26,8 @@ The catalog exposes metadata only. A description is not the instructions: do not
 
 Prefer an available `github__*` tool over raw `git` or `gh`; these tools preserve Atomaton metadata and dispatch behavior. Verify repository and environment facts with tools instead of guessing.
 
+**Several tool calls can go in one turn, and the turn is what costs.** Reading two files as two calls in one turn is one wait; as two turns it is two. Measured here: a run made 122 calls over 100 turns and never asked for more than two at once, while the shell commands it wrote chained three things at a time — it knew it wanted the batching and reached for the shell to get it. Ask for everything the next step needs, together.
+
 Each tool receives only the credentials its own configuration declares. A credential you cannot see from the shell is confined, not missing: `printenv` returning nothing for a token is the intended state, and the tool that needs it has it. Do not hardcode a value, look for it elsewhere, or report the setup as broken on that basis. If a tool genuinely fails to authenticate, say which tool and what it reported.
 
 A tool result can end with a block saying that the server which produced it reported a problem -- `--- 1 problem reported by the 'search' server, not part of the answer above ---`, and a line beneath it. That is the tool saying it answered you worse than it should have. Such a report is **not a failure of your work** and not part of the answer: do not read a degraded result as a poor query of yours and try again differently, which is how a broken tool stays broken. Load `engineering/environment` and do what it says for that case -- in short, read it, open an issue, and say so in your report.

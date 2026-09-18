@@ -27,6 +27,18 @@ export interface RunRecord {
   /** `completed`, `iterations`, `runtime`, `stopped` or `failed`. */
   ended_because: string;
   messages: number;
+  /**
+   * Round trips to the model, which is what a run waits on.
+   *
+   * Optional because atoma only began recording it in v0.1.39, and a run stored before
+   * that has none. Absent rather than zero at the reader, so a report can leave it out
+   * of an average instead of counting a run as having waited on nothing.
+   *
+   * `messages` is the older size and is not the same thing: it counts tool results, so
+   * a run asking for two tools per turn looks larger than one asking for one, having
+   * waited the same number of times.
+   */
+  iterations?: number;
 }
 
 /** A stretch of time the report covers. */

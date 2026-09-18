@@ -166,11 +166,18 @@ function readFile(a: z.infer<typeof READ_SCHEMA>): McpToolResult {
 
 const GREP_SCHEMA = z.object({
   pattern: z.string().describe("Extended regular expression, as `grep -E` reads it."),
-  path: z.string().optional().describe("File or directory to search. Default: the working directory."),
+  path: z
+    .union([z.string(), z.array(z.string()).min(1)])
+    .optional()
+    .describe("File or directory to search, or several of them. Default: the working directory."),
   glob: z
     .string()
     .optional()
     .describe("Only search files whose name matches this shell glob, such as `*.ts`. Matched against the file name, not the whole path."),
+  exclude: z
+    .array(z.string())
+    .optional()
+    .describe("Skip files and directories whose name matches any of these globs, such as `node_modules` or `*.min.js`."),
   context: z
     .number()
     .int()
@@ -195,24 +202,33 @@ const GREP_SCHEMA = z.object({
  * nobody has measured wanting.
  */
 function grepFiles(a: z.infer<typeof GREP_SCHEMA>): McpToolResult {
-  const full = within(a.path ?? ".");
+  const asked = a.path === undefined ? ["."] : Array.isArray(a.path) ? a.path : [a.path];
   const limit = a.max_matches ?? DEFAULT_MAX_MATCHES;
 
-  // grep is given a relative path so that it prints relative paths, rather than being
-  // given an absolute one and having the prefix cut off afterwards. Cutting at the
-  // first colon is what a line like `C:\repo\file.ts:9:...` breaks, and the runner
-  // being Linux is not a reason to write something that is wrong anywhere else.
-  const rel = relative(process.cwd(), full);
-  const target = rel === "" ? "." : rel.startsWith("..") ? full : rel.split(sep).join("/");
+  // grep is given relative paths so that it prints relative paths, rather than being
+  // given absolute ones and having the prefix cut off afterwards. Cutting at the first
+  // colon is what a line like `C:\repo\file.ts:9:...` breaks, and the runner being
+  // Linux is not a reason to write something that is wrong anywhere else.
+  const targets = asked.map((one) => {
+    const full = within(one);
+    const rel = relative(process.cwd(), full);
+    return rel === "" ? "." : rel.startsWith("..") ? full : rel.split(sep).join("/");
+  });
 
   const args = ["-E", "-n", "-I", "-r"];
   if (!a.case_sensitive) args.push("-i");
   if (a.context) args.push(`-C${a.context}`);
   if (a.glob) args.push(`--include=${a.glob}`);
+  // Both forms per pattern, because a caller writing `node_modules` means the
+  // directory and one writing `*.min.js` means the files, and asking which they meant
+  // is a round trip to learn something neither of them cares about.
+  for (const skip of a.exclude ?? []) {
+    args.push(`--exclude=${skip}`, `--exclude-dir=${skip}`);
+  }
   // `-m` is per file, not per search, so it does not bound the answer -- a hundred
   // files each stopping at the limit still returns a hundred times it. The bound that
   // holds is the slice below; this only stops one pathological file filling the buffer.
-  args.push(`-m${limit + 1}`, "-e", a.pattern, "--", target);
+  args.push(`-m${limit + 1}`, "-e", a.pattern, "--", ...targets);
 
   const run = spawnSync("grep", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   if (run.error) throw new Error(`grep could not be run: ${run.error.message}`);
@@ -226,7 +242,7 @@ function grepFiles(a: z.infer<typeof GREP_SCHEMA>): McpToolResult {
   const found = (run.stdout || "").split("\n").filter((line) => line.length > 0);
   if (found.length === 0) {
     return {
-      text: `No match for ${a.pattern}${a.glob ? ` in ${a.glob} files` : ""} under ${shown(full)}.`,
+      text: `No match for ${a.pattern}${a.glob ? ` in ${a.glob} files` : ""} under ${targets.join(", ")}.`,
     };
   }
 
@@ -246,7 +262,7 @@ function grepFiles(a: z.infer<typeof GREP_SCHEMA>): McpToolResult {
   // Lines, not matches: with context set, most of them are the lines around one.
   const what = a.context ? "line(s), match and context," : "matching line(s)";
   log(`grep ${a.pattern} -> ${kept.length} line(s)${dropped > 0 ? `, ${dropped} dropped` : ""}`);
-  return { text: `${kept.length} ${what} under ${shown(full)}:\n\n${kept.join("\n")}${note}` };
+  return { text: `${kept.length} ${what} under ${targets.join(", ")}:\n\n${kept.join("\n")}${note}` };
 }
 
 const GLOB_SCHEMA = z.object({
@@ -384,7 +400,7 @@ const { tools, dispatch } = buildMcpTools([
   defineMcpTool({
     name: "grep",
     description:
-      "Search file contents for an extended regular expression, returning file, line number and the matching line. Set glob to restrict which files are searched, and context to include surrounding lines. Prefer this over grep through the shell. A search says where something is, not what it means: when it finds the place, read the file around it rather than searching again with a different pattern.",
+      "Search file contents for an extended regular expression, returning file, line number and the matching line. path takes one place to look or several. Set glob to restrict which files are searched, exclude to skip directories such as node_modules, and context to include surrounding lines. Prefer this over grep through the shell. A search says where something is, not what it means: when it finds the place, read the file around it rather than searching again with a different pattern.",
     schema: GREP_SCHEMA,
     handler: grepFiles,
   }),
