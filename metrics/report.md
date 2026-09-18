@@ -33,7 +33,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 102,241 | 5,399,337 | 13,911,470 | 13,911,470 | 28,378,150 |
-| messages per session | 80 | 1,408 | 1,598 | 1,598 | 4,979 |
+| messages per session | 80 | 1,408 | 1,598 | 1,598 | 5,318 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -45,38 +45,38 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 1,963 | 10 | 20 | 0.5% |
+| `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
+| `read` | 126 | 0 | 0 | 0% |
+| `grep` | 80 | 4 | 0 | 5% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
-| `read` | 73 | 0 | 0 | 0% |
-| `grep` | 43 | 3 | 0 | 7% |
+| `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `atoma_builtin__load_skill` | 32 | 2 | 0 | 6.3% |
-| `search__search_issues` | 24 | 0 | 0 | 0% |
+| `search__search_issues` | 25 | 0 | 0 | 0% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `web__fetch` | 21 | 2 | 0 | 9.5% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `edit` | 13 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
-| `github__commit_and_push` | 10 | 1 | 0 | 10% |
+| `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `write` | 11 | 0 | 0 | 0% |
+| `github__create_pr` | 10 | 1 | 0 | 10% |
 | `github__get_pr` | 9 | 0 | 0 | 0% |
+| `glob` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
-| `github__create_pr` | 8 | 0 | 0 | 0% |
-| `glob` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 6 | 1 | 0 | 16.7% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
+| `list` | 6 | 0 | 0 | 0% |
 | `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__submit_pr_review` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
-| `list` | 5 | 0 | 0 | 0% |
 | `github__merge_pr` | 4 | 0 | 0 | 0% |
-| `write` | 4 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
 | `github__get_branch` | 2 | 0 | 0 | 0% |
 | `github__get_check_runs` | 2 | 0 | 0 | 0% |
@@ -90,11 +90,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,238 | 63.1% |
-| `open` | 366 | 18.6% |
-| `other` | 256 | 13% |
-| `verify` | 56 | 2.9% |
-| `edit` | 47 | 2.4% |
+| `search` | 1,240 | 61.3% |
+| `open` | 367 | 18.1% |
+| `other` | 308 | 15.2% |
+| `verify` | 56 | 2.8% |
+| `edit` | 53 | 2.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -114,7 +114,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 35,855 | 438,539 | 13,911,470 | 13,911,470 | 41,467,542 |
-| messages per session | 80 | 1,408 | 1,598 | 1,598 | 4,979 |
+| messages per session | 80 | 1,408 | 1,598 | 1,598 | 5,318 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -126,38 +126,38 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 1,963 | 10 | 20 | 0.5% |
+| `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
+| `read` | 126 | 0 | 0 | 0% |
+| `grep` | 80 | 4 | 0 | 5% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
-| `read` | 73 | 0 | 0 | 0% |
-| `grep` | 43 | 3 | 0 | 7% |
+| `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `atoma_builtin__load_skill` | 32 | 2 | 0 | 6.3% |
-| `search__search_issues` | 24 | 0 | 0 | 0% |
+| `search__search_issues` | 25 | 0 | 0 | 0% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `web__fetch` | 21 | 2 | 0 | 9.5% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `edit` | 13 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
-| `github__commit_and_push` | 10 | 1 | 0 | 10% |
+| `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `write` | 11 | 0 | 0 | 0% |
+| `github__create_pr` | 10 | 1 | 0 | 10% |
 | `github__get_pr` | 9 | 0 | 0 | 0% |
+| `glob` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
-| `github__create_pr` | 8 | 0 | 0 | 0% |
-| `glob` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 6 | 1 | 0 | 16.7% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
+| `list` | 6 | 0 | 0 | 0% |
 | `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__submit_pr_review` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
-| `list` | 5 | 0 | 0 | 0% |
 | `github__merge_pr` | 4 | 0 | 0 | 0% |
-| `write` | 4 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
 | `github__get_branch` | 2 | 0 | 0 | 0% |
 | `github__get_check_runs` | 2 | 0 | 0 | 0% |
@@ -171,11 +171,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,238 | 63.1% |
-| `open` | 366 | 18.6% |
-| `other` | 256 | 13% |
-| `verify` | 56 | 2.9% |
-| `edit` | 47 | 2.4% |
+| `search` | 1,240 | 61.3% |
+| `open` | 367 | 18.1% |
+| `other` | 308 | 15.2% |
+| `verify` | 56 | 2.8% |
+| `edit` | 53 | 2.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -195,7 +195,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 25,026 | 309,979 | 6,464,694 | 39,737,697 | 144,265,818 |
-| messages per session | 80 | 1,408 | 1,598 | 1,598 | 4,979 |
+| messages per session | 80 | 1,408 | 1,598 | 1,598 | 5,318 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -207,38 +207,38 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 1,963 | 10 | 20 | 0.5% |
+| `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
+| `read` | 126 | 0 | 0 | 0% |
+| `grep` | 80 | 4 | 0 | 5% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
-| `read` | 73 | 0 | 0 | 0% |
-| `grep` | 43 | 3 | 0 | 7% |
+| `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `atoma_builtin__load_skill` | 32 | 2 | 0 | 6.3% |
-| `search__search_issues` | 24 | 0 | 0 | 0% |
+| `search__search_issues` | 25 | 0 | 0 | 0% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `web__fetch` | 21 | 2 | 0 | 9.5% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `edit` | 13 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
-| `github__commit_and_push` | 10 | 1 | 0 | 10% |
+| `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `write` | 11 | 0 | 0 | 0% |
+| `github__create_pr` | 10 | 1 | 0 | 10% |
 | `github__get_pr` | 9 | 0 | 0 | 0% |
+| `glob` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
-| `github__create_pr` | 8 | 0 | 0 | 0% |
-| `glob` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 6 | 1 | 0 | 16.7% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
+| `list` | 6 | 0 | 0 | 0% |
 | `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__submit_pr_review` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
-| `list` | 5 | 0 | 0 | 0% |
 | `github__merge_pr` | 4 | 0 | 0 | 0% |
-| `write` | 4 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
 | `github__get_branch` | 2 | 0 | 0 | 0% |
 | `github__get_check_runs` | 2 | 0 | 0 | 0% |
@@ -252,11 +252,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 1,238 | 63.1% |
-| `open` | 366 | 18.6% |
-| `other` | 256 | 13% |
-| `verify` | 56 | 2.9% |
-| `edit` | 47 | 2.4% |
+| `search` | 1,240 | 61.3% |
+| `open` | 367 | 18.1% |
+| `other` | 308 | 15.2% |
+| `verify` | 56 | 2.8% |
+| `edit` | 53 | 2.6% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -276,7 +276,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 25,026 | 309,979 | 6,464,694 | 39,737,697 | 144,265,818 |
-| messages per session | 10 | 103 | 601 | 1,598 | 17,778 |
+| messages per session | 10 | 104 | 601 | 1,598 | 18,117 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -288,7 +288,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
-| `shell__shell_execute` | 4,228 | 629 | 152 | 14.9% |
+| `shell__shell_execute` | 4,289 | 629 | 152 | 14.7% |
 | `filesystem__read_text_file` | 593 | 43 | 24 | 7.3% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
 | `filesystem_readonly__read_file` | 358 | 12 | 5 | 3.4% |
@@ -298,24 +298,25 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
 | `github__get_issue` | 192 | 22 | 2 | 11.5% |
 | `filesystem_readonly__list_directory` | 184 | 0 | 0 | 0% |
+| `read` | 126 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 112 | 29 | 0 | 25.9% |
 | `search__search_code` | 109 | 0 | 0 | 0% |
 | `github__search_code` | 96 | 32 | 0 | 33.3% |
-| `github__commit_and_push` | 94 | 53 | 0 | 56.4% |
+| `github__commit_and_push` | 95 | 53 | 0 | 55.8% |
+| `grep` | 80 | 4 | 0 | 5% |
 | `github__get_pr` | 76 | 10 | 0 | 13.2% |
-| `read` | 73 | 0 | 0 | 0% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 63 | 6 | 0 | 9.5% |
 | `filesystem_readonly__read_text_file` | 62 | 2 | 29 | 3.2% |
-| `github__create_pr` | 59 | 24 | 0 | 40.7% |
+| `github__create_pr` | 61 | 25 | 0 | 41% |
 | `filesystem__read_multiple_files` | 56 | 0 | 0 | 0% |
 | `github__get_check_runs` | 55 | 6 | 0 | 10.9% |
-| `search__search_issues` | 53 | 4 | 0 | 7.5% |
+| `search__search_issues` | 54 | 4 | 0 | 7.4% |
 | `filesystem__search_files` | 50 | 0 | 43 | 0% |
 | `web__fetch` | 50 | 3 | 0 | 6% |
 | `github__get_pr_diff` | 48 | 4 | 0 | 8.3% |
 | `github__get_issue_comments` | 46 | 8 | 0 | 17.4% |
-| `grep` | 43 | 3 | 0 | 7% |
+| `edit` | 41 | 0 | 0 | 0% |
 | `filesystem_readonly__search_files` | 38 | 1 | 21 | 2.6% |
 | `github__close_issue` | 36 | 1 | 17 | 2.8% |
 | `github__merge_pr` | 36 | 1 | 0 | 2.8% |
@@ -333,16 +334,15 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem_readonly__read_multiple_files` | 17 | 0 | 0 | 0% |
 | `filesystem__list_allowed_directories` | 14 | 0 | 0 | 0% |
 | `filesystem_readonly__list_allowed_directories` | 14 | 0 | 14 | 0% |
-| `edit` | 13 | 0 | 0 | 0% |
 | `github__sync_branch` | 13 | 7 | 0 | 53.8% |
 | `shell__terminal_close` | 12 | 4 | 0 | 33.3% |
 | `atoma__request_close_issue` | 11 | 1 | 0 | 9.1% |
 | `shell__shell_set_default_workdir` | 11 | 2 | 0 | 18.2% |
-| `glob` | 8 | 0 | 0 | 0% |
-| `list` | 5 | 0 | 0 | 0% |
+| `write` | 11 | 0 | 0 | 0% |
+| `glob` | 9 | 0 | 0 | 0% |
+| `list` | 6 | 0 | 0 | 0% |
 | `github__list_pr_review_comments` | 4 | 0 | 0 | 0% |
 | `shell__command_history_query` | 4 | 2 | 0 | 50% |
-| `write` | 4 | 0 | 0 | 0% |
 | `filesystem_readonly__edit_file` | 3 | 0 | 3 | 0% |
 | `filesystem_readonly__write_file` | 3 | 0 | 3 | 0% |
 | `shell__terminal_get_info` | 3 | 0 | 0 | 0% |
@@ -371,11 +371,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 | act | calls | share |
 | --- | ---: | ---: |
-| `search` | 2,045 | 48.4% |
-| `other` | 1,242 | 29.4% |
-| `open` | 625 | 14.8% |
+| `search` | 2,047 | 47.7% |
+| `other` | 1,294 | 30.2% |
+| `open` | 626 | 14.6% |
 | `verify` | 205 | 4.8% |
-| `edit` | 111 | 2.6% |
+| `edit` | 117 | 2.7% |
 
 | skill | loads | share |
 | --- | ---: | ---: |
@@ -395,17 +395,21 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-18 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
-| 2026-09-18 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
-| 2026-09-18 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
-| 2026-09-18 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
-| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
-| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
-| 2026-09-18 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
-| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
-| 2026-09-18 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
-| 2026-09-18 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
+| 2026-09-18 | `github` | 1 | 1 | (2), or a definition that does not parse all warn and continue — "I could not ask" is |
+| 2026-09-18 | `github` | 1 | 1 | - On refusal it prints the core's output and an `::error::` naming the secret to add, |
+| 2026-09-18 | `github` | 1 | 1 | broken definition each warning and continuing. |
+| 2026-09-18 | `github` | 1 | 1 | see, since the step degrades to a warning and would otherwise go silently inert. |
 | 2026-09-18 | `github` | 1 | 1 | [atomaton-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the num |
+| 2026-09-14 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
+| 2026-09-13 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
+| 2026-09-13 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
+| 2026-09-13 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
+| 2026-09-13 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
+| 2026-09-13 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
+| 2026-09-13 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
+| 2026-09-12 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
+| 2026-09-12 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
+| 2026-09-05 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
 
 ## Never used
 
