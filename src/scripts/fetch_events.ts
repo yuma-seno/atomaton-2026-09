@@ -25,7 +25,7 @@
 import { appendFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { gh, ghJson, ghPaginated, ghRead } from "../lib/gh.ts";
-import { PARENT_ISSUE_TAG } from "../lib/tags.ts";
+import { PARENT_ISSUE_TAG, withoutTags } from "../lib/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface FetchEventsArgs {
@@ -358,7 +358,14 @@ function main(): void {
   const maxDiffChars = Number(values["max-diff-chars"] ?? 30000);
   const { events, resolvedType, resolvedNumber } = fetchEvents(values.type, Number(values.number), maxDiffChars);
 
-  writeFileSync(values.out, JSON.stringify(events, null, 2));
+  // One place, because there are six kinds of body above -- issue, pull request,
+  // their comments, reviews, inline review comments -- and a seventh added later
+  // would have to remember. Everything this file produces leaves through here.
+  const withoutBookkeeping = events.map((event) => ({
+    ...event,
+    content: withoutTags(event.content),
+  }));
+  writeFileSync(values.out, JSON.stringify(withoutBookkeeping, null, 2));
 
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput) appendFileSync(githubOutput, `resolved_type=${resolvedType}\nresolved_number=${resolvedNumber}\n`);

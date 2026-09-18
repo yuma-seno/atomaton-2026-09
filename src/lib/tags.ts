@@ -29,7 +29,18 @@ export interface AtomatonTag<T> {
   has(text: string): boolean;
 }
 
+/**
+ * The wire form of every tag defined below, collected as each one is made.
+ *
+ * `withoutTags` reads this rather than a second list, so a tag added later is
+ * stripped from the moment it exists. A list written by hand would be the same
+ * fact in two places, and the half that falls behind is the half that leaks.
+ */
+const EVERY_TAG_PATTERN: string[] = [];
+
 function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T, render: (value: T) => string): AtomatonTag<T> {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
   const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
     write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
@@ -115,4 +126,40 @@ export const CI_RETRY_TAG = numericTag("ci-retry");
  */
 export function readAnyParentTag(text: string): number | undefined {
   return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
+}
+
+/**
+ * `text` with every Atomaton tag removed.
+ *
+ * These markers exist to carry state between workflow runs through GitHub, which
+ * means they live in issue bodies, pull request bodies and comments -- exactly the
+ * text that becomes an agent's context. Nothing removed them on the way in, so an
+ * agent read its own delivery machinery's bookkeeping as part of the conversation:
+ * who to mention, whether the last run changed anything, and -- the one that gives
+ * the shape away -- `llm-context=exclude`, a note saying this must not reach the
+ * model, reaching the model.
+ *
+ * A tag on a line of its own takes the whole line with it, line ending included.
+ * `
+` as well as `
+`: the machinery writes its comments through `gh --body` and gets
+ * `
+`, but an issue or pull request body a person edited in the browser comes back
+ * with `
+`, and those are the bodies `parent`, `notify` and `origin-agent` live in.
+ * Matching only `
+` left a stray carriage return and a blank line at the top of exactly
+ * the text a person had touched.
+ *
+ * A tag inside a line takes the spacing on its right, so removing it reads as removing
+ * a word rather than leaving a gap where one was.
+ *
+ * Only a tag with a real value is removed. Prose about the tags -- an issue
+ * discussing `<!-- atomaton:parent=N -->` -- does not match the value patterns and
+ * survives, which is what keeps this from quietly editing a conversation about
+ * itself.
+ */
+export function withoutTags(text: string): string {
+  const tags = EVERY_TAG_PATTERN.join("|");
+  return text.replace(new RegExp(`(?:^[ \\t]*)?(?:${tags})[ \\t]*(?:\\r?\\n)?`, "gm"), "");
 }
