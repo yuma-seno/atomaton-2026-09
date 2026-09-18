@@ -15,7 +15,31 @@ describe("withoutTags", () => {
   });
 
   test("a tag in the middle of a body goes too", () => {
-    expect(withoutTags(`before ${PARENT_TAG.write(4)} after`)).toBe("before  after");
+    // One space, not two: removing a tag reads as removing a word, not as leaving
+    // the gap where one used to be.
+    expect(withoutTags(`before ${PARENT_TAG.write(4)} after`)).toBe("before after");
+  });
+
+  /**
+   * The machinery writes its comments through `gh --body` and gets \n, but a body a
+   * person edited in the browser comes back with \r\n -- and those are the bodies
+   * `parent`, `notify` and `origin-agent` live in. Matching only \n left a stray
+   * carriage return and a blank line at the top of exactly the text a person had
+   * touched.
+   */
+  test("a body a person edited in the browser is left as clean as one we wrote", () => {
+    const crlf = [PARENT_TAG.write(4), "Body text."].join("\r\n");
+    expect(withoutTags(crlf)).toBe("Body text.");
+  });
+
+  /**
+   * Run to run, the same body has to strip to the same bytes: a prompt cache is a
+   * prefix match, so a single character that moves costs everything after it.
+   */
+  test("stripping twice is stripping once", () => {
+    const body = [AGENT_TAG.write("engineer"), CHANGED_TAG.write("yes"), "Done."].join("\r\n");
+    const once = withoutTags(body);
+    expect(withoutTags(once)).toBe(once);
   });
 
   /**

@@ -139,8 +139,20 @@ export function readAnyParentTag(text: string): number | undefined {
  * the shape away -- `llm-context=exclude`, a note saying this must not reach the
  * model, reaching the model.
  *
- * A trailing newline goes with the tag, since a tag written on its own line would
- * otherwise leave the body starting with blank lines.
+ * A tag on a line of its own takes the whole line with it, line ending included.
+ * `
+` as well as `
+`: the machinery writes its comments through `gh --body` and gets
+ * `
+`, but an issue or pull request body a person edited in the browser comes back
+ * with `
+`, and those are the bodies `parent`, `notify` and `origin-agent` live in.
+ * Matching only `
+` left a stray carriage return and a blank line at the top of exactly
+ * the text a person had touched.
+ *
+ * A tag inside a line takes the spacing on its right, so removing it reads as removing
+ * a word rather than leaving a gap where one was.
  *
  * Only a tag with a real value is removed. Prose about the tags -- an issue
  * discussing `<!-- atomaton:parent=N -->` -- does not match the value patterns and
@@ -148,5 +160,6 @@ export function readAnyParentTag(text: string): number | undefined {
  * itself.
  */
 export function withoutTags(text: string): string {
-  return text.replace(new RegExp(`(?:${EVERY_TAG_PATTERN.join("|")})\\n?`, "g"), "");
+  const tags = EVERY_TAG_PATTERN.join("|");
+  return text.replace(new RegExp(`(?:^[ \\t]*)?(?:${tags})[ \\t]*(?:\\r?\\n)?`, "gm"), "");
 }
