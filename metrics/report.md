@@ -10,16 +10,16 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest | median round trips | median seconds each |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Last 7 days | 34 | 32.4% | 61 | 3,392 | 50 | 45.8 |
-| Last 30 days | 34 | 32.4% | 61 | 3,392 | 50 | 45.8 |
-| Last year | 34 | 32.4% | 61 | 3,392 | 50 | 45.8 |
-| All time | 34 | 32.4% | 61 | 3,392 | 50 | 45.8 |
+| Last 7 days | 35 | 31.4% | 61 | 3,392 | 50 | 13.4 |
+| Last 30 days | 35 | 31.4% | 61 | 3,392 | 50 | 13.4 |
+| Last year | 35 | 31.4% | 61 | 3,392 | 50 | 13.4 |
+| All time | 35 | 31.4% | 61 | 3,392 | 50 | 13.4 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 23 |
+| `completed` | 24 |
 | `failed` | 8 |
 | `stopped` | 2 |
 | `runtime` | 1 |
@@ -28,12 +28,12 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 21 sessions.
 
-**35,496,529 tokens** over 25 runs that reported them, **97.5% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**35,771,059 tokens** over 26 runs that reported them, **97.5% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 102,241 | 6,464,694 | 13,911,470 | 13,911,470 | 35,496,529 |
-| messages per session | 80 | 532 | 1,598 | 1,598 | 5,515 |
+| tokens per run | 131,938 | 6,464,694 | 13,911,470 | 13,911,470 | 35,771,059 |
+| messages per session | 80 | 532 | 1,598 | 1,598 | 5,527 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -47,7 +47,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
 | `read` | 167 | 1 | 0 | 0.6% |
-| `grep` | 138 | 6 | 0 | 4.3% |
+| `grep` | 138 | 4 | 0 | 2.9% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
@@ -60,21 +60,21 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `list` | 16 | 1 | 0 | 6.3% |
 | `glob` | 15 | 1 | 0 | 6.7% |
+| `github__get_issue` | 14 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
 | `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `github__get_pr` | 11 | 0 | 0 | 0% |
 | `write` | 11 | 0 | 0 | 0% |
 | `github__create_pr` | 10 | 1 | 0 | 10% |
-| `github__get_pr` | 10 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `github__check_merge_readiness` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
+| `github__close_issue` | 6 | 0 | 6 | 0% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 6 | 0 | 0 | 0% |
-| `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__merge_pr` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
 | `github__get_check_runs` | 3 | 0 | 0 | 0% |
@@ -109,12 +109,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 21 sessions.
 
-**48,571,412 tokens** over 84 runs that reported them, **97.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**48,845,942 tokens** over 85 runs that reported them, **97.9% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 36,476 | 503,321 | 13,911,470 | 13,911,470 | 48,571,412 |
-| messages per session | 80 | 532 | 1,598 | 1,598 | 5,515 |
+| tokens per run | 36,476 | 503,321 | 13,911,470 | 13,911,470 | 48,845,942 |
+| messages per session | 80 | 532 | 1,598 | 1,598 | 5,527 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -128,7 +128,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
 | `read` | 167 | 1 | 0 | 0.6% |
-| `grep` | 138 | 6 | 0 | 4.3% |
+| `grep` | 138 | 4 | 0 | 2.9% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
@@ -141,21 +141,21 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `list` | 16 | 1 | 0 | 6.3% |
 | `glob` | 15 | 1 | 0 | 6.7% |
+| `github__get_issue` | 14 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
 | `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `github__get_pr` | 11 | 0 | 0 | 0% |
 | `write` | 11 | 0 | 0 | 0% |
 | `github__create_pr` | 10 | 1 | 0 | 10% |
-| `github__get_pr` | 10 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `github__check_merge_readiness` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
+| `github__close_issue` | 6 | 0 | 6 | 0% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 6 | 0 | 0 | 0% |
-| `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__merge_pr` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
 | `github__get_check_runs` | 3 | 0 | 0 | 0% |
@@ -190,12 +190,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 21 sessions.
 
-**151,384,197 tokens** over 431 runs that reported them, **98.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**151,658,727 tokens** over 432 runs that reported them, **98.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 25,026 | 309,979 | 7,118,379 | 39,737,697 | 151,384,197 |
-| messages per session | 80 | 532 | 1,598 | 1,598 | 5,515 |
+| tokens per run | 25,474 | 309,979 | 7,118,379 | 39,737,697 | 151,658,727 |
+| messages per session | 80 | 532 | 1,598 | 1,598 | 5,527 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -209,7 +209,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,024 | 10 | 20 | 0.5% |
 | `read` | 167 | 1 | 0 | 0.6% |
-| `grep` | 138 | 6 | 0 | 4.3% |
+| `grep` | 138 | 4 | 0 | 2.9% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `edit` | 41 | 0 | 0 | 0% |
 | `search__search_code` | 41 | 0 | 0 | 0% |
@@ -222,21 +222,21 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `list` | 16 | 1 | 0 | 6.3% |
 | `glob` | 15 | 1 | 0 | 6.7% |
+| `github__get_issue` | 14 | 0 | 0 | 0% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue` | 13 | 0 | 0 | 0% |
 | `github__search_code` | 12 | 1 | 0 | 8.3% |
 | `github__commit_and_push` | 11 | 1 | 0 | 9.1% |
+| `github__get_pr` | 11 | 0 | 0 | 0% |
 | `write` | 11 | 0 | 0 | 0% |
 | `github__create_pr` | 10 | 1 | 0 | 10% |
-| `github__get_pr` | 10 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
 | `github__check_merge_readiness` | 7 | 1 | 0 | 14.3% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
+| `github__close_issue` | 6 | 0 | 6 | 0% |
 | `github__get_issue_comments` | 6 | 0 | 0 | 0% |
 | `github__submit_pr_review` | 6 | 0 | 0 | 0% |
-| `github__close_issue` | 5 | 0 | 5 | 0% |
 | `github__merge_pr` | 5 | 0 | 0 | 0% |
 | `github__sync_branch` | 5 | 0 | 0 | 0% |
 | `github__get_check_runs` | 3 | 0 | 0 | 0% |
@@ -271,12 +271,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 376 sessions.
 
-**151,384,197 tokens** over 431 runs that reported them, **98.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**151,658,727 tokens** over 432 runs that reported them, **98.6% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 25,026 | 309,979 | 7,118,379 | 39,737,697 | 151,384,197 |
-| messages per session | 10 | 105 | 601 | 1,598 | 18,314 |
+| tokens per run | 25,474 | 309,979 | 7,118,379 | 39,737,697 | 151,658,727 |
+| messages per session | 10 | 105 | 601 | 1,598 | 18,326 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -296,15 +296,15 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__check_merge_readiness` | 228 | 2 | 0 | 0.9% |
 | `atoma_builtin__load_skill` | 203 | 77 | 0 | 37.9% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
-| `github__get_issue` | 192 | 22 | 2 | 11.5% |
+| `github__get_issue` | 193 | 22 | 2 | 11.4% |
 | `filesystem_readonly__list_directory` | 184 | 0 | 0 | 0% |
 | `read` | 167 | 1 | 0 | 0.6% |
-| `grep` | 138 | 6 | 0 | 4.3% |
+| `grep` | 138 | 4 | 0 | 2.9% |
 | `github__submit_pr_review` | 113 | 29 | 0 | 25.7% |
 | `search__search_code` | 109 | 0 | 0 | 0% |
 | `github__search_code` | 96 | 32 | 0 | 33.3% |
 | `github__commit_and_push` | 95 | 53 | 0 | 55.8% |
-| `github__get_pr` | 77 | 10 | 0 | 13% |
+| `github__get_pr` | 78 | 10 | 0 | 12.8% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `filesystem__edit_file` | 63 | 6 | 0 | 9.5% |
 | `filesystem_readonly__read_text_file` | 62 | 2 | 29 | 3.2% |
@@ -318,8 +318,8 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__get_issue_comments` | 46 | 8 | 0 | 17.4% |
 | `edit` | 41 | 0 | 0 | 0% |
 | `filesystem_readonly__search_files` | 38 | 1 | 21 | 2.6% |
+| `github__close_issue` | 37 | 1 | 18 | 2.7% |
 | `github__merge_pr` | 37 | 1 | 0 | 2.7% |
-| `github__close_issue` | 36 | 1 | 17 | 2.8% |
 | `filesystem__read_file` | 35 | 0 | 1 | 0% |
 | `github__create_issue` | 35 | 4 | 0 | 11.4% |
 | `github__list_issues` | 31 | 3 | 0 | 9.7% |
@@ -395,6 +395,10 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
+| 2026-09-18 | `github` | 1 | 1 | (2), or a definition that does not parse all warn and continue — "I could not ask" is |
+| 2026-09-18 | `github` | 1 | 1 | - On refusal it prints the core's output and an `::error::` naming the secret to add, |
+| 2026-09-18 | `github` | 1 | 1 | broken definition each warning and continuing. |
+| 2026-09-18 | `github` | 1 | 1 | see, since the step degrades to a warning and would otherwise go silently inert. |
 | 2026-09-18 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
 | 2026-09-18 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
 | 2026-09-18 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
@@ -405,10 +409,6 @@ A tool can answer and report that it answered badly — a search that came back 
 | 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
 | 2026-09-18 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
 | 2026-09-18 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
-| 2026-09-18 | `github` | 1 | 1 | (2), or a definition that does not parse all warn and continue — "I could not ask" is |
-| 2026-09-18 | `github` | 1 | 1 | - On refusal it prints the core's output and an `::error::` naming the secret to add, |
-| 2026-09-18 | `github` | 1 | 1 | broken definition each warning and continuing. |
-| 2026-09-18 | `github` | 1 | 1 | see, since the step degrades to a warning and would otherwise go silently inert. |
 | 2026-09-18 | `github` | 1 | 1 | [atomaton-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the num |
 
 ## Never used
