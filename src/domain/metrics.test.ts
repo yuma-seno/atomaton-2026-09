@@ -137,6 +137,42 @@ describe("renderReport", () => {
   });
 
   /**
+   * A run from before atoma v0.1.39 recorded no round trips, and it must not be read as
+   * a run that waited on nothing.
+   *
+   * Averaging a zero in is the exact failure this repository keeps finding in a new
+   * place: an absent measurement borrowing the shape of a real one. Here it would say
+   * the median run makes half the round trips it makes, and nothing would look wrong.
+   */
+  test("a run that recorded no round trips is left out rather than counted as zero", () => {
+    const at = "2026-09-12T00:00:00Z";
+    const withCount = { started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20, iterations: 10 };
+    const without = { started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20 };
+    const sessions: SessionRecord[] = [
+      { path: "sessions/issue-9/engineer.json", agent: "engineer", messages: 20, calls: [], runs: [withCount, without] },
+    ];
+
+    const text = render(metricsOf(sessions, [], [], []), NOW);
+    // 10 round trips over 100 seconds, from the one run that said so. With the other
+    // averaged in as zero, neither number survives.
+    expect(text).toContain("| 10 | 10.0 |");
+  });
+
+  test("no run recorded any round trips, so the columns say so rather than zero", () => {
+    const at = "2026-09-12T00:00:00Z";
+    const sessions: SessionRecord[] = [
+      {
+        path: "sessions/issue-8/engineer.json",
+        agent: "engineer",
+        messages: 20,
+        calls: [],
+        runs: [{ started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20 }],
+      },
+    ];
+    expect(render(metricsOf(sessions, [], [], []), NOW)).toContain("| — | — |");
+  });
+
+  /**
    * Named, not counted: the point is that somebody can go and delete them. The heading
    * they sit under has moved once already, so the assertion is on the names.
    */

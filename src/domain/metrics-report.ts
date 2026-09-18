@@ -82,19 +82,32 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
     return out;
   }
 
-  out.push("| window | runs | gave up | median seconds | longest |");
-  out.push("| --- | ---: | ---: | ---: | ---: |");
+  out.push("| window | runs | gave up | median seconds | longest | median round trips | median seconds each |");
+  out.push("| --- | ---: | ---: | ---: | ---: | ---: | ---: |");
   for (const window of WINDOWS) {
     const inside = runs.filter((run) => within(run.ended, window, now));
     if (inside.length === 0) {
-      out.push(`| ${window.label} | 0 | — | — | — |`);
+      out.push(`| ${window.label} | 0 | — | — | — | — | — |`);
       continue;
     }
     const seconds = inside.map((r) => r.seconds).sort((a, b) => a - b);
     const median = seconds[Math.floor(seconds.length / 2)] ?? 0;
     const share = Math.round(gaveUpShare(inside) * 1000) / 10;
     const longest = seconds[seconds.length - 1] ?? 0;
-    out.push(`| ${window.label} | ${n(inside.length)} | ${share}% | ${n(median)} | ${n(longest)} |`);
+    // Only the runs that recorded one. A run from before atoma v0.1.39 has no count,
+    // and a zero averaged in would read as a run that waited on nothing.
+    const counted = inside.filter((r) => (r.iterations ?? 0) > 0);
+    const trips = counted.map((r) => r.iterations ?? 0).sort((a, b) => a - b);
+    const medianTrips = trips[Math.floor(trips.length / 2)];
+    // Per run, then the median of those: the median of a ratio, not a ratio of two
+    // medians, which is a different number and not the one anybody means.
+    const each = counted.map((r) => r.seconds / (r.iterations ?? 1)).sort((a, b) => a - b);
+    const medianEach = each[Math.floor(each.length / 2)];
+    out.push(
+      `| ${window.label} | ${n(inside.length)} | ${share}% | ${n(median)} | ${n(longest)} | ` +
+        `${medianTrips === undefined ? "—" : n(medianTrips)} | ` +
+        `${medianEach === undefined ? "—" : medianEach.toFixed(1)} |`,
+    );
   }
   out.push("");
   out.push(
