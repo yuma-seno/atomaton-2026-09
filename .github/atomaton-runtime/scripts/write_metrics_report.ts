@@ -3,7 +3,7 @@
 
 // src/scripts/write_metrics_report.ts
 import { parseArgs } from "util";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync as readdirSync2 } from "fs";
 
 // src/lib/gh.ts
 function run(cmd) {
@@ -552,26 +552,28 @@ function tokensReported(repo) {
   }
   return out;
 }
+function skillsUnder(dir) {
+  let entries;
+  try {
+    entries = readdirSync2(dir, { recursive: true }).map(String);
+  } catch {
+    return;
+  }
+  const skills = entries.filter((entry) => entry.endsWith(".md")).map((entry) => entry.replaceAll("\\", "/").slice(0, -".md".length)).sort();
+  return skills.length === 0 ? undefined : skills;
+}
 function declared() {
   const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   let tools;
-  const skills = [];
   try {
     const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8"));
     tools = Object.keys(config.tools?.servers ?? {});
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
-  const listed = gitRun("ls-files", `${root}/${SKILLS_DIR}`);
-  for (const path of listed.stdout.split(`
-`)) {
-    const match = /skills\/(.+)\.md$/.exec(path.trim());
-    if (match?.[1])
-      skills.push(match[1]);
-  }
-  if (skills.length === 0) {
+  const skills = skillsUnder(`${root}/${SKILLS_DIR}`);
+  if (skills === undefined) {
     log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
-    return { tools, skills: undefined };
   }
   return { tools, skills };
 }
@@ -649,5 +651,6 @@ export {
   REPORT_PATH,
   ROWS_PATH,
   agentOf,
-  ref
+  ref,
+  skillsUnder
 };
