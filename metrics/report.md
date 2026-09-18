@@ -10,33 +10,33 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest |
 | --- | ---: | ---: | ---: | ---: |
-| Last 7 days | 25 | 24% | 37 | 2,481 |
-| Last 30 days | 25 | 24% | 37 | 2,481 |
-| Last year | 25 | 24% | 37 | 2,481 |
-| All time | 25 | 24% | 37 | 2,481 |
+| Last 7 days | 26 | 26.9% | 37 | 2,481 |
+| Last 30 days | 26 | 26.9% | 37 | 2,481 |
+| Last year | 26 | 26.9% | 37 | 2,481 |
+| All time | 26 | 26.9% | 37 | 2,481 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
 | `completed` | 19 |
-| `failed` | 6 |
+| `failed` | 7 |
 
 ## Last 7 days
 
-14 sessions.
+15 sessions.
 
 **21,388,537 tokens** over 21 runs that reported them, **99.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 68,832 | 438,539 | 13,911,470 | 13,911,470 | 21,388,537 |
-| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,131 |
+| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,136 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 10 | 71.4% |
-| `reviewer` | 4 | 28.6% |
+| `engineer` | 10 | 66.7% |
+| `reviewer` | 5 | 33.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -86,19 +86,19 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## Last 30 days
 
-14 sessions.
+15 sessions.
 
 **36,884,826 tokens** over 114 runs that reported them, **98.5% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 32,592 | 365,748 | 6,403,430 | 13,911,470 | 36,884,826 |
-| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,131 |
+| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,136 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 10 | 71.4% |
-| `reviewer` | 4 | 28.6% |
+| `engineer` | 10 | 66.7% |
+| `reviewer` | 5 | 33.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -148,19 +148,19 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## Last year
 
-14 sessions.
+15 sessions.
 
 **137,276,205 tokens** over 427 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,639 | 302,887 | 6,403,430 | 39,737,697 | 137,276,205 |
-| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,131 |
+| messages per session | 17 | 1,408 | 1,598 | 1,598 | 4,136 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 10 | 71.4% |
-| `reviewer` | 4 | 28.6% |
+| `engineer` | 10 | 66.7% |
+| `reviewer` | 5 | 33.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -210,18 +210,18 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## All time
 
-370 sessions.
+371 sessions.
 
 **137,276,205 tokens** over 427 runs that reported them, **99.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 24,639 | 302,887 | 6,403,430 | 39,737,697 | 137,276,205 |
-| messages per session | 10 | 102 | 601 | 1,598 | 16,997 |
+| messages per session | 10 | 102 | 601 | 1,598 | 17,002 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 240 | 64.9% |
+| `reviewer` | 241 | 65% |
 | `engineer` | 93 | 25.1% |
 | `orchestrator` | 37 | 10% |
 
@@ -330,16 +330,16 @@ A tool can answer and report that it answered badly — a search that came back 
 
 | last seen | server | reports | sessions | problem |
 | --- | --- | ---: | ---: | --- |
-| 2026-09-17 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
-| 2026-09-17 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
-| 2026-09-17 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
-| 2026-09-17 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
-| 2026-09-17 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
-| 2026-09-17 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
-| 2026-09-17 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
-| 2026-09-17 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
-| 2026-09-17 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
-| 2026-09-17 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
+| 2026-09-18 | `github` | 6 | 3 | [ops-log] WARN: failed to write op log: Error: ENOENT: no such file or directory, open '${RUNNER_TEMP}/atoma-run/atoma_o |
+| 2026-09-18 | `search` | 2 | 2 | reranking failed (EACCES); these results are first-stage ordered, not reranked |
+| 2026-09-18 | `github` | 2 | 1 | [atoma-github] WARN could not read links for #N: GraphQL query failed: gh: Could not resolve to an Issue with the number |
+| 2026-09-18 | `search` | 2 | 2 | could not preload the reranker (EACCES), results are first-stage ordered |
+| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "what happens in the run loop when a tool call errors repeate" -> src/scripts/notify_limit_rea |
+| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "how does the runner handle a tool call that errors, does it " -> src/atoma/tools/scripts/mcp/ |
+| 2026-09-18 | `shell` | 1 | 1 | [atoma-shell] exec: grep -n "error: \[atoma-search\]\\|error:\\|truncate\\|slice" src/atoma/tools/scripts/mcp/search.ts \| h |
+| 2026-09-18 | `search` | 1 | 1 | [atoma-search] code query "when a tool call errors, does the loop retry the same call o" -> src/domain/pr-validation.tes |
+| 2026-09-18 | `search` | 1 | 1 | could not preload the reranker (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge |
+| 2026-09-18 | `search` | 1 | 1 | reranking failed (Error (N) occurred while trying to load file: "https://huggingface.co/onnx-community/bge-reranker-v2-m |
 
 ## Never used
 
