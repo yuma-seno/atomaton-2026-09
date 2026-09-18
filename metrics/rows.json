@@ -3426,6 +3426,35 @@
     ]
   },
   {
+    "path": "sessions/issue-769/engineer.json",
+    "agent": "engineer",
+    "messages": 67,
+    "calls": 35,
+    "failed": 0,
+    "refused": 1,
+    "skills": [
+      "project/conventions",
+      "delivery/implementation-handoff"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "filesystem__read_text_file": 1,
+      "filesystem__list_directory": 1,
+      "shell__shell_execute": 28,
+      "filesystem__edit_file": 1,
+      "github__commit_and_push": 1,
+      "github__create_pr": 1
+    },
+    "acts": {
+      "search": 5,
+      "other": 6,
+      "open": 8,
+      "verify": 7,
+      "edit": 2
+    },
+    "runs": []
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
