@@ -15,9 +15,8 @@ const FAKE_GH_BIN_DIR = join(process.cwd(), "src/scripts/testing/bin");
  *
  * `timeoutMs` is a parameter rather than a fixed five seconds because how long a
  * server takes to answer `initialize` is a property of that server, not of this
- * harness. Every server tested here answers well inside the default; the one
- * that does not is `search.ts`, and it is not tested here at all -- see the note
- * at the bottom of this file for why.
+ * harness. Every server answers well inside the default now, including `search.ts`,
+ * which used to answer in minutes and had no test for that reason.
  */
 function sendRequest(
   script: string,
@@ -911,19 +910,23 @@ describe("mcp/files.ts", () => {
   });
 });
 
-// `search.ts` is deliberately NOT round-tripped here.
-//
-// It imports `@huggingface/transformers` at module scope, and on a CI runner
-// that import does not finish inside sixty seconds -- measured, not guessed:
-// the whole check went from 42s to 3m28s and still timed out. Raising the
-// timeout further would buy a smoke test for one server at the cost of minutes
-// on every run of the suite.
-//
-// What such a test would cover is `serveMcpServer`, and the four servers above
-// cover it: `search.ts` calls it with the same arguments in the same shape. Its
-// own logic -- ranking, chunk selection, the current-issue filter -- is pure and
-// lives in `domain/bm25.ts`, which is tested directly.
-//
-// Written down rather than left as an absence, because a server missing from a
-// list of five reads as an oversight, and this one is a decision. If the import
-// ever becomes lazy, this is the note to delete.
+describe("mcp/search.ts", () => {
+  /**
+   * This server used to be the one with no test at all.
+   *
+   * It imported `@huggingface/transformers` at module scope, so starting it cost the
+   * import before it answered anything: the suite went from 42s to 3m28s and still
+   * timed out. The note that stood here said to delete it if the import ever became
+   * lazy. It has -- `loadRerankerOnce` imports the package when a search actually
+   * reranks -- and starting the server now takes about a second.
+   *
+   * What this covers is that it starts and advertises what it should. Its own logic,
+   * ranking and chunk selection, is pure and tested in `domain/bm25.ts`.
+   */
+  test("starts without loading the reranker, and advertises both searches", async () => {
+    const r = await sendRequest("search.ts", { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} });
+    const names = r.result.tools.map((t: { name: string }) => t.name);
+    expect(names).toContain("search_code");
+    expect(names).toContain("search_issues");
+  });
+});
