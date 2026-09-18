@@ -29,7 +29,18 @@ export interface AtomatonTag<T> {
   has(text: string): boolean;
 }
 
+/**
+ * The wire form of every tag defined below, collected as each one is made.
+ *
+ * `withoutTags` reads this rather than a second list, so a tag added later is
+ * stripped from the moment it exists. A list written by hand would be the same
+ * fact in two places, and the half that falls behind is the half that leaks.
+ */
+const EVERY_TAG_PATTERN: string[] = [];
+
 function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T, render: (value: T) => string): AtomatonTag<T> {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
   const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
     write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
@@ -115,4 +126,27 @@ export const CI_RETRY_TAG = numericTag("ci-retry");
  */
 export function readAnyParentTag(text: string): number | undefined {
   return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
+}
+
+/**
+ * `text` with every Atomaton tag removed.
+ *
+ * These markers exist to carry state between workflow runs through GitHub, which
+ * means they live in issue bodies, pull request bodies and comments -- exactly the
+ * text that becomes an agent's context. Nothing removed them on the way in, so an
+ * agent read its own delivery machinery's bookkeeping as part of the conversation:
+ * who to mention, whether the last run changed anything, and -- the one that gives
+ * the shape away -- `llm-context=exclude`, a note saying this must not reach the
+ * model, reaching the model.
+ *
+ * A trailing newline goes with the tag, since a tag written on its own line would
+ * otherwise leave the body starting with blank lines.
+ *
+ * Only a tag with a real value is removed. Prose about the tags -- an issue
+ * discussing `<!-- atomaton:parent=N -->` -- does not match the value patterns and
+ * survives, which is what keeps this from quietly editing a conversation about
+ * itself.
+ */
+export function withoutTags(text: string): string {
+  return text.replace(new RegExp(`(?:${EVERY_TAG_PATTERN.join("|")})\\n?`, "g"), "");
 }
