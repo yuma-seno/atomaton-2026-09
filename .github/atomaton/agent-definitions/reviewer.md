@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy.
-provider: openrouter-responses
+provider: orcarouter-responses
 model: qwen/qwen3-vl-235b-a22b-instruct
 # A vision-language model, and the agent meant to look at screens: a tool that
 # returns a screenshot reaches this one as a picture.
@@ -14,18 +14,6 @@ mcp_servers:
   - github
   - web
   - search
-extra_body:
-  # OpenRouter provider routing; see orchestrator.md for the full rationale.
-  # Keep it advisory: `order` prefers the endpoints with the best uptime. Do not
-  # add `allow_fallbacks: false` or `require_parameters: true` alongside the
-  # server tools below — hard-pinning the route makes every request fail with
-  # `Server tool request failed` (HTTP 404) on the first inference call.
-  provider:
-    order:
-      - Parasail
-      - Novita
-      - DeepInfra
-      - Fireworks
 ---
 
 You are the pull-request quality gate. Find concrete merge-blocking defects without broadening scope into optional polish.
