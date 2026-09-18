@@ -24,6 +24,7 @@ import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { CacheAction } from "./actions/cache.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
+import { providerCredentialCheckStep } from "./actions/provider-credential-check.ts";
 import { ref as resolveNotifyRef } from "../scripts/resolve_notify.ts";
 import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
 import { DEFAULT_RERANKER } from "../lib/config.ts";
@@ -62,7 +63,8 @@ import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 //
 //   1. checkout repo + resolve/create the working branch
 //   2. install runtime deps (atoma CLI, Bun, MCP server deps)
-//   3. run configured environment setup, set git identity
+//   3. check the resolved provider has a credential, then run configured
+//      environment setup and set git identity
 //   4. resolve the `notify` login from config
 //   5. add atomaton/in-progress label, resolve which repository secrets config.yaml
 //      lets the agent see, then RUN THE AGENT
@@ -1438,6 +1440,25 @@ fi
   // npm dependencies like @modelcontextprotocol/sdk -- inlined
   // into a single self-contained file, so the deployed `.github/atomaton/tools/scripts/**`
   // needs no package.json/node_modules/bun install at all.
+  //
+  // ── The Atoma CLI moved here, to be before the environment setup ────────────
+  //
+  // Both steps used to sit well below, after environment setup. They are here now
+  // because the credential check below needs the binary, and the check has to run
+  // BEFORE environment setup: that setup -- `bun install` and whatever else a
+  // project declared -- is the cost a run spends before it finds out its provider
+  // has no credential.
+  //
+  // What the move costs: on `atoma_version: source` the CLI is built with `cargo`,
+  // and an adopter whose `environment.setup_commands` installs Rust would now be
+  // building before that install. GitHub's own images carry a toolchain, which is
+  // what `source` has always rested on.
+  checkoutAtomaSourceStep,
+  installAtomaCli,
+  // Before the setup, and before anything a run's provider would be needed by.
+  // The one thing this costs when it is wrong is a dispatch, and the one it costs
+  // when it is absent is a whole runner: see the module comment.
+  providerCredentialCheckStep(),
   environmentSetupStep(),
   new TypedOutputsStep({
     name: "Configure git identity",
@@ -1474,8 +1495,6 @@ git config user.email "atomaton-\${{ inputs.agent }}@users.noreply.github.com"
 `,
   }),
   reviewerStartCommentStep,
-  checkoutAtomaSourceStep,
-  installAtomaCli,
   // Put every tool server on one OS user that cannot become root.
   //
   // AFTER environment setup, because that is what installs the toolchain this
@@ -1625,8 +1644,8 @@ sudo setfacl -m "u:$(id -un):rwx" "${CREDENTIALS_DIR}"
 # ORDER MATTERS, and this step is placed for it: every install this job performs
 # has to have happened already. The MCP packages, the environment setup -- and the
 # atoma CLI itself, which is written to /usr/local/bin. That last one is why this
-# step sits after "Install Atoma CLI" rather than after the environment setup: it
-# did not, and the first real run failed with
+# step sits after "Install Atoma CLI": it did not, and the first real run failed
+# with
 #   curl: (23) Failure writing output to destination
 # because the directory curl was writing into had just been closed.
 for dir in \${PATH//:/ }; do
