@@ -51,12 +51,12 @@
     },
     {
       "role": "tool",
-      "content": "# Skill: project/conventions\n\n# Repository conventions\n\nThis repository builds Atomaton, the delivery template. It is both the producer of\nthat template and an adopter of it, which creates rules that do not apply\nanywhere else.\n\nThis file is not part of the template. Its source is `self/atomaton/skills/project/`,\nand it is deliberately absent from `src/` so adopters never receive it.\n\n## The four trees\n\n| Tree | What it is | Who writes it |\n| --- | --- | --- |\n| `src/**` | Source of the deliverable | You |\n| `dist/.github/**` | The deliverable adopters receive | The build |\n| `self/**` | This repository's own four files | You |\n| `.github/**` | This repository's running configuration | The self-deploy job, from a release plus `self/` |\n\nTwo different activities live in this table, and which one you are doing decides\nwhich rules apply:\n\n- **improving the deliverable** — `src/**`. It affects every adopter, and it\n  reaches this repository only after a release and a self-deploy.\n- **impro\n\n[atomaton] 2260 characters dropped from the middle; 4000 shown\n\n hold.\n\n`github__check_merge_readiness` reports against whatever the ruleset currently\nrequires, so it follows the file rather than holding a second opinion.\n\nNothing bypasses it. No workflow writes to main — the release job attaches the deliverable\nto a release instead — and your merge satisfies the rules like anyone else's. Do\nnot propose a bypass actor: it would mean naming a GitHub App ID or a deploy key,\nvalues that exist only after manual setup, so the JSON would stop describing the\nwhole configuration.\n\nThe workflows that run agents are generated from `src/workflows/` and shipped.\n`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and\n`probe-dumpable.yml`.\n\n## Adding a static file to the deliverable\n\nA new non-code file under `src/atomaton/` must also be added to `build-dist.ts`'s\nverbatim-copy list, or it never reaches `dist/` at all.\n`tests/contract/deployment-contract.test.ts` enforces this.\n\n## `.github/` is an adoption, not a mirror\n\nNothing regenerates `.github/` automatically. It is this repository's deliberate\nadoption of the deliverable, so it lags `src/` until someone applies a release.\n\n**That lag is the point.** A change to `src/` must not reconfigure the live agents\nthe moment it merges. Two breakages reached the running system exactly that way.\n\n### Applying a release\n\nDispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the\nActions tab. It opens a pull request and merges nothing. `.github/**` is in\n`merge.governed_paths`, so a person reviews it.\n\nWhat it does:\n\n```bash\nrm -rf .github            # so a file the release DELETED is gone, not orphaned\nunzip release.zip         # the deliverable\ncp -r self/. .github/     # this repository's own, at the same paths\n```\n\n`.github/` is therefore exactly those two sources, with nothing kept alive by\nremembering to. Before `self/` existed this was a `cp -r` followed by\n`git checkout -- .github/atomaton/config.yaml`, and a file the template had removed\nstayed in the tree with no diff to notice it by.\n\nIt needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because\n`GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by\npath. No agent can reach that token: it is named in one file outside the\ndeliverable, and `atomaton-runner.yml` does not mention it.\n\n### Changing something in `self/`\n\nAn overlay entry is a copy, not a build, so it needs no release. Change\n`self/X` and `.github/X` **in the same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections. Editing `.github/X` alone is worse than not editing it at all: the next\nself-deploy overwrites it from `self/` and the change disappears without a diff.\n\nA file added to `.github/` that is in no release and not in `self/` is not checked\nfor, because the next deploy removes it anyway and because `.github/**` is in\n`merge.governed_paths` — no agent can merge a change there, so a person reads it first.",
+      "content": "# Skill: project/conventions\n\n# Repository conventions\n\nThis repository builds Atomaton, the delivery template. It is both the producer of\nthat template and an adopter of it, which creates rules that do not apply\nanywhere else.\n\nThis file is not part of the template. Its source is `self/atomaton/skills/project/`,\nand it is deliberately absent from `src/` so adopters never receive it.\n\n## The four trees\n\n| Tree | What it is | Who writes it |\n| --- | --- | --- |\n| `src/**` | Source of the deliverable | You |\n| `dist/.github/**` | The deliverable adopters receive | The build |\n| `self/**` | This repository's own four files | You |\n| `.github/**` | This repository's running configuration | The self-deploy job, from a release plus `self/` |\n\nTwo different activities live in this table, and which one you are doing decides\nwhich rules apply:\n\n- **improving the deliverable** — `src/**`. It affects every adopter, and it\n  reaches this repository only after a release and a self-deploy.\n- **impro\n\n[atomaton] 66 characters dropped from the middle; 4000 shown\n\n hold.\n\n`github__check_merge_readiness` reports against whatever the ruleset currently\nrequires, so it follows the file rather than holding a second opinion.\n\nNothing bypasses it. No workflow writes to main — the release job attaches the deliverable\nto a release instead — and your merge satisfies the rules like anyone else's. Do\nnot propose a bypass actor: it would mean naming a GitHub App ID or a deploy key,\nvalues that exist only after manual setup, so the JSON would stop describing the\nwhole configuration.\n\nThe workflows that run agents are generated from `src/workflows/` and shipped.\n`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and\n`probe-dumpable.yml`.\n\n## Adding a static file to the deliverable\n\nA new non-code file under `src/atomaton/` must also be added to `build-dist.ts`'s\nverbatim-copy list, or it never reaches `dist/` at all.\n`tests/contract/deployment-contract.test.ts` enforces this.\n\n## `.github/` is an adoption, not a mirror\n\nNothing regenerates `.github/` automatically. It is this repository's deliberate\nadoption of the deliverable, so it lags `src/` until someone applies a release.\n\n**That lag is the point.** A change to `src/` must not reconfigure the live agents\nthe moment it merges. Two breakages reached the running system exactly that way.\n\n### Applying a release\n\nDispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the\nActions tab. It opens a pull request and merges nothing. `.github/**` is in\n`merge.governed_paths`, so a person reviews it.\n\nWhat it does:\n\n```bash\nrm -rf .github            # so a file the release DELETED is gone, not orphaned\nunzip release.zip         # the deliverable\ncp -r self/. .github/     # this repository's own, at the same paths\n```\n\n`.github/` is therefore exactly those two sources, with nothing kept alive by\nremembering to. Before `self/` existed this was a `cp -r` followed by\n`git checkout -- .github/atomaton/config.yaml`, and a file the template had removed\nstayed in the tree with no diff to notice it by.\n\nIt needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because\n`GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by\npath. No agent can reach that token: it is named in one file outside the\ndeliverable, and `atomaton-runner.yml` does not mention it.\n\n### Changing something in `self/`\n\nAn overlay entry is a copy, not a build, so it needs no release. Change\n`self/X` and `.github/X` **in the same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections. Editing `.github/X` alone is worse than not editing it at all: the next\nself-deploy overwrites it from `self/` and the change disappears without a diff.\n\nA file added to `.github/` that is in no release and not in `self/` is not checked\nfor, because the next deploy removes it anyway and because `.github/**` is in\n`merge.governed_paths` — no agent can merge a change there, so a person reads it first.",
       "tool_call_id": "call_sukbguim2s2fuu2ysaa21qht"
     },
     {
       "role": "tool",
-      "content": "/**\n * atoma-cli.ts — the steps that put the `atoma` binary on a runner, and the\n * version they install by default.\n *\n * Two workflows need it now. `atomaton-runner` runs agents with it; `atomaton-validate-pr`\n * calls `atoma validate` on the agent definitions and tools file a pull request\n * would merge, so that a name resolving to nothing is a red check rather than a\n * failure on whoever triggers the next run. Both install it the same way, from one\n * place, because a second copy of a download-and-chmod is a second thing to fix\n * when a release asset is renamed.\n */\nimport { ActionsCheckoutV4 } from \"@github-actions-workflow-ts/actions\";\nimport { TypedOutputsStep } from \"./base.ts\";\n\n/**\n * The Atoma release a run installs unless the dispatch says otherwise.\n *\n * Every raise of this pin so far has been coupled to something else in this\n * repository, and the record of what is the reason this comment is long.\n *\n * Moves with `tools.servers` in config.yaml -- the declarations the\n\n[atomaton] 6560 characters dropped from the middle; 4000 shown\n\non on disk. Pinned rather than\n * optional for the same reason as above — the runner passes the flag, and a binary\n * that does not know it refuses the invocation.\n *\n * v0.1.24 keeps a session whatever ended the run, and answers any tool call left\n * without a result before it writes one. The pin is required by the step below it:\n * saving on failure is only safe because of that repair -- a session carrying an\n * unanswered call is refused by every provider, so an older binary would turn lost\n * work into an issue nothing can run on.\n *\n * v0.1.25 adds three guards on a run that has stopped being work: the same call\n * returning the same answer, a cycle (A,B,A,B) that the old single-slot tracker could\n * not see, and nothing coming back over and over. Each fires on 0-0.3% of the 341\n * stored sessions, which is the point -- they are insurance with no false positives.\n * The pin moves because the guard in `shell_guard.ts` depends on the first of them:\n * its refusal is deterministic, so an agent that ignores it is stopped by the core\n * rather than by a new rule.\n */\nexport const ATOMA_DEFAULT_VERSION = \"v0.1.35\";\n\nexport const ATOMA_VERSION_DESC =\n  \"Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.\";\n\n/**\n * Checkout for `atoma_version: source`, which builds the CLI from `main` instead\n * of downloading a release.\n *\n * Only the runner offers that: a workflow installing a fixed version never\n * reaches the `source` branch below, so it needs no checkout.\n */\nexport const checkoutAtomaSourceStep = new ActionsCheckoutV4({\n  name: \"Checkout Atoma source (for atoma_version: source)\",\n  if: \"inputs.atoma_version == 'source'\",\n  with: { repository: \"yuma-seno/atoma\", path: \"atoma-src\" },\n});\n\n/**\n * Install the CLI at `version`, which is shell text: an input expression for a\n * workflow that takes one, or a literal tag for a workflow that pins it.\n *\n * The `source` branch is generated into both workflows even though only the runner\n * can select it. A literal version simply never matches it, and one script that\n * both workflows share cannot drift; two scripts differing by one branch can.\n */\nexport function installAtomaCliStep(version: string): TypedOutputsStep {\n  return new TypedOutputsStep({\n    name: \"Install Atoma CLI\",\n    shell: \"bash\",\n    run: `VERSION=\"${version}\"\nif [ \"$VERSION\" = \"source\" ]; then\n  echo \"Building Atoma from source (atoma-src/) ...\"\n  cargo install --path atoma-src --force --locked\nelif [ \"$VERSION\" = \"latest\" ]; then\n  URL=\"https://github.com/yuma-seno/atoma/releases/latest/download/atoma-linux-x86_64\"\n  echo \"Downloading Atoma \\${VERSION} ...\"\n  curl -fsSL \"$URL\" -o /usr/local/bin/atoma\n  chmod +x /usr/local/bin/atoma\nelse\n  URL=\"https://github.com/yuma-seno/atoma/releases/download/\\${VERSION}/atoma-linux-x86_64\"\n  echo \"Downloading Atoma \\${VERSION} ...\"\n  curl -fsSL \"$URL\" -o /usr/local/bin/atoma\n  chmod +x /usr/local/bin/atoma\nfi\natoma --version\n`,\n  });\n}\n",
+      "content": "/**\n * atoma-cli.ts — the steps that put the `atoma` binary on a runner, and the\n * version they install by default.\n *\n * Two workflows need it now. `atomaton-runner` runs agents with it; `atomaton-validate-pr`\n * calls `atoma validate` on the agent definitions and tools file a pull request\n * would merge, so that a name resolving to nothing is a red check rather than a\n * failure on whoever triggers the next run. Both install it the same way, from one\n * place, because a second copy of a download-and-chmod is a second thing to fix\n * when a release asset is renamed.\n */\nimport { ActionsCheckoutV4 } from \"@github-actions-workflow-ts/actions\";\nimport { TypedOutputsStep } from \"./base.ts\";\n\n/**\n * The Atoma release a run installs unless the dispatch says otherwise.\n *\n * Every raise of this pin so far has been coupled to something else in this\n * repository, and the record of what is the reason this comment is long.\n *\n * Moves with `tools.servers` in config.yaml -- the declarations the\n\n[atomaton] 66 characters dropped from the middle; 4000 shown\n\non on disk. Pinned rather than\n * optional for the same reason as above — the runner passes the flag, and a binary\n * that does not know it refuses the invocation.\n *\n * v0.1.24 keeps a session whatever ended the run, and answers any tool call left\n * without a result before it writes one. The pin is required by the step below it:\n * saving on failure is only safe because of that repair -- a session carrying an\n * unanswered call is refused by every provider, so an older binary would turn lost\n * work into an issue nothing can run on.\n *\n * v0.1.25 adds three guards on a run that has stopped being work: the same call\n * returning the same answer, a cycle (A,B,A,B) that the old single-slot tracker could\n * not see, and nothing coming back over and over. Each fires on 0-0.3% of the 341\n * stored sessions, which is the point -- they are insurance with no false positives.\n * The pin moves because the guard in `shell_guard.ts` depends on the first of them:\n * its refusal is deterministic, so an agent that ignores it is stopped by the core\n * rather than by a new rule.\n */\nexport const ATOMA_DEFAULT_VERSION = \"v0.1.35\";\n\nexport const ATOMA_VERSION_DESC =\n  \"Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.\";\n\n/**\n * Checkout for `atoma_version: source`, which builds the CLI from `main` instead\n * of downloading a release.\n *\n * Only the runner offers that: a workflow installing a fixed version never\n * reaches the `source` branch below, so it needs no checkout.\n */\nexport const checkoutAtomaSourceStep = new ActionsCheckoutV4({\n  name: \"Checkout Atoma source (for atoma_version: source)\",\n  if: \"inputs.atoma_version == 'source'\",\n  with: { repository: \"yuma-seno/atoma\", path: \"atoma-src\" },\n});\n\n/**\n * Install the CLI at `version`, which is shell text: an input expression for a\n * workflow that takes one, or a literal tag for a workflow that pins it.\n *\n * The `source` branch is generated into both workflows even though only the runner\n * can select it. A literal version simply never matches it, and one script that\n * both workflows share cannot drift; two scripts differing by one branch can.\n */\nexport function installAtomaCliStep(version: string): TypedOutputsStep {\n  return new TypedOutputsStep({\n    name: \"Install Atoma CLI\",\n    shell: \"bash\",\n    run: `VERSION=\"${version}\"\nif [ \"$VERSION\" = \"source\" ]; then\n  echo \"Building Atoma from source (atoma-src/) ...\"\n  cargo install --path atoma-src --force --locked\nelif [ \"$VERSION\" = \"latest\" ]; then\n  URL=\"https://github.com/yuma-seno/atoma/releases/latest/download/atoma-linux-x86_64\"\n  echo \"Downloading Atoma \\${VERSION} ...\"\n  curl -fsSL \"$URL\" -o /usr/local/bin/atoma\n  chmod +x /usr/local/bin/atoma\nelse\n  URL=\"https://github.com/yuma-seno/atoma/releases/download/\\${VERSION}/atoma-linux-x86_64\"\n  echo \"Downloading Atoma \\${VERSION} ...\"\n  curl -fsSL \"$URL\" -o /usr/local/bin/atoma\n  chmod +x /usr/local/bin/atoma\nfi\natoma --version\n`,\n  });\n}\n",
       "tool_call_id": "call_16962rxkqdf74qpbgvgcvulf"
     },
     {
@@ -627,14 +627,167 @@
       "role": "tool",
       "content": "{\"number\":770,\"url\":\"https://github.com/yuma-seno/atomaton/pull/770\",\"base\":\"\",\"validation_dispatched\":true}",
       "tool_call_id": "call_7l35b7mlp3jvchzdc5go1wn9"
+    },
+    {
+      "role": "user",
+      "content": "PR #770: atoma-cli.ts: note the current provider in the v0.1.14 history comment\n**Labels:** atomaton/in-progress\n**Linked Issue:** #769\n\n<!-- atomaton:parent-issue=769 -->\n<!-- atomaton:origin-agent=engineer -->\nCloses #769\n<!-- atomaton:notify=hws-yuma-seno -->\n## What\n\n`src/workflows/actions/atoma-cli.ts` carries a version-history comment whose v0.1.14 paragraph quotes the old provider name `openai-responses # openrouter` without saying it is past.\n\nThe issue asked for a judgment call, not a string swap:\n\n- The quoted line is **past-tense history** (\"which is what the agent definitions here needed: they read ...\") — it records what the v0.1.14 pin was for, so it stays as written.\n- What was missing is the present tense. The paragraph now ends: *\"The comment is gone today: all three ship `provider: orcarouter-responses`, a name that says where the request goes.\"*\n\nThis matches the precedent already set in `docs/recipes.md` (\"They name `openrouter-responses` now\"), which used the same framing for the same line — so the comment is no longer the one stale copy of that sentence.\n\n## Verification\n\n- `bun run typecheck` — pass\n- `bun run test` — 912 pass, 0 fail (run with the runner-only env vars unset; with them set, the same 14 environment-sensitive script tests fail on the untouched base too, per the harness's documented hermeticity note)\n- `bun run synth` — pass; dist/ is gitignored, nothing generated to commit\n\n`ATOMA_DEFAULT_VERSION` (`v0.1.35`) and every core-binary reference (`yuma-seno/atoma`, `atoma-linux-x86_64`) are untouched, per the issue constraint.",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-18T03:20:53Z",
+        "event_type": "pr_opened",
+        "id": "pr-770",
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "OrcaRouter 切り替え後、**engineer は成功、reviewer は失敗**しました。\n\n```\nOpenAI Responses API error (400 Bad Request):\n{\"error\":{\"message\":\"The upstream provider rejected this request. Please check the\nrequest parameters and content.\",\"type\":\"invalid_request_error\",\"param\":\"\",\n\"code\":\"upstream_rejected_request\"}}\n```\n\n## 切り分け済み\n\n| エージェント | モデル | vision | 結果 |\n|---|---|---|---|\n| engineer | `deepseek/deepseek-v4-flash-0731` | false | ✅ 成功 |\n| reviewer | `qwen/qwen3-vl-235b-a22b-instruct` | true | ❌ 400 |\n| orchestrator | `qwen/qwen3.7-plus` | true | 未実行 |\n\n- **`vision: true` は原因ではない可能性が高い**。コアの `vision` は「メッセージから画像を落とさない」という意味だけで（`application/runner/execution.rs:272` の `messages_for_provider`）、画像を含まないセッションでは送信内容が変わらない\n- **方言は3本とも同じ** `orcarouter-responses`。engineer が通っているので、方言そのものは動く\n- `upstream_rejected_request` は OrcaRouter が上流に投げて**上流が拒否した**という意味。モデルは存在するが、リクエストの形を受け付けていない\n\n## 確認したいこと\n\nOrcaRouter の `/v1/models` は各モデルに **`supported_endpoint_types`** を返します。reviewer のモデルが `/responses` を含んでいない可能性が高い。\n\n```bash\ncurl -s https://api.orcarouter.ai/v1/models \\\n  -H \"Authorization: Bearer $ORCAROUTER_API_KEY\" \\\n  | jq '.data[] | select(.id | test(\"qwen3-vl-235b|qwen3.7-plus|deepseek-v4-flash-0731\")) | {id, supported_endpoint_types}'\n```\n\n`jq` が無ければ:\n\n```bash\ncurl -s https://api.orcarouter.ai/v1/models \\\n  -H \"Authorization: Bearer $ORCAROUTER_API_KEY\" \\\n  | python3 -c \"import json,sys; [print(m['id'], m.get('supported_endpoint_types')) for m in json.load(sys.stdin)['data'] if 'qwen3-vl-235b' in m['id'] or 'qwen3.7-plus' in m['id'] or 'deepseek-v4-flash-0731' in m['id']]\"\n```\n\nこれで3本とも分かります。**orchestrator がまだ未実行**なので、`qwen3.7-plus` も一緒に見ておきたい — 同じ理由で落ちるなら、reviewer だけ直しても次で詰まります。\n\n## 想定される対応\n\n`supported_endpoint_types` に `/responses` が無ければ、選択肢は2つ:\n\n1. **そのエージェントだけ `provider: orcarouter`**（Chat Completions 方言）にする。属性ヘッダは両方言に付くので、App 表示は維持されます\n2. **`/responses` に対応したモデルへ変える**。`qwen/qwen3-vl-235b-a22b-thinking` など\n\n1 のほうが変更が小さく、モデルの性格も変わりません。\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-18T03:33:01Z",
+        "event_type": "issue_comment",
+        "id": 5724757473,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "/reviewer\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-18T05:11:57Z",
+        "event_type": "pr_comment",
+        "id": 5725491272,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Review state: COMMENTED\n\nLGTM\n\nVerified:\n\n- The quoted line `provider: openai-responses # openrouter` is past-tense history in the v0.1.14 paragraph (\"which is what the agent definitions here needed\"), so keeping it as written is right, and the added sentence supplies the missing present tense.\n- The added claim is true against the shipped definitions: `src/atomaton/agent-definitions/{engineer,reviewer,orchestrator}.md` all carry `provider: orcarouter-responses`, with no trailing `# …` comment. So \"all three ship `provider: orcarouter-responses`\" and \"the comment is gone today\" both hold.\n- No other copy of the old string exists in code: `github__search_code` for `openai-responses # openrouter` returns only `docs/recipes.md` and this file.\n- Issue constraints respected: `ATOMA_DEFAULT_VERSION` and every `yuma-seno/atoma` / `atoma-linux-x86_64` reference are untouched; the diff is one comment block in `src/workflows/actions/atoma-cli.ts`, no generated output.\n- `github__check_merge_readiness` reports ready, `atomaton-check` success.\n\nOut of scope and not required here, for the record: `docs/recipes.md` still says the definitions \"name `openrouter-responses` now\", which is stale in the same way this comment was. Worth its own issue rather than widening this one.",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-18T05:15:22Z",
+        "event_type": "pr_review",
+        "id": "pr-review-5244483028",
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Atomaton: Your PR was merged. Please confirm completion and close this sub-task.",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-18T05:15:36Z",
+        "event_type": "issue_comment",
+        "id": 5725518880,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "```diff\ndiff --git a/src/workflows/actions/atoma-cli.ts b/src/workflows/actions/atoma-cli.ts\nindex a9faa5e8..26d6aa2d 100644\n--- a/src/workflows/actions/atoma-cli.ts\n+++ b/src/workflows/actions/atoma-cli.ts\n@@ -48,7 +48,8 @@ import { TypedOutputsStep } from \"./base.ts\";\n  * v0.1.14 gives each router a name for each dialect it serves, which is what the\n  * agent definitions here needed: they read `provider: openai-responses # openrouter`,\n  * a row that in v0.1.13 means OpenAI itself. So this pin moves with\n- * `agent-definitions/*.md` as well.\n+ * `agent-definitions/*.md` as well. The comment is gone today: all three ship\n+ * `provider: orcarouter-responses`, a name that says where the request goes.\n  *\n  * v0.1.16 carries two fixes that are about THIS repository's runs specifically.\n  *\n```",
+      "atoma_metadata": {
+        "author": "github",
+        "created_at": "2026-09-18T05:15:48Z",
+        "event_type": "pr_diff",
+        "id": "pr-770-diff",
+        "layer": "github-context",
+        "sha": "1d14ec5c",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "<!-- atomaton:agent=reviewer -->\n<!-- atomaton:changed=yes -->\nMerged — PR #770 is in.\n\n**Review: no defects.**\n\n- The quoted `provider: openai-responses # openrouter` is genuinely past-tense history in the v0.1.14 paragraph (\"which is what the agent definitions here needed\"), so leaving the quote alone is the right call per the issue's either/or; the added sentence supplies the missing present tense, which is what the issue asked for.\n- The added claim is verifiable and true: `src/atomaton/agent-definitions/{engineer,reviewer,orchestrator}.md` each carry `provider: orcarouter-responses` with no trailing comment.\n- `github__search_code` for `openai-responses # openrouter` returns only `docs/recipes.md` and this file, so no second stale copy was introduced.\n- Issue constraint respected: `ATOMA_DEFAULT_VERSION` and the `yuma-seno/atoma` / `atoma-linux-x86_64` references are untouched; the diff is one comment block, no generated output.\n- `github__check_merge_readiness` reported ready with `atomaton-check` success → `COMMENT` review posted, `github__merge_pr` returned `{\"merged\":true,...}`.\n\n**Left open, not part of this PR:** `docs/recipes.md` still reads \"They name `openrouter-responses` now\" — stale in exactly the way this comment was, since the definitions are on OrcaRouter. I did not widen this PR for it; it deserves its own issue.\n\n**On the reviewer 400 that prompted the re-run (issue #769 comment 3):** I tried to confirm the `supported_endpoint_types` hypothesis. `https://api.orcarouter.ai/v1/models` returns data, but the response is truncated at 50,000 characters before the `qwen/*` entries, and the per-model route is not available — `https://api.orcarouter.ai/v1/models/qwen/qwen3-vl-235b-a22b-instruct/endpoints` answers `{\"error\":{\"message\":\"The model 'qwen/qwen3-vl-235b-a22b-instruct/endpoints' does not exist\",\"type\":\"invalid_request_error\",\"param\":\"model\",\"code\":\"model_not_found\"}}`. So the root cause of the reviewer's `upstream_rejected_request` remains unconfirmed from here; it needs the authenticated `curl` from the issue comment, run where the key is available.\n\n**Tool report, benign:** `github__get_issue_comments` on #770 ended with `warning: [atomaton-github] WARN could not read links for #770: GraphQL query failed: gh: Could not resolve to an Issue with the number of 770.` The comments themselves came back complete (4 of 4); the warning is the tool asking GitHub for issue-traceability links on a number that is a pull request, not an issue, so it carries no information about this change.\n\nThis was a comment-only change on a human-opened issue, so closing #769 is the owner's step — the merge reports `parent_outcome: reinvoked`, `reinvoked_agent: engineer`, so #769's thread continues on its own.\n\n\n\n---\n_Tokens: 422678 total (403758 prompt + 18920 completion)_\n---\n_run by [reviewer](https://github.com/yuma-seno/atomaton/actions/runs/35309866926) · [metrics](https://github.com/yuma-seno/atomaton/blob/atomaton-data/metrics/report.md)_",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-18T05:15:48Z",
+        "event_type": "pr_comment",
+        "id": 5725520534,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_NmN0QAaO3TSQ83qiEKqy2873",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 769}"
+          }
+        },
+        {
+          "id": "call_01_puLqmjWVR1qkWTGp8yGy5164",
+          "type": "function",
+          "function": {
+            "name": "github__get_pr",
+            "arguments": "{\"number\": 770}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-18T03:13:58Z\",\"labels\":[{\"id\":\"LA_kwDOS6gmSM8AAAAC2Qtasw\",\"name\":\"atomaton/in-progress\",\"description\":\"Issue is being worked on by an Atomaton agent\",\"color\":\"0366d6\"}],\"number\":769,\"state\":\"OPEN\",\"title\":\"atoma-cli.ts のコメントが、出荷しているプロバイダ設定と食い違っている\",\"body\":\"`src/workflows/actions/atoma-cli.ts` の冒頭コメントに、実態と合わない記述が残っています。\\n\\n```\\n * agent definitions here needed: they read `provider: openai-responses # openrouter`,\\n```\\n\\n出荷しているエージェント定義3本は、いま `provider: orcarouter-responses` です。`openai-responses # openrouter` という書き方は、プロバイダ名が方言ごとに分かれる前の古い形で、当時の「名前が行き先を表していなかった」状態そのものを指しています。\\n\\n## やってほしいこと\\n\\nこのコメントを現状に合わせてください。ただし**単に文字列を置き換えるのでは不十分**です。\\n\\nその一文は「当時こうだった」という過去の説明の一部かもしれません。前後を読んで、\\n\\n- **過去形で当時を説明している**なら、それは記録なので残す。ただし読者が現在の設定と混同しないよう、いまは何かを添える\\n- **現在を説明しているつもり**なら、`orcarouter-responses` に直す\\n\\nのどちらかを選んでください。判断の根拠をコミットメッセージに書いてください。\\n\\n## 参考\\n\\n- プロバイダの一覧と各々が読む資格情報は `docs/configuration.md` の表にあります\\n- 出荷しているエージェント定義は `src/atomaton/agent-definitions/*.md`\\n\\n## 制約\\n\\n`ATOMA_DEFAULT_VERSION` と、コアのバイナリを指す記述（`yuma-seno/atoma`、`atoma-linux-x86_64` など）は**変えないでください**。これらはコアを指しており、この配布物の名前とは別物です。\\n\",\"total_comments\":4,\"children\":[],\"pull_requests\":[]}",
+      "tool_call_id": "call_00_NmN0QAaO3TSQ83qiEKqy2873"
+    },
+    {
+      "role": "tool",
+      "content": "{\"baseRefName\":\"main\",\"createdAt\":\"2026-09-18T03:20:53Z\",\"headRefName\":\"atomaton/issue-769\",\"number\":770,\"state\":\"MERGED\",\"title\":\"atoma-cli.ts: note the current provider in the v0.1.14 history comment\",\"body\":\"<!-- atomaton:parent-issue=769 -->\\n<!-- atomaton:origin-agent=engineer -->\\nCloses #769\\n<!-- atomaton:notify=hws-yuma-seno -->\\n## What\\n\\n`src/workflows/actions/atoma-cli.ts` carries a version-history comment whose v0.1.14 paragraph quotes the old provider name `openai-responses # openrouter` without saying it is past.\\n\\nThe issue asked for a judgment call, not a string swap:\\n\\n- The quoted line is **past-tense history** (\\\"which is what the agent definitions here needed: they read ...\\\") — it records what the v0.1.14 pin was for, so it stays as written.\\n- What was missing is the present tense. The paragraph now ends: *\\\"The comment is gone today: all three ship `provider: orcarouter-responses`, a name that says where the request goes.\\\"*\\n\\nThis matches the precedent already set in `docs/recipes.md` (\\\"They name `openrouter-responses` now\\\"), which used the same framing for the same line — so the comment is no longer the one stale copy of that sentence.\\n\\n## Verification\\n\\n- `bun run typecheck` — pass\\n- `bun run test` — 912 pass, 0 fail (run with the runner-only env vars unset; with them set, the same 14 environment-sensitive script tests fail on the untouched base too, per the harness's documented hermeticity note)\\n- `bun run synth` — pass; dist/ is gitignored, nothing generated to commit\\n\\n`ATOMA_DEFAULT_VERSION` (`v0.1.35`) and every core-binary reference (`yuma-seno/atoma`, `atoma-linux-x86_64`) are untouched, per the issue constraint.\"}",
+      "tool_call_id": "call_01_puLqmjWVR1qkWTGp8yGy5164"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_MLZUqWOHyIXBlt6XJgXY0188",
+          "type": "function",
+          "function": {
+            "name": "github__close_issue",
+            "arguments": "{\"number\": 769}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "Error: Tool 'close_issue' on MCP server 'github' reported an error: Error: Refusing to close issue #769: opened by a human, not a bot\n\n--- 1 problem reported by the 'github' server, not part of the answer above ---\nerror: [atomaton-github] Tool error for close_issue: Refusing to close issue #769: opened by a human, not a bot",
+      "tool_call_id": "call_00_MLZUqWOHyIXBlt6XJgXY0188"
+    },
+    {
+      "role": "assistant",
+      "content": "PR #770 is merged; the sub-task is done.\n\n**Merge confirmed.** `github__get_pr(770)` returns `\"state\": \"MERGED\"`, base `main`, head `atomaton/issue-769`. The merged content is exactly the one-comment-block change from the review:\n\n```diff\n- * `agent-definitions/*.md` as well.\n+ * `agent-definitions/*.md` as well. The comment is gone today: all three ship\n+ * `provider: orcarouter-responses`, a name that says where the request goes.\n```\n\n**Closing #769 is the owner's step.** `github__close_issue(number=769)` returned:\n\n```\nRefusing to close issue #769: opened by a human, not a bot\n```\n\nThat is the documented refusal for a human-opened issue, not a failure I should work around — #769 is opened by a person, so it stays open until its owner closes it. `github__get_pr(770)` also shows `\"pull_requests\": []` on #769, so the merge did not auto-close it either.\n\n**Not taken on, for the record:** the reviewer flagged that `docs/recipes.md` still reads \"They name `openrouter-responses` now\" — stale in the same way this comment was, since the shipped definitions are on `orcarouter-responses`. My PR body cited that line as precedent for the framing, which makes it the next copy to fix. I did not widen this merged PR for it and did not file an issue, since filing one here would dispatch work nobody asked for; it is named here so the owner can decide. The fix is the same shape: `src/atomaton/agent-definitions/*.md` is the source of truth and `tests/contract/adoption-preflight.test.ts` already reads the provider from it.\n\n**On the reviewer 400 that prompted the re-run:** I did not attempt the `supported_endpoint_types` check myself — it needs the authenticated `ORCAROUTER_API_KEY` request from the issue comment, and the per-model route is not reachable without it. That hypothesis remains unconfirmed and belongs to whoever can run the `curl`.",
+      "atoma_metadata": {
+        "github_comment_id": 5725527563,
+        "agent": "engineer"
+      }
     }
   ],
   "metadata": {
     "github_context": {
       "agent": "engineer",
-      "event_count": 2,
-      "snapshot_hash": "9e0d6fab1007a7178b6e5bc978299640c360e89c317313093b5c8ff79dd47707",
-      "version": 1
+      "event_count": 9,
+      "snapshot_hash": "ce9da5ccd727e5d15ba76e96d8a2984dad9442e27f7a06801b73accd22ef5a67",
+      "version": 1,
+      "type": "issue",
+      "resolved_number": "769"
     }
-  }
+  },
+  "atoma_runs": [
+    {
+      "ended": "2026-09-18T05:16:42Z",
+      "ended_because": "completed",
+      "messages": 80,
+      "seconds": 20,
+      "started": "2026-09-18T05:16:22Z"
+    }
+  ]
 }
