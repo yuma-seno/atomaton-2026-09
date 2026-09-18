@@ -13,40 +13,55 @@ watch:
   after_tool:
     - ./hooks/workspace_guard.ts
 servers:
-  filesystem:
-    description: Reads and writes files in the work tree.
-    command: mcp-server-filesystem
+  # `unprefixed`, so these arrive as `read`, `grep`, `glob`, `edit`, `write`, `list` --
+  # the names every mature harness uses and the ones a model has seen most. At most one
+  # server per agent may set it; the core refuses two that claim the same name. No agent
+  # declares both of these, so neither ever meets the other.
+  #
+  # They replace `@modelcontextprotocol/server-filesystem`, which has no line range and
+  # no content search: measured over two runs, 37 of 63 shell calls were `sed -n A,Bp`
+  # and `grep -rn`, rebuilding both by hand. See `tools/mcp/files.ts` for what was
+  # evaluated before writing one.
+  files:
+    description: Reads, searches and changes files in the work tree.
+    unprefixed: true
+    command: bun
     args:
-      - "."
+      - run
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/files.ts"
     env:
       {}
     hooks:
-      tool_denylist:
-        - filesystem__directory_tree
+      # Counts `grep`, `glob` and `list` towards the same search streak `shell_guard`
+      # keeps, and refuses past the same limit. Without it, giving the agents a real
+      # search tool would have opened an uncounted path around a rule that already
+      # exists -- the same act, through a better door.
+      before_tool: ./hooks/files_guard.ts
       after_tool: ./hooks/note_file_opened.ts
-  filesystem_readonly:
-    description: "Reads files and nothing else, for agents that must not write."
-    command: mcp-server-filesystem
+  files_readonly:
+    description: "Reads and searches files and changes nothing, for agents that must not write."
+    unprefixed: true
+    command: bun
     args:
-      - "."
+      - run
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/files.ts"
     env:
       {}
     hooks:
+      # Named as operations rather than as a list of every tool that exists, which is
+      # the failure this replaces: the old list held five names, so every read the
+      # server had that nobody thought of on the day was refused by a server whose whole
+      # purpose is reading -- 64 calls, all of them reads. Six tools now, and the three
+      # that write are the ones left out.
+      #
+      # A pattern here that matches nothing is reported at startup and fails
+      # `atoma validate --with-live-tools`, so this list cannot quietly stop applying.
       tool_allowlist:
-        # Measured: this list refused 64 calls that were all reads. It was written as
-        # five names rather than as the read operations, so every read the server has
-        # that nobody thought of on the day was refused by a server whose whole purpose
-        # is reading -- `read_text_file` 29 times, `search_files` 21, and
-        # `list_allowed_directories` 14. `directory_tree` stays out on purpose: it is
-        # denied on `filesystem` too, because its output crowds out the context.
-        - filesystem_readonly__read_file
-        - filesystem_readonly__read_text_file
-        - filesystem_readonly__read_multiple_files
-        - filesystem_readonly__read_media_file
-        - filesystem_readonly__list_directory
-        - filesystem_readonly__list_allowed_directories
-        - filesystem_readonly__search_files
-        - filesystem_readonly__get_file_info
+        - read
+        - grep
+        - glob
+        - list
+      before_tool: ./hooks/files_guard.ts
       after_tool: ./hooks/note_file_opened.ts
   shell:
     description: "Runs one foreground command. Guarded, and holds no credentials of its own."

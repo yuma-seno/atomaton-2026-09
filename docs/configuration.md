@@ -551,8 +551,8 @@ with are Atomaton's own, and what you write here is added to them.
 
 | Server | What it is for |
 | --- | --- |
-| `filesystem` | Reads and writes files in the work tree. |
-| `filesystem_readonly` | Reads files and nothing else, for agents that must not write. |
+| `files` | Reads, searches and changes files in the work tree. Its tools are named `read`, `grep`, `glob`, `edit`, `write`, `list`, with no server prefix. |
+| `files_readonly` | The same server with the three that write left out, for agents that must not change anything. |
 | `shell` | Runs one foreground command. Guarded, and holds no credentials of its own. |
 | `github` | Issues, pull requests, comments, and every Git mutation. |
 | `web` | Fetches a URL. Searching the web is a skill, not a tool. |
@@ -711,7 +711,7 @@ entry to alter one field is what freezes the rest at today's values.
 
 The merge is one level deep, so a `hooks` block you write **replaces** that
 server's, rather than adding to it. That is the right direction for the thing it
-is: narrowing `filesystem`'s `tool_allowlist` has to mean the list you wrote,
+is: narrowing `files_readonly`'s `tool_allowlist` has to mean the list you wrote,
 where a union could only ever widen it.
 
 **There is no way to remove one, and none is needed.** An agent is given the
@@ -818,9 +818,8 @@ tool server. `tools.packages.pip` is for a server that ships as a Python package
 
 **The shipped servers' packages are not here.** They are in the deliverable, at
 `.github/atomaton-runtime/tools/packages.json`, because they are not a project's
-decision: `@modelcontextprotocol/server-filesystem` is the program `filesystem`
-runs, and `@huggingface/transformers` is what `search` reranks with. Neither
-server can be removed, so neither package can be, and a list you edit that
+decision: `@huggingface/transformers` is what `search` reranks with. That server
+cannot be removed, so the package cannot be, and a list you edit that
 contains entries you must not delete is an invitation to delete one — which
 would show up as a tool server that will not start, a long way from the line
 that caused it.
@@ -1013,8 +1012,10 @@ own copy -- letting it replace the code of the tools that review it. The prefix
 points at a checkout of the default branch instead, and falls back to `.` where
 no such checkout exists, such as a hand-run `atoma`.
 
-`args: ["."]` on the filesystem servers is deliberately NOT prefixed: that one
-is the workspace, which is exactly what those servers should be reading.
+The `files` servers take no such path: the directories they may reach are the
+work tree and the shared workspace, decided by the server itself. The rule still
+holds for anything a project adds — a path that means the workspace is the one
+that should not carry the machinery root.
 
 `before_tool` is NOT prefixed either, and for a third reason: atoma resolves a
 relative hook path against the directory the TOOLS FILE is in, not against the
@@ -1070,24 +1071,40 @@ what will be carried into the next run. It is an `after_tool` rather than a
 do is wrong, and the file it would complain about does not exist until after the
 call that wrote it.
 
-## filesystem
+## files
 
-`directory_tree` returns the whole tree, always, and there is no question
-whose answer is the whole tree. `list_directory` answers the ones there are.
+Six tools — `read`, `grep`, `glob`, `edit`, `write`, `list` — named without a
+server prefix, which is what `unprefixed: true` in the tools file does. They are
+the names OpenCode and Claude Code use, which is what a model has seen most.
 
-`search_files` used to be here beside it, and was let back in once atoma
-v0.1.21 capped every tool result: what kept it out was unbounded output, not
-what it does. Worth being precise about what it does, though -- it matches
-PATHS against a glob and never reads a file, so it does not replace a grep.
-An agent was measured making 324 content searches through the shell; this
-tool would have replaced none of them. A semantic code search is the gap that would.
+It replaces `@modelcontextprotocol/server-filesystem`, which has no line range
+and no content search. Measured over two runs of these agents, 202 tool calls:
+37 of the 63 shell calls were `sed -n A,Bp` and `grep -rn`, rebuilding both by
+hand. The orchestrator has no shell and could not — it read one 1,700-line file
+four times with `head` and `tail`, which never reach the middle, and 43% of
+everything it read came back truncated.
 
-## filesystem_readonly
+`read` takes `offset` and `limit` in lines, and a result that stopped early
+names the offset to continue from. That sentence is the reason for the whole
+server: the four reads happened because nothing said that the number being
+changed did not decide how much came back.
 
-Returns an image as an image block rather than as bytes read into text.
-An agent whose definition sets `vision: true` can look at a screenshot
-in the repository; one without it gets a note saying the picture was
-withheld. Reading an image through `read_file` produces neither.
+`read` also returns a picture as a picture, so an agent whose definition sets
+`vision: true` can look at a screenshot in the repository; one without it gets a
+note saying the picture was withheld.
+
+`grep` searches contents and takes `glob` to narrow which files and `context`
+for the lines around a match. `glob` matches paths and never reads a file, so it
+does not replace a grep — it answers where something is by name.
+
+There is no `directory_tree`: it returns the whole tree, always, and there is no
+question whose answer is the whole tree. `list` answers the ones there are.
+
+## files_readonly
+
+The same server with `edit`, `write` and everything else that changes something
+left out, for agents that must not write. An allowlist, not a second
+implementation — see "One server, two entries" below.
 
 ## shell
 
@@ -1170,7 +1187,7 @@ the orchestrator to finish an issue", and an engineer that could call it could e
 an issue without a review. So the server cannot simply be handed over.
 
 A second entry with an allowlist is how this project already solves that:
-`filesystem_readonly` above is the same server as `filesystem` with writes
+`files_readonly` above is the same server as `files` with the tools that write
 withheld, so the reviewer can read the tree without being able to change it. Same
 mechanism, same reason.
 

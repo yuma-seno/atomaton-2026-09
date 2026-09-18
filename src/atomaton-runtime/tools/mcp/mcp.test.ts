@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 // The servers are spawned with the ambient environment, and inside an Atomaton run that
 // includes the run's own `ATOMATON_RUN_TYPE` and `ISSUE_NUMBER`. See `hermeticEnv`.
 import { hermeticEnv } from "../../../scripts/testing/harness.ts";
@@ -784,6 +784,130 @@ describe("mcp/web.ts", () => {
       expect(r.result.isError, url).toBe(true);
       expect(r.result.content[0].text, url).toContain("http");
     }
+  });
+});
+
+describe("mcp/files.ts", () => {
+  /** A tree to work in, which is also the only place the server may reach. */
+  function fixture(files: Record<string, string>): string {
+    const root = mkdtempSync(join(tmpdir(), "atomaton-files-"));
+    for (const [name, body] of Object.entries(files)) {
+      const at = join(root, name);
+      mkdirSync(dirname(at), { recursive: true });
+      writeFileSync(at, body);
+    }
+    return root;
+  }
+
+  function call(root: string, name: string, args: Record<string, unknown>) {
+    return sendRequest(
+      "files.ts",
+      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } },
+      {},
+      root,
+    );
+  }
+
+  const NUMBERED = Array.from({ length: 40 }, (_, i) => `line ${i + 1}`).join("\n");
+
+  /**
+   * The whole reason this server exists.
+   *
+   * A read that stops has to say where to start again. Without it an agent changes the
+   * number it passed and tries once more -- measured, four reads of one file, because
+   * `head: 760` and `head: 40` returned the same amount and nothing said why.
+   */
+  test("a truncated read names the offset to continue from", async () => {
+    const root = fixture({ "big.txt": NUMBERED });
+    const r = await call(root, "read", { path: "big.txt", offset: 5, limit: 10 });
+    const text = r.result.content[0].text;
+    expect(r.result.isError).toBe(false);
+    expect(text).toContain("lines 5-14 of 40");
+    expect(text).toContain("5\tline 5");
+    expect(text).toContain("offset: 15");
+  });
+
+  test("a read that reaches the end says nothing about continuing", async () => {
+    const root = fixture({ "small.txt": "one\ntwo\n" });
+    const text = (await call(root, "read", { path: "small.txt" })).result.content[0].text;
+    expect(text).toContain("lines 1-2 of 2");
+    expect(text).not.toContain("offset:");
+  });
+
+  test("an offset past the end is an error, not an empty result", async () => {
+    const root = fixture({ "small.txt": "one\n" });
+    const r = await call(root, "read", { path: "small.txt", offset: 9 });
+    expect(r.result.isError).toBe(true);
+    expect(r.result.content[0].text).toContain("past the end");
+  });
+
+  test("grep returns file and line, and says when it stopped early", async () => {
+    const root = fixture({ "a.ts": "const x = 1;\nconst wanted = 2;\n", "b.md": "wanted\n" });
+    const text = (await call(root, "grep", { pattern: "wanted", glob: "*.ts" })).result.content[0].text;
+    expect(text).toContain("a.ts:2:");
+    // `glob` kept the markdown file out, so its line is not here.
+    expect(text).not.toContain("b.md");
+
+    const capped = (await call(root, "grep", { pattern: "wanted", max_matches: 1 })).result.content[0].text;
+    expect(capped).toContain("further lines");
+  });
+
+  test("a pattern that matches nothing says so rather than failing", async () => {
+    const root = fixture({ "a.ts": "nothing here\n" });
+    const r = await call(root, "grep", { pattern: "absent" });
+    expect(r.result.isError).toBe(false);
+    expect(r.result.content[0].text).toContain("No match");
+  });
+
+  test("glob finds files by path and grep finds them by content", async () => {
+    const root = fixture({ "src/one.ts": "alpha\n", "src/deep/two.ts": "beta\n", "notes.md": "alpha\n" });
+    const text = (await call(root, "glob", { pattern: "src/**/*.ts" })).result.content[0].text;
+    expect(text).toContain("src/one.ts");
+    expect(text).toContain("src/deep/two.ts");
+    expect(text).not.toContain("notes.md");
+  });
+
+  /**
+   * Ambiguity is refused rather than resolved: a caller that meant the second one has
+   * no way to say so, and an edit made to the wrong line is found much later than an
+   * error.
+   */
+  test("edit refuses text that appears more than once", async () => {
+    const root = fixture({ "a.ts": "let x = 1;\nlet x = 1;\n" });
+    const r = await call(root, "edit", { path: "a.ts", old_string: "let x = 1;", new_string: "let y = 2;" });
+    expect(r.result.isError).toBe(true);
+    expect(r.result.content[0].text).toContain("appears 2 times");
+
+    const all = await call(root, "edit", {
+      path: "a.ts", old_string: "let x = 1;", new_string: "let y = 2;", replace_all: true,
+    });
+    expect(all.result.isError).toBe(false);
+    expect(readFileSync(join(root, "a.ts"), "utf8")).toBe("let y = 2;\nlet y = 2;\n");
+  });
+
+  test("edit refuses text that is not there", async () => {
+    const root = fixture({ "a.ts": "let x = 1;\n" });
+    const r = await call(root, "edit", { path: "a.ts", old_string: "absent", new_string: "x" });
+    expect(r.result.isError).toBe(true);
+    expect(r.result.content[0].text).toContain("not in");
+  });
+
+  test("write creates the directories above the file", async () => {
+    const root = fixture({});
+    const r = await call(root, "write", { path: "a/b/c.txt", content: "made" });
+    expect(r.result.isError).toBe(false);
+    expect(readFileSync(join(root, "a/b/c.txt"), "utf8")).toBe("made");
+  });
+
+  /**
+   * The containment the official server gave by being handed one directory. `../`
+   * resolves before the comparison, so walking out is refused rather than followed.
+   */
+  test("a path outside the roots is refused and says what is allowed", async () => {
+    const root = fixture({ "a.ts": "x\n" });
+    const r = await call(root, "read", { path: "../../../etc/passwd" });
+    expect(r.result.isError).toBe(true);
+    expect(r.result.content[0].text).toContain("outside the directories");
   });
 });
 

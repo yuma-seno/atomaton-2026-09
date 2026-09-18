@@ -238,6 +238,9 @@ describe("the generated tools file says nothing the core has not declared", () =
     "hooks",
     "max_output_chars",
     "request_timeout_secs",
+    // atoma v0.1.37. Names a server's tools as the server advertises them, with no
+    // `server__` prefix, so `files` arrives as `read`, `grep`, `glob`.
+    "unprefixed",
   ]);
   const CORE_HOOK_KEYS = new Set(["before_tool", "after_tool", "tool_allowlist", "tool_denylist"]);
 

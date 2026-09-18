@@ -9,7 +9,7 @@ knows_about:
   - reviewer
   - orchestrator
 mcp_servers:
-  - filesystem_readonly
+  - files_readonly
   - github
   - web
   - search
