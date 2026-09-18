@@ -285,7 +285,19 @@ async function probe(): Promise<number> {
   say("4. which servers registered tools");
   let everyServerCameUp = true;
   for (const server of servers) {
-    const count = captured.tools.filter((name) => name.startsWith(`${server}__`)).length;
+    // A server that sets `unprefixed` gives its tools their own names, so counting
+    // `server__` finds none of them and reads as a server that never came up. Only one
+    // unprefixed server is in this stub -- the filter above guarantees it -- so the
+    // tools with no `__` are exactly its tools, with nothing to confuse them with.
+    //
+    // Keying on the naming convention was right until the convention gained a second
+    // shape, and this said `tools_from_files=0` about a server that had registered six.
+    // It failed rather than passed, which is the difference between a check that has
+    // stopped applying and one that has stopped saying so.
+    const unprefixedHere = (toolsYaml[server] as { unprefixed?: boolean })?.unprefixed;
+    const count = captured.tools.filter((name) =>
+      unprefixedHere ? !name.includes("__") : name.startsWith(`${server}__`),
+    ).length;
     result(`tools_from_${server}`, count);
     if (count === 0) everyServerCameUp = false;
   }
