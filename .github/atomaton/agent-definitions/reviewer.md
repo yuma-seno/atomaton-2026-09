@@ -13,7 +13,7 @@ knows_about:
   - engineer
   - orchestrator
 mcp_servers:
-  - filesystem_readonly
+  - files_readonly
   - github
   - web
   - search

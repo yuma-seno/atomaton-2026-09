@@ -2,7 +2,6 @@
 // @bun
 
 // src/atomaton-runtime/tools/hooks/shell_guard.ts
-import { readFileSync, writeFileSync } from "fs";
 import { resolve, sep } from "path";
 
 // src/domain/search-streak.ts
@@ -34,12 +33,30 @@ function refusalReason(streak, limit = MAX_SEARCHES_WITHOUT_OPENING) {
 }
 
 // src/atomaton-runtime/tools/lib/search-streak-file.ts
+import { readFileSync, writeFileSync } from "fs";
 function streakFile() {
   const opsLog = process.env.ATOMATON_OPS_LOG;
   if (!opsLog)
     return;
   const dir = opsLog.replace(/[/\\][^/\\]*$/, "");
   return dir === opsLog ? undefined : `${dir}/search-streak`;
+}
+function readStreak(file) {
+  if (!file)
+    return 0;
+  try {
+    const n = Number(readFileSync(file, "utf8").trim());
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+function writeStreak(file, streak) {
+  if (!file)
+    return;
+  try {
+    writeFileSync(file, String(streak));
+  } catch {}
 }
 
 // src/atomaton-runtime/tools/hooks/shell_guard.ts
@@ -203,23 +220,6 @@ function checkInvocation(invocation) {
       return { allow: false, reason };
   }
   return ALLOWED;
-}
-function readStreak(file) {
-  if (!file)
-    return 0;
-  try {
-    const n = Number(readFileSync(file, "utf8").trim());
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  } catch {
-    return 0;
-  }
-}
-function writeStreak(file, streak) {
-  if (!file)
-    return;
-  try {
-    writeFileSync(file, String(streak));
-  } catch {}
 }
 function streakRefusal(command) {
   const file = streakFile();

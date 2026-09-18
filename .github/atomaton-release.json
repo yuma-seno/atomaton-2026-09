@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.133",
+  "version": "v0.1.134",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -47,10 +47,12 @@
     ".github/atomaton-runtime/scripts/write_metrics_report.ts",
     ".github/atomaton-runtime/scripts/write_tools_file.ts",
     ".github/atomaton-runtime/tools/defaults.yaml",
+    ".github/atomaton-runtime/tools/hooks/files_guard.ts",
     ".github/atomaton-runtime/tools/hooks/note_file_opened.ts",
     ".github/atomaton-runtime/tools/hooks/shell_guard.ts",
     ".github/atomaton-runtime/tools/hooks/workspace_guard.ts",
     ".github/atomaton-runtime/tools/mcp/atomaton.ts",
+    ".github/atomaton-runtime/tools/mcp/files.ts",
     ".github/atomaton-runtime/tools/mcp/github.ts",
     ".github/atomaton-runtime/tools/mcp/search.ts",
     ".github/atomaton-runtime/tools/mcp/shell.ts",

@@ -5,7 +5,7 @@
 import { writeFileSync } from "fs";
 
 // src/domain/search-streak.ts
-var TOOLS_THAT_OPEN = /(^|__)(read_text_file|read_media_file|read_multiple_files|read_file)$/;
+var TOOLS_THAT_OPEN = /(^|__)(read|read_text_file|read_media_file|read_multiple_files|read_file)$/;
 function toolOpens(tool) {
   return TOOLS_THAT_OPEN.test(tool.trim());
 }
