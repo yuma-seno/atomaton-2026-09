@@ -34,6 +34,12 @@ precedence that picks for you. To run somewhere else, change `provider` in the a
 definitions and add that provider's own secret; the eight values and the credential
 each reads are in [docs/configuration.md](configuration.md).
 
+Switching provider later is therefore two edits, and the runner checks that both
+happened: **before it builds the environment**, it resolves the provider exactly as
+the run will and stops with the missing secret's name if there is no credential for
+it. Nothing is installed and no agent starts, so a forgotten secret costs one
+dispatch rather than one runner. Add the secret and dispatch the run again.
+
 ## 4. Put your install and build commands in `environment.setup_commands`
 
 In `.github/atomaton/config.yaml`:

@@ -81,4 +81,46 @@ describe("environment setup reaches every job that runs project commands", () =>
       expect(setup, `${workflow} resolves secrets before running setup commands`).toBeLessThan(secrets);
     }
   });
+
+  /**
+   * And no step BEFORE the setup asks for a secret's value.
+   *
+   * Steps may run ahead of the setup -- the Atoma CLI install has to, because the
+   * provider credential check asks that binary and the check itself must come
+   * first. What none of them may do is put a secret's VALUE in an environment
+   * block, because from there it reaches `/proc/<pid>/environ`, the log, and every
+   * process the project's own build code starts.
+   *
+   * `${{ secrets.NAME != '' }}` is the boolean GitHub computes, and it is the only
+   * shape allowed there: a step that needs to know whether a credential exists
+   * does not need to hold it. The check in `atomaton-runner` is built on exactly
+   * that distinction, and it is a few characters from the version that is not.
+   */
+  test("no step before the setup carries a secret's value", () => {
+    type WorkflowStep = { name?: string; env?: Record<string, string>; with?: Record<string, string> };
+    type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
+
+    for (const { workflow, job } of JOBS) {
+      const doc = Bun.YAML.parse(
+        readFileSync(`dist/.github/workflows/${workflow}.yml`, "utf8"),
+      ) as WorkflowDocument;
+      const steps = doc.jobs?.[job]?.steps ?? [];
+      const setup = steps.findIndex((step) => step.name === SETUP_STEP);
+      expect(setup, `${workflow}: the setup step`).toBeGreaterThanOrEqual(0);
+
+      const offenders: string[] = [];
+      for (const step of steps.slice(0, setup)) {
+        for (const [name, value] of Object.entries({ ...step.env, ...step.with })) {
+          if (!value?.includes("secrets.")) continue;
+          if (/!=\s*''/.test(value)) continue;
+          offenders.push(`${workflow}: ${step.name ?? "?"} / ${name} = ${value}`);
+        }
+      }
+      expect(
+        offenders,
+        `a step before the environment setup would put a credential's value in its environment. ` +
+          `Use \`secrets.NAME != ''\` if what it needs is whether the credential exists`,
+      ).toEqual([]);
+    }
+  });
 });
