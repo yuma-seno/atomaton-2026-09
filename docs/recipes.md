@@ -93,7 +93,7 @@ What you give up by doing that instead of naming a provider is that the run's lo
 `openai`, so where it went is only visible in the variable. **This repository's own
 agent definitions were that case**, reading `provider: openai-responses # openrouter`
 — and the trailing comment was there because the name did not say where the request
-went. They name `openrouter-responses` now.
+went. They name `orcarouter-responses` now.
 
 Each endpoint moves with its own `*_BASE_URL` variable (`OPENROUTER_BASE_URL` and so
 on), and it is a repository variable rather than a secret. None of them may be declared

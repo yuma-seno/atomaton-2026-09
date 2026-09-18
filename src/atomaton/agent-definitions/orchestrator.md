@@ -2,7 +2,7 @@
 name: orchestrator
 description: Recursively decomposes delivery work, coordinates dependencies, and aggregates results.
 provider: orcarouter-responses
-model: qwen/qwen3.7-plus
+model: deepseek/deepseek-v4.1-flash
 vision: true
 knows_about:
   - engineer
