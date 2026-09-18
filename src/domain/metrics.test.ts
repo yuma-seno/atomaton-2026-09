@@ -42,7 +42,7 @@ const SESSIONS: SessionRecord[] = [
 const SERVERS = ["shell", "filesystem", "github", "web", "search"];
 const SKILLS = ["engineering/tdd", "delivery/pipeline-setup"];
 const TOKENS = [
-  { issue: 1, total: 1000, prompt: 980, completion: 20 },
+  { issue: 1, total: 1000, prompt: 980, completion: 20, cached: 490 },
   { issue: 2, total: 3000, prompt: 2900, completion: 100 },
 ];
 
@@ -111,6 +111,26 @@ describe("metricsOf", () => {
 
   test("no run reporting tokens means no token section rather than zeroes", () => {
     expect(metricsOf(SESSIONS, SERVERS, SKILLS, []).tokens).toBeUndefined();
+  });
+
+  /**
+   * Over the runs that reported it, and over their prompt -- not over everything.
+   * Here that is 490 of one run's 980, which is 50%; counting the other run's 2,900
+   * unreported prompt into the denominator would print 13% and call the cache broken.
+   */
+  test("the cache share is over the runs that reported one", () => {
+    const cached = metricsOf(SESSIONS, SERVERS, SKILLS, TOKENS).tokens?.cached;
+    expect(cached).toEqual({ runs: 1, tokens: 490, ofPrompt: 0.5 });
+  });
+
+  /**
+   * The distinction the field exists for. A window where no provider reported a
+   * cache must not come back as a cache that served nothing: one is a gap in the
+   * measurement, the other is a fault worth acting on, and they read alike as 0%.
+   */
+  test("no run reporting a cache is unknown rather than a cache that missed", () => {
+    const none = [{ issue: 1, total: 1000, prompt: 980, completion: 20 }];
+    expect(metricsOf(SESSIONS, SERVERS, SKILLS, none).tokens?.cached).toBeUndefined();
   });
 });
 
@@ -186,6 +206,27 @@ describe("renderReport", () => {
   test("it reports tokens and never a cost", () => {
     expect(report).toContain("4,000 tokens");
     expect(report).not.toMatch(/[$€£]\d/);
+  });
+
+  /**
+   * The share, and how many runs it covers. Printing 50% without saying it came from
+   * one of two runs invites reading it as the fleet's cache rate, which it is not.
+   */
+  test("the cache share says how many runs it is over", () => {
+    expect(report).toContain("50% of that prompt was served from cache");
+    expect(report).toContain("1 of 2 runs");
+  });
+
+  /**
+   * A window where nothing reported it has to say so. Omitting the sentence reads as
+   * "nothing to report about the cache", which is the same silence as a cache that is
+   * working and as one that has been switched off.
+   */
+  test("a window where nothing reported a cache says so rather than nothing", () => {
+    const none = [{ issue: 1, total: 1000, prompt: 980, completion: 20 }];
+    const text = render(metricsOf(SESSIONS, SERVERS, SKILLS, none), NOW);
+    expect(text).toContain("unknown rather than zero");
+    expect(text).not.toContain("served from cache");
   });
 
   /**

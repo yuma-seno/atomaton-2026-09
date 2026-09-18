@@ -185,6 +185,22 @@ function windowSection(label: string, metrics: Metrics): string[] {
         "numbers.",
     );
     out.push("");
+
+    // Said either way. A window where nothing reported it has to say so: a silent
+    // omission reads as "nothing to report about the cache", which is the same shape
+    // as a cache that is working and the same shape as one that is switched off.
+    out.push(
+      t.cached
+        ? `**${Math.round(t.cached.ofPrompt * 1000) / 10}% of that prompt was served from cache**, ` +
+            `over the ${t.cached.runs === t.runs ? "runs" : `${n(t.cached.runs)} of ${n(t.runs)} runs`} whose ` +
+            "provider reported it. A cached prompt token costs a fraction of a fresh one, so this " +
+            "is most of what separates the counts above from the bill — and it is the figure that " +
+            "moves when what gets resent changes."
+        : "No run in this window reported how much of its prompt was cached, so the share is " +
+            "unknown rather than zero — either the provider does not report it or the run predates " +
+            "the field.",
+    );
+    out.push("");
   }
   out.push("| | p50 | p90 | p99 | max | total |");
   out.push("| --- | ---: | ---: | ---: | ---: | ---: |");

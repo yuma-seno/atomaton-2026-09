@@ -28,6 +28,7 @@ import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
 import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
+import { parseTokenLine } from "../domain/token-line.ts";
 
 export const ref = defineScript(import.meta.url);
 
@@ -258,7 +259,13 @@ function shellAct(command: string): CallRecord["act"] {
   return classified === "other" ? "other" : classified;
 }
 
-/** Every `_Tokens: N total (P prompt + C completion)_` line the agents have posted. */
+/**
+ * Every token line the agents have posted, from the comments themselves.
+ *
+ * The spelling is `token-line.ts`, shared with the script that writes it, because
+ * the two run days apart and a line that no longer matches is not counted rather
+ * than reported.
+ */
 function tokensReported(repo: string): TokenRecord[] {
   const comments = ghPaginated<{ body?: string; issue_url?: string; created_at?: string }>(
     "api",
@@ -266,17 +273,12 @@ function tokensReported(repo: string): TokenRecord[] {
   );
   const out: TokenRecord[] = [];
   for (const comment of comments) {
-    const match = /_Tokens:\s*([\d,]+)\s*total\s*\(([\d,]+)\s*prompt\s*\+\s*([\d,]+)\s*completion\)_/.exec(
-      comment.body ?? "",
-    );
-    if (!match) continue;
+    const figures = parseTokenLine(comment.body ?? "");
+    if (!figures) continue;
     const number = Number(/(\d+)$/.exec(comment.issue_url ?? "")?.[1] ?? 0);
-    const toNumber = (s: string) => Number(s.replace(/,/g, ""));
     out.push({
       issue: number,
-      total: toNumber(match[1]!),
-      prompt: toNumber(match[2]!),
-      completion: toNumber(match[3]!),
+      ...figures,
       // The comment's own timestamp, which is what puts these tokens in a window.
       at: comment.created_at,
     });

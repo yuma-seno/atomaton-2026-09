@@ -19,6 +19,7 @@ import { gh } from "../lib/gh.ts";
 import { AGENT_TAG, CHANGED_TAG, PARENT_TAG } from "../lib/tags.ts";
 import { shouldMentionOnCompletion } from "../domain/completion-mention.ts";
 import { redact } from "../domain/redaction.ts";
+import { renderTokenLine } from "../domain/token-line.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../domain/mention.ts";
 import { knownParticipants } from "../lib/participants.ts";
 import type { Session } from "../lib/session.ts";
@@ -102,8 +103,13 @@ function tokenUsageLines(logsFile: string): string[] {
   const prompt = /prompt=(\d+)/.exec(usageLine)?.[1];
   const completion = /completion=(\d+)/.exec(usageLine)?.[1];
   const total = /total=(\d+)/.exec(usageLine)?.[1];
+  // Atoma prints `cached=unknown` when no inference reported one, and this clause
+  // is then absent rather than zero. Zero is a claim that the cache did nothing;
+  // absent says the provider never told us, and the two want opposite responses.
+  // The digits-only pattern is what makes `unknown` fall through to absent.
+  const cached = /cached=(\d+)/.exec(usageLine)?.[1];
 
-  return ["", "---", `_Tokens: ${total ?? "?"} total (${prompt ?? "?"} prompt + ${completion ?? "?"} completion)_`];
+  return ["", "---", renderTokenLine({ total, prompt, completion, cached })];
 }
 
 /**

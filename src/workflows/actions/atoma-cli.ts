@@ -137,8 +137,21 @@ import { TypedOutputsStep } from "./base.ts";
  * The pin moves because the guard in `shell_guard.ts` depends on the first of them:
  * its refusal is deterministic, so an agent that ignores it is stopped by the core
  * rather than by a new rule.
+ *
+ * v0.1.43 records how much of each prompt was served from cache, per inference as
+ * well as per run. The pin is what makes the figure exist: an older binary prints no
+ * `cached=`, and every reader downstream -- the step summary, the result comment,
+ * the metrics report -- then correctly reports it as unknown, forever. A run here is
+ * almost all prompt and a cached token costs a fraction of a fresh one, so this is
+ * most of what separates the token counts from the bill.
+ *
+ * It also says when it could not read one: a reply carrying usage but no cached
+ * figure logs the usage field names nothing read. That is how the spelling this
+ * provider uses gets established -- by a real response rather than by adding a field
+ * name and shipping a release to see whether a number appears, which is what the
+ * version before it did.
  */
-export const ATOMA_DEFAULT_VERSION = "v0.1.40";
+export const ATOMA_DEFAULT_VERSION = "v0.1.43";
 
 export const ATOMA_VERSION_DESC =
   "Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.";

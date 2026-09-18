@@ -133,6 +133,16 @@ export interface TokenRecord {
   total: number;
   prompt: number;
   completion: number;
+  /**
+   * How much of `prompt` the provider served from its cache.
+   *
+   * `undefined` when it did not say, which is NOT zero: GitHub Copilot reports no
+   * tokens at all, and every comment posted before Atoma recorded this lacks it.
+   * Zero would read as "the cache is doing nothing" -- the one conclusion an absent
+   * measurement must not be allowed to support, since it is also what a genuinely
+   * broken cache looks like.
+   */
+  cached?: number;
   at?: string;
 }
 
@@ -185,6 +195,19 @@ export interface TokenSummary {
   perRun: Distribution;
   /** Prompt as a share of total, 0-1. Measured at 97-99%, which is the point. */
   promptShare: number;
+  /**
+   * The cached part of the prompt, over the runs that reported one.
+   *
+   * `undefined` when none did, and `runs` is carried so the share is never read as
+   * covering more runs than it does. Averaging a missing figure in as zero would
+   * make a provider that says nothing look like a cache that is missing everything,
+   * and the number would move whenever the mix of providers moved.
+   *
+   * It is here because a cached prompt token costs between an eighth and a fiftieth
+   * of a fresh one, and a run here is almost all prompt. The share is most of what
+   * separates the token counts from the bill.
+   */
+  cached?: { runs: number; tokens: number; ofPrompt: number };
 }
 
 /**
@@ -299,10 +322,23 @@ export function metricsOf(
 function tokenSummary(tokens: readonly TokenRecord[]): TokenSummary {
   const total = tokens.reduce((sum, t) => sum + t.total, 0);
   const prompt = tokens.reduce((sum, t) => sum + t.prompt, 0);
+  // Only the runs that reported a cache figure, and their own prompt as the
+  // denominator -- so the share is of what those runs sent, not of everything.
+  const reported = tokens.filter((t) => t.cached !== undefined);
+  const cachedPrompt = reported.reduce((sum, t) => sum + t.prompt, 0);
+  const cachedTokens = reported.reduce((sum, t) => sum + (t.cached ?? 0), 0);
   return {
     runs: tokens.length,
     total,
     perRun: distributionOf(tokens.map((t) => t.total)),
     promptShare: total === 0 ? 0 : prompt / total,
+    cached:
+      reported.length === 0
+        ? undefined
+        : {
+            runs: reported.length,
+            tokens: cachedTokens,
+            ofPrompt: cachedPrompt === 0 ? 0 : cachedTokens / cachedPrompt,
+          },
   };
 }

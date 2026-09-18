@@ -866,11 +866,15 @@ fi
 PROMPT=$(echo "$USAGE_LINE"     | grep -oP 'prompt=\\K[0-9]+' || true)
 COMPLETION=$(echo "$USAGE_LINE" | grep -oP 'completion=\\K[0-9]+' || true)
 TOTAL=$(echo "$USAGE_LINE"      | grep -oP 'total=\\K[0-9]+' || true)
+# Atoma prints cached=unknown when no inference reported one; the digits-only
+# pattern leaves CACHED empty there, and the cell reads — rather than 0. Zero is a
+# claim that the cache did nothing, which is not what an absent measurement says.
+CACHED=$(echo "$USAGE_LINE"     | grep -oP 'cached=\\K[0-9]+' || true)
 {
   echo "## Atoma Token Usage"
-  echo "| Agent | Prompt | Completion | Total |"
-  echo "|------------|--------|------------|-------|"
-  echo "| \${{ inputs.agent }} | \${PROMPT:-—} | \${COMPLETION:-—} | \${TOTAL:-—} |"
+  echo "| Agent | Prompt | Cached | Completion | Total |"
+  echo "|------------|--------|--------|------------|-------|"
+  echo "| \${{ inputs.agent }} | \${PROMPT:-—} | \${CACHED:-—} | \${COMPLETION:-—} | \${TOTAL:-—} |"
 } >> "$GITHUB_STEP_SUMMARY"
 `,
 });
