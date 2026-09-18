@@ -2,10 +2,12 @@
 name: engineer
 description: Implements one engineer-ready leaf task, validates it, and opens a pull request.
 provider: orcarouter-responses
-model: deepseek/deepseek-v4-flash-0731
-# This model reads text only, so a tool that returns a picture gets text saying
-# the image was withheld and naming this setting. That is the wanted behaviour
-# here: the reviewer is the agent that looks at screens.
+model: deepseek/deepseek-v4.1-flash
+# `false` is a policy here, not a limitation. It read as a limitation while the
+# model was v4-flash-0731, which took text and nothing else; v4.1-flash takes
+# images, and the answer is still no -- the reviewer is the agent that looks at
+# screens. A tool that returns a picture gets text saying the image was withheld
+# and naming this setting.
 vision: false
 knows_about:
   - reviewer
