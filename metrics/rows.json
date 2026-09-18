@@ -3457,12 +3457,29 @@
   {
     "path": "sessions/issue-769/reviewer.json",
     "agent": "reviewer",
-    "messages": 5,
-    "calls": 0,
-    "failed": 0,
+    "messages": 41,
+    "calls": 22,
+    "failed": 1,
     "refused": 0,
-    "skills": [],
-    "tools": {},
+    "skills": [
+      "review/quick-quality-gate",
+      "project/conventions"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "github__check_merge_readiness": 1,
+      "github__get_pr": 1,
+      "github__get_pr_reviews": 1,
+      "filesystem_readonly__read_file": 3,
+      "filesystem_readonly__search_files": 2,
+      "filesystem_readonly__read_multiple_files": 2,
+      "github__search_code": 2,
+      "github__get_issue_comments": 2,
+      "web__fetch": 3,
+      "github__get_pr_diff": 1,
+      "github__submit_pr_review": 1,
+      "github__merge_pr": 1
+    },
     "acts": {},
     "runs": [
       {
@@ -3471,6 +3488,13 @@
         "messages": 5,
         "seconds": 5,
         "started": "2026-09-18T03:22:42Z"
+      },
+      {
+        "ended": "2026-09-18T05:15:47Z",
+        "ended_because": "completed",
+        "messages": 41,
+        "seconds": 178,
+        "started": "2026-09-18T05:12:49Z"
       }
     ]
   },
