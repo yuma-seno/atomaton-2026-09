@@ -3512,9 +3512,9 @@
   {
     "path": "sessions/issue-766/engineer.json",
     "agent": "engineer",
-    "messages": 87,
-    "calls": 50,
-    "failed": 1,
+    "messages": 426,
+    "calls": 242,
+    "failed": 3,
     "refused": 0,
     "skills": [
       "project/conventions",
@@ -3523,15 +3523,22 @@
     ],
     "tools": {
       "atoma_builtin__load_skill": 3,
-      "shell__shell_execute": 12,
-      "read": 20,
-      "glob": 2,
-      "list": 5,
-      "grep": 8
+      "shell__shell_execute": 73,
+      "read": 73,
+      "glob": 3,
+      "list": 6,
+      "grep": 45,
+      "write": 7,
+      "edit": 28,
+      "search__search_issues": 1,
+      "github__commit_and_push": 1,
+      "github__create_pr": 2
     },
     "acts": {
-      "other": 9,
-      "edit": 3
+      "other": 61,
+      "edit": 9,
+      "search": 2,
+      "open": 1
     },
     "runs": [
       {
