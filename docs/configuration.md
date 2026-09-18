@@ -893,9 +893,10 @@ The default is off because the two mistakes cost differently. Sending a picture
 to a text-only model is an API error that loses the run; withholding one from a
 model that could have read it costs a single tool result, and says why.
 
-The shipped agents are set this way: the reviewer and orchestrator read images,
-the engineer does not. Checking whether a model can, before you set it, is in
-[docs/recipes.md](recipes.md).
+All three shipped agents read images. The engineer did not until its model could:
+the flag was off while it ran a text-only model, and a picture that arrives when
+nothing sends one costs nothing to allow. Checking whether a model can, before you
+set it, is in [docs/recipes.md](recipes.md).
 
 ## `provider`
 
