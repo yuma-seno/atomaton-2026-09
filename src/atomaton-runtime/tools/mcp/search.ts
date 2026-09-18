@@ -34,7 +34,7 @@
  * instructions while this repository's issues are Japanese, so this is a live
  * hazard rather than a theoretical one, and the description says so outright.
  */
-import { AutoTokenizer, AutoModelForSequenceClassification, env as transformersEnv } from "@huggingface/transformers";
+// `@huggingface/transformers` is NOT imported here. See `loadRerankerOnce`.
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
 import { report } from "../../../lib/mcp-report.ts";
 import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../domain/bm25.ts";
@@ -205,10 +205,15 @@ type Reranker = { score(query: string, documents: string[]): Promise<number[]> }
  * The load, started once and awaited by everyone who needs it.
  *
  * A promise rather than the resolved value, and this is the whole fix. The
- * reranker is a 544MB ONNX file, downloaded on every run -- the cache lives under
- * RUNNER_TEMP, which a job does not keep -- and it took 63.9 seconds, measured.
+ * reranker is a 544MB ONNX file, and loading it took 63.9 seconds, measured.
  * atoma gave up on the call at 60.0s, so the first search of every run failed,
  * and the answer arrived fifteen seconds after nobody was waiting for it.
+ *
+ * That 63.9s was a download. It is not one any more: the runner keeps the cache
+ * between runs with `actions/cache`, keyed on the model name -- see the step in
+ * `workflows/atomaton-runner.wac.ts`, and `domain/model-cache.ts` for why the
+ * directory is a constant three places share. What is left on a cache hit is the
+ * ONNX session initialisation, which nothing can cache.
  *
  * Holding the resolved value meant the load could only begin when a search asked
  * for it, and the whole 63.9s landed inside that one request. Holding the promise
@@ -264,6 +269,19 @@ function cacheDirectory(): string {
 }
 
 async function loadRerankerOnce(): Promise<Reranker> {
+  // Imported here rather than at module scope, and that is not a micro-optimisation.
+  // At module scope it ran before the server answered anything, so starting this
+  // server at all cost minutes: the MCP test suite went from 42s to 3m28s and still
+  // timed out, which is why this was for a long time the one server with no
+  // round-trip test. It has one now. `atoma validate --with-live-tools` starts every
+  // server a definition declares, and would have paid the same cost wherever it runs.
+  //
+  // Nothing above this function uses the package, so nothing above it needs to wait:
+  // `tools/list`, the BM25 first stage and the issue index are all reachable before
+  // the reranker exists. A search that never reranks never loads it at all.
+  const { AutoTokenizer, AutoModelForSequenceClassification, env: transformersEnv } = await import(
+    "@huggingface/transformers"
+  );
   transformersEnv.cacheDir = cacheDirectory();
   log(`model cache: ${transformersEnv.cacheDir}`);
   const model = getRerankerModel();
