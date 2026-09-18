@@ -40,7 +40,7 @@ name: Atomaton Runner
         description: Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.
         required: false
         type: string
-        default: v0.1.40
+        default: v0.1.43
       reload_count:
         description: How many times this work has already rebuilt its environment (set by atomaton_env__reload_environment; leave at 0)
         required: false
@@ -80,7 +80,7 @@ name: Atomaton Runner
         description: Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.
         required: false
         type: string
-        default: v0.1.40
+        default: v0.1.43
       reload_count:
         description: How many times this work has already rebuilt its environment (set by atomaton_env__reload_environment; leave at 0)
         required: false
@@ -867,11 +867,15 @@ jobs:
           PROMPT=$(echo "$USAGE_LINE"     | grep -oP 'prompt=\K[0-9]+' || true)
           COMPLETION=$(echo "$USAGE_LINE" | grep -oP 'completion=\K[0-9]+' || true)
           TOTAL=$(echo "$USAGE_LINE"      | grep -oP 'total=\K[0-9]+' || true)
+          # Atoma prints cached=unknown when no inference reported one; the digits-only
+          # pattern leaves CACHED empty there, and the cell reads — rather than 0. Zero is a
+          # claim that the cache did nothing, which is not what an absent measurement says.
+          CACHED=$(echo "$USAGE_LINE"     | grep -oP 'cached=\K[0-9]+' || true)
           {
             echo "## Atoma Token Usage"
-            echo "| Agent | Prompt | Completion | Total |"
-            echo "|------------|--------|------------|-------|"
-            echo "| ${{ inputs.agent }} | ${PROMPT:-—} | ${COMPLETION:-—} | ${TOTAL:-—} |"
+            echo "| Agent | Prompt | Cached | Completion | Total |"
+            echo "|------------|--------|--------|------------|-------|"
+            echo "| ${{ inputs.agent }} | ${PROMPT:-—} | ${CACHED:-—} | ${COMPLETION:-—} | ${TOTAL:-—} |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Post result comment
         id: post-result

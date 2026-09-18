@@ -229,11 +229,19 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
 function tokenSummary(tokens) {
   const total = tokens.reduce((sum, t) => sum + t.total, 0);
   const prompt = tokens.reduce((sum, t) => sum + t.prompt, 0);
+  const reported = tokens.filter((t) => t.cached !== undefined);
+  const cachedPrompt = reported.reduce((sum, t) => sum + t.prompt, 0);
+  const cachedTokens = reported.reduce((sum, t) => sum + (t.cached ?? 0), 0);
   return {
     runs: tokens.length,
     total,
     perRun: distributionOf(tokens.map((t) => t.total)),
-    promptShare: total === 0 ? 0 : prompt / total
+    promptShare: total === 0 ? 0 : prompt / total,
+    cached: reported.length === 0 ? undefined : {
+      runs: reported.length,
+      tokens: cachedTokens,
+      ofPrompt: cachedPrompt === 0 ? 0 : cachedTokens / cachedPrompt
+    }
   };
 }
 
@@ -352,6 +360,8 @@ function windowSection(label, metrics) {
     const t = metrics.tokens;
     out.push(`**${n(t.total)} tokens** over ${plural(t.runs, "run", "runs")} that reported them, ` + `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** \u2014 what the agents were ` + "made to read, not what they wrote. Anything spent on making runs cheaper belongs " + "on that side. No money here, deliberately: of the four providers only one reports " + "a cost, and a price table goes quietly stale and then prints confident wrong " + "numbers.");
     out.push("");
+    out.push(t.cached ? `**${Math.round(t.cached.ofPrompt * 1000) / 10}% of that prompt was served from cache**, ` + `over the ${t.cached.runs === t.runs ? "runs" : `${n(t.cached.runs)} of ${n(t.runs)} runs`} whose ` + "provider reported it. A cached prompt token costs a fraction of a fresh one, so this " + "is most of what separates the counts above from the bill \u2014 and it is the figure that " + "moves when what gets resent changes." : "No run in this window reported how much of its prompt was cached, so the share is " + "unknown rather than zero \u2014 either the provider does not report it or the run predates " + "the field.");
+    out.push("");
   }
   out.push("| | p50 | p90 | p99 | max | total |");
   out.push("| --- | ---: | ---: | ---: | ---: | ---: |");
@@ -410,6 +420,21 @@ function renderReport(all, forWindow, now) {
   out.push("");
   return out.join(`
 `);
+}
+
+// src/domain/token-line.ts
+var PATTERN = /_Tokens:\s*([\d,]+)\s*total\s*\(([\d,]+)\s*prompt\s*\+\s*([\d,]+)\s*completion(?:,\s*([\d,]+)\s*of the prompt cached)?\)_/;
+function parseTokenLine(body) {
+  const match = PATTERN.exec(body);
+  if (!match)
+    return;
+  const toNumber = (s) => Number(s.replace(/,/g, ""));
+  return {
+    total: toNumber(match[1]),
+    prompt: toNumber(match[2]),
+    completion: toNumber(match[3]),
+    cached: match[4] === undefined ? undefined : toNumber(match[4])
+  };
 }
 
 // src/scripts/write_metrics_report.ts
@@ -542,16 +567,13 @@ function tokensReported(repo) {
   const comments = ghPaginated("api", `repos/${repo}/issues/comments?per_page=100`);
   const out = [];
   for (const comment of comments) {
-    const match = /_Tokens:\s*([\d,]+)\s*total\s*\(([\d,]+)\s*prompt\s*\+\s*([\d,]+)\s*completion\)_/.exec(comment.body ?? "");
-    if (!match)
+    const figures = parseTokenLine(comment.body ?? "");
+    if (!figures)
       continue;
     const number = Number(/(\d+)$/.exec(comment.issue_url ?? "")?.[1] ?? 0);
-    const toNumber = (s) => Number(s.replace(/,/g, ""));
     out.push({
       issue: number,
-      total: toNumber(match[1]),
-      prompt: toNumber(match[2]),
-      completion: toNumber(match[3]),
+      ...figures,
       at: comment.created_at
     });
   }
