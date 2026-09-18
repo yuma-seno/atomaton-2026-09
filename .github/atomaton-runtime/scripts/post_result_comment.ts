@@ -93,6 +93,13 @@ function redact(text, literals = []) {
   return out;
 }
 
+// src/domain/token-line.ts
+function renderTokenLine(u) {
+  const split = `${u.prompt ?? "?"} prompt + ${u.completion ?? "?"} completion`;
+  const share = u.cached === undefined ? "" : `, ${u.cached} of the prompt cached`;
+  return `_Tokens: ${u.total ?? "?"} total (${split}${share})_`;
+}
+
 // src/domain/mention.ts
 var MENTION = /(^|[^\w@/-])@([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\b(?!\/)/g;
 var CODE = /```[\s\S]*?```|`[^`\n]*`/g;
@@ -185,7 +192,8 @@ function tokenUsageLines(logsFile) {
   const prompt = /prompt=(\d+)/.exec(usageLine)?.[1];
   const completion = /completion=(\d+)/.exec(usageLine)?.[1];
   const total = /total=(\d+)/.exec(usageLine)?.[1];
-  return ["", "---", `_Tokens: ${total ?? "?"} total (${prompt ?? "?"} prompt + ${completion ?? "?"} completion)_`];
+  const cached = /cached=(\d+)/.exec(usageLine)?.[1];
+  return ["", "---", renderTokenLine({ total, prompt, completion, cached })];
 }
 function subIssueState(number, type) {
   if (type !== "issue")
