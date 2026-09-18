@@ -19,7 +19,7 @@
  * may hold the agent's own uncommitted work, which nothing here may disturb.
  */
 import { parseArgs } from "node:util";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atomaton-data.ts";
@@ -285,6 +285,36 @@ function tokensReported(repo: string): TokenRecord[] {
 }
 
 /**
+ * The skills a tree ships, under the names a run loads them by.
+ *
+ * From the filesystem rather than from git, which is the fix and not a preference.
+ * `ATOMATON_MACHINERY_ROOT` points at `${RUNNER_TEMP}/atomaton-machinery` -- a release
+ * zip unpacked beside the checkout, and not a git repository at all -- so the
+ * `git ls-files` this used returned nothing on every run since the section was
+ * written. Nothing said so: an empty list filtered to an empty list and printed as
+ * `Every skill has been loaded at least once`, which is why a skill loaded zero times
+ * could sit in the catalogue unnoticed.
+ *
+ * `undefined` when the directory is missing or holds no skill. A deployed tree always
+ * ships some, so an empty answer is this looking in the wrong place rather than a
+ * project without any, and the report says it could not check.
+ */
+export function skillsUnder(dir: string): string[] | undefined {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir, { recursive: true }).map(String);
+  } catch {
+    return undefined;
+  }
+  const skills = entries
+    .filter((entry) => entry.endsWith(".md"))
+    // `recursive` yields the platform's separator, and a skill is loaded by a name
+    // with slashes in it -- `delivery/pipeline-setup`, on Windows too.
+    .map((entry) => entry.replaceAll("\\", "/").slice(0, -".md".length))
+    .sort();
+  return skills.length === 0 ? undefined : skills;
+}
+/**
  * The tools and skills the repository offers, so the report can name what is unused.
  *
  * `undefined` rather than an empty list when a source could not be read. An empty list
@@ -294,7 +324,6 @@ function tokensReported(repo: string): TokenRecord[] {
 function declared(): { tools: string[] | undefined; skills: string[] | undefined } {
   const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   let tools: string[] | undefined;
-  const skills: string[] = [];
   try {
     // From the config, not from the generated tools file: that file is written per
     // run into the runner's temp directory and is gone by the time anything reads a
@@ -309,17 +338,9 @@ function declared(): { tools: string[] | undefined; skills: string[] | undefined
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
-  const listed = gitRun("ls-files", `${root}/${SKILLS_DIR}`);
-  for (const path of listed.stdout.split("\n")) {
-    const match = /skills\/(.+)\.md$/.exec(path.trim());
-    if (match?.[1]) skills.push(match[1]);
-  }
-  // A deployed tree always has skills. None listed means the directory was not where
-  // this looked, not that the project ships no skills -- so the report says it could
-  // not check rather than that everything is used.
-  if (skills.length === 0) {
+  const skills = skillsUnder(`${root}/${SKILLS_DIR}`);
+  if (skills === undefined) {
     log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
-    return { tools, skills: undefined };
   }
   return { tools, skills };
 }
