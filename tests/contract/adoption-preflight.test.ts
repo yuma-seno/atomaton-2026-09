@@ -5,7 +5,8 @@
  * This is the one document where being wrong costs the most. It is what someone
  * reads before their first run, and it had drifted into naming a credential the
  * shipped configuration does not use: `OPENAI_API_KEY`, while all three agent
- * definitions read `provider: openrouter-responses`. Since atoma v0.1.13 one
+ * definitions read `provider: openrouter-responses` -- the router at the time;
+ * they name `orcarouter-responses` now. Since atoma v0.1.13 one
  * provider reads one credential with **no fallback**, so every new adopter
  * following the checklist got a failed first run, on the run that is supposed to
  * prove the adoption worked.

@@ -2,9 +2,12 @@
 name: reviewer
 description: Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy.
 provider: orcarouter-responses
-model: qwen/qwen3-vl-235b-a22b-instruct
-# A vision-language model, and the agent meant to look at screens: a tool that
-# returns a screenshot reaches this one as a picture.
+model: deepseek/deepseek-v4.1-flash
+# The agent meant to look at screens: a tool that returns a screenshot reaches
+# this one as a picture. No longer a dedicated vision-language model -- the one
+# that was, qwen3-vl-235b, speaks no Responses at all, and Responses is the only
+# dialect that can carry an image back out of a tool result. A general model that
+# reads images beats a specialist that cannot be reached.
 vision: true
 knows_about:
   - engineer
