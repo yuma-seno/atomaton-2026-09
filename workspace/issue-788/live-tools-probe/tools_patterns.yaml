@@ -1,0 +1,9 @@
+alpha:
+  command: bun
+  args: [run, /tmp/atomaton-workspace/live-tools-probe/fake_server.ts]
+  env:
+    FAKE_TOOLS: '[{"name":"read"},{"name":"write"}]'
+  hooks:
+    tool_allowlist:
+      - read
+      - reed

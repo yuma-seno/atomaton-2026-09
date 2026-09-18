@@ -1,0 +1,5 @@
+alpha:
+  command: bun
+  args: [run, /tmp/atomaton-workspace/live-tools-probe/fake_server.ts]
+  env:
+    FAKE_DIE: '1'

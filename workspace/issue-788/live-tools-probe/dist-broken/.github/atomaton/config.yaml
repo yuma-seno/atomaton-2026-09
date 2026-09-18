@@ -1,0 +1,91 @@
+# Everything this project declares, in one file.
+#
+# Every setting is explained in docs/configuration.md, including the measurements
+# behind the numbers. The comments here name what a key is; that file says why.
+#
+#   https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md
+#
+# Grouped by who consumes the value. Nothing here says where a file lives --
+# .github/atomaton/README.md has that, and why.
+#
+# The first five sections are yours. `tools` is the machinery's own.
+
+
+# Where work branches from and merges back to. Empty = the default branch.
+base_branch: ""
+
+
+# Run before checks, before deployments, and before an agent starts.
+environment:
+  setup_commands: []
+  # Rebuilds of the environment one piece of work may ask for. The refusal goes
+  # to the agent, which carries on -- unlike the counters under `chain`.
+  max_reloads: 3
+
+
+# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name
+# `your_workflow` instead. Both is a configuration error.
+checks:
+  atomaton_runs:
+    # In order, stopping at the first failure.
+    commands:
+      - bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/scan_secrets.ts"
+    # Repository secrets this step may reach, by name.
+    secrets: []
+    runs_on: ubuntu-latest
+  # your_workflow: ci.yml
+
+
+# How a merged change ships. The same two arms.
+deploy:
+  atomaton_runs:
+    # Each names an environment, when it ships, and the commands that ship it.
+    targets: []
+    secrets: []
+    runs_on: ubuntu-latest
+  # your_workflow: cd.yml
+
+
+# When a person, not an agent, performs the merge. Any one of these firing is
+# enough.
+merge:
+  policy: manual              # manual = an agent never merges
+  governed_paths:             # changes here are a person's to merge
+    - ".github/**"
+  gates: []                   # conditional escalations, each with its reason
+
+
+# When a chain of runs stops and asks a person.
+chain:
+  after_handoffs: 5                 # handoffs with nobody else commenting
+  after_runs_without_change: 2      # runs that pushed, opened and merged nothing
+  # State one run leaves for the next. Change only on a name collision.
+  labels:
+    in_progress: atomaton/in-progress
+    sub_issue: atomaton/sub-issue
+    launched: atomaton/launched
+
+
+# What an agent can reach, and under what watch.
+#
+# The machinery's own configuration. This project owns the runtime it uses, so it
+# is declared here rather than in a second file; the generator writes the part the
+# core reads. Most projects never edit past this line.
+tools:
+  # Repository secrets the servers may reach. Separate from the lists under
+  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own
+  # environment.
+  secrets: []
+
+  # Your own tool servers, and overrides of the ones Atomaton ships.
+  #
+  # A name Atomaton does not ship is added. A name it does ship is overridden field by
+  # field, so raising one timeout does not mean copying an argv. The shipped set is
+  # listed in .github/atomaton/README.md and in docs/configuration.md; it is not here
+  # because deleting one breaks a run, and an agent only starts the servers its own
+  # `mcp_servers` names.
+  servers: {}
+
+  # Your own hooks, run after Atomaton's on every call to every server.
+  # Added to what Atomaton watches, never replacing it.
+  watch: {}

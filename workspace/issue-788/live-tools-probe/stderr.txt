@@ -1,0 +1,76 @@
+write_tools_file: 9 entries -> /tmp/atomaton-live-tools/tools.yaml
+[2m2026-09-18T19:59:56.799504Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.799537Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.799543Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.799548Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.800202Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.800217Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.800222Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.800239Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:56.880227Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'files' connected: atomaton-files-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:56.880386Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files:stderr] [atomaton-files] this process is now unreadable to its peers
+[2m2026-09-18T19:59:56.880402Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files:stderr] [atomaton-files] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:56.960681Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'shell' connected: atomaton-shell-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.047326Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'github' connected: atomaton-github-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.047454Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.047471Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.047478Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] Starting for yuma-seno/atomaton
+[2m2026-09-18T19:59:57.129239Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'web' connected: atomaton-web-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.129329Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.129341Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.209491Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'search' connected: atomaton-search-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.209561Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.209589Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.212381Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:log] could not preload the reranker (Cannot find package '@huggingface/transformers' imported from /home/runner/work/atomaton/atomaton/dist/.github/atomaton-runtime/tools/mcp/search.ts); the first search will try again (goes out with the next result)
+[2m2026-09-18T19:59:57.291350Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'atomaton_env' connected: atomaton-mcp-server v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.291451Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton_env:stderr] [atomaton-mcp] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.291464Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton_env:stderr] [atomaton-mcp] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.291470Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton_env:stderr] [atomaton-mcp] Starting atomaton-mcp-server (stdio transport)
+[2m2026-09-18T19:59:57.301531Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.301567Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.301574Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.301614Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.302204Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.302237Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.302243Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.302249Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.381047Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'files_readonly' connected: atomaton-files-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.381128Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files_readonly:stderr] [atomaton-files] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.381143Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files_readonly:stderr] [atomaton-files] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.467129Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'github' connected: atomaton-github-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.467214Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.467228Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.467243Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] Starting for yuma-seno/atomaton
+[2m2026-09-18T19:59:57.548473Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'web' connected: atomaton-web-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.548559Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.548571Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.628678Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'search' connected: atomaton-search-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.628749Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.628761Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.631808Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:log] could not preload the reranker (Cannot find package '@huggingface/transformers' imported from /home/runner/work/atomaton/atomaton/dist/.github/atomaton-runtime/tools/mcp/search.ts); the first search will try again (goes out with the next result)
+[2m2026-09-18T19:59:57.709512Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'atomaton' connected: atomaton-mcp-server v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.709626Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton:stderr] [atomaton-mcp] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.709639Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton:stderr] [atomaton-mcp] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.709646Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:atomaton:stderr] [atomaton-mcp] Starting atomaton-mcp-server (stdio transport)
+[2m2026-09-18T19:59:57.719645Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.719667Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.719673Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.719698Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.720292Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.720319Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.720330Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.720335Z[0m [33m WARN[0m [2matoma::infra::credentials[0m[2m:[0m a tools file references something that is not available; it will be empty [3mname[0m[2m=[0m"GH_TOKEN" [3mwhat[0m[2m=[0m"credential"
+[2m2026-09-18T19:59:57.800814Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'files_readonly' connected: atomaton-files-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.800919Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files_readonly:stderr] [atomaton-files] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.800935Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:files_readonly:stderr] [atomaton-files] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.884287Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'github' connected: atomaton-github-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.884407Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.884422Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:57.884429Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:github:stderr] [atomaton-github] Starting for yuma-seno/atomaton
+[2m2026-09-18T19:59:57.962642Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'web' connected: atomaton-web-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:57.962737Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] this process is now unreadable to its peers
+[2m2026-09-18T19:59:57.962749Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:web:stderr] [atomaton-web] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:58.041772Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m MCP server 'search' connected: atomaton-search-mcp v1.0.0 (protocol: 2024-11-05)
+[2m2026-09-18T19:59:58.041874Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] this process is now unreadable to its peers
+[2m2026-09-18T19:59:58.041886Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:stderr] [atomaton-search] also removed 4 PATH entries this process cannot inspect
+[2m2026-09-18T19:59:58.044376Z[0m [32m INFO[0m [2matoma::infra::mcp[0m[2m:[0m [MCP:search:log] could not preload the reranker (Cannot find package '@huggingface/transformers' imported from /home/runner/work/atomaton/atomaton/dist/.github/atomaton-runtime/tools/mcp/search.ts); the first search will try again (goes out with the next result)

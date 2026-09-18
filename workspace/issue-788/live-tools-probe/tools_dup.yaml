@@ -1,0 +1,12 @@
+alpha:
+  unprefixed: true
+  command: bun
+  args: [run, /tmp/atomaton-workspace/live-tools-probe/fake_server.ts]
+  env:
+    FAKE_TOOLS: '[{"name":"read"}]'
+beta:
+  unprefixed: true
+  command: bun
+  args: [run, /tmp/atomaton-workspace/live-tools-probe/fake_server.ts]
+  env:
+    FAKE_TOOLS: '[{"name":"read"}]'
