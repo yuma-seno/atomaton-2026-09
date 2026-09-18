@@ -915,6 +915,16 @@ The frontmatter `provider` field selects the client, not the vendor:
 All three shipped agents declare `orcarouter-responses`, so
 `ORCAROUTER_API_KEY` is the credential an adoption needs.
 
+**That default is a recommendation, and the reason is adoption cost.** One key
+reaches every vendor in the catalogue, so changing model later is an edit to one
+line rather than another account, another billing relationship and another secret.
+It serves both dialects, so `provider` can move between the pair without the vendor
+moving with it. And it passes provider list price through unchanged — including the
+peak and off-peak tiers some vendors publish — so the hop is not a markup. What the
+hop does cost is one more service that can be down, and one that sees the traffic;
+naming a vendor directly is the trade in the other direction, and every row above is
+reachable that way.
+
 **One provider, one credential, and the credential is what selects the provider**
 when neither the agent definition nor the `ATOMA_PROVIDER` variable names one. Add
 exactly the secret for the provider you intend to use. Adding two is an error naming
