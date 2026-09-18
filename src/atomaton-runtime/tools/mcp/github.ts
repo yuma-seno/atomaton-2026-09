@@ -30,7 +30,7 @@ import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/men
 import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG, PARENT_TAG } from "../../../lib/tags.ts";
 import { closingKeywordRefusal, closingReferences } from "../../../domain/issue-links.ts";
 import type { GhIssueAuthor } from "../../../lib/types.ts";
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
 import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
 import { decidePostMergeHandoff } from "../../../domain/handoff.ts";
 import { isAttended, unattendedNotice } from "../../../domain/unattended-pull-request.ts";
@@ -1280,7 +1280,7 @@ async function closeParentAndReport(parentIssue: number): Promise<string> {
   }
 }
 
-const { tools: TOOLS, dispatch } = buildMcpTools([
+const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "create_issue",
     description: "Create a GitHub issue in the current repository and return its number and URL. Use this for durable work items, especially delegated child tasks; sub_issue defaults to true and links the new issue to the current issue. This mutates GitHub and records the operation in Atomaton's audit log.",
@@ -1334,6 +1334,10 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
     handler: mergePr,
   }),
 ]);
+
+// GitHub text carries Atomaton's own state markers, which are not part of any answer
+// an agent asked for. See `withoutBookkeeping`.
+const dispatch = withoutBookkeeping(rawDispatch);
 
 async function main(): Promise<void> {
   // Refused at startup, not per call.

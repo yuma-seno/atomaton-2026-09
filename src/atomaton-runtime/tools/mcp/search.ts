@@ -35,7 +35,7 @@
  * hazard rather than a theoretical one, and the description says so outright.
  */
 // `@huggingface/transformers` is NOT imported here. See `loadRerankerOnce`.
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, withoutBookkeeping, z } from "../../../lib/mcp-tool.ts";
 import { report } from "../../../lib/mcp-report.ts";
 import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../domain/bm25.ts";
 import { corpusFrom } from "../../../domain/code-corpus.ts";
@@ -502,7 +502,7 @@ async function searchCode(a: z.infer<typeof CODE_SCHEMA>): Promise<string> {
   return notice === undefined ? JSON.stringify(results, null, 2) : `${notice}\n\n${JSON.stringify(results, null, 2)}`;
 }
 
-const { tools, dispatch } = buildMcpTools([
+const { tools, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "search_issues",
     description:
@@ -518,6 +518,10 @@ const { tools, dispatch } = buildMcpTools([
     handler: searchCode,
   }),
 ]);
+
+// GitHub text carries Atomaton's own state markers, which are not part of any answer
+// an agent asked for. See `withoutBookkeeping`.
+const dispatch = withoutBookkeeping(rawDispatch);
 
 async function main(): Promise<void> {
   // Start the reranker load now, and do not await it. The 63.9 seconds it takes
