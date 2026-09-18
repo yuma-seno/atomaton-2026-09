@@ -1,0 +1,12 @@
+# to use and which host to reach -- so they belong in the environment; the
+# credentials do not, and are not here any more.
+#
+# Each is re-exported only when non-empty: exporting an empty ATOMA_PROVIDER would
+# defeat Atoma's provider auto-detection.
+for name in OPENAI_BASE_URL ATOMA_PROVIDER; do
+  eval "value=\\\${\${name}_IN:-}"
+  if [ -n "$value" ]; then
+    export "\${name}=\${value}"
+  fi
+done
+
