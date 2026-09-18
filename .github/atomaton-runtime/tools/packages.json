@@ -1,7 +1,5 @@
 {
-  "npm": [
-    "@modelcontextprotocol/server-filesystem"
-  ],
+  "npm": [],
   "bun": [
     "@huggingface/transformers"
   ],

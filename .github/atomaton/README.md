@@ -47,8 +47,8 @@ every run.
 
 | Server | What it is for |
 | --- | --- |
-| `filesystem` | Reads and writes files in the work tree. |
-| `filesystem_readonly` | Reads files and nothing else, for agents that must not write. |
+| `files` | Reads, searches and changes files in the work tree. Its tools are named `read`, `grep`, `glob`, `edit`, `write`, `list`, with no server prefix. |
+| `files_readonly` | The same server with the three that write left out, for agents that must not change anything. |
 | `shell` | Runs one foreground command. Guarded, and holds no credentials of its own. |
 | `github` | Issues, pull requests, comments, and every Git mutation. |
 | `web` | Fetches a URL. Searching the web is a skill, not a tool. |
