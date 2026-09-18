@@ -3471,7 +3471,7 @@
     ]
   },
   {
-    "path": "sessions/issue-766/engineer.json",
+    "path": "sessions/issue-766/archive/engineer-2.json",
     "agent": "engineer",
     "messages": 230,
     "calls": 122,
@@ -3506,6 +3506,41 @@
         "messages": 230,
         "seconds": 3081,
         "started": "2026-09-18T10:29:09Z"
+      }
+    ]
+  },
+  {
+    "path": "sessions/issue-766/engineer.json",
+    "agent": "engineer",
+    "messages": 87,
+    "calls": 50,
+    "failed": 1,
+    "refused": 0,
+    "skills": [
+      "project/conventions",
+      "engineering/tdd",
+      "delivery/implementation-handoff"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 3,
+      "shell__shell_execute": 12,
+      "read": 20,
+      "glob": 2,
+      "list": 5,
+      "grep": 8
+    },
+    "acts": {
+      "other": 9,
+      "edit": 3
+    },
+    "runs": [
+      {
+        "ended": "2026-09-18T12:51:56Z",
+        "ended_because": "stopped",
+        "iterations": 28,
+        "messages": 87,
+        "seconds": 374,
+        "started": "2026-09-18T12:45:42Z"
       }
     ]
   },
