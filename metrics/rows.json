@@ -3455,6 +3455,26 @@
     "runs": []
   },
   {
+    "path": "sessions/issue-769/reviewer.json",
+    "agent": "reviewer",
+    "messages": 5,
+    "calls": 0,
+    "failed": 0,
+    "refused": 0,
+    "skills": [],
+    "tools": {},
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-18T03:22:47Z",
+        "ended_because": "failed",
+        "messages": 5,
+        "seconds": 5,
+        "started": "2026-09-18T03:22:42Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
