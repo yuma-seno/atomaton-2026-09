@@ -24,7 +24,9 @@ step is done.
 
 **Settings > Secrets and variables > Actions > New repository secret**, named
 `ORCAROUTER_API_KEY`. This is the one the shipped configuration needs: all three
-agent definitions read `provider: orcarouter-responses`.
+agent definitions read `provider: orcarouter-responses`. That is a recommendation
+rather than an arbitrary pick — [docs/configuration.md](configuration.md) says why,
+and what choosing differently costs.
 
 One provider, one credential, and **no fallback** — a key under a different name does
 not stand in for this one, and two keys present is an error naming both rather than a
