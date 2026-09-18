@@ -6728,7 +6728,10 @@ function dispatchRunner(d) {
 
 // src/lib/tags.ts
 var TAG_PREFIX = `atomaton:`;
+var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
   const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
     write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
