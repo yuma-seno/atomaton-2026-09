@@ -101,7 +101,10 @@ var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
 // src/lib/tags.ts
 var TAG_PREFIX = `atomaton:`;
+var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
   const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
   return {
     write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
@@ -130,6 +133,10 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
+function withoutTags(text) {
+  const tags = EVERY_TAG_PATTERN.join("|");
+  return text.replace(new RegExp(`(?:^[ \\t]*)?(?:${tags})[ \\t]*(?:\\r?\\n)?`, "gm"), "");
+}
 
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
@@ -340,7 +347,11 @@ function main() {
   }
   const maxDiffChars = Number(values["max-diff-chars"] ?? 30000);
   const { events, resolvedType, resolvedNumber } = fetchEvents(values.type, Number(values.number), maxDiffChars);
-  writeFileSync(values.out, JSON.stringify(events, null, 2));
+  const withoutBookkeeping = events.map((event) => ({
+    ...event,
+    content: withoutTags(event.content)
+  }));
+  writeFileSync(values.out, JSON.stringify(withoutBookkeeping, null, 2));
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput)
     appendFileSync(githubOutput, `resolved_type=${resolvedType}
