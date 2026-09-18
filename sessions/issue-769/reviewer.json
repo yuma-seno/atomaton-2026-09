@@ -45,21 +45,396 @@
       "content": "```diff\ndiff --git a/src/workflows/actions/atoma-cli.ts b/src/workflows/actions/atoma-cli.ts\nindex a9faa5e8..26d6aa2d 100644\n--- a/src/workflows/actions/atoma-cli.ts\n+++ b/src/workflows/actions/atoma-cli.ts\n@@ -48,7 +48,8 @@ import { TypedOutputsStep } from \"./base.ts\";\n  * v0.1.14 gives each router a name for each dialect it serves, which is what the\n  * agent definitions here needed: they read `provider: openai-responses # openrouter`,\n  * a row that in v0.1.13 means OpenAI itself. So this pin moves with\n- * `agent-definitions/*.md` as well.\n+ * `agent-definitions/*.md` as well. The comment is gone today: all three ship\n+ * `provider: orcarouter-responses`, a name that says where the request goes.\n  *\n  * v0.1.16 carries two fixes that are about THIS repository's runs specifically.\n  *\n```",
       "atoma_metadata": {
         "author": "github",
-        "created_at": "2026-09-18T03:20:53Z",
+        "created_at": "2026-09-18T05:11:57Z",
         "event_type": "pr_diff",
         "id": "pr-770-diff",
         "layer": "github-context",
         "sha": "1d14ec5c",
         "source": "github"
       }
+    },
+    {
+      "role": "user",
+      "content": "OrcaRouter 切り替え後、**engineer は成功、reviewer は失敗**しました。\n\n```\nOpenAI Responses API error (400 Bad Request):\n{\"error\":{\"message\":\"The upstream provider rejected this request. Please check the\nrequest parameters and content.\",\"type\":\"invalid_request_error\",\"param\":\"\",\n\"code\":\"upstream_rejected_request\"}}\n```\n\n## 切り分け済み\n\n| エージェント | モデル | vision | 結果 |\n|---|---|---|---|\n| engineer | `deepseek/deepseek-v4-flash-0731` | false | ✅ 成功 |\n| reviewer | `qwen/qwen3-vl-235b-a22b-instruct` | true | ❌ 400 |\n| orchestrator | `qwen/qwen3.7-plus` | true | 未実行 |\n\n- **`vision: true` は原因ではない可能性が高い**。コアの `vision` は「メッセージから画像を落とさない」という意味だけで（`application/runner/execution.rs:272` の `messages_for_provider`）、画像を含まないセッションでは送信内容が変わらない\n- **方言は3本とも同じ** `orcarouter-responses`。engineer が通っているので、方言そのものは動く\n- `upstream_rejected_request` は OrcaRouter が上流に投げて**上流が拒否した**という意味。モデルは存在するが、リクエストの形を受け付けていない\n\n## 確認したいこと\n\nOrcaRouter の `/v1/models` は各モデルに **`supported_endpoint_types`** を返します。reviewer のモデルが `/responses` を含んでいない可能性が高い。\n\n```bash\ncurl -s https://api.orcarouter.ai/v1/models \\\n  -H \"Authorization: Bearer $ORCAROUTER_API_KEY\" \\\n  | jq '.data[] | select(.id | test(\"qwen3-vl-235b|qwen3.7-plus|deepseek-v4-flash-0731\")) | {id, supported_endpoint_types}'\n```\n\n`jq` が無ければ:\n\n```bash\ncurl -s https://api.orcarouter.ai/v1/models \\\n  -H \"Authorization: Bearer $ORCAROUTER_API_KEY\" \\\n  | python3 -c \"import json,sys; [print(m['id'], m.get('supported_endpoint_types')) for m in json.load(sys.stdin)['data'] if 'qwen3-vl-235b' in m['id'] or 'qwen3.7-plus' in m['id'] or 'deepseek-v4-flash-0731' in m['id']]\"\n```\n\nこれで3本とも分かります。**orchestrator がまだ未実行**なので、`qwen3.7-plus` も一緒に見ておきたい — 同じ理由で落ちるなら、reviewer だけ直しても次で詰まります。\n\n## 想定される対応\n\n`supported_endpoint_types` に `/responses` が無ければ、選択肢は2つ:\n\n1. **そのエージェントだけ `provider: orcarouter`**（Chat Completions 方言）にする。属性ヘッダは両方言に付くので、App 表示は維持されます\n2. **`/responses` に対応したモデルへ変える**。`qwen/qwen3-vl-235b-a22b-thinking` など\n\n1 のほうが変更が小さく、モデルの性格も変わりません。\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-18T03:33:01Z",
+        "event_type": "issue_comment",
+        "id": 5724757473,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "/reviewer\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-18T05:11:57Z",
+        "event_type": "pr_comment",
+        "id": 5725491272,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_4wSqqnewRP6Iwujoj4uw9226",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"name\": \"review/quick-quality-gate\"}"
+          }
+        },
+        {
+          "id": "call_01_ySB40gsFwWYMHHwcCklb0028",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"name\": \"project/conventions\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: review/quick-quality-gate\n\n# Quick Quality Gate\n\nReview for merge-blocking defects, not optional polish.\n\n1. Inspect prior review rounds to understand loop state.\n2. Read the PR diff and identify changed behavioral contracts.\n3. Check for incorrect control flow, unsafe input or command handling, stale generated output, broken compatibility, and missing regression coverage.\n4. Run the mandatory checks below for whichever categories the diff touches.\n5. Distinguish evidence-backed defects from stylistic preferences.\n6. If sound, submit the required LGTM review and follow the configured merge policy.\n7. If defective, return a concise engineer directive naming the behavior, location, and expected correction.\n8. Escalate rather than continuing an exhausted review loop.\n\nDo not broaden into unrelated architecture review. A finding must describe a concrete failure mode or requirement violation.\n\n## Mandatory checks\n\nThese are not optional reads. Each covers a failure that a diff-only\n\n[atomaton] 616 characters dropped from the middle; 4000 shown\n\nfile is exactly what they cannot see.\n- If a search is not possible, the removal is unverified. Say so and return it.\n\n### `tools.servers` or an agent definition changed\n\nRead **all** of `.github/atomaton/agent-definitions/*.md`, not just the one in the\ndiff.\n\nEvery name under an agent's `mcp_servers` has to resolve to a server the run will\nstart, and two things provide one: the servers Atomaton ships, which are **not** in\n`config.yaml` and cannot be removed, and whatever `tools.servers` adds. **So a\nname absent from `tools.servers` is not a finding** — every shipped name is absent\nfrom it, and in most repositories that section is empty. What decides is\n`atoma validate`, which the required check on the pull request already runs\nagainst that pull request's own config: it fails on a name nothing provides, and\nlists the servers that do exist. Do not repeat that check by eye, and do not\nreject a definition because a name is missing from the config.\n\nWhat that check cannot judge is the part to spend your reads on:\n\n- A server the diff **removes or renames** under `tools.servers` is one an agent\n  may still name. Search every definition for the old name before accepting it.\n- An entry whose name is one Atomaton ships is an **override**, merged field by\n  field. One that pastes the whole shipped entry to change a single field is a\n  defect worth returning: the pasted fields stop tracking the upstream ones.\n- A server that spawns a command which is not `bun` needs that binary installed by\n  the runner. Confirm the package appears under `tools.packages` in the same\n  config. The shipped servers' packages are in the deliverable, not there, so a\n  diff that adds one of those to the config is the wrong half of the tree.\n\nNo tools file ships: the one `atoma` is handed is written at the start of each run\nfrom the shipped servers plus `tools.servers`, and deleted with the runner. So a\ndiff that adds a `tools/tools.yaml`, or edits one an older release left behind, is\na defect whatever it says — nothing reads that file, and the change it was meant\nto make never happens. Require it in `config.yaml`.\n\n### Generated output touched\n\nSome files are produced by a build rather than written by hand.\n\n- An edit made directly to one is a defect even when its content is correct. The\n  next build overwrites it, so the change it was meant to make is silently lost.\n  Require the change in the source the generator reads.\n- When the project regenerates and commits that output itself, a diff carrying it\n  is also a defect: concurrent branches collide in files no human wrote, and a\n  regenerated bundle buries the real change under a far larger diff.\n- Establish which convention the project follows before ruling, rather than\n  assuming. The build configuration states it.\n\n### Workflow or runner changed\n\nTrace the values a new step depends on. A step that reads a file must have that\nfile guaranteed present in the deployed tree, not merely present in the branch\nwhere it was authored.",
+      "tool_call_id": "call_00_4wSqqnewRP6Iwujoj4uw9226"
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: project/conventions\n\n# Repository conventions\n\nThis repository builds Atomaton, the delivery template. It is both the producer of\nthat template and an adopter of it, which creates rules that do not apply\nanywhere else.\n\nThis file is not part of the template. Its source is `self/atomaton/skills/project/`,\nand it is deliberately absent from `src/` so adopters never receive it.\n\n## The four trees\n\n| Tree | What it is | Who writes it |\n| --- | --- | --- |\n| `src/**` | Source of the deliverable | You |\n| `dist/.github/**` | The deliverable adopters receive | The build |\n| `self/**` | This repository's own four files | You |\n| `.github/**` | This repository's running configuration | The self-deploy job, from a release plus `self/` |\n\nTwo different activities live in this table, and which one you are doing decides\nwhich rules apply:\n\n- **improving the deliverable** — `src/**`. It affects every adopter, and it\n  reaches this repository only after a release and a self-deploy.\n- **impro\n\n[atomaton] 2260 characters dropped from the middle; 4000 shown\n\n hold.\n\n`github__check_merge_readiness` reports against whatever the ruleset currently\nrequires, so it follows the file rather than holding a second opinion.\n\nNothing bypasses it. No workflow writes to main — the release job attaches the deliverable\nto a release instead — and your merge satisfies the rules like anyone else's. Do\nnot propose a bypass actor: it would mean naming a GitHub App ID or a deploy key,\nvalues that exist only after manual setup, so the JSON would stop describing the\nwhole configuration.\n\nThe workflows that run agents are generated from `src/workflows/` and shipped.\n`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and\n`probe-dumpable.yml`.\n\n## Adding a static file to the deliverable\n\nA new non-code file under `src/atomaton/` must also be added to `build-dist.ts`'s\nverbatim-copy list, or it never reaches `dist/` at all.\n`tests/contract/deployment-contract.test.ts` enforces this.\n\n## `.github/` is an adoption, not a mirror\n\nNothing regenerates `.github/` automatically. It is this repository's deliberate\nadoption of the deliverable, so it lags `src/` until someone applies a release.\n\n**That lag is the point.** A change to `src/` must not reconfigure the live agents\nthe moment it merges. Two breakages reached the running system exactly that way.\n\n### Applying a release\n\nDispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the\nActions tab. It opens a pull request and merges nothing. `.github/**` is in\n`merge.governed_paths`, so a person reviews it.\n\nWhat it does:\n\n```bash\nrm -rf .github            # so a file the release DELETED is gone, not orphaned\nunzip release.zip         # the deliverable\ncp -r self/. .github/     # this repository's own, at the same paths\n```\n\n`.github/` is therefore exactly those two sources, with nothing kept alive by\nremembering to. Before `self/` existed this was a `cp -r` followed by\n`git checkout -- .github/atomaton/config.yaml`, and a file the template had removed\nstayed in the tree with no diff to notice it by.\n\nIt needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because\n`GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by\npath. No agent can reach that token: it is named in one file outside the\ndeliverable, and `atomaton-runner.yml` does not mention it.\n\n### Changing something in `self/`\n\nAn overlay entry is a copy, not a build, so it needs no release. Change\n`self/X` and `.github/X` **in the same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections. Editing `.github/X` alone is worse than not editing it at all: the next\nself-deploy overwrites it from `self/` and the change disappears without a diff.\n\nA file added to `.github/` that is in no release and not in `self/` is not checked\nfor, because the next deploy removes it anyway and because `.github/**` is in\n`merge.governed_paths` — no agent can merge a change there, so a person reads it first.",
+      "tool_call_id": "call_01_ySB40gsFwWYMHHwcCklb0028"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_7Tt9zgMVudGWwXhklZKT7987",
+          "type": "function",
+          "function": {
+            "name": "github__check_merge_readiness",
+            "arguments": "{\"number\": 770}"
+          }
+        },
+        {
+          "id": "call_01_dSaGUQ88yjKWaYMJpRTz0864",
+          "type": "function",
+          "function": {
+            "name": "github__get_pr",
+            "arguments": "{\"number\": 770}"
+          }
+        },
+        {
+          "id": "call_02_fCDzQaybDXOvphKdg8gd2467",
+          "type": "function",
+          "function": {
+            "name": "github__get_pr_reviews",
+            "arguments": "{\"number\": 770}"
+          }
+        },
+        {
+          "id": "call_03_RbBVnIsgyH5uWSVwj2av5027",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__read_file",
+            "arguments": "{\"path\": \"src/workflows/actions/atoma-cli.ts\", \"head\": 80}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"number\":770,\"ready\":true,\"blockers\":[],\"merge_state_status\":\"UNSTABLE\",\"required_checks\":[],\"checks\":[{\"name\":\"atomaton-check\",\"status\":\"completed\",\"conclusion\":\"success\"},{\"name\":\"pick-runner\",\"status\":\"completed\",\"conclusion\":\"success\"}],\"ci_dispatched\":false,\"summary\":\"Ready to merge.\"}",
+      "tool_call_id": "call_00_7Tt9zgMVudGWwXhklZKT7987"
+    },
+    {
+      "role": "tool",
+      "content": "{\"baseRefName\":\"main\",\"createdAt\":\"2026-09-18T03:20:53Z\",\"headRefName\":\"atomaton/issue-769\",\"number\":770,\"state\":\"OPEN\",\"title\":\"atoma-cli.ts: note the current provider in the v0.1.14 history comment\",\"body\":\"<!-- atomaton:parent-issue=769 -->\\n<!-- atomaton:origin-agent=engineer -->\\nCloses #769\\n<!-- atomaton:notify=hws-yuma-seno -->\\n## What\\n\\n`src/workflows/actions/atoma-cli.ts` carries a version-history comment whose v0.1.14 paragraph quotes the old provider name `openai-responses # openrouter` without saying it is past.\\n\\nThe issue asked for a judgment call, not a string swap:\\n\\n- The quoted line is **past-tense history** (\\\"which is what the agent definitions here needed: they read ...\\\") — it records what the v0.1.14 pin was for, so it stays as written.\\n- What was missing is the present tense. The paragraph now ends: *\\\"The comment is gone today: all three ship `provider: orcarouter-responses`, a name that says where the request goes.\\\"*\\n\\nThis matches the precedent already set in `docs/recipes.md` (\\\"They name `openrouter-responses` now\\\"), which used the same framing for the same line — so the comment is no longer the one stale copy of that sentence.\\n\\n## Verification\\n\\n- `bun run typecheck` — pass\\n- `bun run test` — 912 pass, 0 fail (run with the runner-only env vars unset; with them set, the same 14 environment-sensitive script tests fail on the untouched base too, per the harness's documented hermeticity note)\\n- `bun run synth` — pass; dist/ is gitignored, nothing generated to commit\\n\\n`ATOMA_DEFAULT_VERSION` (`v0.1.35`) and every core-binary reference (`yuma-seno/atoma`, `atoma-linux-x86_64`) are untouched, per the issue constraint.\"}",
+      "tool_call_id": "call_01_dSaGUQ88yjKWaYMJpRTz0864"
+    },
+    {
+      "role": "tool",
+      "content": "{\"total\":0,\"omitted\":0,\"reviews\":[]}",
+      "tool_call_id": "call_02_fCDzQaybDXOvphKdg8gd2467"
+    },
+    {
+      "role": "tool",
+      "content": "/**\n * atoma-cli.ts — the steps that put the `atoma` binary on a runner, and the\n * version they install by default.\n *\n * Two workflows need it now. `atomaton-runner` runs agents with it; `atomaton-validate-pr`\n * calls `atoma validate` on the agent definitions and tools file a pull request\n * would merge, so that a name resolving to nothing is a red check rather than a\n * failure on whoever triggers the next run. Both install it the same way, from one\n * place, because a second copy of a download-and-chmod is a second thing to fix\n * when a release asset is renamed.\n */\nimport { ActionsCheckoutV4 } from \"@github-actions-workflow-ts/actions\";\nimport { TypedOutputsStep } from \"./base.ts\";\n\n/**\n * The Atoma release a run installs unless the dispatch says otherwise.\n *\n * Every raise of this pin so far has been coupled to something else in this\n * repository, and the record of what is the reason this comment is long.\n *\n * Moves with `tools.servers` in config.yaml -- the declarations the\n\n[atomaton] 800 characters dropped from the middle; 4000 shown\n\n from the machinery checkout\n * rather than from the pull request under review. To v0.1.11 an `args` entry\n * carrying `${ATOMATON_MACHINERY_ROOT:-.}` is a literal path that does not exist, so\n * this pin and `tools.servers` move together here too.\n *\n * v0.1.13 is a third coupling, and this one is with the repository's SECRETS.\n * Providers became a table there: `openai` means OpenAI rather than defaulting to\n * OpenRouter, the routers have their own names, and each provider reads its own\n * credential -- `OPENROUTER_API_KEY`, `ORCAROUTER_API_KEY` -- with no fallback to\n * `OPENAI_API_KEY`. Two credentials present is an error naming both, so a\n * repository that keeps an OpenRouter key under the old name AND adds it under the\n * new one gets a failed run rather than a guess. Raising this pin means the secret\n * has to have been renamed first.\n *\n * v0.1.14 gives each router a name for each dialect it serves, which is what the\n * agent definitions here needed: they read `provider: openai-responses # openrouter`,\n * a row that in v0.1.13 means OpenAI itself. So this pin moves with\n * `agent-definitions/*.md` as well. The comment is gone today: all three ship\n * `provider: orcarouter-responses`, a name that says where the request goes.\n *\n * v0.1.16 carries two fixes that are about THIS repository's runs specifically.\n *\n * The Responses adapter assembled its own `extra_body` merge and left out the\n * reconciliation that protects the runtime tool definitions -- so an agent carrying\n * `extra_body.tools` replaced them. All three definitions here carry OpenRouter's two\n * server tools, and all three use that adapter, so every request sent those two and no\n * MCP schema at all. The model was inferring argument shapes from the names in the\n * system prompt, which is the shape of the argument failures that have been read as model\n * weakness -- `issue_number` for `number`, `form` for `from`, `label` for `labels`.\n *\n * And a `vision: false` agent had pictures replaced before the message entered the\n * session, so what atomaton-data recorded was not what happened: resuming with\n * `vision: true` could never get them back.\n *\n * v0.1.17 is a fourth coupling, this one with `tools.servers` again, and the\n * first where the OLD version is actively wrong rather than merely unaware.\n *\n * It reads `request_timeout_secs` per server. v0.1.16 ignores the key -- serde\n * drops unknown fields -- so the tools file is accepted either way and nothing\n * fails. What the old version does instead is cap every `tools/call` at 60\n * seconds, which is what `shell` and `search` declare that key to escape:\n *\n *   - `shell_execute` offers the agent `timeout_seconds` up to 3600. Under v0.1.16\n *     every value above 60 is a promise that cannot be kept, and a build or a test\n *     suite running over a minute fails with an error naming the shell server\n *     rather than the client that gave up.\n *   - the first search of a run loads a 544MB reranker. Measured at 63.9s against",
+      "tool_call_id": "call_03_RbBVnIsgyH5uWSVwj2av5027"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_pypKA0AoKiuFtwCzqPN92724",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__search_files",
+            "arguments": "{\"path\": \".\", \"pattern\": \"**/agent-definitions/*.md\"}"
+          }
+        },
+        {
+          "id": "call_01_iVHShKtddTizdifgb24m5927",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__read_file",
+            "arguments": "{\"path\": \"docs/recipes.md\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "/home/runner/work/atomaton/atomaton/.github/atomaton/agent-definitions/engineer.md\n/home/runner/work/atomaton/atomaton/.github/atomaton/agent-definitions/orchestrator.md\n/home/runner/work/atomaton/atomaton/.github/atomaton/agent-definitions/reviewer.md\n/home/runner/work/atomaton/atomaton/src/atomaton/agent-definitions/engineer.md\n/home/runner/work/atomaton/atomaton/src/atomaton/agent-definitions/orchestrator.md\n/home/runner/work/atomaton/atomaton/src/atomaton/agent-definitions/reviewer.md",
+      "tool_call_id": "call_00_pypKA0AoKiuFtwCzqPN92724"
+    },
+    {
+      "role": "tool",
+      "content": "# Recipes\n\nFor somebody who already has Atomaton running and wants it to do one specific thing.\n\nEach entry is the goal, the smallest change that reaches it, and a pointer. What a\nsetting means, what else it accepts and why it defaults the way it does belongs in\n[docs/configuration.md](configuration.md); this page is the index from a goal to the\nline you edit.\n\n## Contents\n\n| You want to | What you change |\n| --- | --- |\n| [run an agent on a different model](#run-an-agent-on-a-different-model) | `model`, in an agent definition |\n| [have a screenshot reach an agent as a picture](#have-a-screenshot-reach-an-agent-as-a-picture) | `vision`, in an agent definition |\n| [switch between the Chat Completions and Responses APIs](#switch-between-the-chat-completions-and-responses-apis) | `provider`, in an agent definition |\n| [reach a provider the table does not list](#reach-a-provider-the-table-does-not-list) | the `OPENAI_BASE_URL` repository variable |\n| [prefer particular upstream providers](\n\n[atomaton] 19176 characters dropped from the middle; 4000 shown\n\nnfiguration.md). The safest habit is to keep\nyour customisation where the template will not fight you for it — `config.yaml` covers\nthe labels, the merge policy, the environment setup, the tool servers and the workflows\nto dispatch, and `skills/project/` is yours outright.\n\n### Have something happen every week\n\nAtomaton has no schedule setting, and will not grow one — but the thing you want is two\nsteps away, and both are ordinary.\n\nCopy [`examples/workflows/scheduled-issue.yml`](../examples/workflows/scheduled-issue.yml)\ninto your own `.github/workflows/`, then edit four things in it: the cron, the issue\ntitle, the issue body, and which agent the last step hands the issue to. If you run more\nthan one of these, the label it creates and matches on is the fifth — the example uses it\nto avoid opening a second issue while the first is still open.\n\n**You have to copy it yourself.** GitHub refuses `GITHUB_TOKEN` writes to\n`.github/workflows/**` by identity, on every path and branch, so no agent can add this\nfor you — and `.github/**` is a governed path, so a person merges the pull request that\nadds it. Both of those are the system working, not obstacles to route around.\n\n**Why it creates an issue instead of starting an agent.** Agents work on an issue or a\npull request. Something you want done every week *is* a work item that should exist every\nweek — so the schedule creates the work item, and everything after that is the machinery\nyou already have: triggers, the in-progress label, session persistence, review, merge\ngates. Nothing needs a schedule-only execution path. It also puts the cost where you can\nsee it: an issue is free, and whether it becomes an agent run is then an ordinary\ndecision rather than something a cron expression decided months ago and nobody has looked\nat since.\n\n**Why it is not a setting.** `on:` accepts no expression, so a cron string cannot come\nfrom `config.yaml`. That is GitHub's rule, not a choice made here. The workaround — a\nfixed daily cron that checks the date inside a script — was considered for deployments\nand rejected, and is worse for agents: a deployment that no-ops costs a few seconds of\nrunner time, while an agent that starts and finds nothing to do costs a billed inference.\n\n**The last step is not optional.** An issue created with `GITHUB_TOKEN` raises no\n`issues` event, so the issue would appear and nothing would pick it up. The example\ntherefore dispatches `atomaton-runner.yml` explicitly. That is the same rule as everywhere\nelse in Atomaton — see [docs/operations.md](operations.md).\n\n**What it will cost.** One agent run per firing, whether or not there was anything to do,\nexcept the firings the open-issue guard skips. Multiply your provider's per-run cost by\n52 for a weekly schedule, 12 for a monthly one, and decide with that number in front of\nyou. If the answer is uncomfortable, the schedule is probably too frequent for the work —\nwhich is the question this arrangement puts in front of you rather than hiding.\n",
+      "tool_call_id": "call_01_iVHShKtddTizdifgb24m5927"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_RFeOkCamwjdbGYVSuBcp0400",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__read_multiple_files",
+            "arguments": "{\"paths\": [\"src/atomaton/agent-definitions/engineer.md\", \"src/atomaton/agent-definitions/reviewer.md\", \"src/atomaton/agent-definitions/orchestrator.md\"]}"
+          }
+        },
+        {
+          "id": "call_01_HkBk4NqfT4G3d8aFVoSw1361",
+          "type": "function",
+          "function": {
+            "name": "github__search_code",
+            "arguments": "{\"query\": \"openai-responses # openrouter\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/atomaton/agent-definitions/engineer.md:\n---\nname: engineer\ndescription: Implements one engineer-ready leaf task, validates it, and opens a pull request.\nprovider: orcarouter-responses\nmodel: deepseek/deepseek-v4-flash-0731\n# This model reads text only, so a tool that returns a picture gets text saying\n# the image was withheld and naming this setting. That is the wanted behaviour\n# here: the reviewer is the agent that looks at screens.\nvision: false\nknows_about:\n  - reviewer\n  - orchestrator\nmcp_servers:\n  - filesystem\n  - shell\n  - github\n  - web\n  - search\n  # `reload_environment` only -- the same server the orchestrator has, with its\n  # other two tools withheld, so an engineer cannot close the issue it is working\n  # on. Atomaton ships both entries; neither is in config.yaml.\n  - atomaton_env\n---\n\nYou implement one well-bounded leaf task and deliver it through a pull request.\n\n## Leaf Guard\n\nBefore editing, verify that the issue has one coherent responsibility, observable accept\n\n[atomaton] 16645 characters dropped from the middle; 4000 shown\n\nraints, and required validation.\n\n## Outcome\n\nExactly one of these ends a run. Each is the call named in it; a response\ndescribing one instead of making it dispatches nobody and closes nothing.\n\n| Situation | Outcome |\n| --- | --- |\n| The work decomposes into children | `github__create_issue` for each, then one `atomaton__launch_sub_agent` for every independent child |\n| The current issue is already an engineer-ready leaf | begin the response with `/engineer`, then give scope, acceptance criteria, constraints and validation |\n| Children remain pending on unmet dependencies | launch the ones now satisfied; if none are, report which dependency is outstanding and end |\n| Every child is done and their work needs delivering | `github__create_pr` for this issue's branch, or `/engineer` when it needs work first |\n| Every child is done, delivered, and the parent outcome holds | `atomaton__request_close_issue` |\n| A decision you cannot make blocks decomposition | state the options and their consequence, mention the responsible human, and end |\n\nNever end a run that decided to decompose without having launched anything. A\nplan written in a response starts no agent, and nothing re-reads it.\n\n## Re-entry and Aggregation\n\nOn re-entry:\n\n1. Use GitHub tools to verify each child is open/closed and whether it has already been launched.\n2. Launch only pending children whose dependencies are now satisfied. Never relaunch a closed or previously launched child.\n3. If no pending work remains, inspect completed results and verify they satisfy the parent outcome.\n4. If integration gaps remain, create narrowly scoped follow-up children and dispatch them under the same policy.\n5. Deliver the accumulated work. Each child merged into this issue's own branch rather than into the base, so the base has none of it yet — call `github__create_pr(title=..., body=...)` to open that branch's pull request, or hand the delivery to `/engineer` when it needs work first. Skip this only when no child produced code.\n6. Once that pull request has merged, call `atomaton__request_close_issue(reason=..., summary=...)` with the consolidated result.\n\n`atomaton__request_close_issue` ends the session. It closes agent-created sub-issues and asks the human to review human-created root issues. Never replace it with `github__close_issue` or a plain final response.\n\n## Non-negotiable Rules\n\n- Do not implement code or attempt write operations.\n- Use `github__create_issue` for child issues and `atomaton__launch_sub_agent` for dispatch.\n- Prefer parallel launch only when children are genuinely independent.\n- A test or consumer that depends on another task's final interface is dependent work, not a parallel task.\n- Ask the human only when an unresolved decision materially changes the contract or architecture.\n- Operational metadata or repository setup failures are not reasons to ask the human or skip decomposition; use the available tools to repair them or report the exact unrecoverable permission error.\n\n",
+      "tool_call_id": "call_00_RFeOkCamwjdbGYVSuBcp0400"
+    },
+    {
+      "role": "tool",
+      "content": "yuma-seno/atomaton:docs/recipes.md: agent definitions were that case**, reading `provider: openai-responses # openrouter`\nyuma-seno/atomaton:src/workflows/actions/atoma-cli.ts: * agent definitions here needed: they read `provider: openai-responses # openrouter`,",
+      "tool_call_id": "call_01_HkBk4NqfT4G3d8aFVoSw1361"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_hHl3vFuSyfK7Zp7U6iBN3515",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__read_multiple_files",
+            "arguments": "{\"paths\": [\".github/atomaton/agent-definitions/engineer.md\", \".github/atomaton/agent-definitions/reviewer.md\", \".github/atomaton/agent-definitions/orchestrator.md\"]}"
+          }
+        },
+        {
+          "id": "call_01_7s2DKtFSPlbWnWizKsLW8827",
+          "type": "function",
+          "function": {
+            "name": "github__search_code",
+            "arguments": "{\"query\": \"orcarouter-responses\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": ".github/atomaton/agent-definitions/engineer.md:\n---\nname: engineer\ndescription: Implements one engineer-ready leaf task, validates it, and opens a pull request.\nprovider: orcarouter-responses\nmodel: deepseek/deepseek-v4-flash-0731\n# This model reads text only, so a tool that returns a picture gets text saying\n# the image was withheld and naming this setting. That is the wanted behaviour\n# here: the reviewer is the agent that looks at screens.\nvision: false\nknows_about:\n  - reviewer\n  - orchestrator\nmcp_servers:\n  - filesystem\n  - shell\n  - github\n  - web\n  - search\n  # `reload_environment` only -- the same server the orchestrator has, with its\n  # other two tools withheld, so an engineer cannot close the issue it is working\n  # on. Atomaton ships both entries; neither is in config.yaml.\n  - atomaton_env\n---\n\nYou implement one well-bounded leaf task and deliver it through a pull request.\n\n## Leaf Guard\n\nBefore editing, verify that the issue has one coherent responsibility, observable ac\n\n[atomaton] 16657 characters dropped from the middle; 4000 shown\n\nraints, and required validation.\n\n## Outcome\n\nExactly one of these ends a run. Each is the call named in it; a response\ndescribing one instead of making it dispatches nobody and closes nothing.\n\n| Situation | Outcome |\n| --- | --- |\n| The work decomposes into children | `github__create_issue` for each, then one `atomaton__launch_sub_agent` for every independent child |\n| The current issue is already an engineer-ready leaf | begin the response with `/engineer`, then give scope, acceptance criteria, constraints and validation |\n| Children remain pending on unmet dependencies | launch the ones now satisfied; if none are, report which dependency is outstanding and end |\n| Every child is done and their work needs delivering | `github__create_pr` for this issue's branch, or `/engineer` when it needs work first |\n| Every child is done, delivered, and the parent outcome holds | `atomaton__request_close_issue` |\n| A decision you cannot make blocks decomposition | state the options and their consequence, mention the responsible human, and end |\n\nNever end a run that decided to decompose without having launched anything. A\nplan written in a response starts no agent, and nothing re-reads it.\n\n## Re-entry and Aggregation\n\nOn re-entry:\n\n1. Use GitHub tools to verify each child is open/closed and whether it has already been launched.\n2. Launch only pending children whose dependencies are now satisfied. Never relaunch a closed or previously launched child.\n3. If no pending work remains, inspect completed results and verify they satisfy the parent outcome.\n4. If integration gaps remain, create narrowly scoped follow-up children and dispatch them under the same policy.\n5. Deliver the accumulated work. Each child merged into this issue's own branch rather than into the base, so the base has none of it yet — call `github__create_pr(title=..., body=...)` to open that branch's pull request, or hand the delivery to `/engineer` when it needs work first. Skip this only when no child produced code.\n6. Once that pull request has merged, call `atomaton__request_close_issue(reason=..., summary=...)` with the consolidated result.\n\n`atomaton__request_close_issue` ends the session. It closes agent-created sub-issues and asks the human to review human-created root issues. Never replace it with `github__close_issue` or a plain final response.\n\n## Non-negotiable Rules\n\n- Do not implement code or attempt write operations.\n- Use `github__create_issue` for child issues and `atomaton__launch_sub_agent` for dispatch.\n- Prefer parallel launch only when children are genuinely independent.\n- A test or consumer that depends on another task's final interface is dependent work, not a parallel task.\n- Ask the human only when an unresolved decision materially changes the contract or architecture.\n- Operational metadata or repository setup failures are not reasons to ask the human or skip decomposition; use the available tools to repair them or report the exact unrecoverable permission error.\n\n",
+      "tool_call_id": "call_00_hHl3vFuSyfK7Zp7U6iBN3515"
+    },
+    {
+      "role": "tool",
+      "content": "yuma-seno/atomaton:docs/setup.md: agent definitions read `provider: orcarouter-responses`.\nyuma-seno/atomaton:docs/configuration.md: | `orcarouter-responses` | Responses | `ORCAROUTER_API_KEY` | `https://api.orcarouter.ai/v1` |\nyuma-seno/atomaton:docs/configuration.md: All three shipped agents declare `orcarouter-responses`, so\nyuma-seno/atomaton:src/atomaton/agent-definitions/reviewer.md: provider: orcarouter-responses\nyuma-seno/atomaton:src/atomaton/agent-definitions/orchestrator.md: provider: orcarouter-responses\nyuma-seno/atomaton:src/atomaton/agent-definitions/engineer.md: provider: orcarouter-responses\nyuma-seno/atomaton:.github/atomaton/agent-definitions/reviewer.md: provider: orcarouter-responses\nyuma-seno/atomaton:.github/atomaton/agent-definitions/orchestrator.md: provider: orcarouter-responses\nyuma-seno/atomaton:.github/atomaton/agent-definitions/engineer.md: provider: orcarouter-responses",
+      "tool_call_id": "call_01_7s2DKtFSPlbWnWizKsLW8827"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_XeotMMZ4SyKUErgXkXvT9866",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 770, \"from\": 1, \"to\": 10}"
+          }
+        },
+        {
+          "id": "call_01_wfQbEP3saWssTm0DeICl3151",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 769, \"from\": 1, \"to\": 10}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":770,\"title\":\"atoma-cli.ts: note the current provider in the v0.1.14 history comment\",\"state\":\"OPEN\",\"total_comments\":4,\"pull_requests\":[],\"links_unavailable\":\"GitHub could not be reached: GraphQL query failed: gh: Could not resolve to an Issue with the number of 770.\"},\"showing\":\"all 4 comment(s)\",\"comments\":[{\"index\":1,\"id\":\"IC_kwDOS6gmSM8AAAABVTdYpQ\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"<!-- atomaton:llm-context=exclude -->\\nAtomaton: reviewer starting review.\",\"createdAt\":\"2026-09-18T03:22:40Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/pull/770#issuecomment-5724657829\",\"viewerDidAuthor\":true},{\"index\":2,\"id\":\"IC_kwDOS6gmSM8AAAABVTdnqw\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"<!-- atomaton:llm-context=exclude -->\\n@hws-yuma-seno Atomaton: `reviewer` did not finish — the run failed.\\n\\n**The session was saved.** What this run worked out is still there.\\n\\n- Continue: comment `/reviewer` and put what to do next on the following lines.\\n- Start clean: comment `/reviewer recover`, which archives this session and rebuilds\\n  it from the issue.\\n\\nWorkflow logs: https://github.com/yuma-seno/atomaton/actions/runs/35302938034\\n\\nFrom the log, which is often about the infrastructure rather than the work:\\n```\\n^[[2m2026-09-18T03:22:47.797244Z^[[0m ^[[31mERROR^[[0m ^[[2matoma::application::runner^[[0m^[[2m:^[[0m Run failed: OpenAI Responses API error (400 Bad Request): {\\\"error\\\":{\\\"message\\\":\\\"The upstream provider rejected this request. Please check the request parameters and content. (request id: 202609180322447989004548268d9d6Uki9rhiz)\\\",\\\"type\\\":\\\"invalid_request_error\\\",\\\"param\\\":\\\"\\\",\\\"code\\\":\\\"upstream_rejected_request\\\"}}\\nError: OpenAI Responses API error (400 Bad Request): {\\\"error\\\":{\\\"message\\\":\\\"The upstream provider rejected this request. Please check the request parameters and content. (request id: 202609180322447989004548268d9d6Uki9rhiz)\\\",\\\"type\\\":\\\"invalid_request_error\\\",\\\"param\\\":\\\"\\\",\\\"code\\\":\\\"upstream_rejected_request\\\"}}\\n```\",\"createdAt\":\"2026-09-18T03:23:00Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/pull/770#issuecomment-5724661675\",\"viewerDidAuthor\":true},{\"index\":3,\"id\":\"IC_kwDOS6gmSM8AAAABVUQQSA\",\"author\":{\"login\":\"hws-yuma-seno\"},\"authorAssociation\":\"COLLABORATOR\",\"body\":\"/reviewer\\n\",\"createdAt\":\"2026-09-18T05:11:57Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/pull/770#issuecomment-5725491272\",\"viewerDidAuthor\":false},{\"index\":4,\"id\":\"IC_kwDOS6gmSM8AAAABVUQoGQ\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"<!-- atomaton:llm-context=exclude -->\\nAtomaton: reviewer starting review.\",\"createdAt\":\"2026-09-18T05:12:47Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/pull/770#issuecomment-5725497369\",\"viewerDidAuthor\":true}]}\n\n--- 1 problem reported by the 'github' server, not part of the answer above ---\nwarning: [atomaton-github] WARN could not read links for #770: GraphQL query failed: gh: Could not resolve to an Issue with the number of 770.",
+      "tool_call_id": "call_00_XeotMMZ4SyKUErgXkXvT9866"
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":769,\"title\":\"atoma-cli.ts のコメントが、出荷しているプロバイダ設定と食い違っている\",\"state\":\"OPEN\",\"total_comments\":3,\"pull_requests\":[]},\"showing\":\"all 3 comment(s)\",\"comments\":[{\"index\":1,\"id\":\"IC_kwDOS6gmSM8AAAABVTZq3w\",\"author\":{\"login\":\"hws-yuma-seno\"},\"authorAssociation\":\"COLLABORATOR\",\"body\":\"/engineer\",\"createdAt\":\"2026-09-18T03:14:07Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/769#issuecomment-5724596959\",\"viewerDidAuthor\":false},{\"index\":2,\"id\":\"IC_kwDOS6gmSM8AAAABVTcnEQ\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"<!-- atomaton:llm-context=exclude -->\\nAtomaton: PR #770 created (https://github.com/yuma-seno/atomaton/pull/770). Running CI; `reviewer` follows if it passes.\",\"createdAt\":\"2026-09-18T03:20:56Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/769#issuecomment-5724645137\",\"viewerDidAuthor\":true},{\"index\":3,\"id\":\"IC_kwDOS6gmSM8AAAABVTjd4Q\",\"author\":{\"login\":\"hws-yuma-seno\"},\"authorAssociation\":\"COLLABORATOR\",\"body\":\"OrcaRouter 切り替え後、**engineer は成功、reviewer は失敗**しました。\\n\\n```\\nOpenAI Responses API error (400 Bad Request):\\n{\\\"error\\\":{\\\"message\\\":\\\"The upstream provider rejected this request. Please check the\\nrequest parameters and content.\\\",\\\"type\\\":\\\"invalid_request_error\\\",\\\"param\\\":\\\"\\\",\\n\\\"code\\\":\\\"upstream_rejected_request\\\"}}\\n```\\n\\n## 切り分け済み\\n\\n| エージェント | モデル | vision | 結果 |\\n|---|---|---|---|\\n| engineer | `deepseek/deepseek-v4-flash-0731` | false | ✅ 成功 |\\n| reviewer | `qwen/qwen3-vl-235b-a22b-instruct` | true | ❌ 400 |\\n| orchestrator | `qwen/qwen3.7-plus` | true | 未実行 |\\n\\n- **`vision: true` は原因ではない可能性が高い**。コアの `vision` は「メッセージから画像を落とさない」という意味だけで（`application/runner/execution.rs:272` の `messages_for_provider`）、画像を含まないセッションでは送信内容が変わらない\\n- **方言は3本とも同じ** `orcarouter-responses`。engineer が通っているので、方言そのものは動く\\n- `upstream_rejected_request` は OrcaRouter が上流に投げて**上流が拒否した**という意味。モデルは存在するが、リクエストの形を受け付けていない\\n\\n## 確認したいこと\\n\\nOrcaRouter の `/v1/models` は各モデルに **`supported_endpoint_types`** を返します。reviewer のモデルが `/responses` を含んでいない可能性が高い。\\n\\n```bash\\ncurl -s https://api.orcarouter.ai/v1/models \\\\\\n  -H \\\"Authorization: Bearer $ORCAROUTER_API_KEY\\\" \\\\\\n  | jq '.data[] | select(.id | test(\\\"qwen3-vl-235b|qwen3.7-plus|deepseek-v4-flash-0731\\\")) | {id, supported_endpoint_types}'\\n```\\n\\n`jq` が無ければ:\\n\\n```bash\\ncurl -s https://api.orcarouter.ai/v1/models \\\\\\n  -H \\\"Authorization: Bearer $ORCAROUTER_API_KEY\\\" \\\\\\n  | python3 -c \\\"import json,sys; [print(m['id'], m.get('supported_endpoint_types')) for m in json.load(sys.stdin)['data'] if 'qwen3-vl-235b' in m['id'] or 'qwen3.7-plus' in m['id'] or 'deepseek-v4-flash-0731' in m['id']]\\\"\\n```\\n\\nこれで3本とも分かります。**orchestrator がまだ未実行**なので、`qwen3.7-plus` も一緒に見ておきたい — 同じ理由で落ちるなら、reviewer だけ直しても次で詰まります。\\n\\n## 想定される対応\\n\\n`supported_endpoint_types` に `/responses` が無ければ、選択肢は2つ:\\n\\n1. **そのエージェントだけ `provider: orcarouter`**（Chat Completions 方言）にする。属性ヘッダは両方言に付くので、App 表示は維持されます\\n2. **`/responses` に対応したモデルへ変える**。`qwen/qwen3-vl-235b-a22b-thinking` など\\n\\n1 のほうが変更が小さく、モデルの性格も変わりません。\\n\",\"createdAt\":\"2026-09-18T03:33:01Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/769#issuecomment-5724757473\",\"viewerDidAuthor\":false}]}",
+      "tool_call_id": "call_01_wfQbEP3saWssTm0DeICl3151"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_RPuv6lmvsCi7tHRYA2Ya1320",
+          "type": "function",
+          "function": {
+            "name": "web__fetch",
+            "arguments": "{\"url\": \"https://api.orcarouter.ai/v1/models\"}"
+          }
+        },
+        {
+          "id": "call_01_o1N2nVgAWl1g9zuxssZV4769",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__search_files",
+            "arguments": "{\"path\": \"dist\", \"pattern\": \"**/atomaton-runner.yml\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"data\":[{\"id\":\"orcarouter/free\",\"object\":\"model\",\"created\":0,\"owned_by\":\"orcarouter\",\"supported_endpoint_types\":[\"openai\",\"openai-response\",\"anthropic\",\"gemini\"]},{\"id\":\"orcarouter/fusion\",\"object\":\"model\",\"created\":0,\"owned_by\":\"orcarouter\",\"supported_endpoint_types\":[\"openai\",\"openai-response\",\"anthropic\",\"gemini\"],\"context_length\":1000000},{\"id\":\"orcarouter/fusion-flash\",\"object\":\"model\",\"created\":0,\"owned_by\":\"orcarouter\",\"supported_endpoint_types\":[\"openai\",\"openai-response\",\"anthropic\",\"gemini\"],\"context_length\":262144},{\"id\":\"orcarouter/fusion-mini\",\"object\":\"model\",\"created\":0,\"owned_by\":\"orcarouter\",\"supported_endpoint_types\":[\"openai\",\"openai-response\",\"anthropic\",\"gemini\"],\"context_length\":1000000},{\"id\":\"anthropic/claude-fable-5\",\"object\":\"model\",\"created\":1626777600,\"owned_by\":\"custom\",\"supported_endpoint_types\":[\"anthropic\",\"openai\"],\"name\":\"Anthropic: Claude Fable 5\",\"description\":\"Claude Fable 5 is Anthropic's Mythos-class model - a capability tier above the Opus class\n\n[atomaton] 46056 characters dropped from the middle; 4000 shown\n\n\",\"object\":\"model\",\"created\":1626777600,\"owned_by\":\"xAI\",\"supported_endpoint_types\":[\"gemini\"],\"architecture\":{\"input_modalities\":[\"text\",\"image\"],\"output_modalities\":null},\"pricing\":{\"request\":\"0.200000\"}},{\"id\":\"kimi/kimi-k2.5\",\"object\":\"model\",\"created\":1626777600,\"owned_by\":\"custom\",\"supported_endpoint_types\":[\"openai\"],\"description\":\"Moonshot Kimi K2 (0905 baseline) — 1T-param MoE chat model with 32B active per pass, 256k context, balanced performance.\",\"context_length\":262144,\"max_completion_tokens\":32768,\"architecture\":{\"input_modalities\":[\"text\",\"image\"],\"output_modalities\":[\"text\"]},\"top_provider\":{\"context_length\":262144,\"max_completion_tokens\":32768},\"pricing\":{\"prompt\":\"0.0000006000\",\"completion\":\"0.0000030000\",\"prompt_per_million\":\"0.600000\",\"completion_per_million\":\"3.000000\",\"input_cache_read\":\"0.00000010000000019999999\"}},{\"id\":\"kimi/kimi-k2.6\",\"object\":\"model\",\"created\":1626777600,\"owned_by\":\"custom\",\"supported_endpoint_types\":[\"openai\"],\"description\":\"Moonshot Kimi K2 Thinking — most advanced open reasoning model in the K2 series, agentic long-horizon tasks, 256k context.\",\"context_length\":262144,\"max_completion_tokens\":32768,\"architecture\":{\"input_modalities\":[\"text\",\"image\",\"video\"],\"output_modalities\":[\"text\"]},\"top_provider\":{\"context_length\":262144,\"max_completion_tokens\":32768},\"pricing\":{\"prompt\":\"0.0000009500\",\"completion\":\"0.000003999999984999999\",\"prompt_per_million\":\"0.950000\",\"completion_per_million\":\"4.000000\",\"input_cache_read\":\"0.00000016000000034999997\"}},{\"id\":\"kimi/kimi-k2.7-code\",\"object\":\"model\",\"created\":1626777600,\"owned_by\":\"custom\",\"supported_endpoint_types\":[\"openai\"],\"name\":\"MoonshotAI: Kimi K2.7 Code\",\"description\":\"Kimi K2.7 Code is Moonshot AI's strongest coding model to date - a coding-focused agentic model built on Kimi K2.6, with a 1T-parameter Mixture-of-Experts architecture (32B active per pass) and a 256K-token context window. It delivers substantial gains on real-world long-horizon coding: stronger end-to-end task completion across complex software-engineering workflows, while cutting thinking-token usage by roughly 30% versus K2.6 for better token efficiency.\\n\\nThe model is natively multimodal via the MoonViT vision encoder, accepting text, image, and video inputs with text output, and runs with thinking always on for deep agentic reasoning. It is purpose-built for autonomous coding agents and long-horizon software work - large multi-file changes, production-grade engineering tasks, and multi-step tool use - and integrates cleanly with agent harnesses and coding-agent frameworks.\",\"context_length\":262144,\"max_completion_tokens\":262144,\"architecture\":{\"input_modalities\":[\"text\",\"image\",\"video\"],\"output_modalities\":[\"text\"]},\"top_provider\":{\"context_length\":262144,\"max_completion_tokens\":262144},\"pricing\":{\"prompt\":\"0.0000009500\",\"completion\":\"0.000003999999984999999\",\"prompt_per_million\":\"0.950000\",\"completion_per_million\":\"4.000000\",\"input_cache_read\":\"0.0000\n\n[truncated at 50000 characters]",
+      "tool_call_id": "call_00_RPuv6lmvsCi7tHRYA2Ya1320"
+    },
+    {
+      "role": "tool",
+      "content": "Error: Tool 'search_files' on MCP server 'filesystem_readonly' reported an error: ENOENT: no such file or directory, scandir '/home/runner/work/atomaton/atomaton/dist'",
+      "tool_call_id": "call_01_o1N2nVgAWl1g9zuxssZV4769"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_5S6Uz9EM0ZiBWxtYMdZu8537",
+          "type": "function",
+          "function": {
+            "name": "web__fetch",
+            "arguments": "{\"url\": \"https://api.orcarouter.ai/v1/models/qwen/qwen3-vl-235b-a22b-instruct/endpoints\"}"
+          }
+        },
+        {
+          "id": "call_01_ApYRyjsZJkkdcHfs3W2d8359",
+          "type": "function",
+          "function": {
+            "name": "web__fetch",
+            "arguments": "{\"url\": \"https://api.orcarouter.ai/v1/models/qwen/qwen3.7-plus/endpoints\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"error\":{\"message\":\"The model 'qwen/qwen3-vl-235b-a22b-instruct/endpoints' does not exist\",\"type\":\"invalid_request_error\",\"param\":\"model\",\"code\":\"model_not_found\"}}",
+      "tool_call_id": "call_00_5S6Uz9EM0ZiBWxtYMdZu8537"
+    },
+    {
+      "role": "tool",
+      "content": "{\"error\":{\"message\":\"The model 'qwen/qwen3.7-plus/endpoints' does not exist\",\"type\":\"invalid_request_error\",\"param\":\"model\",\"code\":\"model_not_found\"}}",
+      "tool_call_id": "call_01_ApYRyjsZJkkdcHfs3W2d8359"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_rk4zo69j68t0di4hhqypnrqk",
+          "type": "function",
+          "function": {
+            "name": "github__get_pr_diff",
+            "arguments": "{\"number\": 770}"
+          }
+        },
+        {
+          "id": "call_01_uru0u1nw3jvgza72v84da7vo",
+          "type": "function",
+          "function": {
+            "name": "filesystem_readonly__read_file",
+            "arguments": "{\"path\": \".github/atomaton/config.yaml\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "diff --git a/src/workflows/actions/atoma-cli.ts b/src/workflows/actions/atoma-cli.ts\nindex a9faa5e8..26d6aa2d 100644\n--- a/src/workflows/actions/atoma-cli.ts\n+++ b/src/workflows/actions/atoma-cli.ts\n@@ -48,7 +48,8 @@ import { TypedOutputsStep } from \"./base.ts\";\n  * v0.1.14 gives each router a name for each dialect it serves, which is what the\n  * agent definitions here needed: they read `provider: openai-responses # openrouter`,\n  * a row that in v0.1.13 means OpenAI itself. So this pin moves with\n- * `agent-definitions/*.md` as well.\n+ * `agent-definitions/*.md` as well. The comment is gone today: all three ship\n+ * `provider: orcarouter-responses`, a name that says where the request goes.\n  *\n  * v0.1.16 carries two fixes that are about THIS repository's runs specifically.\n  *",
+      "tool_call_id": "call_00_rk4zo69j68t0di4hhqypnrqk"
+    },
+    {
+      "role": "tool",
+      "content": "# Everything this project declares, in one file.\n#\n# Every setting is explained in docs/configuration.md, including the measurements\n# behind the numbers. The comments here name what a key is; that file says why.\n#\n#   https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md\n#\n# Grouped by who consumes the value. Nothing here says where a file lives --\n# .github/atomaton/README.md has that, and why.\n#\n# The first five sections are yours. `tools` is the machinery's own.\n\n\n# Where work branches from and merges back to. Empty = the default branch.\nbase_branch: \"\"\n\n\n# Run before checks, before deployments, and before an agent starts.\nenvironment:\n  setup_commands:\n    - \"bun install --frozen-lockfile\"\n  # Rebuilds of the environment one piece of work may ask for. The refusal goes\n  # to the agent, which carries on -- unlike the counters under `chain`.\n  max_reloads: 3\n\n\n# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name\n# `your_workflow` instead. Bot\n\n[atomaton] 274 characters dropped from the middle; 4000 shown\n\nloy.\n      # A pull request that moves a script would otherwise fail its own check for\n      # naming a path that is correct and not yet deployed. An adopter has no such\n      # gap -- their tree is one release, whole -- so the shipped default in\n      # src/atomaton/config.yaml names the deployed path and this one does not.\n      - \"bun run src/scripts/scan_secrets.ts\"\n      - \"bun run typecheck\"\n      - \"bun run synth\"\n      - \"bun run test\"\n    # Repository secrets this step may reach, by name.\n    secrets: []\n    runs_on: ubuntu-latest\n  # your_workflow: ci.yml\n\n\n# How a merged change ships. The same two arms.\ndeploy:\n  atomaton_runs:\n    # Each names an environment, when it ships, and the commands that ship it.\n    targets:\n      - name: release\n        on: merge\n        commands:\n          - \"./scripts/release.sh\"\n    secrets: []\n    runs_on: ubuntu-latest\n  # your_workflow: cd.yml\n\n\n# When a person, not an agent, performs the merge. Any one of these firing is\n# enough.\nmerge:\n  policy: auto              # this repository lets agents merge\n  governed_paths:             # changes here are a person's to merge\n    - \".github/**\"\n    - \"scripts/**\"\n  gates:\n    - reason: \"This changes the code that decides what an agent may merge. Read it before merging: a weakening here would not be caught anywhere later.\"\n      when:\n        files_changed:\n          - \"src/domain/merge-readiness.ts\"\n          - \"src/domain/merge-gates.ts\"\n          - \"src/domain/path-patterns.ts\"\n          - \"src/lib/merge-signals.ts\"\n\n\n# When a chain of runs stops and asks a person.\nchain:\n  after_handoffs: 5                 # handoffs with nobody else commenting\n  after_runs_without_change: 2      # runs that pushed, opened and merged nothing\n  # State one run leaves for the next. Change only on a name collision.\n  labels:\n    in_progress: atomaton/in-progress\n    sub_issue: atomaton/sub-issue\n    launched: atomaton/launched\n\n\n# What an agent can reach, and under what watch.\n#\n# The machinery's own configuration. This project owns the runtime it uses, so it\n# is declared here rather than in a second file; the generator writes the part the\n# core reads. Most projects never edit past this line.\ntools:\n  # Repository secrets the servers may reach. Separate from the lists under\n  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own\n  # environment.\n  secrets: []\n\n  # Your own tool servers, and overrides of the ones Atomaton ships.\n  #\n  # A name Atomaton does not ship is added. A name it does ship is overridden field by\n  # field, so raising one timeout does not mean copying an argv. The shipped set is\n  # listed in .github/atomaton/README.md and in docs/configuration.md; it is not here\n  # because deleting one breaks a run, and an agent only starts the servers its own\n  # `mcp_servers` names.\n  servers: {}\n\n  # Your own hooks, run after Atomaton's on every call to every server.\n  # Added to what Atomaton watches, never replacing it.\n  watch: {}\n",
+      "tool_call_id": "call_01_uru0u1nw3jvgza72v84da7vo"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_8w4azxdQ64oO6JipgfAj4707",
+          "type": "function",
+          "function": {
+            "name": "github__submit_pr_review",
+            "arguments": "{\"number\": 770, \"event\": \"COMMENT\", \"body\": \"LGTM\\n\\nVerified:\\n\\n- The quoted line `provider: openai-responses # openrouter` is past-tense history in the v0.1.14 paragraph (\\\"which is what the agent definitions here needed\\\"), so keeping it as written is right, and the added sentence supplies the missing present tense.\\n- The added claim is true against the shipped definitions: `src/atomaton/agent-definitions/{engineer,reviewer,orchestrator}.md` all carry `provider: orcarouter-responses`, with no trailing `# …` comment. So \\\"all three ship `provider: orcarouter-responses`\\\" and \\\"the comment is gone today\\\" both hold.\\n- No other copy of the old string exists in code: `github__search_code` for `openai-responses # openrouter` returns only `docs/recipes.md` and this file.\\n- Issue constraints respected: `ATOMA_DEFAULT_VERSION` and every `yuma-seno/atoma` / `atoma-linux-x86_64` reference are untouched; the diff is one comment block in `src/workflows/actions/atoma-cli.ts`, no generated output.\\n- `github__check_merge_readiness` reports ready, `atomaton-check` success.\\n\\nOut of scope and not required here, for the record: `docs/recipes.md` still says the definitions \\\"name `openrouter-responses` now\\\", which is stale in the same way this comment was. Worth its own issue rather than widening this one.\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"ok\":true,\"event\":\"COMMENT\"}",
+      "tool_call_id": "call_00_8w4azxdQ64oO6JipgfAj4707"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_ET_MGdogklunREoCPAk2RGW0144",
+          "type": "function",
+          "function": {
+            "name": "github__merge_pr",
+            "arguments": "{\"number\": 770}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"merged\":true,\"closed_issue\":null,\"parent_issue\":769,\"parent_outcome\":\"reinvoked\",\"reinvoked_agent\":\"engineer\"}",
+      "tool_call_id": "call_00_ET_MGdogklunREoCPAk2RGW0144"
+    },
+    {
+      "role": "assistant",
+      "content": "Merged — PR #770 is in.\n\n**Review: no defects.**\n\n- The quoted `provider: openai-responses # openrouter` is genuinely past-tense history in the v0.1.14 paragraph (\"which is what the agent definitions here needed\"), so leaving the quote alone is the right call per the issue's either/or; the added sentence supplies the missing present tense, which is what the issue asked for.\n- The added claim is verifiable and true: `src/atomaton/agent-definitions/{engineer,reviewer,orchestrator}.md` each carry `provider: orcarouter-responses` with no trailing comment.\n- `github__search_code` for `openai-responses # openrouter` returns only `docs/recipes.md` and this file, so no second stale copy was introduced.\n- Issue constraint respected: `ATOMA_DEFAULT_VERSION` and the `yuma-seno/atoma` / `atoma-linux-x86_64` references are untouched; the diff is one comment block, no generated output.\n- `github__check_merge_readiness` reported ready with `atomaton-check` success → `COMMENT` review posted, `github__merge_pr` returned `{\"merged\":true,...}`.\n\n**Left open, not part of this PR:** `docs/recipes.md` still reads \"They name `openrouter-responses` now\" — stale in exactly the way this comment was, since the definitions are on OrcaRouter. I did not widen this PR for it; it deserves its own issue.\n\n**On the reviewer 400 that prompted the re-run (issue #769 comment 3):** I tried to confirm the `supported_endpoint_types` hypothesis. `https://api.orcarouter.ai/v1/models` returns data, but the response is truncated at 50,000 characters before the `qwen/*` entries, and the per-model route is not available — `https://api.orcarouter.ai/v1/models/qwen/qwen3-vl-235b-a22b-instruct/endpoints` answers `{\"error\":{\"message\":\"The model 'qwen/qwen3-vl-235b-a22b-instruct/endpoints' does not exist\",\"type\":\"invalid_request_error\",\"param\":\"model\",\"code\":\"model_not_found\"}}`. So the root cause of the reviewer's `upstream_rejected_request` remains unconfirmed from here; it needs the authenticated `curl` from the issue comment, run where the key is available.\n\n**Tool report, benign:** `github__get_issue_comments` on #770 ended with `warning: [atomaton-github] WARN could not read links for #770: GraphQL query failed: gh: Could not resolve to an Issue with the number of 770.` The comments themselves came back complete (4 of 4); the warning is the tool asking GitHub for issue-traceability links on a number that is a pull request, not an issue, so it carries no information about this change.\n\nThis was a comment-only change on a human-opened issue, so closing #769 is the owner's step — the merge reports `parent_outcome: reinvoked`, `reinvoked_agent: engineer`, so #769's thread continues on its own.",
+      "atoma_metadata": {
+        "github_comment_id": 5725520534,
+        "agent": "reviewer"
+      }
     }
   ],
   "metadata": {
     "github_context": {
       "agent": "reviewer",
-      "event_count": 4,
-      "snapshot_hash": "123604ab73e4ccb053fe585921e06409da381e44a8e8b6e93cef6a20e29bf509",
-      "version": 1
+      "event_count": 6,
+      "snapshot_hash": "4091a6f4308895b1e87d98275cc47f869e4fdb78977a96f2febe5147e319bef4",
+      "version": 1,
+      "type": "issue",
+      "resolved_number": "769"
     }
   },
   "atoma_runs": [
@@ -69,6 +444,13 @@
       "messages": 5,
       "seconds": 5,
       "started": "2026-09-18T03:22:42Z"
+    },
+    {
+      "ended": "2026-09-18T05:15:47Z",
+      "ended_because": "completed",
+      "messages": 41,
+      "seconds": 178,
+      "started": "2026-09-18T05:12:49Z"
     }
   ]
 }
