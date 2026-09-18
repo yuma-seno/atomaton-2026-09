@@ -20,11 +20,11 @@ The generated workflows already declare their own `permissions` — `actions`,
 the repository withholds, so reading the declared block is not evidence that this
 step is done.
 
-## 3. Add the repository secret `OPENROUTER_API_KEY`
+## 3. Add the repository secret `ORCAROUTER_API_KEY`
 
 **Settings > Secrets and variables > Actions > New repository secret**, named
-`OPENROUTER_API_KEY`. This is the one the shipped configuration needs: all three
-agent definitions read `provider: openrouter-responses`.
+`ORCAROUTER_API_KEY`. This is the one the shipped configuration needs: all three
+agent definitions read `provider: orcarouter-responses`.
 
 One provider, one credential, and **no fallback** — a key under a different name does
 not stand in for this one, and two keys present is an error naming both rather than a

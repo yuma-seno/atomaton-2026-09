@@ -912,8 +912,8 @@ The frontmatter `provider` field selects the client, not the vendor:
 | `anthropic` | Anthropic Messages | `ANTHROPIC_API_KEY` | `https://api.anthropic.com` |
 | `github-copilot` | Copilot, over Chat Completions | `ATOMA_COPILOT_TOKEN` | `https://api.githubcopilot.com` |
 
-All three shipped agents declare `openrouter-responses`, so
-`OPENROUTER_API_KEY` is the credential an adoption needs.
+All three shipped agents declare `orcarouter-responses`, so
+`ORCAROUTER_API_KEY` is the credential an adoption needs.
 
 **One provider, one credential, and the credential is what selects the provider**
 when neither the agent definition nor the `ATOMA_PROVIDER` variable names one. Add

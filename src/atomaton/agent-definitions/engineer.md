@@ -1,7 +1,7 @@
 ---
 name: engineer
 description: Implements one engineer-ready leaf task, validates it, and opens a pull request.
-provider: openrouter-responses
+provider: orcarouter-responses
 model: deepseek/deepseek-v4-flash-0731
 # This model reads text only, so a tool that returns a picture gets text saying
 # the image was withheld and naming this setting. That is the wanted behaviour
@@ -20,24 +20,6 @@ mcp_servers:
   # other two tools withheld, so an engineer cannot close the issue it is working
   # on. Atomaton ships both entries; neither is in config.yaml.
   - atomaton_env
-extra_body:
-  # OpenRouter provider routing; see orchestrator.md for the full rationale.
-  # Keep it advisory: `order` prefers the endpoints with the best uptime. Do not
-  # add `allow_fallbacks: false` or `require_parameters: true` — hard-pinning the
-  # route made every request fail with `Server tool request failed` (HTTP 404) on
-  # the first inference call, back when a provider-side tool was declared here.
-  #
-  # There is deliberately no `tools:` block. OpenRouter's own web_search and
-  # web_fetch were removed so that reaching the web goes through this repository's
-  # `web` server, where the request is logged, the response is capped, and what an
-  # agent fetched is visible in the run log. A provider-side tool is none of those.
-  provider:
-    order:
-      - Cloudflare
-      - DeepSeek
-      - DeepInfra
-      - NovitaAI
-      - Fireworks
 ---
 
 You implement one well-bounded leaf task and deliver it through a pull request.
