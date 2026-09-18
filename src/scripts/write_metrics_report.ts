@@ -25,7 +25,14 @@ import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atomaton-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
 import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
-import { metricsOf, type ReportedProblem, type CallRecord, type SessionRecord, type TokenRecord } from "../domain/metrics.ts";
+import {
+  metricsOf,
+  type DeclaredServer,
+  type ReportedProblem,
+  type CallRecord,
+  type SessionRecord,
+  type TokenRecord,
+} from "../domain/metrics.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
 import { renderReport } from "../domain/metrics-report.ts";
 import { parseTokenLine } from "../domain/token-line.ts";
@@ -323,9 +330,9 @@ export function skillsUnder(dir: string): string[] | undefined {
  * filters to an empty list and reads as "nothing is unused", which is the answer this
  * gave for as long as the skill directory was being renamed underneath it.
  */
-function declared(): { tools: string[] | undefined; skills: string[] | undefined } {
+function declared(): { tools: DeclaredServer[] | undefined; skills: string[] | undefined } {
   const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
-  let tools: string[] | undefined;
+  let tools: DeclaredServer[] | undefined;
   try {
     // From the config, not from the generated tools file: that file is written per
     // run into the runner's temp directory and is gone by the time anything reads a
@@ -336,7 +343,13 @@ function declared(): { tools: string[] | undefined; skills: string[] | undefined
     };
     // An empty `tools.servers` is ordinary -- a project that adds no server of its own
     // has none -- so this stays a list. Only the read failing above leaves it unknown.
-    tools = Object.keys(config.tools?.servers ?? {});
+    // With `unprefixed`, which decides whether a call can name this server at all.
+    // Read here rather than guessed at from the calls: a bare tool name belongs to
+    // some unprefixed server and never says which.
+    tools = Object.entries(config.tools?.servers ?? {}).map(([name, server]) => ({
+      name,
+      unprefixed: (server as { unprefixed?: boolean } | null)?.unprefixed === true,
+    }));
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }

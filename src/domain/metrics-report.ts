@@ -301,6 +301,16 @@ export function renderReport(
         ? "Every declared server has been called at least once."
         : "Servers never called:\n\n" + all.neverUsedServers.map((t) => `- \`${t}\``).join("\n"),
   );
+  if (all.unrecognisableServers?.length) {
+    out.push("");
+    out.push(
+      "Not checked, because a call does not name them: " +
+        all.unrecognisableServers.map((s) => `\`${s}\``).join(", ") +
+        ". Their tools are declared without a server prefix, so they arrive under their " +
+        "own names and nothing in a call says which server answered. Unused and heavily " +
+        "used look identical from here.",
+    );
+  }
   out.push("");
   out.push(
     all.neverLoaded === undefined
