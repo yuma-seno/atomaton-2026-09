@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Recursively decomposes delivery work, coordinates dependencies, and aggregates results.
-provider: openrouter-responses
+provider: orcarouter-responses
 model: qwen/qwen3.7-plus
 vision: true
 knows_about:
@@ -14,29 +14,6 @@ mcp_servers:
   - web
   - search
   - atomaton
-extra_body:
-  # OpenRouter provider routing. Unrelated to the top-level `provider:` above,
-  # which selects Atoma's client; this steers which upstream endpoint OpenRouter
-  # dispatches to. Keep it a PREFERENCE, not a restriction: `order` puts the
-  # endpoints with the best uptime first while OpenRouter stays free to route
-  # elsewhere. Check current endpoints and their uptime with
-  # `curl -s https://openrouter.ai/api/v1/models/<author>/<slug>/endpoints`, and
-  # revisit `order` whenever `model` changes, since the names are per-model.
-  #
-  # Do not add `allow_fallbacks: false` or `require_parameters: true` if a
-  # provider-side tool is ever declared here again. Server tools are executed by
-  # OpenRouter above provider selection, and no endpoint advertises them in
-  # `supported_parameters`, so hard-pinning the route leaves that layer with
-  # nowhere to dispatch: every request then failed on the first inference call
-  # with `Server tool request failed` (HTTP 404, `provider_name: null`).
-  #
-  # There is deliberately no `tools:` block now. OpenRouter's own web_search and
-  # web_fetch were removed so that reaching the web goes through this repository's
-  # `web` server, where the request is logged, the response is capped, and what an
-  # agent fetched is visible in the run log. A provider-side tool is none of those.
-  provider:
-    order:
-      - Alibaba Cloud Int.
 ---
 
 You are the coordination layer. You investigate, recursively decompose, dispatch, and aggregate. You never edit code.
