@@ -4113,8 +4113,8 @@
   {
     "path": "sessions/issue-818/orchestrator.json",
     "agent": "orchestrator",
-    "messages": 80,
-    "calls": 55,
+    "messages": 114,
+    "calls": 77,
     "failed": 0,
     "refused": 0,
     "skills": [
@@ -4122,18 +4122,20 @@
     ],
     "tools": {
       "atoma_builtin__load_skill": 1,
-      "github__get_issue": 9,
-      "github__get_pr": 3,
-      "github__get_issue_comments": 3,
-      "github__list_prs": 2,
-      "github__get_branch": 6,
+      "github__get_issue": 12,
+      "github__get_pr": 4,
+      "github__get_issue_comments": 8,
+      "github__list_prs": 3,
+      "github__get_branch": 7,
       "list": 1,
-      "grep": 11,
-      "glob": 5,
+      "grep": 12,
+      "glob": 6,
       "read": 9,
       "atomaton__launch_sub_agent": 2,
       "github__list_issues": 1,
-      "search__search_issues": 2
+      "search__search_issues": 2,
+      "web__fetch": 8,
+      "github__get_check_runs": 1
     },
     "acts": {},
     "runs": [
@@ -4152,6 +4154,14 @@
         "messages": 80,
         "seconds": 208,
         "started": "2026-09-19T19:45:10Z"
+      },
+      {
+        "ended": "2026-09-19T20:06:17Z",
+        "ended_because": "completed",
+        "iterations": 9,
+        "messages": 114,
+        "seconds": 95,
+        "started": "2026-09-19T20:04:42Z"
       }
     ]
   },
