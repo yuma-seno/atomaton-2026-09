@@ -54,7 +54,6 @@
  *                  [--trigger merge] [--target production]
  */
 import { appendFileSync } from "node:fs";
-import { parseArgs } from "node:util";
 import {
   mayDispatchNewTags,
   resolveDeployJobs,
@@ -64,6 +63,7 @@ import {
 import { deploymentRefusal, readBranchRules } from "../lib/branch-rules.ts";
 import { getDeploySection } from "../lib/config.ts";
 import { readTagNames } from "../lib/git-tags.ts";
+import { parseAcrossReleases } from "./lib/cli.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -150,17 +150,12 @@ function publishTagsBefore(
 }
 
 export function main(): void {
-  const { values } = parseArgs({
-    args: Bun.argv.slice(2),
-    options: {
-      ref: { type: "string" },
-      "default-branch": { type: "string" },
-      event: { type: "string" },
-      trigger: { type: "string" },
-      target: { type: "string" },
-      repo: { type: "string" },
-    },
-  });
+  // Tolerant of a flag it has not learned yet, because the workflow that runs this
+  // comes from a different tree than this script does. See `parseAcrossReleases`.
+  const values = parseAcrossReleases(
+    ["ref", "default-branch", "event", "trigger", "target", "repo"],
+    Bun.argv.slice(2),
+  );
   const request = {
     ref: values.ref ?? "",
     defaultBranch: (values["default-branch"] ?? "").trim(),
