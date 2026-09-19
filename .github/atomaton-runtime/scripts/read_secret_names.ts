@@ -38,23 +38,9 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var DEPLOY_SECRETS = {
-  field: "deploy.atomaton_runs.secrets",
-  reserved: new Set([
-    "ATOMATON_DEPLOY_REF",
-    "ATOMATON_DEPLOY_TARGET",
-    "ATOMATON_DEPLOY_TARGET_INPUT",
-    "ATOMATON_DEPLOY_TRIGGER",
-    "GH_TOKEN"
-  ])
-};
-var SECRET_DESTINATIONS = {
-  tools: TOOL_SECRETS,
-  deploy: DEPLOY_SECRETS
-};
-function isSecretDestinationName(value) {
-  return Object.hasOwn(SECRET_DESTINATIONS, value);
-}
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 function resolveDeclaredSecrets(raw, destination) {
   const { field, reserved } = destination;
   if (raw === undefined || raw === null)
@@ -121,33 +107,23 @@ function defineScript(importMetaUrl) {
 
 // src/scripts/read_secret_names.ts
 var ref = defineScript(import.meta.url);
-function declarationIn(configText, destination) {
+function declarationIn(configText) {
   const config = Bun.YAML.parse(configText);
-  if (destination === "tools")
-    return config.tools?.secrets;
-  return config.deploy?.atomaton_runs?.secrets;
+  return config.tools?.secrets;
 }
 function main() {
-  const { values } = parseArgs({
-    args: Bun.argv.slice(2),
-    options: { destination: { type: "string" }, config: { type: "string" } }
-  });
-  const destination = values.destination ?? "";
-  if (!isSecretDestinationName(destination)) {
-    console.error(`::error::read_secret_names: unknown destination '${destination}'.`);
-    process.exit(2);
-  }
+  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { config: { type: "string" } } });
   let declared;
   if (!values.config) {
     console.error("::warning::read_secret_names: no --config given, so no credentials are declared for this run. The workflow should pass the default branch's config.yaml.");
   } else {
     try {
-      declared = declarationIn(readFileSync(values.config, "utf8"), destination);
+      declared = declarationIn(readFileSync(values.config, "utf8"));
     } catch (error) {
       console.error(`No credential declaration could be read (${error.message}); declaring none.`);
     }
   }
-  const { names, problems } = resolveDeclaredSecrets(declared, SECRET_DESTINATIONS[destination]);
+  const { names, problems } = resolveDeclaredSecrets(declared, TOOL_SECRETS);
   if (problems.length > 0) {
     for (const problem of problems) {
       console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
@@ -159,7 +135,7 @@ function main() {
     appendFileSync(githubOutput, `names=${JSON.stringify(names)}
 `);
   }
-  console.error(names.length > 0 ? `Secrets declared for ${destination}: ${names.join(", ")}` : `No secrets declared for ${destination}.`);
+  console.error(names.length > 0 ? `Secrets declared in \`tools.secrets\`: ${names.join(", ")}` : "No secrets are declared in `tools.secrets`.");
 }
 if (import.meta.main)
   main();

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/plan_checks.ts
+// src/scripts/plan_deploy.ts
 import { parseArgs } from "util";
 
 // src/domain/declared-secrets.ts
@@ -80,34 +80,6 @@ function resolveDeclaredSecrets(raw, destination) {
   }
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
-
-// src/domain/check-jobs.ts
-var CHECKS_FROM_PULL_REQUEST = {
-  where: "checks.from_pull_request",
-  secrets: {
-    refused: "These commands come from the pull request, which may rewrite them, so a credential " + "named beside them is one the change being judged can read. Move the check to " + "`checks.from_default_branch`, where the commands come from a branch a person approved."
-  }
-};
-var CHECKS_FROM_DEFAULT_BRANCH = {
-  where: "checks.from_default_branch",
-  secrets: { reserved: CHECK_JOB_RESERVED }
-};
-var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
-
-// src/lib/config.ts
-import { readFileSync } from "fs";
-
-// src/domain/merge-readiness.ts
-var CI_WOULD_BE_WASTED = new Set([
-  "not-open",
-  "draft",
-  "conflicting",
-  "behind",
-  "mergeability-unknown",
-  "checks-pending",
-  "checks-failing"
-]);
-var PASSING = new Set(["success", "neutral", "skipped"]);
 
 // src/domain/runner-label.ts
 var DEFAULT_RUNNER = "ubuntu-latest";
@@ -213,6 +185,148 @@ function readSecrets(raw, rule, path, where, problems) {
   return found.length > 0 ? null : names;
 }
 
+// src/domain/deploy-jobs.ts
+function refMatches(pattern, ref) {
+  return pattern.endsWith("*") ? ref.startsWith(pattern.slice(0, -1)) : ref === pattern;
+}
+function refPatternProblem(pattern) {
+  const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
+  if (body.includes("*")) {
+    return `"${pattern}" uses a '*' somewhere other than the end, which this matcher cannot honour, ` + 'so it would match nothing. Write a literal ref, or a prefix followed by "*" \u2014 e.g. "v*".';
+  }
+  if (/[?[\]{}]/.test(body)) {
+    return `"${pattern}" uses a glob character this matcher cannot honour, so it would match nothing. ` + 'Write a literal ref, or a prefix followed by "*".';
+  }
+  return "";
+}
+function readPatterns(raw, key, required, where, problems) {
+  const list = raw ?? [];
+  if (!Array.isArray(list) || list.some((p) => typeof p !== "string" || p.trim() === "")) {
+    problems.push(`${where}: \`${key}\` must be an array of non-empty patterns.`);
+    return null;
+  }
+  const patterns = list.map((p) => p.trim());
+  const bad = patterns.map(refPatternProblem).find((problem) => problem !== "");
+  if (bad) {
+    problems.push(`${where}: ${bad}`);
+    return null;
+  }
+  if (required && patterns.length === 0) {
+    problems.push(`${where}: \`${key}\` needs at least one pattern \u2014 e.g. ["v*"].`);
+    return null;
+  }
+  return patterns;
+}
+function refsFrom(key, required) {
+  return {
+    keys: [key],
+    read: (entry, where, problems) => {
+      const refs = readPatterns(entry[key], key, required, where, problems);
+      return refs === null ? null : { refs };
+    }
+  };
+}
+var DEPLOY_ARMS = {
+  merge: {
+    key: "on_merge",
+    rules: {
+      where: "deploy.on_merge",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("branches", false)
+    }
+  },
+  tag: {
+    key: "on_tag",
+    rules: {
+      where: "deploy.on_tag",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("tags", true)
+    }
+  },
+  demand: {
+    key: "on_demand",
+    rules: {
+      where: "deploy.on_demand",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: { keys: [], read: () => ({ refs: [] }) }
+    }
+  }
+};
+var TRIGGERS = Object.keys(DEPLOY_ARMS);
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function resolveDeployJobs(deploy) {
+  const section = isRecord2(deploy) ? deploy : {};
+  const problems = [];
+  const jobs = [];
+  const seen = new Set;
+  for (const trigger of TRIGGERS) {
+    const arm = DEPLOY_ARMS[trigger];
+    const resolved = resolveDeclaredJobs(section[arm.key], arm.rules);
+    problems.push(...resolved.problems);
+    for (const job of resolved.jobs) {
+      if (seen.has(job.name)) {
+        problems.push(`\`${arm.key}\`: '${job.name}' is already declared in another \`deploy\` list.`);
+        continue;
+      }
+      seen.add(job.name);
+      jobs.push({ ...job, trigger });
+    }
+  }
+  return problems.length > 0 ? { jobs: [], problems } : { jobs, problems };
+}
+function branchOf(ref) {
+  return ref.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : "";
+}
+function tagOf(ref) {
+  return ref.startsWith("refs/tags/") ? ref.slice("refs/tags/".length) : "";
+}
+function mergeJobsFor(jobs, branch, defaultBranch) {
+  if (!branch)
+    return [];
+  return jobs.filter((job) => job.trigger === "merge" && (job.refs.length === 0 ? branch === defaultBranch : job.refs.some((pattern) => refMatches(pattern, branch))));
+}
+function selectDeployJobs(jobs, request) {
+  if (request.target) {
+    const named = jobs.find((job) => job.name === request.target);
+    return named ? [named] : null;
+  }
+  if (request.event === "push") {
+    const tag = tagOf(request.ref);
+    if (tag)
+      return jobs.filter((job) => job.trigger === "tag" && job.refs.some((p) => refMatches(p, tag)));
+    return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+  }
+  if (request.trigger === "merge")
+    return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+  return jobs.filter((job) => job.trigger === "demand");
+}
+
+// src/lib/config.ts
+import { readFileSync } from "fs";
+
+// src/domain/merge-readiness.ts
+var CI_WOULD_BE_WASTED = new Set([
+  "not-open",
+  "draft",
+  "conflicting",
+  "behind",
+  "mergeability-unknown",
+  "checks-pending",
+  "checks-failing"
+]);
+var PASSING = new Set(["success", "neutral", "skipped"]);
+
+// src/domain/check-jobs.ts
+var CHECKS_FROM_PULL_REQUEST = {
+  where: "checks.from_pull_request",
+  secrets: {
+    refused: "These commands come from the pull request, which may rewrite them, so a credential " + "named beside them is one the change being judged can read. Move the check to " + "`checks.from_default_branch`, where the commands come from a branch a person approved."
+  }
+};
+var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
+
 // src/domain/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
@@ -239,11 +353,8 @@ function loadConfig() {
   }
   return cached;
 }
-function getPullRequestChecks() {
-  return resolveDeclaredJobs(loadConfig().checks?.from_pull_request, CHECKS_FROM_PULL_REQUEST);
-}
-function getDefaultBranchChecks() {
-  return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH);
+function getDeploySection() {
+  return loadConfig().deploy;
 }
 
 // src/scripts/lib/publish-matrix.ts
@@ -276,27 +387,40 @@ function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/plan_checks.ts
+// src/scripts/plan_deploy.ts
 var ref = defineScript(import.meta.url);
-var ARMS = {
-  "pull-request": { read: getPullRequestChecks, key: CHECKS_FROM_PULL_REQUEST.where, warnWhenEmpty: NO_PULL_REQUEST_CHECKS },
-  "default-branch": { read: getDefaultBranchChecks, key: CHECKS_FROM_DEFAULT_BRANCH.where, warnWhenEmpty: "" }
-};
 function main() {
-  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { arm: { type: "string" } } });
-  const arm = ARMS[values.arm ?? ""];
-  if (!arm) {
-    console.error(`usage: plan_checks.ts --arm ${Object.keys(ARMS).join("|")}`);
-    process.exit(2);
-  }
-  const { jobs, problems } = arm.read();
+  const { values } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: {
+      ref: { type: "string" },
+      "default-branch": { type: "string" },
+      event: { type: "string" },
+      trigger: { type: "string" },
+      target: { type: "string" }
+    }
+  });
+  const request = {
+    ref: values.ref ?? "",
+    defaultBranch: (values["default-branch"] ?? "").trim(),
+    event: (values.event ?? "").trim(),
+    trigger: (values.trigger ?? "").trim(),
+    target: (values.target ?? "").trim()
+  };
+  const { jobs, problems } = resolveDeployJobs(getDeploySection());
   if (problems.length > 0) {
     for (const problem of problems)
-      console.error(`::error::${problem}`);
-    console.error(`::error::\`${arm.key}\` could not be read, so none of its checks ran.`);
+      console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
+    console.error("::error::`deploy` could not be read, so nothing was deployed.");
     process.exit(1);
   }
-  publishMatrix(jobs, { what: `\`${arm.key}\` job`, warnWhenEmpty: arm.warnWhenEmpty });
+  const selected = selectDeployJobs(jobs, request);
+  if (selected === null) {
+    const known = jobs.map((job) => job.name).join(", ") || "none are configured";
+    console.error(`::error::No deployment named '${request.target}'. Configured: ${known}.`);
+    process.exit(1);
+  }
+  publishMatrix(selected, { what: "deployment" });
 }
 if (import.meta.main)
   main();

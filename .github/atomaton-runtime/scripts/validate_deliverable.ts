@@ -7,12 +7,6 @@ import { tmpdir } from "os";
 import { join as join3 } from "path";
 import { parseArgs } from "util";
 
-// src/domain/control-commands.ts
-var CONTROL_COMMAND_NAMES = ["stop", "resume"];
-function isControlCommand(name) {
-  return CONTROL_COMMAND_NAMES.includes(name);
-}
-
 // src/domain/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
@@ -46,20 +40,9 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var DEPLOY_SECRETS = {
-  field: "deploy.atomaton_runs.secrets",
-  reserved: new Set([
-    "ATOMATON_DEPLOY_REF",
-    "ATOMATON_DEPLOY_TARGET",
-    "ATOMATON_DEPLOY_TARGET_INPUT",
-    "ATOMATON_DEPLOY_TRIGGER",
-    "GH_TOKEN"
-  ])
-};
-var SECRET_DESTINATIONS = {
-  tools: TOOL_SECRETS,
-  deploy: DEPLOY_SECRETS
-};
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 function resolveDeclaredSecrets(raw, destination) {
   const { field, reserved } = destination;
   if (raw === undefined || raw === null)
@@ -101,98 +84,23 @@ function resolveDeclaredSecrets(raw, destination) {
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
 
-// src/domain/deploy-targets.ts
-var TRIGGERS = ["merge", "tag", "manual"];
-var NAME_PATTERN2 = /^[a-z][a-z0-9-]*$/;
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function readCommands(raw, where, problems) {
-  const before = problems.length;
-  if (!Array.isArray(raw)) {
-    problems.push(`${where}: \`commands\` must be an array of shell commands.`);
-    return [];
+// src/domain/check-jobs.ts
+var CHECKS_FROM_PULL_REQUEST = {
+  where: "checks.from_pull_request",
+  secrets: {
+    refused: "These commands come from the pull request, which may rewrite them, so a credential " + "named beside them is one the change being judged can read. Move the check to " + "`checks.from_default_branch`, where the commands come from a branch a person approved."
   }
-  const commands = [];
-  for (const entry of raw) {
-    if (typeof entry !== "string" || entry.trim() === "") {
-      problems.push(`${where}: every command must be a non-empty string; found ${JSON.stringify(entry)}.`);
-      continue;
-    }
-    commands.push(entry);
-  }
-  if (commands.length === 0 && problems.length === before) {
-    problems.push(`${where}: declares no commands, so it would deploy nothing.`);
-  }
-  return commands;
-}
-function resolveDeployTargets(raw) {
-  if (raw === undefined || raw === null)
-    return { targets: [], problems: [] };
-  if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.atomaton_runs.targets` must be an array."] };
-  }
-  const problems = [];
-  const targets = [];
-  const seen = new Set;
-  raw.forEach((entry, index) => {
-    const where = `\`deploy.atomaton_runs.targets[${index}]\``;
-    if (!isRecord(entry)) {
-      problems.push(`${where} must be an object.`);
-      return;
-    }
-    const name = typeof entry.name === "string" ? entry.name.trim() : "";
-    if (!NAME_PATTERN2.test(name)) {
-      problems.push(`${where}: \`name\` must be lowercase letters, digits and hyphens \u2014 e.g. 'production'.`);
-      return;
-    }
-    if (seen.has(name)) {
-      problems.push(`${where}: '${name}' is declared more than once.`);
-      return;
-    }
-    const on = entry.on;
-    if (typeof on !== "string" || !TRIGGERS.includes(on)) {
-      problems.push(`${where}: \`on\` must be one of ${TRIGGERS.map((t) => `'${t}'`).join(", ")}.`);
-      return;
-    }
-    const trigger = on;
-    const tagsRaw = entry.tags ?? [];
-    if (!Array.isArray(tagsRaw) || tagsRaw.some((tag) => typeof tag !== "string" || tag.trim() === "")) {
-      problems.push(`${where}: \`tags\` must be an array of non-empty patterns.`);
-      return;
-    }
-    const tags = tagsRaw.map((tag) => tag.trim());
-    const badPattern = tags.map((tag) => tagPatternProblem(tag)).find((problem) => problem !== "");
-    if (badPattern) {
-      problems.push(`${where}: ${badPattern}`);
-      return;
-    }
-    if (trigger === "tag" && tags.length === 0) {
-      problems.push(`${where}: \`on: tag\` needs at least one pattern in \`tags\` \u2014 e.g. ["v*"].`);
-      return;
-    }
-    if (trigger !== "tag" && tags.length > 0) {
-      problems.push(`${where}: \`tags\` only applies to \`on: tag\`; this target is \`on: ${trigger}\`.`);
-      return;
-    }
-    const before = problems.length;
-    const commands = readCommands(entry.commands, where, problems);
-    if (problems.length > before)
-      return;
-    seen.add(name);
-    targets.push({ name, on: trigger, tags, commands });
-  });
-  return problems.length > 0 ? { targets: [], problems } : { targets, problems };
-}
-function tagPatternProblem(pattern) {
-  const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
-  if (body.includes("*")) {
-    return `"${pattern}" uses a '*' somewhere other than the end, which this matcher cannot honour, ` + 'so it would match no tag. Write a literal tag, or a prefix followed by "*" \u2014 e.g. "v*".';
-  }
-  if (/[?[\]{}]/.test(body)) {
-    return `"${pattern}" uses a glob character this matcher cannot honour, so it would match no tag. ` + 'Write a literal tag, or a prefix followed by "*".';
-  }
-  return "";
+};
+var CHECKS_FROM_DEFAULT_BRANCH = {
+  where: "checks.from_default_branch",
+  secrets: { reserved: CHECK_JOB_RESERVED }
+};
+var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
+
+// src/domain/control-commands.ts
+var CONTROL_COMMAND_NAMES = ["stop", "resume"];
+function isControlCommand(name) {
+  return CONTROL_COMMAND_NAMES.includes(name);
 }
 
 // src/domain/runner-label.ts
@@ -221,9 +129,9 @@ function resolveRunsOn(configured) {
 }
 
 // src/domain/declared-jobs.ts
-var NAME_PATTERN3 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+var NAME_PATTERN2 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
-function isRecord2(value) {
+function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function resolveDeclaredJobs(raw, rules) {
@@ -234,10 +142,10 @@ function resolveDeclaredJobs(raw, rules) {
   const problems = [];
   const jobs = [];
   const seen = new Set;
-  const allowed = new Set([...SHARED_KEYS, ...rules.extraKeys ?? []]);
+  const allowed = new Set([...SHARED_KEYS, ...rules.extra?.keys ?? []]);
   raw.forEach((entry, index) => {
     const where = `\`${rules.where}[${index}]\``;
-    if (!isRecord2(entry)) {
+    if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;
     }
@@ -247,7 +155,7 @@ function resolveDeclaredJobs(raw, rules) {
       return;
     }
     const name = typeof entry.name === "string" ? entry.name.trim() : "";
-    if (!NAME_PATTERN3.test(name)) {
+    if (!NAME_PATTERN2.test(name)) {
       problems.push(`${where}: \`name\` must be lowercase letters, digits and hyphens \u2014 e.g. 'cloud-names'.`);
       return;
     }
@@ -265,23 +173,124 @@ function resolveDeclaredJobs(raw, rules) {
       problems.push(`${where}: \`commands\` is empty, so this job would do nothing and report success.`);
       return;
     }
-    const secretsRaw = entry.secrets ?? [];
-    if (!Array.isArray(secretsRaw) || secretsRaw.some((s) => typeof s !== "string" || s.trim() === "")) {
-      problems.push(`${where}: \`secrets\` must be an array of repository secret names.`);
+    const secrets = readSecrets(entry.secrets, rules.secrets, `${rules.where}[${index}]`, where, problems);
+    if (secrets === null)
       return;
-    }
-    const secrets = secretsRaw.map((s) => s.trim());
-    if (!rules.secretsAllowed && secrets.length > 0) {
-      problems.push(`${where}: \`secrets\` cannot be named here. These commands come from the pull request, ` + `which may rewrite them, so a credential named beside them is one the change being judged can read.`);
+    const extra = rules.extra ? rules.extra.read(entry, where, problems) : {};
+    if (extra === null)
       return;
-    }
     const runner = resolveRunsOn(entry.runs_on);
     for (const problem of runner.problems)
       problems.push(`${where}: ${problem}`);
     seen.add(name);
-    jobs.push({ name, runsOn: runner.labels, commands, secrets });
+    jobs.push({ name, runsOn: runner.labels, commands, secrets, ...extra });
   });
   return { jobs, problems };
+}
+function readSecrets(raw, rule, path, where, problems) {
+  if (raw === undefined || raw === null)
+    return [];
+  if ("refused" in rule) {
+    if (Array.isArray(raw) && raw.length === 0)
+      return [];
+    problems.push(`${where}: \`secrets\` cannot be named here. ${rule.refused}`);
+    return null;
+  }
+  const { names, problems: found } = resolveDeclaredSecrets(raw, {
+    field: `${path}.secrets`,
+    reserved: rule.reserved
+  });
+  problems.push(...found);
+  return found.length > 0 ? null : names;
+}
+
+// src/domain/deploy-jobs.ts
+function refPatternProblem(pattern) {
+  const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
+  if (body.includes("*")) {
+    return `"${pattern}" uses a '*' somewhere other than the end, which this matcher cannot honour, ` + 'so it would match nothing. Write a literal ref, or a prefix followed by "*" \u2014 e.g. "v*".';
+  }
+  if (/[?[\]{}]/.test(body)) {
+    return `"${pattern}" uses a glob character this matcher cannot honour, so it would match nothing. ` + 'Write a literal ref, or a prefix followed by "*".';
+  }
+  return "";
+}
+function readPatterns(raw, key, required, where, problems) {
+  const list = raw ?? [];
+  if (!Array.isArray(list) || list.some((p) => typeof p !== "string" || p.trim() === "")) {
+    problems.push(`${where}: \`${key}\` must be an array of non-empty patterns.`);
+    return null;
+  }
+  const patterns = list.map((p) => p.trim());
+  const bad = patterns.map(refPatternProblem).find((problem) => problem !== "");
+  if (bad) {
+    problems.push(`${where}: ${bad}`);
+    return null;
+  }
+  if (required && patterns.length === 0) {
+    problems.push(`${where}: \`${key}\` needs at least one pattern \u2014 e.g. ["v*"].`);
+    return null;
+  }
+  return patterns;
+}
+function refsFrom(key, required) {
+  return {
+    keys: [key],
+    read: (entry, where, problems) => {
+      const refs = readPatterns(entry[key], key, required, where, problems);
+      return refs === null ? null : { refs };
+    }
+  };
+}
+var DEPLOY_ARMS = {
+  merge: {
+    key: "on_merge",
+    rules: {
+      where: "deploy.on_merge",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("branches", false)
+    }
+  },
+  tag: {
+    key: "on_tag",
+    rules: {
+      where: "deploy.on_tag",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("tags", true)
+    }
+  },
+  demand: {
+    key: "on_demand",
+    rules: {
+      where: "deploy.on_demand",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: { keys: [], read: () => ({ refs: [] }) }
+    }
+  }
+};
+var TRIGGERS = Object.keys(DEPLOY_ARMS);
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function resolveDeployJobs(deploy) {
+  const section = isRecord2(deploy) ? deploy : {};
+  const problems = [];
+  const jobs = [];
+  const seen = new Set;
+  for (const trigger of TRIGGERS) {
+    const arm = DEPLOY_ARMS[trigger];
+    const resolved = resolveDeclaredJobs(section[arm.key], arm.rules);
+    problems.push(...resolved.problems);
+    for (const job of resolved.jobs) {
+      if (seen.has(job.name)) {
+        problems.push(`\`${arm.key}\`: '${job.name}' is already declared in another \`deploy\` list.`);
+        continue;
+      }
+      seen.add(job.name);
+      jobs.push({ ...job, trigger });
+    }
+  }
+  return problems.length > 0 ? { jobs: [], problems } : { jobs, problems };
 }
 
 // src/domain/path-patterns.ts
@@ -320,7 +329,7 @@ var GATE_KEYS = ["reason", "when"];
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function readPatterns(raw, where, problems) {
+function readPatterns2(raw, where, problems) {
   if (raw === undefined)
     return [];
   if (!Array.isArray(raw)) {
@@ -411,10 +420,10 @@ function resolveMergeGates(raw) {
       }
     }
     const when = {
-      filesAdded: readPatterns(declared.files_added, `${where}.when.files_added`, problems),
-      filesRemoved: readPatterns(declared.files_removed, `${where}.when.files_removed`, problems),
-      filesModified: readPatterns(declared.files_modified, `${where}.when.files_modified`, problems),
-      filesChanged: readPatterns(declared.files_changed, `${where}.when.files_changed`, problems),
+      filesAdded: readPatterns2(declared.files_added, `${where}.when.files_added`, problems),
+      filesRemoved: readPatterns2(declared.files_removed, `${where}.when.files_removed`, problems),
+      filesModified: readPatterns2(declared.files_modified, `${where}.when.files_modified`, problems),
+      filesChanged: readPatterns2(declared.files_changed, `${where}.when.files_changed`, problems),
       labels: readLabels(declared.labels, `${where}.when.labels`, problems),
       titleMatches: readTitleMatches(declared.title_matches, `${where}.when.title_matches`, problems)
     };
@@ -445,7 +454,9 @@ var CONFIG_SCHEMA = {
     },
     deploy: {
       children: {
-        atomaton_runs: { children: { targets: null, secrets: null, runs_on: null } },
+        on_merge: null,
+        on_tag: null,
+        on_demand: null,
         your_workflow: null
       }
     },
@@ -467,11 +478,8 @@ var CONFIG_SCHEMA = {
     }
   }
 };
-function arm(section, name) {
-  if (!isRecord4(section))
-    return {};
-  const value = section[name];
-  return isRecord4(value) ? value : {};
+function leafOf(path) {
+  return path.slice(path.lastIndexOf(".") + 1);
 }
 function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -506,33 +514,27 @@ function configProblems(facts) {
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
     problems.push(`\`${key}\` in config.yaml is not a setting Atomaton reads. Check the spelling.`);
   }
-  for (const [section, atomatonArm] of [
-    ["checks", "from_pull_request"],
-    ["deploy", "atomaton_runs"]
+  for (const [section, atomatonLists] of [
+    ["checks", [CHECKS_FROM_PULL_REQUEST, CHECKS_FROM_DEFAULT_BRANCH].map((rules) => leafOf(rules.where))],
+    ["deploy", Object.values(DEPLOY_ARMS).map((arm) => arm.key)]
   ]) {
     const value = config[section];
-    if (!isRecord4(value))
+    if (!isRecord4(value) || value.your_workflow === undefined)
       continue;
-    if (value[atomatonArm] !== undefined && value.your_workflow !== undefined) {
-      problems.push("`" + section + "` sets both `" + atomatonArm + "` and `your_workflow`. They are alternatives: `your_workflow` dispatches a " + "workflow of your own and nothing reads `" + atomatonArm + "`. Remove whichever you did not mean.");
-    }
+    const declared = atomatonLists.filter((list) => value[list] !== undefined);
+    if (declared.length === 0)
+      continue;
+    const named = declared.map((list) => `\`${list}\``).join(" and ");
+    problems.push(`\`${section}\` sets ${named} and \`your_workflow\`. They are alternatives: \`your_workflow\` ` + `dispatches a workflow of your own and nothing reads ${named}. Remove whichever you did not mean.`);
   }
   const merge = isRecord4(config.merge) ? config.merge : {};
   problems.push(...resolveMergeGates(merge.gates).problems);
-  const deployRuns = arm(config.deploy, "atomaton_runs");
-  problems.push(...resolveDeployTargets(deployRuns.targets).problems);
+  problems.push(...resolveDeployJobs(config.deploy).problems);
   const checks = isRecord4(config.checks) ? config.checks : {};
-  problems.push(...resolveDeclaredJobs(checks.from_pull_request, {
-    where: "checks.from_pull_request",
-    secretsAllowed: false
-  }).problems);
-  problems.push(...resolveDeclaredJobs(checks.from_default_branch, {
-    where: "checks.from_default_branch",
-    secretsAllowed: true
-  }).problems);
+  problems.push(...resolveDeclaredJobs(checks.from_pull_request, CHECKS_FROM_PULL_REQUEST).problems);
+  problems.push(...resolveDeclaredJobs(checks.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH).problems);
   const tools = isRecord4(config.tools) ? config.tools : {};
-  problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
+  problems.push(...resolveDeclaredSecrets(tools.secrets, TOOL_SECRETS).problems);
   for (const name of agentNames.filter(isControlCommand).sort()) {
     problems.push(`agent-definitions/${name}.md is named after the '/${name}' control command, ` + `so '/${name}' will never dispatch it. Rename the agent.`);
   }

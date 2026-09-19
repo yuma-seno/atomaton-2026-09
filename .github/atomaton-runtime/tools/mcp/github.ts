@@ -6823,7 +6823,7 @@ function decideMergeReadiness(signals) {
     const rest = signals.governancePaths.length - 5;
     blockers.push({
       kind: "governance-change",
-      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atomaton/config.yaml` (`checks.from_pull_request`, `deploy.atomaton_runs.targets`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
+      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atomaton/config.yaml` (`checks.from_pull_request`, `deploy.on_merge`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
     });
   }
   for (const match of signals.gateMatches) {
@@ -6849,101 +6849,191 @@ function formatBlockers(blockers) {
 `);
 }
 
-// src/domain/deploy-targets.ts
-var TRIGGERS = ["merge", "tag", "manual"];
-var NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+// src/domain/declared-secrets.ts
+var SECRET_SLOTS = 10;
+var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
+var NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+var RUN_CREDENTIALS = [
+  "OPENAI_API_KEY",
+  "OPENROUTER_API_KEY",
+  "ORCAROUTER_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "ATOMA_COPILOT_TOKEN",
+  "GH_TOKEN"
+];
+var TOOL_SECRETS = {
+  field: "tools.secrets",
+  reserved: new Set([
+    ...RUN_CREDENTIALS,
+    "AGENT",
+    "ATOMATON_OPS_LOG",
+    "ATOMA_PROVIDER",
+    "ATOMATON_RELOAD_COUNT",
+    "ATOMATON_RUN_TYPE",
+    "GITHUB_RUN_ID",
+    "ISSUE_NOTIFY",
+    "ISSUE_NUMBER",
+    "OPENAI_BASE_URL",
+    "OPENROUTER_BASE_URL",
+    "ORCAROUTER_BASE_URL",
+    "ANTHROPIC_BASE_URL",
+    "COPILOT_BASE_URL",
+    "ATOMA_PROVIDER_IN",
+    "OPENAI_BASE_URL_IN"
+  ])
+};
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
+function resolveDeclaredSecrets(raw, destination) {
+  const { field, reserved } = destination;
+  if (raw === undefined || raw === null)
+    return { names: [], problems: [] };
+  if (!Array.isArray(raw)) {
+    return { names: [], problems: [`\`${field}\` must be an array of secret names.`] };
+  }
+  const problems = [];
+  const names = [];
+  const seen = new Set;
+  for (const entry of raw) {
+    if (typeof entry !== "string") {
+      problems.push(`\`${field}\` entries must be strings; found ${JSON.stringify(entry)}.`);
+      continue;
+    }
+    const name = entry.trim();
+    if (!NAME_PATTERN.test(name)) {
+      problems.push(`\`${field}\`: '${name}' is not a usable secret name. Expected uppercase letters, digits and underscores, starting with a letter \u2014 e.g. 'SLACK_TOKEN'.`);
+      continue;
+    }
+    if (reserved.has(name)) {
+      problems.push(`\`${field}\`: '${name}' is already part of the environment this workflow provides, so declaring it would replace that value rather than add a credential. Give the secret another name.`);
+      continue;
+    }
+    if (name.startsWith(SECRET_SLOT_PREFIX)) {
+      problems.push(`\`${field}\`: '${name}' collides with the slots this mechanism uses internally. Give the secret another name.`);
+      continue;
+    }
+    if (seen.has(name)) {
+      problems.push(`\`${field}\`: '${name}' is declared more than once.`);
+      continue;
+    }
+    seen.add(name);
+    names.push(name);
+  }
+  if (names.length > SECRET_SLOTS) {
+    problems.push(`\`${field}\` declares ${names.length} secrets but a run carries at most ${SECRET_SLOTS}. Raising the cap needs a new release, since each slot is a line of generated workflow YAML.`);
+  }
+  return problems.length > 0 ? { names: [], problems } : { names, problems };
+}
+
+// src/domain/check-jobs.ts
+var CHECKS_FROM_PULL_REQUEST = {
+  where: "checks.from_pull_request",
+  secrets: {
+    refused: "These commands come from the pull request, which may rewrite them, so a credential " + "named beside them is one the change being judged can read. Move the check to " + "`checks.from_default_branch`, where the commands come from a branch a person approved."
+  }
+};
+var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
+
+// src/domain/runner-label.ts
+var DEFAULT_RUNNER = "ubuntu-latest";
+function resolveRunsOn(configured) {
+  if (configured === undefined || configured === null)
+    return { labels: [DEFAULT_RUNNER], problems: [] };
+  if (typeof configured === "string") {
+    const label = configured.trim();
+    if (!label)
+      return { labels: [DEFAULT_RUNNER], problems: ["runs_on is empty; using " + DEFAULT_RUNNER] };
+    return { labels: [label], problems: [] };
+  }
+  if (Array.isArray(configured)) {
+    const labels = configured.filter((entry) => typeof entry === "string").map((entry) => entry.trim()).filter(Boolean);
+    const problems = [];
+    if (labels.length !== configured.length) {
+      problems.push("runs_on has entries that are not non-empty strings; those are ignored");
+    }
+    if (labels.length === 0) {
+      return { labels: [DEFAULT_RUNNER], problems: [...problems, `runs_on names no usable label; using ${DEFAULT_RUNNER}`] };
+    }
+    return { labels, problems };
+  }
+  return { labels: [DEFAULT_RUNNER], problems: [`runs_on must be a string or a list of strings; using ${DEFAULT_RUNNER}`] };
+}
+
+// src/domain/declared-jobs.ts
+var NAME_PATTERN2 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function readCommands(raw, where, problems) {
-  const before = problems.length;
-  if (!Array.isArray(raw)) {
-    problems.push(`${where}: \`commands\` must be an array of shell commands.`);
-    return [];
-  }
-  const commands = [];
-  for (const entry of raw) {
-    if (typeof entry !== "string" || entry.trim() === "") {
-      problems.push(`${where}: every command must be a non-empty string; found ${JSON.stringify(entry)}.`);
-      continue;
-    }
-    commands.push(entry);
-  }
-  if (commands.length === 0 && problems.length === before) {
-    problems.push(`${where}: declares no commands, so it would deploy nothing.`);
-  }
-  return commands;
-}
-function resolveDeployTargets(raw) {
+function resolveDeclaredJobs(raw, rules) {
   if (raw === undefined || raw === null)
-    return { targets: [], problems: [] };
-  if (!Array.isArray(raw)) {
-    return { targets: [], problems: ["`deploy.atomaton_runs.targets` must be an array."] };
-  }
+    return { jobs: [], problems: [] };
+  if (!Array.isArray(raw))
+    return { jobs: [], problems: [`\`${rules.where}\` must be an array.`] };
   const problems = [];
-  const targets = [];
+  const jobs = [];
   const seen = new Set;
+  const allowed = new Set([...SHARED_KEYS, ...rules.extra?.keys ?? []]);
   raw.forEach((entry, index) => {
-    const where = `\`deploy.atomaton_runs.targets[${index}]\``;
+    const where = `\`${rules.where}[${index}]\``;
     if (!isRecord(entry)) {
       problems.push(`${where} must be an object.`);
       return;
     }
+    const unknown = Object.keys(entry).filter((key) => !allowed.has(key));
+    if (unknown.length > 0) {
+      problems.push(`${where}: unknown key(s) ${unknown.map((k) => `\`${k}\``).join(", ")}.`);
+      return;
+    }
     const name = typeof entry.name === "string" ? entry.name.trim() : "";
-    if (!NAME_PATTERN.test(name)) {
-      problems.push(`${where}: \`name\` must be lowercase letters, digits and hyphens \u2014 e.g. 'production'.`);
+    if (!NAME_PATTERN2.test(name)) {
+      problems.push(`${where}: \`name\` must be lowercase letters, digits and hyphens \u2014 e.g. 'cloud-names'.`);
       return;
     }
     if (seen.has(name)) {
       problems.push(`${where}: '${name}' is declared more than once.`);
       return;
     }
-    const on = entry.on;
-    if (typeof on !== "string" || !TRIGGERS.includes(on)) {
-      problems.push(`${where}: \`on\` must be one of ${TRIGGERS.map((t) => `'${t}'`).join(", ")}.`);
+    const commandsRaw = entry.commands ?? [];
+    if (!Array.isArray(commandsRaw) || commandsRaw.some((c) => typeof c !== "string" || c.trim() === "")) {
+      problems.push(`${where}: \`commands\` must be an array of non-empty shell commands.`);
       return;
     }
-    const trigger = on;
-    const tagsRaw = entry.tags ?? [];
-    if (!Array.isArray(tagsRaw) || tagsRaw.some((tag) => typeof tag !== "string" || tag.trim() === "")) {
-      problems.push(`${where}: \`tags\` must be an array of non-empty patterns.`);
+    const commands = commandsRaw.map((c) => c.trim());
+    if (commands.length === 0) {
+      problems.push(`${where}: \`commands\` is empty, so this job would do nothing and report success.`);
       return;
     }
-    const tags = tagsRaw.map((tag) => tag.trim());
-    const badPattern = tags.map((tag) => tagPatternProblem(tag)).find((problem) => problem !== "");
-    if (badPattern) {
-      problems.push(`${where}: ${badPattern}`);
+    const secrets = readSecrets(entry.secrets, rules.secrets, `${rules.where}[${index}]`, where, problems);
+    if (secrets === null)
       return;
-    }
-    if (trigger === "tag" && tags.length === 0) {
-      problems.push(`${where}: \`on: tag\` needs at least one pattern in \`tags\` \u2014 e.g. ["v*"].`);
+    const extra = rules.extra ? rules.extra.read(entry, where, problems) : {};
+    if (extra === null)
       return;
-    }
-    if (trigger !== "tag" && tags.length > 0) {
-      problems.push(`${where}: \`tags\` only applies to \`on: tag\`; this target is \`on: ${trigger}\`.`);
-      return;
-    }
-    const before = problems.length;
-    const commands = readCommands(entry.commands, where, problems);
-    if (problems.length > before)
-      return;
+    const runner = resolveRunsOn(entry.runs_on);
+    for (const problem of runner.problems)
+      problems.push(`${where}: ${problem}`);
     seen.add(name);
-    targets.push({ name, on: trigger, tags, commands });
+    jobs.push({ name, runsOn: runner.labels, commands, secrets, ...extra });
   });
-  return problems.length > 0 ? { targets: [], problems } : { targets, problems };
+  return { jobs, problems };
 }
-function tagPatternProblem(pattern) {
-  const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
-  if (body.includes("*")) {
-    return `"${pattern}" uses a '*' somewhere other than the end, which this matcher cannot honour, ` + 'so it would match no tag. Write a literal tag, or a prefix followed by "*" \u2014 e.g. "v*".';
+function readSecrets(raw, rule, path, where, problems) {
+  if (raw === undefined || raw === null)
+    return [];
+  if ("refused" in rule) {
+    if (Array.isArray(raw) && raw.length === 0)
+      return [];
+    problems.push(`${where}: \`secrets\` cannot be named here. ${rule.refused}`);
+    return null;
   }
-  if (/[?[\]{}]/.test(body)) {
-    return `"${pattern}" uses a glob character this matcher cannot honour, so it would match no tag. ` + 'Write a literal tag, or a prefix followed by "*".';
-  }
-  return "";
-}
-function targetsForMerge(targets) {
-  return targets.filter((target) => target.on === "merge");
+  const { names, problems: found } = resolveDeclaredSecrets(raw, {
+    field: `${path}.secrets`,
+    reserved: rule.reserved
+  });
+  problems.push(...found);
+  return found.length > 0 ? null : names;
 }
 
 // src/domain/merge-gates.ts
@@ -7163,8 +7253,8 @@ function getGovernedPaths() {
 function getMergeGates() {
   return resolveMergeGates(loadConfig().merge?.gates);
 }
-function getDeployTargets() {
-  return resolveDeployTargets(loadConfig().deploy?.atomaton_runs?.targets);
+function getDeploySection() {
+  return loadConfig().deploy;
 }
 function getWorkflowName(kind, fallback = "") {
   const section = kind === "ci" ? loadConfig().checks : loadConfig().deploy;
@@ -18876,6 +18966,101 @@ function runIssueNumber() {
   return Number.isInteger(issue) && issue > 0 ? issue : undefined;
 }
 
+// src/domain/deploy-jobs.ts
+function refMatches(pattern, ref) {
+  return pattern.endsWith("*") ? ref.startsWith(pattern.slice(0, -1)) : ref === pattern;
+}
+function refPatternProblem(pattern) {
+  const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
+  if (body.includes("*")) {
+    return `"${pattern}" uses a '*' somewhere other than the end, which this matcher cannot honour, ` + 'so it would match nothing. Write a literal ref, or a prefix followed by "*" \u2014 e.g. "v*".';
+  }
+  if (/[?[\]{}]/.test(body)) {
+    return `"${pattern}" uses a glob character this matcher cannot honour, so it would match nothing. ` + 'Write a literal ref, or a prefix followed by "*".';
+  }
+  return "";
+}
+function readPatterns2(raw, key, required, where, problems) {
+  const list = raw ?? [];
+  if (!Array.isArray(list) || list.some((p) => typeof p !== "string" || p.trim() === "")) {
+    problems.push(`${where}: \`${key}\` must be an array of non-empty patterns.`);
+    return null;
+  }
+  const patterns = list.map((p) => p.trim());
+  const bad = patterns.map(refPatternProblem).find((problem) => problem !== "");
+  if (bad) {
+    problems.push(`${where}: ${bad}`);
+    return null;
+  }
+  if (required && patterns.length === 0) {
+    problems.push(`${where}: \`${key}\` needs at least one pattern \u2014 e.g. ["v*"].`);
+    return null;
+  }
+  return patterns;
+}
+function refsFrom(key, required) {
+  return {
+    keys: [key],
+    read: (entry, where, problems) => {
+      const refs = readPatterns2(entry[key], key, required, where, problems);
+      return refs === null ? null : { refs };
+    }
+  };
+}
+var DEPLOY_ARMS = {
+  merge: {
+    key: "on_merge",
+    rules: {
+      where: "deploy.on_merge",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("branches", false)
+    }
+  },
+  tag: {
+    key: "on_tag",
+    rules: {
+      where: "deploy.on_tag",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: refsFrom("tags", true)
+    }
+  },
+  demand: {
+    key: "on_demand",
+    rules: {
+      where: "deploy.on_demand",
+      secrets: { reserved: DEPLOY_JOB_RESERVED },
+      extra: { keys: [], read: () => ({ refs: [] }) }
+    }
+  }
+};
+var TRIGGERS = Object.keys(DEPLOY_ARMS);
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function resolveDeployJobs(deploy) {
+  const section = isRecord3(deploy) ? deploy : {};
+  const problems = [];
+  const jobs = [];
+  const seen = new Set;
+  for (const trigger of TRIGGERS) {
+    const arm = DEPLOY_ARMS[trigger];
+    const resolved = resolveDeclaredJobs(section[arm.key], arm.rules);
+    problems.push(...resolved.problems);
+    for (const job of resolved.jobs) {
+      if (seen.has(job.name)) {
+        problems.push(`\`${arm.key}\`: '${job.name}' is already declared in another \`deploy\` list.`);
+        continue;
+      }
+      seen.add(job.name);
+      jobs.push({ ...job, trigger });
+    }
+  }
+  return problems.length > 0 ? { jobs: [], problems } : { jobs, problems };
+}
+function mergeMightDeploy(jobs, branch) {
+  return jobs.some((job) => job.trigger === "merge" && (job.refs.length === 0 || !branch || job.refs.some((pattern) => refMatches(pattern, branch))));
+}
+
 // src/domain/shipped-workflows.ts
 var DEFAULT_CI_WORKFLOW = "atomaton-check.yml";
 var DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";
@@ -18925,9 +19110,9 @@ function dispatchCd(baseRef) {
   }
   const configured = getWorkflowName("cd");
   if (!configured) {
-    const { targets, problems } = getDeployTargets();
-    if (problems.length === 0 && targetsForMerge(targets).length === 0) {
-      log5("dispatchCd: no deploy.atomaton_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
+    const { jobs, problems } = resolveDeployJobs(getDeploySection());
+    if (problems.length === 0 && !mergeMightDeploy(jobs, baseRef)) {
+      log5(`dispatchCd: nothing in deploy.on_merge covers ${baseRef || "this branch"}, and deploy.your_workflow is unset; nothing to dispatch`);
       return false;
     }
   }
