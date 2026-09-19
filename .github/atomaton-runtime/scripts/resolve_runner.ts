@@ -3,7 +3,6 @@
 
 // src/scripts/resolve_runner.ts
 import { appendFileSync } from "fs";
-import { parseArgs } from "util";
 
 // src/domain/runner-label.ts
 var DEFAULT_RUNNER = "ubuntu-latest";
@@ -74,12 +73,11 @@ function loadConfig() {
   }
   return cached;
 }
-function getRunsOn(field) {
-  const config = loadConfig();
-  return field === "checks" ? config.checks?.pull_request_runs?.runs_on : config.deploy?.atomaton_runs?.runs_on;
+function getRunsOn() {
+  return loadConfig().deploy?.atomaton_runs?.runs_on;
 }
-function runsOnPath(field) {
-  return field === "checks" ? "checks.pull_request_runs.runs_on" : "deploy.atomaton_runs.runs_on";
+function runsOnPath() {
+  return "deploy.atomaton_runs.runs_on";
 }
 
 // src/scripts/lib/script-ref.ts
@@ -92,20 +90,14 @@ function defineScript(importMetaUrl) {
 // src/scripts/resolve_runner.ts
 var ref = defineScript(import.meta.url);
 function main() {
-  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { field: { type: "string" } } });
-  const field = values.field ?? "";
-  if (field !== "checks" && field !== "deploy") {
-    console.error("usage: resolve_runner.ts --field checks|deploy");
-    process.exit(2);
-  }
-  const { labels, problems } = resolveRunsOn(getRunsOn(field));
+  const { labels, problems } = resolveRunsOn(getRunsOn());
   for (const problem of problems)
-    console.error(`::warning::${runsOnPath(field)}: ${problem}`);
+    console.error(`::warning::${runsOnPath()}: ${problem}`);
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput)
     appendFileSync(githubOutput, `runs_on=${runsOnOutput(labels)}
 `);
-  console.error(`${runsOnPath(field)} resolved to ${labels.join(", ")}`);
+  console.error(`${runsOnPath()} resolved to ${labels.join(", ")}`);
 }
 if (import.meta.main)
   main();

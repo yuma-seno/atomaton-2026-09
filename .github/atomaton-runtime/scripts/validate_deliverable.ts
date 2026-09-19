@@ -195,6 +195,95 @@ function tagPatternProblem(pattern) {
   return "";
 }
 
+// src/domain/runner-label.ts
+var DEFAULT_RUNNER = "ubuntu-latest";
+function resolveRunsOn(configured) {
+  if (configured === undefined || configured === null)
+    return { labels: [DEFAULT_RUNNER], problems: [] };
+  if (typeof configured === "string") {
+    const label = configured.trim();
+    if (!label)
+      return { labels: [DEFAULT_RUNNER], problems: ["runs_on is empty; using " + DEFAULT_RUNNER] };
+    return { labels: [label], problems: [] };
+  }
+  if (Array.isArray(configured)) {
+    const labels = configured.filter((entry) => typeof entry === "string").map((entry) => entry.trim()).filter(Boolean);
+    const problems = [];
+    if (labels.length !== configured.length) {
+      problems.push("runs_on has entries that are not non-empty strings; those are ignored");
+    }
+    if (labels.length === 0) {
+      return { labels: [DEFAULT_RUNNER], problems: [...problems, `runs_on names no usable label; using ${DEFAULT_RUNNER}`] };
+    }
+    return { labels, problems };
+  }
+  return { labels: [DEFAULT_RUNNER], problems: [`runs_on must be a string or a list of strings; using ${DEFAULT_RUNNER}`] };
+}
+
+// src/domain/declared-jobs.ts
+var NAME_PATTERN3 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function resolveDeclaredJobs(raw, rules) {
+  if (raw === undefined || raw === null)
+    return { jobs: [], problems: [] };
+  if (!Array.isArray(raw))
+    return { jobs: [], problems: [`\`${rules.where}\` must be an array.`] };
+  const problems = [];
+  const jobs = [];
+  const seen = new Set;
+  const allowed = new Set([...SHARED_KEYS, ...rules.extraKeys ?? []]);
+  raw.forEach((entry, index) => {
+    const where = `\`${rules.where}[${index}]\``;
+    if (!isRecord2(entry)) {
+      problems.push(`${where} must be an object.`);
+      return;
+    }
+    const unknown = Object.keys(entry).filter((key) => !allowed.has(key));
+    if (unknown.length > 0) {
+      problems.push(`${where}: unknown key(s) ${unknown.map((k) => `\`${k}\``).join(", ")}.`);
+      return;
+    }
+    const name = typeof entry.name === "string" ? entry.name.trim() : "";
+    if (!NAME_PATTERN3.test(name)) {
+      problems.push(`${where}: \`name\` must be lowercase letters, digits and hyphens \u2014 e.g. 'cloud-names'.`);
+      return;
+    }
+    if (seen.has(name)) {
+      problems.push(`${where}: '${name}' is declared more than once.`);
+      return;
+    }
+    const commandsRaw = entry.commands ?? [];
+    if (!Array.isArray(commandsRaw) || commandsRaw.some((c) => typeof c !== "string" || c.trim() === "")) {
+      problems.push(`${where}: \`commands\` must be an array of non-empty shell commands.`);
+      return;
+    }
+    const commands = commandsRaw.map((c) => c.trim());
+    if (commands.length === 0) {
+      problems.push(`${where}: \`commands\` is empty, so this job would do nothing and report success.`);
+      return;
+    }
+    const secretsRaw = entry.secrets ?? [];
+    if (!Array.isArray(secretsRaw) || secretsRaw.some((s) => typeof s !== "string" || s.trim() === "")) {
+      problems.push(`${where}: \`secrets\` must be an array of repository secret names.`);
+      return;
+    }
+    const secrets = secretsRaw.map((s) => s.trim());
+    if (!rules.secretsAllowed && secrets.length > 0) {
+      problems.push(`${where}: \`secrets\` cannot be named here. These commands come from the pull request, ` + `which may rewrite them, so a credential named beside them is one the change being judged can read.`);
+      return;
+    }
+    const runner = resolveRunsOn(entry.runs_on);
+    for (const problem of runner.problems)
+      problems.push(`${where}: ${problem}`);
+    seen.add(name);
+    jobs.push({ name, runsOn: runner.labels, commands, secrets });
+  });
+  return { jobs, problems };
+}
+
 // src/domain/path-patterns.ts
 var GLOB_CHARACTERS = /[*?[\]{}]/;
 function pathPatternProblem(pattern) {
@@ -228,7 +317,7 @@ var CONDITION_KEYS = [
   "title_matches"
 ];
 var GATE_KEYS = ["reason", "when"];
-function isRecord2(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function readPatterns(raw, where, problems) {
@@ -298,7 +387,7 @@ function resolveMergeGates(raw) {
   const gates = [];
   raw.forEach((entry, index) => {
     const where = `\`merge.gates[${index}]\``;
-    if (!isRecord2(entry)) {
+    if (!isRecord3(entry)) {
       problems.push(`${where} must be an object with \`reason\` and \`when\`.`);
       return;
     }
@@ -311,7 +400,7 @@ function resolveMergeGates(raw) {
     if (reason === "") {
       problems.push(`${where}: \`reason\` must say why a person should merge this, in their words.`);
     }
-    if (!isRecord2(entry.when)) {
+    if (!isRecord3(entry.when)) {
       problems.push(`${where}: \`when\` must be an object naming at least one condition ` + `(${CONDITION_KEYS.join(", ")}).`);
       return;
     }
@@ -349,8 +438,8 @@ var CONFIG_SCHEMA = {
     environment: { children: { setup_commands: null, max_reloads: null } },
     checks: {
       children: {
-        pull_request_runs: { children: { commands: null, runs_on: null } },
-        default_branch_runs: { children: { jobs: null, runs_on: null } },
+        from_pull_request: null,
+        from_default_branch: null,
         your_workflow: null
       }
     },
@@ -379,16 +468,16 @@ var CONFIG_SCHEMA = {
   }
 };
 function arm(section, name) {
-  if (!isRecord3(section))
+  if (!isRecord4(section))
     return {};
   const value = section[name];
-  return isRecord3(value) ? value : {};
+  return isRecord4(value) ? value : {};
 }
-function isRecord3(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function unknownKeys(value, section, prefix) {
-  if (!isRecord3(value))
+  if (!isRecord4(value))
     return [];
   const unknown = [];
   for (const [name, child] of Object.entries(value)) {
@@ -411,28 +500,37 @@ function unknownKeys(value, section, prefix) {
 function configProblems(facts) {
   const problems = [];
   const { config, agentNames, workflowFiles } = facts;
-  if (!isRecord3(config)) {
+  if (!isRecord4(config)) {
     return ["`config.yaml` must be a YAML mapping."];
   }
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
     problems.push(`\`${key}\` in config.yaml is not a setting Atomaton reads. Check the spelling.`);
   }
   for (const [section, atomatonArm] of [
-    ["checks", "pull_request_runs"],
+    ["checks", "from_pull_request"],
     ["deploy", "atomaton_runs"]
   ]) {
     const value = config[section];
-    if (!isRecord3(value))
+    if (!isRecord4(value))
       continue;
     if (value[atomatonArm] !== undefined && value.your_workflow !== undefined) {
       problems.push("`" + section + "` sets both `" + atomatonArm + "` and `your_workflow`. They are alternatives: `your_workflow` dispatches a " + "workflow of your own and nothing reads `" + atomatonArm + "`. Remove whichever you did not mean.");
     }
   }
-  const merge = isRecord3(config.merge) ? config.merge : {};
+  const merge = isRecord4(config.merge) ? config.merge : {};
   problems.push(...resolveMergeGates(merge.gates).problems);
   const deployRuns = arm(config.deploy, "atomaton_runs");
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
-  const tools = isRecord3(config.tools) ? config.tools : {};
+  const checks = isRecord4(config.checks) ? config.checks : {};
+  problems.push(...resolveDeclaredJobs(checks.from_pull_request, {
+    where: "checks.from_pull_request",
+    secretsAllowed: false
+  }).problems);
+  problems.push(...resolveDeclaredJobs(checks.from_default_branch, {
+    where: "checks.from_default_branch",
+    secretsAllowed: true
+  }).problems);
+  const tools = isRecord4(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
   problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
   for (const name of agentNames.filter(isControlCommand).sort()) {
@@ -447,7 +545,7 @@ function configProblems(facts) {
       ["checks", DEFAULT_CI_WORKFLOW],
       ["deploy", DEFAULT_CD_WORKFLOW]
     ]) {
-      const named = isRecord3(config[section]) ? config[section].your_workflow : undefined;
+      const named = isRecord4(config[section]) ? config[section].your_workflow : undefined;
       const configured = typeof named === "string" ? named.trim() : "";
       const effective = configured || fallback;
       if (!present.has(effective)) {
@@ -455,8 +553,8 @@ function configProblems(facts) {
       }
     }
   }
-  const chain = isRecord3(config.chain) ? config.chain : {};
-  if (isRecord3(chain.labels)) {
+  const chain = isRecord4(config.chain) ? config.chain : {};
+  if (isRecord4(chain.labels)) {
     for (const [key, value] of Object.entries(chain.labels)) {
       if (typeof value !== "string" || value.trim() === "") {
         problems.push(`\`chain.labels.${key}\` must be a non-empty label name.`);
@@ -523,7 +621,7 @@ function toolsFileFrom(tools, hookBase, defaultsPath) {
     out.hooks = absoluteHooks(watch, hookBase);
   for (const [name, server] of Object.entries(mergedServers(tools?.servers, defaults))) {
     const { settings: _delivery, ...forTheCore } = server;
-    if (isRecord4(forTheCore.hooks))
+    if (isRecord5(forTheCore.hooks))
       forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
     out[name] = forTheCore;
   }
@@ -551,7 +649,7 @@ function mergedWatch(configured, defaults) {
   return out;
 }
 var HOOK_SCRIPT_KEYS = ["before_tool", "after_tool"];
-function isRecord4(value) {
+function isRecord5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function absoluteHooks(hooks, base) {
