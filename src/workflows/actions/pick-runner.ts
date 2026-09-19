@@ -24,7 +24,7 @@
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./base.ts";
 import { SetupBunAction } from "./third-party.ts";
-import { scriptCommandWithArgs } from "./script-call.ts";
+import { scriptCommand } from "./script-call.ts";
 import { ref as resolveRunnerRef } from "../../scripts/resolve_runner.ts";
 
 /** The job's name. Referenced by the contract test that pins the required check's name. */
@@ -37,13 +37,14 @@ export const PICK_RUNNER_JOB = "pick-runner";
  * Always JSON, so one label and three are consumed identically -- see
  * `domain/runner-label.ts`.
  */
-export function pickRunnerJob(field: "checks" | "deploy") {
+export function pickRunnerJob() {
   const resolveStep = new TypedOutputsStep(
     {
       name: "Read the configured runner",
       id: "runner",
       shell: "bash",
-      run: `${scriptCommandWithArgs(resolveRunnerRef, { field })}\n`,
+      run: `${scriptCommand(resolveRunnerRef)}
+`,
     },
     ["runs_on"] as const,
   );

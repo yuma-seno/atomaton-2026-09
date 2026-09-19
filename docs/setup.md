@@ -51,7 +51,7 @@ environment:
 ```
 
 They run through `bash -c`, in order, and stop on first failure — before the agent
-starts, before `checks.pull_request_runs.commands`, and before `deploy.atomaton_runs.targets`.
+starts, before `checks.from_pull_request`, and before `deploy.atomaton_runs.targets`.
 One declaration, three jobs.
 
 The template ships this empty on purpose: it is language- and framework-agnostic, and

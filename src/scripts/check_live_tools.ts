@@ -21,12 +21,12 @@
  * ## Why this may run on a pull request
  *
  * It starts what the pull request declares, which is executing the change under
- * review. That is what this job is: the commands under `checks.pull_request_runs`
+ * review. That is what this job is: the commands under `checks.from_pull_request`
  * are the pull request's own, run in its own tree, and no repository secret reaches
  * them. A credential here would be one the change being judged could read, so there
  * is nowhere in that section to name one.
  *
- * The job that holds credentials is `checks.default_branch_runs`, whose commands
+ * The job that holds credentials is `checks.from_default_branch`, whose commands
  * come from the default branch and which receives the pull request as a path to
  * read. Neither job can be given both, which is why this one may start a server at
  * all.

@@ -257,7 +257,7 @@ describe("decideMergeReadiness", () => {
   // configuration.
   test("touching a generated workflow says where CI actually gets configured", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/workflows/atomaton-check.yml"] }));
-    expect(blockers[0]?.detail).toContain("checks.pull_request_runs.commands");
+    expect(blockers[0]?.detail).toContain("checks.from_pull_request");
     expect(blockers[0]?.detail).toContain("config.yaml");
   });
 

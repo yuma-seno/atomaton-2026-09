@@ -30,25 +30,26 @@ checks:
   # The commands this pull request declares, run in this pull request's own tree.
   # No repository secret reaches them: a pull request may rewrite any command here,
   # so a credential would be one the change being judged can read.
-  pull_request_runs:
-    # In order, stopping at the first failure.
-    commands:
-      # The SOURCE, not the deployed copy. This repository builds the deliverable,
-      # so `.github/` here is the last release and lags every change by a deploy.
-      # A pull request that moves a script would otherwise fail its own check for
-      # naming a path that is correct and not yet deployed. An adopter has no such
-      # gap -- their tree is one release, whole -- so the shipped default in
-      # src/atomaton/config.yaml names the deployed path and this one does not.
-      - "bun run src/scripts/scan_secrets.ts"
-      - "bun run typecheck"
-      - "bun run synth"
-      - "bun run test"
-    runs_on: ubuntu-latest
+  from_pull_request:
+    # One job, because these run in order and each needs what the one before it
+    # built: `synth` writes what `test` reads. Splitting them would mean building
+    # the tree again in every job to save nothing.
+    - name: verify
+      commands:
+        # The SOURCE, not the deployed copy. This repository builds the deliverable,
+        # so `.github/` here is the last release and lags every change by a deploy.
+        # A pull request that moves a script would otherwise fail its own check for
+        # naming a path that is correct and not yet deployed. An adopter has no such
+        # gap -- their tree is one release, whole -- so the shipped default in
+        # src/atomaton/config.yaml names the deployed path and this one does not.
+        - "bun run src/scripts/scan_secrets.ts"
+        - "bun run typecheck"
+        - "bun run synth"
+        - "bun run test"
 
   # Nothing here needs a credential yet. A check that did would go here, with the
   # commands read from the default branch and the pull request handed over as a path.
-  default_branch_runs:
-    jobs: []
+  from_default_branch: []
 
   # your_workflow: ci.yml
 

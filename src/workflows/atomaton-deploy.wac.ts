@@ -117,7 +117,7 @@ export const atomaDeploy = new Workflow("atomaton-deploy", {
     "id-token": "write",
   },
 }).addJobs(
-  pickRunnerJob("deploy").then((pick) =>
+  pickRunnerJob().then((pick) =>
     new DefinedJob(
     "deploy",
     {

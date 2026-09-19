@@ -429,7 +429,7 @@ Every pull request an agent opens is checked for one thing before your CI is ask
 to run at all: whether the `.github/atomaton/` it would merge can still start a run.
 
 This is not your pipeline and it is not configurable. It runs whether or not
-`checks.pull_request_runs.commands` is set, and it reads nothing from `checks` or `deploy`
+`checks.from_pull_request` is set, and it reads nothing from `checks` or `deploy`
 to decide what to check — those describe what YOU verify. This one answers a
 narrower question that only has one right answer.
 
@@ -506,7 +506,7 @@ is, so it cannot be on it.
 `environment.setup_commands`: an agent can change the runner and prove the change in
 the same pull request rather than waiting for a merge to find out.
 
-Two shipped workflows run what `checks.pull_request_runs` and `deploy.atomaton_runs` declare
+Two shipped workflows run what `checks.from_pull_request` and `deploy.atomaton_runs` declare
 — `atomaton-check.yml` and `atomaton-deploy.yml`. Neither changes per project, which is
 the whole point: **an agent can write configuration and cannot write a workflow.**
 GitHub refuses `GITHUB_TOKEN` on `.github/workflows/**` by identity, on every path
@@ -584,7 +584,7 @@ credential you give a third-party server is readable by the shell tool.
 
 If that matters for a particular credential, the options are to give it only to a
 server shipped here, or not to route it at all and let the tool that needs it be a
-step in `checks.pull_request_runs.commands`, which runs in its own job.
+step in `checks.from_pull_request`, which runs in its own job.
 
 ### What the filesystem does
 

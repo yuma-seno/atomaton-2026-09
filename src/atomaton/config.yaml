@@ -33,25 +33,29 @@ checks:
   # secret reaches them, and there is nowhere here to name one: a pull request may
   # rewrite any command below, so a credential would be one the change being judged
   # can read.
-  pull_request_runs:
-    # In order, stopping at the first failure.
-    commands:
-      - bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/scan_secrets.ts"
-    runs_on: ubuntu-latest
+  #
+  # Each entry is its own job: it picks its own runner, they run in parallel, and a
+  # failure names itself. `commands` run in order, stopping at the first failure.
+  from_pull_request:
+    - name: secrets
+      commands:
+        - bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/scan_secrets.ts"
+    # - name: test-macos
+    #   runs_on: macos-latest
+    #   commands: ["bun test"]
 
   # Checks that need a credential. The commands come from the DEFAULT BRANCH, so a
   # pull request cannot choose what runs. The pull request arrives as a path to read
   # at $ATOMATON_PR_TREE: data, never something to execute.
   #
-  # Each entry becomes its own job and names its own secrets, so a token reaches the
-  # one check that asked for it rather than every check you have.
-  default_branch_runs:
-    jobs: []
-    # jobs:
-    #   - name: cloud-names
-    #     secrets: [AWS_ROLE_ARN]
-    #     commands:
-    #       - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
+  # Each entry names its own secrets, so a token reaches the one check that asked
+  # for it rather than every check you have.
+  from_default_branch: []
+  # from_default_branch:
+  #   - name: cloud-names
+  #     secrets: [AWS_ROLE_ARN]
+  #     commands:
+  #       - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
 
   # your_workflow: ci.yml
 
@@ -93,7 +97,7 @@ chain:
 # core reads. Most projects never edit past this line.
 tools:
   # Repository secrets the servers may reach. Separate from the lists under
-  # `checks.pull_request_runs` and `deploy.atomaton_runs`: only these enter an agent's own
+  # `checks.from_pull_request` and `deploy.atomaton_runs`: only these enter an agent's own
   # environment.
   secrets: []
 
