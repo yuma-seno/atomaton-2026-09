@@ -125,12 +125,11 @@ function main(): void {
   );
   result.problems.push(...readProblems);
 
-  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
   for (const problem of result.problems) console.error(`::warning::${problem}`);
   // Fatal only when the root got nothing. That comment IS the stop: without it the run
   // polls, finds nothing, and keeps going — while the person who closed the issue has
   // every reason to believe it is winding down.
-  if (rootFailed) process.exit(1);
+  if (!result.rootNotified) process.exit(1);
 
   console.error(
     `#${root} was closed by ${closer || "(unknown)"}. ` +

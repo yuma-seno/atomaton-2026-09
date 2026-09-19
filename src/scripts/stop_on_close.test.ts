@@ -17,6 +17,28 @@ describe("stop_on_close.ts", () => {
   const RUNNING_ROOT = JSON.stringify({ state: "open", labels: [{ name: "atomaton/in-progress" }] });
   const CLOSED_ARGS = ["--number", "803", "--closer", "octocat", "--closer-type", "User"];
 
+  /**
+   * The tree asks GitHub for its own sub-issue links as well as searching for the tag,
+   * because the tag only exists where an agent has been. These fixtures are about the
+   * tagged half, so the native half answers empty -- described rather than left
+   * unmatched, which the fake reports as a failure and the walk reports as a problem.
+   */
+  const NO_NATIVE_LINKS = {
+    match: ["api", "graphql"],
+    stdout: JSON.stringify({
+      data: {
+        repository: {
+          issue: {
+            parent: null,
+            subIssues: { nodes: [] },
+            closedByPullRequestsReferences: { nodes: [] },
+            timelineItems: { nodes: [] },
+          },
+        },
+      },
+    }),
+  };
+
   function run(args: string[], rules: { match: string[]; stdout?: string; code?: number }[]) {
     const configDir = makeConfigDir({});
     try {
@@ -35,6 +57,7 @@ describe("stop_on_close.ts", () => {
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
       { match: ["issue", "list", "parent="], stdout: "[]" },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
     ]);
     expect(r.status).toBe(0);
@@ -74,6 +97,7 @@ describe("stop_on_close.ts", () => {
         ]),
       },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -86,6 +110,7 @@ describe("stop_on_close.ts", () => {
       { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
       { match: ["issue", "list", "parent="], stdout: "[]" },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      NO_NATIVE_LINKS,
     ]);
     expect(r.status).toBe(0);
     expect(r.ghCalls.some((c) => c.includes("comment"))).toBe(false);
@@ -123,6 +148,7 @@ describe("stop_on_close.ts", () => {
         ]),
       },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -146,6 +172,7 @@ describe("stop_on_close.ts", () => {
           { number: 817, body: "<!-- atomaton:parent-issue=803 -->", state: "MERGED", labels: [] },
         ]),
       },
+      NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
     ]);
     expect(r.status).toBe(0);
@@ -163,6 +190,7 @@ describe("stop_on_close.ts", () => {
           { number: 826, body: "<!-- atomaton:parent-issue=803 -->", state: "OPEN", labels: [] },
         ]),
       },
+      NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
       { match: ["pr", "close"] },
     ]);

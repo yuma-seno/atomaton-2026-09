@@ -139,9 +139,8 @@ function main(): void {
   // run polls, finds nothing, and keeps going, and the person is told a stop is coming
   // that never arrives. A descendant that could not be reached is a warning — the rest
   // of the stop stands, and failing the step would report that none of it happened.
-  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
   for (const problem of result.problems) console.error(`::warning::${problem}`);
-  if (rootFailed) process.exit(1);
+  if (!result.rootNotified) process.exit(1);
 
   console.error(`Stop requested across #${root}: ${result.stopped.length ? result.stopped.map((n) => `#${n}`).join(", ") : "no run was holding anything"}`);
 }
