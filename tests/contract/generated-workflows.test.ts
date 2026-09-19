@@ -1273,4 +1273,29 @@ describe("generated workflows", () => {
     expect(dispatch?.env?.CLOSED ?? "", "the guard must reach the dispatch").toContain("closed-guard");
     expect(dispatch?.run ?? "").toContain('"$CLOSED" = "true"');
   });
+  /**
+   * A matrix job says which entry it is, and nothing else.
+   *
+   * Without an explicit `name`, GitHub builds one from EVERY field of the matrix
+   * entry. Measured on the first run of this shape:
+   *
+   *     pull-request-checks (verify, ["ubuntu-latest"], bun run src/scripts/scan_…
+   *
+   * — truncated by the UI, with the one part a person needs buried among the commands
+   * and the runner. That string is also what a failing check reports itself as, so it
+   * is the whole of what somebody sees when they are looking for what went wrong.
+   */
+  test("a matrix check names itself by its entry, not by everything in it", () => {
+    type WorkflowDocument = { jobs?: Record<string, { name?: string }> };
+    const workflow = Bun.YAML.parse(
+      readFileSync("dist/.github/workflows/atomaton-check.yml", "utf8"),
+    ) as WorkflowDocument;
+
+    for (const job of ["pull-request-checks", "default-branch-checks"]) {
+      expect(
+        workflow.jobs?.[job]?.name,
+        `${job} must name itself, or GitHub names it after every field of the entry`,
+      ).toBe(`${job} (\${{ matrix.name }})`);
+    }
+  });
 });

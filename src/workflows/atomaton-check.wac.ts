@@ -232,6 +232,16 @@ function matrixJob(jobName: string, planJobName: string, steps: readonly unknown
   return new DefinedJob(
     jobName,
     {
+      // Named, because GitHub builds a matrix job's name from EVERY field of its
+      // entry when it is not. Measured on the first run of this shape:
+      //
+      //   pull-request-checks (verify, ["ubuntu-latest"], bun run src/scripts/scan_…
+      //
+      // — truncated by the UI, and the one part a person needs is the entry's name,
+      // which is buried among the commands and the runner. That name is also what a
+      // failing check reports itself as, so it is the whole of what somebody sees
+      // when they are looking for which check went wrong.
+      name: `${jobName} (\${{ matrix.name }})`,
       needs: [planJobName],
       if: `\${{ needs.${planJobName}.outputs.jobs != '[]' }}`,
       "runs-on": "${{ fromJSON(matrix.runs_on) }}" as unknown as string,
