@@ -266,7 +266,7 @@ function fetchPrEvents(owner: string, repo: string, number: number, maxDiffChars
 function linkedPrNumbers(owner: string, repo: string, issueNumber: number): number[] {
   const prs = ghJson<{ number: number }[]>(
     "pr", "list", "--repo", `${owner}/${repo}`, "--state", "all",
-    "--search", `atomaton:parent-issue=${issueNumber} in:body`,
+    "--search", `${PARENT_ISSUE_TAG.search(issueNumber)} in:body`,
     "--limit", "1000", "--json", "number",
   ) ?? [];
   if (prs.length === 1000) {

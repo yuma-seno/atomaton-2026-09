@@ -4,6 +4,7 @@
  * subprocess spawn) by lib/aggregation.ts's shared dispatch gate.
  */
 import { gh } from "./gh.ts";
+import { PARENT_TAG } from "./tags.ts";
 import { getLabel } from "./config.ts";
 import type { GhIssueSummary } from "./types.ts";
 
@@ -39,7 +40,7 @@ export function countOpenSiblings(opts: CountOpenSiblingsOptions): number {
     "--state", "open",
     "--label", label,
     "--label", launchedLabel,
-    "--search", `atomaton:parent=${opts.parent} in:body`,
+    "--search", `${PARENT_TAG.search(opts.parent)} in:body`,
     "--json", "number",
   );
 

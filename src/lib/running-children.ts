@@ -18,7 +18,7 @@ export function runningChildren(repo: string, parent: number): number[] {
   const label = getLabel("in_progress");
   const { code, stdout } = gh(
     "issue", "list", "--repo", repo, "--state", "open", "--limit", "200",
-    "--search", `atomaton:parent=${parent} in:body`,
+    "--search", `${PARENT_TAG.search(parent)} in:body`,
     "--label", label,
     "--json", "number,body",
   );
