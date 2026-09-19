@@ -65,7 +65,8 @@ var CI_RETRY_TAG = numericTag("ci-retry");
 function shouldMentionOnCompletion(signals) {
   if (!signals.notify)
     return false;
-  if (signals.directive)
+  const handoffWillRun = !signals.stopRequested && !signals.limitReached;
+  if (signals.directive && handoffWillRun)
     return false;
   if (signals.chainContinues)
     return false;
@@ -243,6 +244,8 @@ function buildCommentBody(args) {
   ];
   if (args.salvaged === true) {
     lines.push("> [!WARNING]", "> This run ended before it wrote a report. Below is the last thing it said,", "> from the middle of the work \u2014 not a conclusion, and not a summary of what it found.", "");
+  } else if (args.wroteNothing === true) {
+    lines.push("> [!WARNING]", "> This run ended before it said anything at all, so there is no report below \u2014", "> not even a partial one. What it had done is in its saved session.", "");
   }
   lines.push(args.output, "", ...args.usageLines);
   const escapedNotice = escapedMentionNotice(args.escapedMentions ?? []);
@@ -253,7 +256,9 @@ function buildCommentBody(args) {
     chainContinues: args.chainContinues === "true",
     notify: args.notify,
     isSubIssue: args.isSubIssue ?? false,
-    issueClosed: args.issueClosed ?? false
+    issueClosed: args.issueClosed ?? false,
+    stopRequested: args.stopRequested === "true",
+    limitReached: args.limitReached === "true"
   })) {
     lines.push(`@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
   }
@@ -297,19 +302,26 @@ function main() {
     process.exit(2);
   }
   const redacted = redact(existsSync(outputFile) ? readFileSync(outputFile, "utf8") : "");
+  const cutShort = values["limit-reached"] === "true" || values["stop-requested"] === "true";
   let output = redacted;
   let salvaged = false;
-  if (!output.trim() && (values["limit-reached"] === "true" || values["stop-requested"] === "true")) {
+  let wroteNothing = false;
+  if (!output.trim() && cutShort) {
     const last = lastAgentText(values.session, Number(values["messages-before"]));
     if (last !== undefined) {
       output = redact(last);
       salvaged = true;
-      console.error("salvaged the agent's last message from the session (limit reached)");
+      console.error("salvaged the agent's last message from the session (cut short)");
     }
   }
   if (!output.trim()) {
-    console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
-    return;
+    if (!cutShort) {
+      console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
+      return;
+    }
+    wroteNothing = true;
+    output = values["stop-requested"] === "true" ? "_This run was stopped before it said anything._" : "_This run reached its limit before it said anything._";
+    console.error("the run was cut short with nothing to report -- posting the notice rather than nothing.");
   }
   const checked = escapeUnknownMentions(output, knownParticipants(process.env.GITHUB_REPOSITORY ?? "", values.number));
   if (checked.escaped.length > 0) {
@@ -318,6 +330,7 @@ function main() {
   const body = buildCommentBody({
     agent: values.agent,
     salvaged,
+    wroteNothing,
     notify: values.notify,
     directive: values.directive,
     chainContinues: values["chain-continues"],
