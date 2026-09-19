@@ -4192,6 +4192,29 @@
     ]
   },
   {
+    "path": "sessions/issue-865/engineer.json",
+    "agent": "engineer",
+    "messages": 6,
+    "calls": 2,
+    "failed": 0,
+    "refused": 0,
+    "skills": [],
+    "tools": {
+      "github__get_issue_comments": 2
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-19T16:15:05Z",
+        "ended_because": "completed",
+        "iterations": 2,
+        "messages": 6,
+        "seconds": 10,
+        "started": "2026-09-19T16:14:55Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-88-orchestrator.json",
     "agent": "orchestrator",
     "messages": 10,
