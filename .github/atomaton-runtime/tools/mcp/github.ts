@@ -18477,9 +18477,12 @@ function defineMcpTool(spec) {
     }
   };
 }
-function withoutBookkeeping(dispatch) {
+function withoutBookkeeping(dispatch, tools) {
+  const strip = new Set(tools);
   return async (name, args) => {
     const payload = await dispatch(name, args);
+    if (!strip.has(name))
+      return payload;
     return { ...payload, text: withoutTags(payload.text) };
   };
 }
@@ -19228,11 +19231,6 @@ var GET_CHECK_RUNS_SCHEMA = objectType({
 var SYNC_BRANCH_SCHEMA = objectType({
   branch: stringType().optional().describe("Branch to synchronize. Defaults to the current Atomaton branch.")
 });
-var SUBMIT_PR_REVIEW_SCHEMA = objectType({
-  number: positiveInt("Positive pull request number, without a leading '#'."),
-  event: enumType(["COMMENT", "REQUEST_CHANGES"]).describe("Review outcome. COMMENT for approval-like feedback: every Atomaton agent shares one bot identity, " + "and GitHub never lets an identity approve its own pull request, so approving is not available. " + "To merge, use github__merge_pr."),
-  body: stringType().optional().describe("Review summary in GitHub-flavored Markdown. Required in practice for REQUEST_CHANGES.")
-});
 var COMMIT_AND_PUSH_SCHEMA = objectType({
   message: stringType().describe("Commit message.")
 });
@@ -19656,16 +19654,6 @@ function listPrReviewComments(a) {
   const { kept, omitted } = fitItems(projected);
   return JSON.stringify({ total: projected.length, omitted, comments: kept });
 }
-function submitPrReview(a) {
-  const cmd = ["pr", "review", String(a.number), "--repo", REPO, "--" + a.event.toLowerCase()];
-  if (a.body)
-    cmd.push("--body", withCheckedMentions(a.body));
-  const { code, stdout, stderr } = gh(...cmd);
-  if (code)
-    mcpFail(stderr || stdout);
-  logOp("submit_pr_review", { number: a.number, event: a.event });
-  return JSON.stringify({ ok: true, event: a.event });
-}
 function isIssueClosed(number) {
   const d = ghJsonOrThrow("issue", "view", String(number), "--repo", REPO, "--json", "state");
   return (d?.state ?? "").toUpperCase() === "CLOSED";
@@ -19812,13 +19800,6 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrReviews }),
   defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
   defineMcpTool({
-    name: "submit_pr_review",
-    description: "Submit a pull request review as either a general COMMENT or REQUEST_CHANGES. Use this after inspecting the diff and checks. There is no APPROVE: every Atomaton agent shares the identity that opened the pull request, and GitHub refuses to let an identity approve its own -- so COMMENT is how a review says the change is good, and github__merge_pr is how it merges. This mutates GitHub and returns JSON success status.",
-    schema: SUBMIT_PR_REVIEW_SCHEMA,
-    guidance: omittedNumberGuidance("pull request"),
-    handler: submitPrReview
-  }),
-  defineMcpTool({
     name: "commit_and_push",
     description: "Stage all worktree changes, create one commit, and push the checked-out branch to origin. Use this after validation and before create_pr; do not call it with unrelated or unreviewed changes present. Returns JSON success status and fails rather than rewriting remote history.",
     schema: COMMIT_AND_PUSH_SCHEMA,
@@ -19832,7 +19813,13 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
     handler: mergePr
   })
 ]);
-var dispatch = withoutBookkeeping(rawDispatch);
+var dispatch = withoutBookkeeping(rawDispatch, [
+  "get_issue",
+  "get_issue_comments",
+  "get_pr",
+  "get_pr_reviews",
+  "list_pr_review_comments"
+]);
 async function main() {
   if (!REPO) {
     log7("GITHUB_REPOSITORY is unset and no GitHub remote could be read, so there is no repository to act on. " + "Set GITHUB_REPOSITORY, or run where `git remote get-url origin` resolves to a github.com URL.");
