@@ -112,7 +112,8 @@ function makeTag(key, valuePattern, parse, render) {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
     },
-    has: (text) => re.test(text)
+    has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`
   };
 }
 function numericTag(key) {
@@ -277,7 +278,7 @@ ${comment.body}`,
   return { events, parentIssue };
 }
 function linkedPrNumbers(owner, repo, issueNumber) {
-  const prs = ghJson("pr", "list", "--repo", `${owner}/${repo}`, "--state", "all", "--search", `atomaton:parent-issue=${issueNumber} in:body`, "--limit", "1000", "--json", "number") ?? [];
+  const prs = ghJson("pr", "list", "--repo", `${owner}/${repo}`, "--state", "all", "--search", `${PARENT_ISSUE_TAG.search(issueNumber)} in:body`, "--limit", "1000", "--json", "number") ?? [];
   if (prs.length === 1000) {
     console.error(`::warning::Linked PR search for Issue #${issueNumber} reached GitHub's 1000-result search limit.`);
   }

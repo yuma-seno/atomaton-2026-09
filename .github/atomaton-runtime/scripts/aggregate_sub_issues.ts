@@ -73,6 +73,50 @@ function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
+// src/lib/agent-name.ts
+var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
+var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
+
+// src/lib/tags.ts
+var TAG_PREFIX = `atomaton:`;
+var EVERY_TAG_PATTERN = [];
+function makeTag(key, valuePattern, parse, render) {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
+  return {
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
+    read: (text) => {
+      const m = re.exec(text);
+      return m ? parse(m[1]) : undefined;
+    },
+    has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`
+  };
+}
+function numericTag(key) {
+  return makeTag(key, "\\d+", Number, String);
+}
+function stringTag(key, valuePattern) {
+  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
+}
+var STOP_TAG = stringTag("stop", "requested");
+var ENDED_TAG = stringTag("ended", "stopped|limit|done");
+var PARENT_TAG = numericTag("parent");
+var PARENT_ISSUE_TAG = numericTag("parent-issue");
+var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
+var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
+var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
+var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
+var CHANGED_TAG = stringTag("changed", "yes|no");
+var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
+var AGGREGATED_TAG = numericTag("aggregated");
+var SUB_RESULT_TAG = numericTag("sub-result");
+var CI_RETRY_TAG = numericTag("ci-retry");
+function readAnyParentTag(text) {
+  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
+}
+
 // src/lib/config.ts
 import { readFileSync } from "fs";
 
@@ -113,7 +157,7 @@ function getLabel(key) {
 function countOpenSiblings(opts) {
   const label = opts.label || getLabel("sub_issue");
   const launchedLabel = opts.launchedLabel || getLabel("launched");
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `atomaton:parent=${opts.parent} in:body`, "--json", "number");
+  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `${PARENT_TAG.search(opts.parent)} in:body`, "--json", "number");
   if (code !== 0) {
     throw new Error(`countOpenSiblings: gh issue list failed: ${stderr}`);
   }
@@ -229,49 +273,6 @@ function dispatchRunner(d) {
     return "failed";
   logDispatch(d.type, d.agent, { number: Number(d.number) });
   return "dispatched";
-}
-
-// src/lib/agent-name.ts
-var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
-var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
-
-// src/lib/tags.ts
-var TAG_PREFIX = `atomaton:`;
-var EVERY_TAG_PATTERN = [];
-function makeTag(key, valuePattern, parse, render) {
-  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
-  EVERY_TAG_PATTERN.push(pattern);
-  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
-  return {
-    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
-    read: (text) => {
-      const m = re.exec(text);
-      return m ? parse(m[1]) : undefined;
-    },
-    has: (text) => re.test(text)
-  };
-}
-function numericTag(key) {
-  return makeTag(key, "\\d+", Number, String);
-}
-function stringTag(key, valuePattern) {
-  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
-}
-var STOP_TAG = stringTag("stop", "requested");
-var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
-var PARENT_ISSUE_TAG = numericTag("parent-issue");
-var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
-var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
-var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
-var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
-var CHANGED_TAG = stringTag("changed", "yes|no");
-var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
-var AGGREGATED_TAG = numericTag("aggregated");
-var SUB_RESULT_TAG = numericTag("sub-result");
-var CI_RETRY_TAG = numericTag("ci-retry");
-function readAnyParentTag(text) {
-  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
 }
 
 // src/lib/notify.ts
@@ -538,7 +539,7 @@ function saveSession(targetPath, content, commitMessage) {
 // src/scripts/aggregate_sub_issues.ts
 var ref = defineScript(import.meta.url);
 function linkedSubIssues(repo, parent) {
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `atomaton:parent=${parent} in:body`, "--json", "number,body");
+  const { code, stdout, stderr } = gh("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_TAG.search(parent)} in:body`, "--json", "number,body");
   if (code !== 0) {
     throw new Error(`could not list sub-issues of #${parent}: ${stderr || stdout}`);
   }

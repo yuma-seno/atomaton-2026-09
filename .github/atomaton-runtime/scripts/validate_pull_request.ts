@@ -125,7 +125,8 @@ function makeTag(key, valuePattern, parse, render) {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
     },
-    has: (text) => re.test(text)
+    has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`
   };
 }
 function numericTag(key) {
