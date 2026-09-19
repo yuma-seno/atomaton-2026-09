@@ -18943,14 +18943,20 @@ var LINK_LIMIT = 50;
 var QUERY = `
 query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
   repository(owner:$owner, name:$name) {
-    issue(number:$number) {
-      parent { number title state }
-      subIssues(first:$limit) { nodes { number title state } }
-      closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
-        nodes { number title state merged body }
+    issueOrPullRequest(number:$number) {
+      __typename
+      ... on Issue {
+        parent { number title state }
+        subIssues(first:$limit) { nodes { number title state } }
+        closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
+          nodes { number title state merged body }
+        }
+        timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
+          nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+        }
       }
-      timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
-        nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+      ... on PullRequest {
+        closingIssuesReferences(first:$limit) { nodes { number title state } }
       }
     }
   }
@@ -18968,19 +18974,27 @@ function issueLinks(repo, number) {
   }
   let issue = null;
   try {
-    issue = ghGraphql(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issue ?? null;
+    issue = ghGraphql(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issueOrPullRequest ?? null;
   } catch (error) {
     const why = error.message;
     console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
     return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
   }
   if (!issue)
-    return { children: [], pullRequests: [], unavailable: `issue #${number} was not found` };
-  const declared = issue.closedByPullRequestsReferences.nodes.map(asPr);
-  const referenced = issue.timelineItems.nodes.map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
+    return { children: [], pullRequests: [], unavailable: `#${number} was not found` };
+  if (issue.__typename === "PullRequest") {
+    const closes = issue.closingIssuesReferences?.nodes ?? [];
+    return {
+      parent: closes[0] ? normalise(closes[0]) : undefined,
+      children: [],
+      pullRequests: []
+    };
+  }
+  const declared = (issue.closedByPullRequestsReferences?.nodes ?? []).map(asPr);
+  const referenced = (issue.timelineItems?.nodes ?? []).map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
   return {
     parent: issue.parent ? normalise(issue.parent) : undefined,
-    children: issue.subIssues.nodes.map(normalise),
+    children: (issue.subIssues?.nodes ?? []).map(normalise),
     pullRequests: dedupeByNumber(declared, referenced)
   };
 }
