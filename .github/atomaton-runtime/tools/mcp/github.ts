@@ -19454,6 +19454,7 @@ function getIssueComments(a) {
       state: issue?.state,
       total_comments: all.length,
       parent: links.parent,
+      children: links.children,
       pull_requests: links.pullRequests,
       ...links.unavailable ? { links_unavailable: links.unavailable } : {}
     },
