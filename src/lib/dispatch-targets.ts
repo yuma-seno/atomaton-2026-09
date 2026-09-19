@@ -92,15 +92,17 @@ export function dispatchPostMergeAgent(repo: string, subIssueNum: number, agent:
     log(`dispatchPostMergeAgent: could not post trigger comment on #${subIssueNum}: ${stderr || stdout}`);
     return false;
   }
-  return dispatchRunner({
-    context: `dispatchPostMergeAgent: re-invoking ${agent} on #${subIssueNum} to confirm and close`,
-    agent,
-    type: "issue",
-    number: subIssueNum,
-    notify,
-    repo,
-    log,
-  });
+  return (
+    dispatchRunner({
+      context: `the pull request for #${subIssueNum} was merged, so ${agent} was to confirm and close it`,
+      agent,
+      type: "issue",
+      number: subIssueNum,
+      notify,
+      repo,
+      log,
+    }) === "dispatched"
+  );
 }
 
 /** Kick off the CI workflow against a branch, so a fresh agent pull request gets a check run. */

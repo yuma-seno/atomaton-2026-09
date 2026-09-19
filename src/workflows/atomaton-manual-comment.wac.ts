@@ -9,6 +9,7 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { dispatchToAtomaRunner } from "./atomaton-runner.wac.ts";
 import { ref as parseCommentCommandRef } from "../scripts/parse_comment_command.ts";
 import { ref as guardCommentRef } from "../scripts/guard_comment_during_run.ts";
+import { ref as guardCommandOnClosedRef } from "../scripts/guard_command_on_closed.ts";
 import { ref as requestStopRef } from "../scripts/request_stop.ts";
 import { ref as resolveResumeAgentRef } from "../scripts/resolve_resume_agent.ts";
 
@@ -81,6 +82,45 @@ const guardStep = new TypedOutputsStep(
       COMMENTER: githubEvent<IssueCommentCreatedEvent>((e) => e.comment.user.login),
     },
     run: `${scriptCommandWithArgs(guardCommentRef, { number: "\${NUMBER}", "comment-id": "\${COMMENT_ID}", commenter: "\${COMMENTER}" })}\n`,
+  },
+  ["blocked"] as const,
+);
+
+/**
+ * The second guard: a command on an issue or pull request that is closed.
+ *
+ * Narrower than the in-progress guard in three ways, each of which would otherwise
+ * make it fire where it has no business. It runs only once a command was actually
+ * parsed -- an ordinary comment on a closed issue is just a comment, and a refusal
+ * posted on one would be the machinery talking to itself. It skips `/stop`, because an
+ * agent can close the issue it is working on and that is the one moment a stop is
+ * needed. And it skips a comment the in-progress guard already caught, so a person
+ * does not get two notices about one comment.
+ */
+const closedGuardStep = new TypedOutputsStep(
+  {
+    name: "Guard: refuse a command on a closed issue or pull request",
+    id: "closed-guard",
+    if:
+      `(${IS_HUMAN_COMMENT}) && ${parseCommandStep.rawOutputs.control} != 'stop' && ` +
+      `(${parseCommandStep.rawOutputs.agent} != '' || ${parseCommandStep.rawOutputs.control} != '') && ` +
+      `${guardStep.rawOutputs.blocked} != 'true'`,
+    shell: "bash",
+    env: {
+      GH_TOKEN: "${{ github.token }}",
+      GITHUB_REPOSITORY: "${{ github.repository }}",
+      NUMBER: githubEvent<IssueCommentCreatedEvent>((e) => e.issue.number),
+      COMMENTER: githubEvent<IssueCommentCreatedEvent>((e) => e.comment.user.login),
+      FROM_COMMAND: parseCommandStep.outputs.agent,
+      FROM_CONTROL: parseCommandStep.outputs.control,
+    },
+    run: `COMMAND="\${FROM_COMMAND:-\${FROM_CONTROL}}"
+${scriptCommandWithArgs(guardCommandOnClosedRef, {
+  number: "\${NUMBER}",
+  commenter: "\${COMMENTER}",
+  command: "/\${COMMAND}",
+})}
+`,
   },
   ["blocked"] as const,
 );
@@ -168,8 +208,9 @@ const dispatchStep = new TypedOutputsStep(
       FROM_COMMAND: parseCommandStep.outputs.agent,
       FROM_RESUME: resumeStep.outputs.agent,
       BLOCKED: guardStep.outputs.blocked,
+      CLOSED: closedGuardStep.outputs.blocked,
     },
-    run: `if [ "$BLOCKED" = "true" ]; then
+    run: `if [ "$BLOCKED" = "true" ] || [ "$CLOSED" = "true" ]; then
   AGENT=""
 else
   AGENT="\${FROM_COMMAND:-\${FROM_RESUME}}"
@@ -226,6 +267,7 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
       // must let through.
       parseCommandStep,
       guardStep,
+      closedGuardStep,
       targetStep,
       stopStep,
       resumeStep,

@@ -33,8 +33,8 @@
  */
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
-import { getLabel } from "../lib/config.ts";
-import { LLM_CONTEXT_TAG, PARENT_TAG, STOP_TAG } from "../lib/tags.ts";
+import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
+import { runningChildren } from "../lib/running-children.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface RequestStopArgs {
@@ -44,39 +44,6 @@ export interface RequestStopArgs {
 }
 
 export const ref = defineScript<RequestStopArgs>(import.meta.url);
-
-/**
- * Sub-issues of `parent` that are currently claimed by an agent.
- *
- * A parent keeps the in-progress label for as long as its chain is running, and that
- * chain may be running on a sub-issue — so a `/stop` on the parent can be aimed at
- * the wrong number without anyone doing anything wrong. This does not stop them:
- * their sessions are separate, and stopping work somebody did not ask to stop is a
- * worse failure than naming it and letting them choose.
- *
- * Every failure here is silent. The stop request is the thing that matters and it has
- * already been posted; a list of candidates is an improvement to the notice, not a
- * precondition for it.
- */
-function runningChildren(repo: string, parent: number): number[] {
-  const label = getLabel("in_progress");
-  const { code, stdout } = gh(
-    "issue", "list", "--repo", repo, "--state", "open", "--limit", "200",
-    "--search", `atomaton:parent=${parent} in:body`,
-    "--label", label,
-    "--json", "number,body",
-  );
-  if (code !== 0) return [];
-  try {
-    const issues = JSON.parse(stdout || "[]") as { number: number; body?: string }[];
-    // The search is a prefilter, not the predicate: GitHub tokenizes, so a query for
-    // `atomaton:parent=5` also returns the sub-issues of #50. `PARENT_TAG.read` is
-    // anchored on the tag's real wire format. Same trap as `aggregate_sub_issues.ts`.
-    return issues.filter((i) => PARENT_TAG.read(i.body ?? "") === parent).map((i) => i.number);
-  } catch {
-    return [];
-  }
-}
 
 /** The notice, as the person who typed `/stop` will read it. */
 export function stopRequestedNotice(commenter: string, deleted: boolean, children: number[]): string {
