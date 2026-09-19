@@ -337,6 +337,21 @@ the ref that says what that run may do and which secrets it holds. Your commands
 still operate on the tree being deployed; only the declaration comes from the
 branch a person approved.
 
+**And the branch has to require a pull request.** A branch anyone can push to is
+a deployment anyone can run, with its credentials, on a commit nobody read. So
+before an `on_merge` deployment starts, the branch it named is checked against
+the rulesets in effect on it, and the run is **refused** — not warned — when no
+ruleset requires a pull request there. The shipped ruleset covers
+`~DEFAULT_BRANCH` and nothing else, so `branches: [develop]` needs one of your
+own covering `develop`.
+
+A refusal is also what you get when the rules could not be read at all, and on a
+repository where rulesets are unavailable — a private repository on a free plan.
+"Could not be checked" is not "is protected", and a deployment is not the place
+to guess. `on_tag` and `on_demand` are not checked this way: a tag has no branch
+rules to read, and a dispatch is already someone with write access asking for it
+by hand.
+
 **What commands cannot express**, and where you still need a workflow of your own
 through `deploy.your_workflow`:
 

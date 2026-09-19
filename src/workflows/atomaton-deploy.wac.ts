@@ -94,6 +94,11 @@ const planJob = new DefinedJob<{ jobs: string }>(
         ATOMATON_DEPLOY_TRIGGER: "${{ inputs.trigger }}",
         ATOMATON_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
         ATOMATON_DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}",
+        ATOMATON_REPO: "${{ github.repository }}",
+        // To read the branch's rules, which is how this job finds out whether the
+        // commit being deployed had to pass through a pull request. Nothing declared
+        // reaches this job, so there is no credential here to shadow.
+        GH_TOKEN: "${{ github.token }}",
       },
       // The default branch may predate this script, and says so rather than answering
       // as though it had looked. It happens during an upgrade: a branch carrying the
@@ -118,6 +123,7 @@ const planJob = new DefinedJob<{ jobs: string }>(
           event: "${ATOMATON_DEPLOY_EVENT}",
           trigger: "${ATOMATON_DEPLOY_TRIGGER}",
           target: "${ATOMATON_DEPLOY_TARGET_INPUT}",
+          repo: "${ATOMATON_REPO}",
         }),
         "",
       ].join("\n"),
