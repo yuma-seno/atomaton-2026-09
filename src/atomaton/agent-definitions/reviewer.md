@@ -9,6 +9,17 @@ model: deepseek/deepseek-v4.1-flash
 # dialect that can carry an image back out of a tool result. A general model that
 # reads images beats a specialist that cannot be reached.
 vision: true
+# Keeps this agent's requests on one deployment, so the provider's prompt cache
+# still holds the conversation from one inference to the next. Without it, a run
+# was measured alternating between a 98% hit and a fall back to the shared prefix.
+#
+# One value for the agent rather than one per conversation: what matters is that
+# consecutive requests land together, and a cache is keyed by content, so two
+# conversations sharing a deployment do not read each other's.
+#
+# Only this agent carries it, so the others are what it is measured against.
+extra_headers:
+  X-OrcaRouter-Session-Id: atomaton-reviewer
 knows_about:
   - engineer
   - orchestrator
