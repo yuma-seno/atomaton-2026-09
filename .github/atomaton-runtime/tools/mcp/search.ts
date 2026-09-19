@@ -17432,6 +17432,50 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
+// src/lib/agent-name.ts
+var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
+var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
+
+// src/lib/tags.ts
+var TAG_PREFIX = `atomaton:`;
+var EVERY_TAG_PATTERN = [];
+function makeTag(key, valuePattern, parse, render) {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
+  return {
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
+    read: (text) => {
+      const m = re.exec(text);
+      return m ? parse(m[1]) : undefined;
+    },
+    has: (text) => re.test(text)
+  };
+}
+function numericTag(key) {
+  return makeTag(key, "\\d+", Number, String);
+}
+function stringTag(key, valuePattern) {
+  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
+}
+var STOP_TAG = stringTag("stop", "requested");
+var PARENT_TAG = numericTag("parent");
+var PARENT_ISSUE_TAG = numericTag("parent-issue");
+var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
+var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
+var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
+var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
+var CHANGED_TAG = stringTag("changed", "yes|no");
+var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
+var AGGREGATED_TAG = numericTag("aggregated");
+var SUB_RESULT_TAG = numericTag("sub-result");
+var CI_RETRY_TAG = numericTag("ci-retry");
+function withoutTags(text) {
+  const tags = EVERY_TAG_PATTERN.join("|");
+  const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
+  return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
+}
+
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "process";
 
@@ -17579,6 +17623,12 @@ function defineMcpTool(spec) {
       }
       return normalizeResult(await spec.handler(result.data));
     }
+  };
+}
+function withoutBookkeeping(dispatch) {
+  return async (name, args) => {
+    const payload = await dispatch(name, args);
+    return { ...payload, text: withoutTags(payload.text) };
   };
 }
 function buildMcpTools(specs) {
@@ -18377,7 +18427,7 @@ async function searchCode(a) {
 
 ${JSON.stringify(results, null, 2)}`;
 }
-var { tools, dispatch } = buildMcpTools([
+var { tools, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "search_issues",
     description: "Search this repository's issues and their discussion by meaning, not by keyword. Ask a whole question \u2014 'why does a branch get created at the first commit rather than up front' \u2014 and the issues that answer it come back, most relevant first, with an excerpt. Use it to find why something is the way it is, whether a problem is already known, or whether the work has been attempted before; the comments are usually where the decision was argued, and they are searched too. Read `query` before calling: how the question is phrased, and what language it is in, decide whether the answer comes back at all. The issue this run is working on is excluded from the results, since you can read it directly \u2014 so a decision recorded there will not appear here.",
@@ -18391,6 +18441,7 @@ var { tools, dispatch } = buildMcpTools([
     handler: searchCode
   })
 ]);
+var dispatch = withoutBookkeeping(rawDispatch);
 async function main() {
   loadReranker().catch((error) => {
     report("warning", `could not preload the reranker (${error.message}); the first search will try again`);

@@ -7191,6 +7191,11 @@ var CI_RETRY_TAG = numericTag("ci-retry");
 function readAnyParentTag(text) {
   return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
 }
+function withoutTags(text) {
+  const tags = EVERY_TAG_PATTERN.join("|");
+  const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
+  return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
+}
 
 // src/lib/notify.ts
 function log(message) {
@@ -18472,6 +18477,12 @@ function defineMcpTool(spec) {
     }
   };
 }
+function withoutBookkeeping(dispatch) {
+  return async (name, args) => {
+    const payload = await dispatch(name, args);
+    return { ...payload, text: withoutTags(payload.text) };
+  };
+}
 function buildMcpTools(specs) {
   const byName = new Map(specs.map((s) => [s.tool.name, s]));
   return {
@@ -19768,7 +19779,7 @@ async function closeParentAndReport(parentIssue) {
     });
   }
 }
-var { tools: TOOLS, dispatch } = buildMcpTools([
+var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "create_issue",
     description: "Create a GitHub issue in the current repository and return its number and URL. Use this for durable work items, especially delegated child tasks; sub_issue defaults to true and links the new issue to the current issue. This mutates GitHub and records the operation in Atomaton's audit log.",
@@ -19821,6 +19832,7 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
     handler: mergePr
   })
 ]);
+var dispatch = withoutBookkeeping(rawDispatch);
 async function main() {
   if (!REPO) {
     log7("GITHUB_REPOSITORY is unset and no GitHub remote could be read, so there is no repository to act on. " + "Set GITHUB_REPOSITORY, or run where `git remote get-url origin` resolves to a github.com URL.");

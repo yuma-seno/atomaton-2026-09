@@ -135,7 +135,8 @@ var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 function withoutTags(text) {
   const tags = EVERY_TAG_PATTERN.join("|");
-  return text.replace(new RegExp(`(?:^[ \\t]*)?(?:${tags})[ \\t]*(?:\\r?\\n)?`, "gm"), "");
+  const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
+  return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
 }
 
 // src/scripts/lib/script-ref.ts
