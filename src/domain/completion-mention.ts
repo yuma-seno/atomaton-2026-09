@@ -20,6 +20,18 @@ export interface CompletionSignals {
   isSubIssue: boolean;
   /** The issue is closed as of this comment. */
   issueClosed: boolean;
+  /**
+   * A person asked this run to stop, or it ran out of iterations.
+   *
+   * Either one cancels the directive's dispatch -- `DISPATCH_NEXT_GUARD` in
+   * `atomaton-runner.wac.ts` refuses on both -- so the directive below stops being
+   * evidence that anything will follow. Without these, a run that stopped on the
+   * same turn it named its successor went quiet twice over: the successor did not
+   * start, and nobody was told, because the comment believed the handoff it could
+   * see rather than the stop it could not.
+   */
+  stopRequested?: boolean;
+  limitReached?: boolean;
 }
 
 /**
@@ -39,10 +51,17 @@ export interface CompletionSignals {
  * A sub-issue that is still OPEN is deliberately not in that list. Nothing wakes
  * a parent for a sub-issue that has not finished, so a run that ends there has
  * genuinely stopped, and that is exactly the case a person needs to hear about.
+ *
+ * The directive is the one of the three that can be contradicted. A stop or a
+ * spent iteration budget means the run it named never started, so the handoff is a
+ * plan rather than a fact and silences nothing. The other two are not: a tool that
+ * already dispatched has already dispatched, and a closed sub-issue still wakes its
+ * parent, whether or not the run that closed it was stopped afterwards.
  */
 export function shouldMentionOnCompletion(signals: CompletionSignals): boolean {
   if (!signals.notify) return false;
-  if (signals.directive) return false;
+  const handoffWillRun = !signals.stopRequested && !signals.limitReached;
+  if (signals.directive && handoffWillRun) return false;
   if (signals.chainContinues) return false;
   if (signals.isSubIssue && signals.issueClosed) return false;
   return true;

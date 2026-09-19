@@ -43,4 +43,34 @@ describe("shouldMentionOnCompletion", () => {
   test("still mentions when a closed issue has no parent", () => {
     expect(shouldMentionOnCompletion({ ...base, issueClosed: true })).toBe(true);
   });
+
+  /**
+   * The case that went silent twice. `DISPATCH_NEXT_GUARD` refuses on a stop, so the
+   * successor named in the directive never runs -- and the directive then silenced
+   * the mention as well, leaving nothing running and nobody told.
+   */
+  test("still mentions when a stop cancelled the handoff the agent named", () => {
+    expect(shouldMentionOnCompletion({ ...base, directive: "reviewer", stopRequested: true })).toBe(true);
+  });
+
+  /** The same guard refuses on a spent iteration budget, so the same applies. */
+  test("still mentions when a spent budget cancelled the handoff", () => {
+    expect(shouldMentionOnCompletion({ ...base, directive: "reviewer", limitReached: true })).toBe(true);
+  });
+
+  /**
+   * Only the directive is contradicted by a stop. A tool that already dispatched has
+   * already dispatched -- that run is going whatever happened to this one -- so the
+   * mention would be claiming a halt that did not happen.
+   */
+  test("a stop does not un-silence a dispatch that already went out", () => {
+    expect(shouldMentionOnCompletion({ ...base, chainContinues: true, stopRequested: true })).toBe(false);
+  });
+
+  /** Nor the parent hand-back: the sub-issue is closed, and closing it is the signal. */
+  test("a stop does not un-silence a closed sub-issue's hand-back", () => {
+    expect(
+      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, stopRequested: true }),
+    ).toBe(false);
+  });
 });
