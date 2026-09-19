@@ -150,8 +150,14 @@ import { TypedOutputsStep } from "./base.ts";
  * provider uses gets established -- by a real response rather than by adding a field
  * name and shipping a release to see whether a number appears, which is what the
  * version before it did.
+ *
+ * v0.1.44 lets an agent definition send its own request headers, which is how one
+ * conversation is kept on one deployment -- the reviewer carries an OrcaRouter
+ * session id. Measured before it: inferences inside a single run alternating between
+ * a 98% cache hit and a fall back to exactly the shared prefix, which is what being
+ * routed to a deployment that has not seen this conversation looks like.
  */
-export const ATOMA_DEFAULT_VERSION = "v0.1.43";
+export const ATOMA_DEFAULT_VERSION = "v0.1.44";
 
 export const ATOMA_VERSION_DESC =
   "Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.";
