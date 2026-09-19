@@ -48,7 +48,7 @@ export const ref = defineScript<AggregateSubIssuesArgs>(import.meta.url);
 function linkedSubIssues(repo: string, parent: number): number[] {
   const { code, stdout, stderr } = gh(
     "issue", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `atomaton:parent=${parent} in:body`,
+    "--search", `${PARENT_TAG.search(parent)} in:body`,
     "--json", "number,body",
   );
   if (code !== 0) {

@@ -102,7 +102,7 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
 
   const issues = ghRead(
     "issue", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `${PARENT_TAG.write(parent)} in:body`,
+    "--search", `${PARENT_TAG.search(parent)} in:body`,
     "--json", "number,body,state,labels",
   );
   if (issues.code !== 0) problems.push(`could not list the sub-issues of #${parent}`);
@@ -119,7 +119,7 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
 
   const prs = ghRead(
     "pr", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `${PARENT_ISSUE_TAG.write(parent)} in:body`,
+    "--search", `${PARENT_ISSUE_TAG.search(parent)} in:body`,
     "--json", "number,body,state,labels",
   );
   if (prs.code !== 0) problems.push(`could not list the pull requests for #${parent}`);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AGENT_TAG, CHANGED_TAG, LLM_CONTEXT_TAG, NOTIFY_TAG, PARENT_TAG, withoutTags } from "./tags.ts";
+import { PARENT_ISSUE_TAG, AGENT_TAG, CHANGED_TAG, LLM_CONTEXT_TAG, NOTIFY_TAG, PARENT_TAG, withoutTags } from "./tags.ts";
 
 /**
  * These markers carry state between workflow runs through GitHub, so they live in the
@@ -95,5 +95,35 @@ describe("withoutTags", () => {
       LLM_CONTEXT_TAG.write("include"),
     ].join("\n");
     expect(withoutTags(everyTag)).toBe("");
+  });
+});
+
+/**
+ * The form GitHub search can actually match.
+ *
+ * Measured the hard way: a work-tree walk searched for `write()`'s output and found
+ * none of its children, on a repository where every one of them carried the tag.
+ * GitHub does not match `<!-- ... -->`, so the search form is the tag text alone —
+ * and it lives here rather than being typed out at each call site, which is where the
+ * literal `atomaton:parent=` had reached four files.
+ */
+describe("search", () => {
+  test("is the tag text without the comment wrapper", () => {
+    expect(PARENT_TAG.search(803)).toBe("atomaton:parent=803");
+  });
+
+  test("and is therefore not what write produces", () => {
+    expect(PARENT_TAG.search(803)).not.toBe(PARENT_TAG.write(803));
+    expect(PARENT_TAG.search(803)).not.toContain("<!--");
+  });
+
+  /**
+   * The sibling tag differs by more than a suffix in search: a query for the issue
+   * edge must not be a prefix of the pull request one, or a search for one returns the
+   * other. It is not, and this says so.
+   */
+  test("the two parent edges do not search as one another", () => {
+    expect(PARENT_ISSUE_TAG.search(803)).not.toBe(PARENT_TAG.search(803));
+    expect(PARENT_ISSUE_TAG.search(803)).not.toContain(PARENT_TAG.search(803));
   });
 });

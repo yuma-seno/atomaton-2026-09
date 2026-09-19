@@ -27,6 +27,17 @@ export interface AtomatonTag<T> {
   read(text: string): T | undefined;
   /** True if `text` contains this tag at all, regardless of its value. */
   has(text: string): boolean;
+  /**
+   * What to put in a GitHub search to find bodies carrying this tag with this value.
+   *
+   * The tag's own text without the comment wrapper, because GitHub's search does not
+   * match `<!-- ... -->` — measured: a tree walk searching for `write()`'s output found
+   * none of its children, on a repository where every one of them carried the tag.
+   *
+   * Never the predicate. GitHub tokenizes, so a search for `atomaton:parent=5` also
+   * returns the sub-issues of #50; every hit is confirmed with `read` afterwards.
+   */
+  search(value: T): string;
 }
 
 /**
@@ -49,6 +60,7 @@ function makeTag<T>(key: string, valuePattern: string, parse: (raw: string) => T
       return m ? parse(m[1]!) : undefined;
     },
     has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`,
   };
 }
 
