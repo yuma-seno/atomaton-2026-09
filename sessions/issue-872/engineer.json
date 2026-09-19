@@ -1,0 +1,36 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Issue #872: 機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\n**Labels:** atomaton/launched\n\n**`on: tag` は書けるのに動きません。** 人が手でタグを押したときしか効きません。\n\n```\nmain へマージ → dispatchCd → deploy 実行 → release.sh がタグ v1.0.0 を作成\n                                            ↓\n                                    push イベントは起きない\n                                            ↓\n                                    on_tag のターゲットは永久に走らない\n```\n\nGitHub は自分のトークンが起こしたイベントでワークフローを起動しません。**このリポジトリがまさにその形です**——`release.sh` が `gh release create` でタグを作り、それはワークフローの中で `GITHUB_TOKEN` で走ります。\n\n## これは既知の穴の5例目です\n\n`lib/dispatch-targets.ts` の冒頭にこう書かれています。\n\n> All four exist for one reason: **GitHub starts no workflow run for events its own token triggers.** An agent opening a pull request fires no `pull_request.opened`; an agent merging fires no `push`.\n\nエージェントのマージが `push` を起こさないから `dispatchCd` がある。**機械のタグ付けが `push` を起こさない**のも同じ穴で、橋が無いだけです。\n\n## やること\n\nデプロイ実行の前後でタグを取り、**増えていたら**そのタグを `--ref` にして自分自身を `trigger=tag` で dispatch します。タグを作ったのはその実行なので、**知っているのはそこだけ**です。\n\n**カスケード防止**: `tag` 起因の実行からは再 dispatch しません。タグを作るターゲットがタグで起動されたら無限に回ります。\n",
+      "atoma_metadata": {
+        "source": "github",
+        "layer": "github-context",
+        "event_type": "issue_opened",
+        "id": "issue-872",
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-19T18:05:13Z"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Atomaton: Agent `engineer` dispatched to work on this sub-task.",
+      "atoma_metadata": {
+        "source": "github",
+        "layer": "github-context",
+        "event_type": "issue_comment",
+        "id": 5744823572,
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-19T19:48:27Z"
+      }
+    }
+  ],
+  "metadata": {
+    "github_context": {
+      "version": 1,
+      "snapshot_hash": "b01cc52145ed3f3aadc4a4ff9f8446a667a59104ef4a892fc96a1277a02cbce1",
+      "event_count": 2,
+      "agent": "engineer"
+    }
+  }
+}
