@@ -30,6 +30,7 @@ import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scrip
 import { DEFAULT_RERANKER } from "../lib/config.ts";
 import { MODEL_CACHE_DIR } from "../domain/model-cache.ts";
 import { ref as resolveIssueBranchRef } from "../scripts/resolve_issue_branch.ts";
+import { ref as resolvePrBranchRef } from "../scripts/resolve_pr_branch.ts";
 import { ref as manageInProgressLabelRef } from "../scripts/manage_in_progress_label.ts";
 import { ref as notifyLimitReachedRef } from "../scripts/notify_limit_reached.ts";
 import { ref as injectUncommittedNoticeRef } from "../scripts/inject_uncommitted_notice.ts";
@@ -321,6 +322,36 @@ const resolveIssueBranchStep = new TypedOutputsStep(
     run: `${scriptCommandWithArgs(resolveIssueBranchRef, {
       repo: "${{ github.repository }}",
       issue: "${{ inputs.number }}",
+    })}\n`,
+  },
+  ["branch"] as const,
+);
+
+/**
+ * The branch the pull request a `pr` run is on is already from.
+ *
+ * A `pr` run checks `refs/pull/N/head` out, and that is not a branch: git leaves
+ * the run detached, so `git rev-parse --abbrev-ref HEAD` answers `HEAD`, and
+ * `commit_and_push` built a refspec out of git's own description of that state --
+ * `fatal: invalid refspec '(HEAD detached at pull/802/head)'`. This is the path
+ * `atomaton-validate-pr.yml` dispatches when CI fails, so the one agent whose job
+ * is to push a fix onto a red pull request was the one that could not. Observed
+ * twice: #247, and the run that filed #803.
+ *
+ * Best-effort, exactly like the issue's own resolution: an empty output means
+ * there is no branch this run may push to, it stays on the detached checkout, and
+ * the tool that needs a branch says so.
+ */
+const resolvePrBranchStep = new TypedOutputsStep(
+  {
+    name: "Resolve the pull request's head branch",
+    id: "pr-branch",
+    if: "inputs.type == 'pr'",
+    shell: "bash",
+    env: { GH_TOKEN: "${{ github.token }}" },
+    run: `${scriptCommandWithArgs(resolvePrBranchRef, {
+      repo: "${{ github.repository }}",
+      number: "${{ inputs.number }}",
     })}\n`,
   },
   ["branch"] as const,
@@ -1246,13 +1277,6 @@ echo "ATOMATON_MACHINERY_ROOT=${MACHINERY_ABS}" >> "$GITHUB_ENV"
 echo "machinery moved to ${MACHINERY_ABS}; the work tree holds only the repository"
 `,
   }),
-  new TypedOutputsStep({
-    name: "Set branch env for PR type",
-    if: "inputs.type != 'issue'",
-    shell: "bash",
-    run: `echo "BRANCH=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
-`,
-  }),
   // Required for every subsequent step / the "Run agent" step itself
   // (tools.yaml spawns the atoma MCP servers via `bun run ...`) --
   // GitHub-hosted runners do not ship Bun preinstalled.
@@ -1286,6 +1310,62 @@ else
 fi
 git fetch origin "refs/heads/\${BRANCH_NAME}:refs/remotes/origin/\${BRANCH_NAME}"
 git checkout -B "\${BRANCH_NAME}" "refs/remotes/origin/\${BRANCH_NAME}"
+`,
+  }),
+  // ── The branch a `pr` run pushes to ─────────────────────────────────────────
+  //
+  // A pull request run checks `refs/pull/N/head` out, and that is not a branch:
+  // git leaves the run detached, so there was nothing for `commit_and_push` to
+  // push to and it built a refspec out of git's own description of that state --
+  //
+  //     fatal: invalid refspec '(HEAD detached at pull/802/head)'
+  //
+  // This is the path `atomaton-validate-pr.yml` dispatches when CI fails, so the
+  // one agent whose job is to push a fix onto a red pull request was the one that
+  // could not. Twice: #247, and the run that filed #803.
+  //
+  // What a person does by hand, done here: name the branch the pull request is
+  // already from, and re-label the commit the run is on with it. Best-effort in
+  // both halves -- no branch resolved, or a fetch that fails, leaves the run
+  // detached rather than stopping it before the agent has said anything, and the
+  // tool that needs a branch then refuses with a message naming what is missing.
+  resolvePrBranchStep,
+  new TypedOutputsStep({
+    name: "Check out the pull request's head branch",
+    if: "inputs.type == 'pr'",
+    shell: "bash",
+    // No credential here: this step runs git only, over the credential
+    // `actions/checkout` already persisted into the local git config. The `gh`
+    // read that names the branch is the step above.
+    env: { BRANCH_NAME: resolvePrBranchStep.outputs.branch },
+    run: `if [ -z "\${BRANCH_NAME}" ]; then
+  echo "no pull request head branch to check out; this run stays on the detached checkout"
+  exit 0
+fi
+
+# The remote-tracking ref as well, so a later \`sync_branch\` compares against
+# something current rather than against nothing.
+if ! git fetch origin "refs/heads/\${BRANCH_NAME}:refs/remotes/origin/\${BRANCH_NAME}"; then
+  echo "::warning::could not fetch \${BRANCH_NAME} from origin; this run stays on the detached checkout"
+  exit 0
+fi
+
+# \`HEAD\`, and deliberately not \`\$GITHUB_SHA\`. \`actions/checkout\` checked
+# \`refs/pull/N/head\` out detached, so HEAD is the pull request's own head
+# commit -- that much is certain. \`\$GITHUB_SHA\` is the dispatch ref's tip
+# instead, and this run is dispatched by \`gh workflow run\` with no \`--ref\`, so
+# that is the DEFAULT branch: naming it here would check the run out onto the
+# default branch and commit its tree on top of the pull request -- measured, the
+# working tree came back as the base commit with the pull request's own change
+# gone. In a checkout that holds only the pull request it is not even present,
+# and the checkout fails outright. Re-labelling HEAD is the whole operation: the
+# same commit, now with the branch name the pull request is already from.
+if ! git checkout -B "\${BRANCH_NAME}" HEAD; then
+  echo "::warning::could not check out \${BRANCH_NAME}; this run stays on the detached checkout"
+  exit 0
+fi
+echo "BRANCH=\${BRANCH_NAME}" >> $GITHUB_ENV
+echo "on the pull request's head branch: \${BRANCH_NAME}"
 `,
   }),
   // MCP サーバーパッケージのキャッシュ + グローバルインストール

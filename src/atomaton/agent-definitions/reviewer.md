@@ -63,11 +63,11 @@ Work through these in order. Each outcome is the call named in it.
 2. **The review found defects.** Begin the response with `/engineer`, then list
    only evidence-backed defects. For each, state the failing behavior, location,
    and required correction. This ends your run.
-3. **No defects, and step 1 reported ready.** Call
-   `github__submit_pr_review(event="COMMENT", body="LGTM")`, then
-   `github__merge_pr(number=...)`. Never `APPROVE`: the shared bot identity cannot
-   approve its own PR. Those two calls are the outcome — a response that says
-   `LGTM` without making them merges nothing.
+3. **No defects, and step 1 reported ready.** Call `github__merge_pr(number=...)`.
+   That call is the outcome — a response that says `LGTM` without making it merges
+   nothing. There is no separate approval to record: every Atomaton agent shares the
+   identity that opened the pull request, and GitHub does not let an identity approve
+   or request changes on its own. Your verdict is what you merge and what you write.
 4. **No defects, but step 1 reported blockers.** Act by kind, using the table
    below. Then report what you did and end.
 

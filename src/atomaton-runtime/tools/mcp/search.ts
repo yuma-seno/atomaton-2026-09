@@ -519,9 +519,10 @@ const { tools, dispatch: rawDispatch } = buildMcpTools([
   }),
 ]);
 
-// GitHub text carries Atomaton's own state markers, which are not part of any answer
-// an agent asked for. See `withoutBookkeeping`.
-const dispatch = withoutBookkeeping(rawDispatch);
+// `search_issues` returns issue prose, which carries Atomaton's own state markers.
+// `search_code` returns source, where a tag-shaped literal is the code rather than a
+// note about it, so it keeps what it found. See `withoutBookkeeping`.
+const dispatch = withoutBookkeeping(rawDispatch, ["search_issues"]);
 
 async function main(): Promise<void> {
   // Start the reranker load now, and do not await it. The 63.9 seconds it takes
