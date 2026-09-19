@@ -181,10 +181,11 @@ function issueContextNumber(args: { number?: number }): number {
  * irreversible outward-facing action turns a malformed call into a wrong merge.
  * That rule stays. What changes is the refusal it produces.
  *
- * `submit_pr_review` was called 28 times with `{event, body}` and no number, and each
- * one came back as "number: Expected number, received undefined" -- true, and no help
- * at all to a caller that is looking at exactly one pull request. Naming the number
- * costs nothing and keeps the decision with the agent: it still has to pass it.
+ * Measured on the tool this was written for, since removed: 28 calls with
+ * `{event, body}` and no number, each answered "number: Expected number, received
+ * undefined" -- true, and no help at all to a caller looking at exactly one pull
+ * request. Naming the number costs nothing and keeps the decision with the agent:
+ * it still has to pass it.
  */
 function omittedNumberGuidance(what: "pull request" | "issue"): (args: Record<string, unknown>) => string | undefined {
   return (args) => {
@@ -274,36 +275,6 @@ const GET_CHECK_RUNS_SCHEMA = z.object({
 });
 const SYNC_BRANCH_SCHEMA = z.object({
   branch: z.string().optional().describe("Branch to synchronize. Defaults to the current Atomaton branch."),
-});
-
-const SUBMIT_PR_REVIEW_SCHEMA = z.object({
-  number: positiveInt("Positive pull request number, without a leading '#'."),
-  // APPROVE used to sit in this enum and be rewritten to COMMENT at run time.
-  //
-  // `zodToJsonSchema` emits an enum verbatim, so the model read "APPROVE is
-  // available" from the schema and "do not use APPROVE" from the description, in
-  // the same breath -- and reached for it. submitPrReview's own comment recorded
-  // the consequence: "Reviewers do reach for APPROVE despite the description
-  // saying not to." The schema was why.
-  //
-  // Removed rather than rewritten, because approving is not something an agent
-  // can do at all. Every Atomaton agent shares the bot identity that opened the pull
-  // request, and GitHub refuses self-approval outright. The two things a reviewer
-  // actually means are both already expressible: "this change is good" is
-  // COMMENT, and "merge it" is github__merge_pr, which runs the whole
-  // merge-readiness gate that a review verdict cannot express.
-  //
-  // A model that sends APPROVE anyway now gets zod's own message naming the two
-  // valid values, which costs an iteration and teaches the right answer. The
-  // silent rewrite cost nothing and taught the wrong one.
-  event: z
-    .enum(["COMMENT", "REQUEST_CHANGES"])
-    .describe(
-      "Review outcome. COMMENT for approval-like feedback: every Atomaton agent shares one bot identity, " +
-        "and GitHub never lets an identity approve its own pull request, so approving is not available. " +
-        "To merge, use github__merge_pr.",
-    ),
-  body: z.string().optional().describe("Review summary in GitHub-flavored Markdown. Required in practice for REQUEST_CHANGES."),
 });
 
 const COMMIT_AND_PUSH_SCHEMA = z.object({
@@ -1095,25 +1066,6 @@ function listPrReviewComments(a: z.infer<typeof PR_CONTEXT_NUMBER_ARG_SCHEMA>): 
   return JSON.stringify({ total: projected.length, omitted, comments: kept });
 }
 
-function submitPrReview(a: z.infer<typeof SUBMIT_PR_REVIEW_SCHEMA>): string {
-  // No substitution any more. APPROVE was removed from the schema rather than
-  // rewritten here -- see SUBMIT_PR_REVIEW_SCHEMA -- so `event` is exactly what
-  // the caller asked for and exactly what GitHub is given.
-  const cmd = ["pr", "review", String(a.number), "--repo", REPO, "--" + a.event.toLowerCase()];
-  // A review body is agent prose reaching a place people read, so it gets the same check
-  // the other three do. It was missed when mentions were first checked, and a review is
-  // the one of the four most likely to name somebody: it is where an agent asks for a
-  // second opinion.
-  //
-  // No closing-keyword check here, deliberately. GitHub does not act on a keyword in a
-  // review, so refusing one would be a rule with nothing behind it.
-  if (a.body) cmd.push("--body", withCheckedMentions(a.body));
-  const { code, stdout, stderr } = gh(...cmd);
-  if (code) mcpFail(stderr || stdout);
-  logOp("submit_pr_review", { number: a.number, event: a.event });
-  return JSON.stringify({ ok: true, event: a.event });
-}
-
 /** True if `number` is currently closed (used to skip a pointless post-merge re-invocation when native "Closes #N" auto-close already did the job). */
 function isIssueClosed(number: number): boolean {
   const d = ghJsonOrThrow<{ state?: string }>("issue", "view", String(number), "--repo", REPO, "--json", "state");
@@ -1314,13 +1266,6 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrReviews }),
   defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
   defineMcpTool({
-    name: "submit_pr_review",
-    description: "Submit a pull request review as either a general COMMENT or REQUEST_CHANGES. Use this after inspecting the diff and checks. There is no APPROVE: every Atomaton agent shares the identity that opened the pull request, and GitHub refuses to let an identity approve its own -- so COMMENT is how a review says the change is good, and github__merge_pr is how it merges. This mutates GitHub and returns JSON success status.",
-    schema: SUBMIT_PR_REVIEW_SCHEMA,
-    guidance: omittedNumberGuidance("pull request"),
-    handler: submitPrReview,
-  }),
-  defineMcpTool({
     name: "commit_and_push",
     description: "Stage all worktree changes, create one commit, and push the checked-out branch to origin. Use this after validation and before create_pr; do not call it with unrelated or unreviewed changes present. Returns JSON success status and fails rather than rewriting remote history.",
     schema: COMMIT_AND_PUSH_SCHEMA,
@@ -1335,9 +1280,23 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   }),
 ]);
 
-// GitHub text carries Atomaton's own state markers, which are not part of any answer
-// an agent asked for. See `withoutBookkeeping`.
-const dispatch = withoutBookkeeping(rawDispatch);
+// The tools that hand back an issue, pull request, comment or review body: GitHub
+// prose, carrying Atomaton's own state markers, which are not part of any answer an
+// agent asked for. See `withoutBookkeeping`.
+//
+// `get_pr_diff` and `search_code` are deliberately absent. What they return is the
+// text under review, where a tag-shaped literal is part of the change rather than a
+// note about it -- `src/lib/lib.test.ts` holds one, and stripping it showed a
+// reviewer a diff that was not the diff.
+//
+// `list_issues` and `list_prs` are absent because they return no body at all.
+const dispatch = withoutBookkeeping(rawDispatch, [
+  "get_issue",
+  "get_issue_comments",
+  "get_pr",
+  "get_pr_reviews",
+  "list_pr_review_comments",
+]);
 
 async function main(): Promise<void> {
   // Refused at startup, not per call.

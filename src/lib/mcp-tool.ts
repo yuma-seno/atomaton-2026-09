@@ -281,22 +281,29 @@ export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): Bui
 export type McpDispatch = (name: string, args: Record<string, unknown>) => Promise<McpToolPayload>;
 
 /**
- * A dispatch whose results carry no Atomaton bookkeeping tags.
+ * A dispatch that strips Atomaton's bookkeeping tags from the named tools' results.
  *
  * Atomaton keeps state between workflow runs in HTML comments inside issue and pull
- * request bodies, so a server that hands GitHub text back hands those along with it,
- * and an agent reads its own delivery machinery's markers as part of the answer it
- * asked for. `fetch_events.ts` strips the same markers out of the context built
- * before a run; this is the other way the same text arrives, during one.
+ * request bodies, so a tool that hands one of those back hands the markers along
+ * with it, and an agent reads its own delivery machinery's notes as part of the
+ * answer it asked for. `fetch_events.ts` strips them out of the context built before
+ * a run; this is the other way the same text arrives, during one.
  *
- * Opt-in rather than applied inside `buildMcpTools`, because it is not true of every
- * server: the file server returns a file, and a file is text to show as it is, even
- * where it happens to contain something shaped like a marker. Wrapped by the servers
- * that speak for GitHub.
+ * Named tools rather than a whole server, and this is the correction of a first
+ * version that took the server: a diff and a code excerpt are not GitHub's prose,
+ * they are the text being reviewed, and a tag-shaped literal inside one is part of
+ * the change. Wrapping `get_pr_diff` handed a reviewer a diff that was not the diff.
+ *
+ * A tool left off this list keeps its markers, which is what every result did before
+ * any of this and which nothing broke. A tool wrongly on it has its content edited
+ * under a reader who cannot tell. So the list is written out, and the default is to
+ * show what came back.
  */
-export function withoutBookkeeping(dispatch: McpDispatch): McpDispatch {
+export function withoutBookkeeping(dispatch: McpDispatch, tools: readonly string[]): McpDispatch {
+  const strip = new Set(tools);
   return async (name, args) => {
     const payload = await dispatch(name, args);
+    if (!strip.has(name)) return payload;
     return { ...payload, text: withoutTags(payload.text) };
   };
 }

@@ -208,12 +208,16 @@ describe("mcp/github.ts", () => {
    * first match, the agent's was the only one in the body.
    */
   /**
-   * A review body is agent prose landing where people read, and it was the one of the
-   * four such places that never got the mention check. It is also the likeliest of them
-   * to name somebody: a review is where an agent asks for a second opinion.
+   * Agent prose landing where people read gets its mentions checked.
+   *
+   * Written against `submit_pr_review`, which was the one such place that had never
+   * had the check and the likeliest to name somebody. That tool is gone -- a review
+   * the shared identity cannot approve or request changes on said the same thing as
+   * the run's final message -- so the same property is held here on a body that is
+   * still written.
    */
-  test("submit_pr_review escapes a mention it cannot vouch for", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "atomaton-review-mentions-"));
+  test("a body an agent writes escapes a mention it cannot vouch for", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-body-mentions-"));
     const log = join(dir, "gh.log");
     try {
       await sendRequest(
@@ -221,14 +225,14 @@ describe("mcp/github.ts", () => {
         {
           jsonrpc: "2.0", id: 41, method: "tools/call",
           params: {
-            name: "submit_pr_review",
-            arguments: { number: 7, event: "COMMENT", body: "Looks right. @torvalds should see this." },
+            name: "create_issue",
+            arguments: { title: "A defect", body: "Looks right. @torvalds should see this.", sub_issue: false },
           },
         },
         {
           PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
           FAKE_GH_LOG: log,
-          FAKE_GH_RESPONSES: JSON.stringify([{ match: ["pr", "review"], stdout: "" }]),
+          FAKE_GH_RESPONSES: JSON.stringify([{ match: ["issue", "create"], stdout: "https://github.com/o/r/issues/7" }]),
         },
       );
       // The argv as issued, rather than the log as text: what matters is the string gh
@@ -417,7 +421,9 @@ describe("mcp/github.ts", () => {
     });
 
     /**
-     * `submit_pr_review` was called 28 times with `{event, body}` and no number.
+     * Measured on `submit_pr_review`, since removed: 28 calls with `{event, body}`
+     * and no number. The guidance it prompted is still on every mutation that needs
+     * one, and this holds it on one of those.
      *
      * The number stays required -- this writes to GitHub, and the rule that mutations
      * do not infer their target is deliberate and stays. What is tested here is the
@@ -429,7 +435,7 @@ describe("mcp/github.ts", () => {
         "github.ts",
         {
           jsonrpc: "2.0", id: 44, method: "tools/call",
-          params: { name: "submit_pr_review", arguments: { event: "COMMENT", body: "LGTM" } },
+          params: { name: "merge_pr", arguments: {} },
         },
         {
           PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
