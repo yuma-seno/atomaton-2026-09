@@ -16,6 +16,9 @@ describe("dispatch_if_siblings_done.ts", () => {
             { match: ["issue", "view", "comments"], stdout: "" },
             { match: ["issue", "comment"] },
             { match: ["workflow", "run"] },
+            // The parent's state. `dispatchRunner` refuses to start an agent on
+            // anything it cannot confirm is open, so the happy path has to say so.
+            { match: ["api", "issues"], stdout: JSON.stringify({ state: "open" }) },
           ],
         },
       );
