@@ -134,6 +134,26 @@ export function importable(absolutePath: string): string {
   return pathToFileURL(absolutePath).href;
 }
 
+/**
+ * Remove a temporary directory a test made, without failing the test over it.
+ *
+ * `rmSync(..., { force: true })` is not enough on Windows, where a directory a git
+ * process touched stays locked for a moment after that process exits: the removal
+ * throws `EBUSY`, from a `finally` block, after every assertion in the test has
+ * already passed. `maxRetries` is exactly what Node added for that.
+ *
+ * And it still swallows what survives the retries. This is a temp directory the
+ * operating system will clean up anyway; a test that cannot delete one has not found
+ * anything about the code it was testing, and saying it failed would be false.
+ */
+export function removeTemp(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+  } catch {
+    // The OS owns it now.
+  }
+}
+
 /** Where the scripts under test live, relative to the repository root. */
 export const SCRIPTS_DIR = "src/scripts";
 

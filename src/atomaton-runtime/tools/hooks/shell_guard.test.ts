@@ -35,6 +35,12 @@ describe("shell_guard.ts", () => {
    * `domain/search-streak.ts` for the numbers and for why repetition was not the
    * signal.
    */
+  /**
+ * Every test here drives the guard a dozen or more times, and each of those is a
+ * process. Bun's default 5s does not cover that on Windows, so they all carry a
+ * timeout -- the cost of the fake finally being reachable, which is a trade worth
+ * making: the alternative was a suite that never ran this code at all.
+ */
   describe("searching without opening anything", () => {
     test("an ordinary amount of searching is allowed", () => {
       const run = ownRun();
@@ -42,7 +48,7 @@ describe("shell_guard.ts", () => {
       for (let n = 0; n < 8; n += 1) {
         expect(run(`grep -rn pattern${n} src/`), `search ${n}`).toContain('"allow":true');
       }
-    });
+    }, 60_000);
 
     test("at the limit the search is refused, and the run is not", () => {
       const run = ownRun();
@@ -52,7 +58,7 @@ describe("shell_guard.ts", () => {
       const refused = run("grep -rn onemore src/");
       expect(refused).toContain('"allow":false');
       expect(refused).toContain("where something is, not what it is");
-    });
+    }, 60_000);
 
     /**
      * Opening something is the act being asked for, so it has to be the act that
@@ -63,7 +69,7 @@ describe("shell_guard.ts", () => {
       for (let n = 0; n < MAX_SEARCHES_WITHOUT_OPENING - 1; n += 1) run(`grep -rn p${n} src/`);
       expect(run("cat src/foo.ts")).toContain('"allow":true');
       expect(run("grep -rn afterwards src/"), "the count started again").toContain('"allow":true');
-    });
+    }, 60_000);
 
     /**
      * The count is per run. A file left behind by an earlier run must not refuse the
@@ -75,7 +81,7 @@ describe("shell_guard.ts", () => {
       for (let n = 0; n < MAX_SEARCHES_WITHOUT_OPENING; n += 1) first(`grep -rn p${n} src/`);
       const second = ownRun();
       expect(second("grep -rn anything src/")).toContain('"allow":true');
-    });
+    }, 60_000);
 
     /**
      * With nowhere to keep a count, the rule does nothing. The hook is fail-closed by
@@ -87,14 +93,14 @@ describe("shell_guard.ts", () => {
         const out = guard({ command: `grep -rn p${n} src/` }, { ATOMATON_OPS_LOG: "" });
         expect(out, `search ${n}`).toContain('"allow":true');
       }
-    });
+    }, 60_000);
 
     test("work that is not searching neither climbs nor clears the count", () => {
       const run = ownRun();
       for (let n = 0; n < MAX_SEARCHES_WITHOUT_OPENING - 1; n += 1) run(`grep -rn p${n} src/`);
       expect(run("bun test"), "running the tests is allowed").toContain('"allow":true');
       expect(run("grep -rn onemore src/"), "and did not clear the count").toContain('"allow":false');
-    });
+    }, 60_000);
 
     /**
      * The same question asked ABOVE the limit, which is where it was answered wrongly.
@@ -122,7 +128,7 @@ describe("shell_guard.ts", () => {
       expect(run("grep -rn still src/"), "the count survived that work").toContain('"allow":false');
       expect(run("sed -n '1,20p' src/foo.ts"), "and opening clears it").toContain('"allow":true');
       expect(run("grep -rn afterwards src/"), "so searching resumes").toContain('"allow":true');
-    });
+    }, 60_000);
   });
 
   // The guard is a routing mechanism, not a boundary — see the file header. So

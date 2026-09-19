@@ -8,7 +8,23 @@ import { dirname, join } from "node:path";
 import { hermeticEnv } from "../../../scripts/testing/harness.ts";
 
 const SCRIPTS_DIR = join(process.cwd(), "src/atomaton-runtime/tools/mcp");
-const FAKE_GH_BIN_DIR = join(process.cwd(), "src/scripts/testing/bin");
+import { FAKE_GH_IMPL } from "../../../scripts/testing/fake-gh-env.ts";
+import { removeTemp } from "../../../scripts/testing/harness.ts";
+
+/**
+ * Point this server's `gh` at the fake, and leave the real one unusable.
+ *
+ * PATH cannot carry this on Windows -- see `ghCommand` in `lib/gh.ts`. It was tried
+ * here too, and the way it failed was to reach the real CLI with the developer's own
+ * credentials: a GraphQL fixture in this file was answered by GitHub itself.
+ */
+function fakeGhSeam(): Record<string, string> {
+  return {
+    ATOMATON_FAKE_GH: FAKE_GH_IMPL,
+    GH_TOKEN: "fake-gh-must-be-used",
+    GITHUB_TOKEN: "fake-gh-must-be-used",
+  };
+}
 
 /**
  * Send one JSON-RPC request to a server and resolve its first response line.
@@ -130,7 +146,7 @@ describe("mcp/github.ts", () => {
       expect(result).toMatchObject({ status: "fast_forwarded", behind: 1 });
       expect(git(work, "rev-parse", "HEAD")).toBe(remoteHead);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      removeTemp(root);
     }
   });
 
@@ -155,7 +171,7 @@ describe("mcp/github.ts", () => {
       expect(response.result.content[0].text).toContain("Call github__sync_branch");
       expect(git(work, "rev-parse", "HEAD")).toBe(localHead);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      removeTemp(root);
     }
   });
 
@@ -202,7 +218,7 @@ describe("mcp/github.ts", () => {
       expect(git(work, "rev-parse", "HEAD"), "a commit was stranded").toBe(before);
       expect(git(work, "status", "--porcelain")).toContain("fix.txt");
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      removeTemp(root);
     }
   });
 
@@ -224,7 +240,7 @@ describe("mcp/github.ts", () => {
           BRANCH: "HEAD",
           ATOMATON_RUN_TYPE: "pr",
           ISSUE_NUMBER: "802",
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_RESPONSES: "[]",
         },
         work,
@@ -233,7 +249,7 @@ describe("mcp/github.ts", () => {
       expect(response.result.isError).toBe(true);
       expect(response.result.content[0].text).toContain("no branch to push");
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      removeTemp(root);
     }
   });
 
@@ -244,6 +260,10 @@ describe("mcp/github.ts", () => {
    * the branch with `show-ref` is new, so this is what says it did not break the
    * ordinary path.
    */
+  // A whole git repository built, cloned and driven through two MCP tools, each of
+  // which spawns a server and several `gh` calls. Bun`s default 5s does not cover
+  // that on Windows -- and until the fake was reachable here, this never ran far
+  // enough to say so.
   test("an issue run still creates its branch and opens a pull request from it", async () => {
     const { root, work } = makeRemoteBranchFixture();
     const dir = mkdtempSync(join(tmpdir(), "atomaton-issue-branch-"));
@@ -260,7 +280,7 @@ describe("mcp/github.ts", () => {
         ATOMATON_RUN_TYPE: "issue",
         ISSUE_NUMBER: "1",
         BRANCH: "",
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        ...fakeGhSeam(),
         FAKE_GH_LOG: log,
         FAKE_GH_RESPONSES: JSON.stringify([
           { match: ["matching-refs"], stdout: "[]" },
@@ -311,10 +331,10 @@ describe("mcp/github.ts", () => {
         .find((argv) => argv.includes("pr") && argv.includes("create"));
       expect(created).toContain("atomaton/issue-1");
     } finally {
-      rmSync(root, { recursive: true, force: true });
-      rmSync(dir, { recursive: true, force: true });
+      removeTemp(root);
+      removeTemp(dir);
     }
-  });
+  }, 60_000);
 
   test("sync_branch reports divergence without rewriting local history", async () => {
     const { root, seed, work } = makeRemoteBranchFixture();
@@ -337,7 +357,7 @@ describe("mcp/github.ts", () => {
       expect(result).toMatchObject({ status: "diverged", ahead: 1, behind: 1 });
       expect(git(work, "rev-parse", "HEAD")).toBe(localHead);
     } finally {
-      rmSync(root, { recursive: true, force: true });
+      removeTemp(root);
     }
   });
 
@@ -349,7 +369,7 @@ describe("mcp/github.ts", () => {
         params: { name: "create_issue", arguments: { title: "Test", sub_issue: false } },
       },
       {
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        ...fakeGhSeam(),
         FAKE_GH_RESPONSES: JSON.stringify([{ match: ["issue", "create"], stdout: "not-a-url" }]),
       },
     );
@@ -387,7 +407,7 @@ describe("mcp/github.ts", () => {
           },
         },
         {
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_LOG: log,
           FAKE_GH_RESPONSES: JSON.stringify([{ match: ["issue", "create"], stdout: "https://github.com/o/r/issues/7" }]),
         },
@@ -405,7 +425,7 @@ describe("mcp/github.ts", () => {
       // that a mention was intended and did not happen.
       expect(body).toContain("had the notification removed");
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeTemp(dir);
     }
   });
 
@@ -420,7 +440,7 @@ describe("mcp/github.ts", () => {
         },
       },
       {
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        ...fakeGhSeam(),
         FAKE_GH_RESPONSES: JSON.stringify([{ match: ["issue", "create"], stdout: "https://github.com/o/r/issues/1" }]),
       },
     );
@@ -439,7 +459,7 @@ describe("mcp/github.ts", () => {
           params: { name: "create_issue", arguments: { title: "Child task" } },
         },
         {
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_LOG: log,
           FAKE_GH_RESPONSES: JSON.stringify([
             { match: ["label", "create", "atomaton/sub-issue"] },
@@ -452,7 +472,7 @@ describe("mcp/github.ts", () => {
       expect(calls[0]).toContain("--force");
       expect(calls[1]).toContain("atomaton/sub-issue");
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeTemp(dir);
     }
   });
 
@@ -478,7 +498,7 @@ describe("mcp/github.ts", () => {
         "github.ts",
         { jsonrpc: "2.0", id: 40, method: "tools/call", params: { name, arguments: args } },
         {
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_RESPONSES: JSON.stringify(responses),
         },
       );
@@ -595,7 +615,7 @@ describe("mcp/github.ts", () => {
           params: { name: "merge_pr", arguments: {} },
         },
         {
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_RESPONSES: "[]",
           ATOMATON_RUN_TYPE: "pr",
           ISSUE_NUMBER: "305",
@@ -622,7 +642,7 @@ describe("mcp/github.ts", () => {
             params: { name: "search_code", arguments: { query: "atomaton_github" } },
           },
           {
-            PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+            ...fakeGhSeam(),
             FAKE_GH_LOG: log,
             FAKE_GH_RESPONSES: JSON.stringify([
               // A wait GitHub states in milliseconds keeps the test honest and quick:
@@ -637,7 +657,7 @@ describe("mcp/github.ts", () => {
         // Asked twice, which is the whole point.
         expect(readFileSync(log, "utf8").split("\n").filter(Boolean).length).toBe(2);
       } finally {
-        rmSync(dir, { recursive: true, force: true });
+        removeTemp(dir);
       }
     });
     test("get_pr_reviews drops the fields nothing decides on", async () => {
@@ -707,6 +727,39 @@ describe("mcp/github.ts", () => {
       // being read as "not there".
       expect(parsed.showing).toBeDefined();
     });
+
+    /**
+     * The header carries all three links, not two.
+     *
+     * `children` was the one it left out, and nothing said why -- the same
+     * `issueLinks` call already holds it. What its absence costs is the question a
+     * reviewer asks most often of a parent: is anything under this still open. The
+     * comments alone cannot answer that, which is the whole reason the header exists.
+     */
+    test("get_issue_comments carries children beside parent and pull requests", async () => {
+      const payload = { title: "t", state: "OPEN", comments: [] };
+      const links = {
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              __typename: "Issue",
+              parent: null,
+              subIssues: { nodes: [{ number: 807, title: "child", state: "OPEN" }] },
+              closedByPullRequestsReferences: { nodes: [] },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      };
+      const r = await call("get_issue_comments", { number: 803 }, [
+        { match: ["api", "graphql"], stdout: JSON.stringify(links) },
+        { match: ["--json", "comments"], stdout: JSON.stringify(payload) },
+      ]);
+      const parsed = JSON.parse(r.result.content[0].text);
+      expect(parsed.issue.children).toEqual([{ number: 807, title: "child", state: "open" }]);
+      expect(parsed.issue.pull_requests).toEqual([]);
+      expect(parsed.issue.links_unavailable).toBeUndefined();
+    });
   });
 
   // The advertised JSON Schema is what teaches the model the correct shape, and
@@ -744,7 +797,7 @@ describe("mcp/github.ts", () => {
         params: { name: "get_issue", arguments: { number: "185" } },
       },
       {
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        ...fakeGhSeam(),
         FAKE_GH_RESPONSES: JSON.stringify([
           { match: ["issue", "view", "185"], stdout: JSON.stringify({ number: 185, title: "Coerced" }) },
         ]),
@@ -763,7 +816,7 @@ describe("mcp/github.ts", () => {
       },
       {
         ISSUE_NUMBER: "42",
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        ...fakeGhSeam(),
         FAKE_GH_RESPONSES: JSON.stringify([
           { match: ["issue", "view", "42"], stdout: JSON.stringify({ number: 42, title: "From context" }) },
         ]),
@@ -797,7 +850,7 @@ describe("mcp/github.ts", () => {
           params: { name: "list_issues", arguments: { labels: "atomaton/sub-issue", limit: "5" } },
         },
         {
-          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          ...fakeGhSeam(),
           FAKE_GH_LOG: log,
           FAKE_GH_RESPONSES: JSON.stringify([{ match: ["issue", "list"], stdout: "[]" }]),
         },
@@ -810,7 +863,7 @@ describe("mcp/github.ts", () => {
       // The stringified limit passed validation and reached `gh` as 5.
       expect(issueList[issueList.indexOf("--limit") + 1]).toBe("5");
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      removeTemp(dir);
     }
   });
 });
