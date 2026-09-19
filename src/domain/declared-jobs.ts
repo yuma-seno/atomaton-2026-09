@@ -84,7 +84,7 @@ export interface ExtraKeys<Extra> {
 export interface DeclaredJobsRules<Extra extends object = Record<never, never>> {
   /** How to name this list in a message — `checks.from_pull_request`, say. */
   readonly where: string;
-  /** Whether an entry here may name repository secrets. See the header. */
+  /** Where an entry's credentials go here, or why there is nowhere. See the header. */
   readonly secrets: SecretsRule;
   /** Present only for a list with keys of its own. */
   readonly extra?: ExtraKeys<Extra>;
