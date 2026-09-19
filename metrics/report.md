@@ -293,7 +293,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## All time
 
-391 sessions.
+392 sessions.
 
 **187,183,989 tokens** over 443 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
@@ -302,12 +302,12 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 26,784 | 382,963 | 9,000,677 | 39,737,697 | 187,183,989 |
-| messages per session | 10 | 117 | 601 | 1,598 | 21,135 |
+| messages per session | 10 | 117 | 601 | 1,598 | 21,137 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 246 | 62.9% |
-| `engineer` | 105 | 26.9% |
+| `reviewer` | 246 | 62.8% |
+| `engineer` | 106 | 27% |
 | `orchestrator` | 40 | 10.2% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
