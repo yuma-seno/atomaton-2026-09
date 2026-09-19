@@ -155,19 +155,452 @@
       "role": "assistant",
       "content": "動作確認用の run です\n\nコード変更なし・コミットなし・PR なしで終了します。(#831 は確認完了後に起票者側でクローズされる想定のため、こちらからは閉じていません。)",
       "atoma_metadata": {
-        "github_comment_id": 5741740591,
-        "agent": "engineer"
+        "agent": "engineer",
+        "github_comment_id": 5741740591
       }
+    },
+    {
+      "role": "user",
+      "content": "@hws-yuma-seno Atomaton: this issue was closed while an agent was working on it, so the run has been asked to stop.\n\nClosing does not stop a run by itself — it kept going until this request reached it. The run stops after its current step, so it may take a minute.\n\nNothing is lost: the session is saved.\n\n#831 stays closed. To pick the work back up, reopen it and comment `/resume`.",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-19T12:11:06Z",
+        "event_type": "issue_comment",
+        "id": 5741740854,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "/engineer\nこれは #827 の動作確認用です。コードの変更・コミット・PR は一切不要です。\n\n読むだけの作業をお願いします。docs/operations.md の「Closing an issue a run is working on」と「Commands and dispatches on something already closed」の節を読み、対応する実装（src/scripts/stop_on_close.ts、src/scripts/guard_command_on_closed.ts、src/lib/dispatch.ts、src/domain/closed-issue.ts）を一つずつ読んで、ドキュメントの記述と実装が食い違っている箇所がないかを丁寧に確認し、最後に報告してください。急がず、各ファイルを実際に開いて確認してください。\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-19T12:12:07Z",
+        "event_type": "issue_comment",
+        "id": 5741747320,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_cf8j34h0af4xv16zz57s36a9",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src\"}"
+          }
+        },
+        {
+          "id": "call_01_exjsb6t5br9u6rikeyvfibfv",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"docs\"}"
+          }
+        },
+        {
+          "id": "call_02_2ajpndvmhts3s2bnfq7cpvks",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"path\": \"docs\", \"pattern\": \"Closing an issue a run is working on|Commands and dispatches on something already closed\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src:\n\natomaton/\natomaton-runtime/\nbuild-dist.ts (11952B)\ndomain/\nlib/\nscripts/\ntypes/\nworkflows/",
+      "tool_call_id": "call_00_cf8j34h0af4xv16zz57s36a9"
+    },
+    {
+      "role": "tool",
+      "content": "docs:\n\nconfiguration.md (60706B)\nedd.md (6254B)\noperations.md (40711B)\nrecipes.md (23740B)\nsetup.md (7635B)\nwriting-a-tool.md (11594B)",
+      "tool_call_id": "call_01_exjsb6t5br9u6rikeyvfibfv"
+    },
+    {
+      "role": "tool",
+      "content": "2 matching line(s) under docs:\n\ndocs/operations.md:310:### Closing an issue a run is working on\ndocs/operations.md:327:### Commands and dispatches on something already closed",
+      "tool_call_id": "call_02_2ajpndvmhts3s2bnfq7cpvks"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_6aur601uudbve2igyl4gnwke",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/operations.md\", \"offset\": 270, \"limit\": 130}"
+          }
+        },
+        {
+          "id": "call_01_5sj0mgh0qqkrrobfpdp6xqxq",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/scripts\"}"
+          }
+        },
+        {
+          "id": "call_02_esa4bh7rq6d1ot2axle0qj06",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/lib\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "docs/operations.md lines 270-399 of 693\n\n270\t\n271\tThree things are worth knowing about it.\n272\t\n273\t**It is not immediate.** The running job polls for the request every 30 seconds, and\n274\tthe agent stops at its next turn — so it can finish the tool call it is in and start\n275\tone more. Expect up to a minute or two. The comment Atomaton posts in reply says this,\n276\tbecause a command that appears to do nothing looks broken.\n277\t\n278\t**Nothing is lost.** The agent stops between turns, where the conversation is\n279\tcomplete, and writes its session before exiting. This is the whole reason `/stop`\n280\texists rather than a note saying \"cancel the workflow run\": a cancelled job never\n281\treaches the step that saves the session, so cancelling means discarding.\n282\t\n283\t**Your `/stop` comment is deleted.** It must not become part of what the agent reads\n284\twhen it resumes — a paused run is not a run that was told something. Atomaton's reply\n285\tcarries the record of who asked and when, and is\n\n[atomaton] 4011 characters dropped from the middle; 4000 shown\n\nhe whole output and adopts the first matching directive.\n357\t- Agent handoffs are counted from the target's own comments and are not stored. What\n358\t  stops a chain, and what you see when it does, is under\n359\t  [What bounds a chain of runs](#what-bounds-a-chain-of-runs). See\n360\t  `domain/dispatch-chain.ts`.\n361\t- `create_pr` dispatches `atomaton-validate-pr.yml`, which runs the configured CI on the branch, writes the result as a check run, then dispatches the agent the result calls for — the reviewer NAMED IN THE CALL on green, the engineer on failure. No reviewer named means CI runs and nothing follows; `create_pr` then leaves a notice on the pull request saying nobody is scheduled.\n362\t- PR merge path is the primary sub-issue aggregation trigger.\n363\t- Manual issue-close path is fallback and skips when closure already came from merged PR.\n364\t- Aggregation is idempotent via marker tags so racing paths do not dispatch orchestrator twice.\n365\t\n366\t## What a pull request is checked against\n367\t\n368\tEvery pull request an agent opens is checked for one thing before your CI is asked\n369\tto run at all: whether the `.github/atomaton/` it would merge can still start a run.\n370\t\n371\tThis is not your pipeline and it is not configurable. It runs whether or not\n372\t`checks.pull_request_runs.commands` is set, and it reads nothing from `checks` or `deploy`\n373\tto decide what to check — those describe what YOU verify. This one answers a\n374\tnarrower question that only has one right answer.\n375\t\n376\tWhat it checks:\n377\t\n378\t- Every `mcp_servers` name in every agent definition exists in the tools file the\n379\t  run would write — the servers Atomaton ships, plus whatever `tools.servers` adds —\n380\t  along with `knows_about` targets and `extra_body` keys. This part runs\n381\t  `atoma validate`, so it is the same resolution a run performs rather than an\n382\t  imitation of it.\n383\t- `config.yaml` uses only keys Atomaton reads.\n384\t- `checks` and `deploy` each declare one arm. `atomaton_runs` and `your_workflow`\n385\t  together are reported here rather than resolved by a precedence rule.\n386\t- `merge.gates`, `deploy.atomaton_runs.targets` and the three `secrets` lists parse.\n387\t  These were already validated, but at merge time, at deploy time, and when\n388\t  a credential was handed out. Nothing new is being judged; it is being judged\n389\t  earlier.\n390\t- Names resolve to files: the workflow `checks.your_workflow` or\n391\t  `deploy.your_workflow` names.\n392\t\n393\tWhat it does not check is anything that needs a run to find out. Whether your\n394\tcommands pass, whether a deployment works, whether a model answers — that is CI's\n395\tjob, and this deliberately does not duplicate it.\n396\t\n397\t**And it starts nothing.** `tools.servers` lets any pull request name any\n398\t`command`, so a check that started the servers a pull request declares would\n399\texecute that pull request inside the job that decides whether it may merge. This\n\n[294 more lines. Read again with offset: 400.]",
+      "tool_call_id": "call_00_6aur601uudbve2igyl4gnwke"
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts:\n\naggregate_sub_issues.test.ts (2213B)\naggregate_sub_issues.ts (6020B)\ncheck_live_tools.ts (5311B)\ncheck_sub_issue_closure.test.ts (3425B)\ncheck_sub_issue_closure.ts (3540B)\ndecide_guard_release.test.ts (2548B)\ndecide_guard_release.ts (3649B)\ndispatch_if_siblings_done.test.ts (2794B)\ndispatch_if_siblings_done.ts (1787B)\nextract_directive.test.ts (1215B)\nextract_directive.ts (3279B)\nextract_notify_tag.test.ts (1510B)\nextract_notify_tag.ts (965B)\nfetch_events.test.ts (11213B)\nfetch_events.ts (12954B)\nget_config_value.test.ts (446B)\nget_config_value.ts (1406B)\nguard_command_on_closed.test.ts (3460B)\nguard_command_on_closed.ts (3481B)\nguard_comment_during_run.test.ts (1940B)\nguard_comment_during_run.ts (4192B)\ninject_uncommitted_notice.test.ts (3042B)\ninject_uncommitted_notice.ts (2353B)\nlib/\nmanage_dispatch_loop.ts (6017B)\nmanage_in_progress_label.test.ts (1359B)\nmanage_in_progress_label.ts (1934B)\nmerge_tool_packages.ts (4519B)\nnotify_limit_reached.test.ts (1071B)\nnotify_limit_reached.ts (3344B)\nparse_comment_command.test.ts (2390B)\nparse_comment_command.ts (3734B)\nparse_pr_metadata.test.ts (1652B)\nparse_pr_metadata.ts (1790B)\nplan_default_branch_checks.ts (2773B)\npost_result_comment.test.ts (16275B)\npost_result_comment.ts (18866B)\nprune_atomaton_data.test.ts (5508B)\nprune_atomaton_data.ts (6802B)\nread_secret_names.test.ts (6885B)\nread_secret_names.ts (6594B)\nreconcile_github_session.test.ts (13637B)\nreconcile_github_session.ts (12712B)\nrecord_run_metadata.test.ts (991B)\nrecord_run_metadata.ts (3769B)\nredact_stream.test.ts (1336B)\nredact_stream.ts (1304B)\nreport_run_failure.test.ts (3164B)\nreport_run_failure.ts (4773B)\nrequest_stop.test.ts (2359B)\nrequest_stop.ts (4713B)\nresolve_entry_agent.test.ts (5332B)\nresolve_entry_agent.ts (3355B)\nresolve_issue_branch.ts (2311B)\nresolve_notify.test.ts (1933B)\nresolve_notify.ts (1481B)\nresolve_orchestrator_parent.test.ts (2601B)\nresolve_orchestrator_parent.ts (1893B)\nresolve_resume_agent.test.ts (998B)\nresolve_resume_agent.ts (3235B)\nresolve_runner.ts (1842B)\nrestore_agent_session.test.ts (1306B)\nrestore_agent_session.ts (4023B)\nrestore_workspace.ts (2731B)\nrun_checks.test.ts (1841B)\nrun_checks.ts (2354B)\nrun_deploy.test.ts (5729B)\nrun_deploy.ts (5355B)\nrun_environment_setup.test.ts (1493B)\nrun_environment_setup.ts (1215B)\nsave_agent_session.ts (3073B)\nsave_workspace.ts (2460B)\nscan_secrets.ts (4206B)\nstop_on_close.test.ts (4812B)\nstop_on_close.ts (5763B)\ntesting/\nvalidate_deliverable.test.ts (1927B)\nvalidate_deliverable.ts (11318B)\nvalidate_pull_request.test.ts (2477B)\nvalidate_pull_request.ts (17170B)\nwatch_for_stop.test.ts (1757B)\nwatch_for_stop.ts (4772B)\nwrite_credentials_file.test.ts (3498B)\nwrite_credentials_file.ts (5296B)\nwrite_metrics_report.test.ts (2214B)\nwrite_metrics_report.ts (19465B)\nwrite_tools_file.ts (4900B)",
+      "tool_call_id": "call_01_5sj0mgh0qqkrrobfpdp6xqxq"
+    },
+    {
+      "role": "tool",
+      "content": "src/lib:\n\nagent-name.ts (2165B)\naggregation.test.ts (6731B)\naggregation.ts (14683B)\nbookkeeping.test.ts (2273B)\nbranch-placement.ts (8481B)\nbranch-rules.ts (4478B)\nconfig.ts (14068B)\ndispatch-targets.ts (7849B)\ndispatch.ts (7022B)\ngh.ts (8225B)\ninject-sub-results.ts (4615B)\nissue-branches.ts (3213B)\nissue-images.ts (4703B)\nissue-index.ts (10215B)\nissue-links.ts (4107B)\nlib.test.ts (21442B)\nmcp-report.test.ts (2800B)\nmcp-report.ts (4733B)\nmcp-tool.ts (20040B)\nmerge-signals.ts (13711B)\nnotify.ts (5699B)\nops-log.ts (2159B)\nparent-issue.ts (3294B)\nparticipants.ts (2167B)\nrunning-children.ts (1567B)\nsession.ts (2964B)\nsibling-check.ts (1966B)\ntags.test.ts (4424B)\ntags.ts (8541B)\ntarget-state.ts (3191B)\ntypes.ts (6127B)\nworkspace-scope.ts (3594B)",
+      "tool_call_id": "call_02_esa4bh7rq6d1ot2axle0qj06"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_K6z6W5LIqVpQrLYhOiv45419",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/domain/closed-issue.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_UpZsg9netKCKLByAIoWl7615",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/scripts/stop_on_close.ts\"}"
+          }
+        },
+        {
+          "id": "call_02_wxFQqieNnjql7QulJfHC9496",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/scripts/guard_command_on_closed.ts\"}"
+          }
+        },
+        {
+          "id": "call_03_itww5Kw28VQ1zfJkiPBs4519",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/dispatch.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/domain/closed-issue.ts lines 1-162 of 162\n\n1\t/**\n2\t * closed-issue.ts — what happens when work meets an issue or pull request that is closed.\n3\t *\n4\t * Three paths used to walk straight past a closed target, and all three did it\n5\t * silently: a person closing an issue did not stop the run working on it, a slash\n6\t * command on a closed issue started an agent, and the machinery's own handoff\n7\t * dispatched onto a closed number. The last one is not hypothetical — #803 was closed\n8\t * by hand and eighteen seconds later the aggregation gate re-invoked its orchestrator,\n9\t * which went on to open a pull request. See #827.\n10\t *\n11\t * The rule this module encodes is one sentence: **a closed target is an answer, not an\n12\t * obstacle.** Nothing here reopens anything, because closing is a person's decision and\n13\t * a machine that undoes it is arguing rather than reporting. What each path does\n14\t * instead is refuse, and say what will not happen now — which is the part that was\n15\t * mi\n\n[atomaton] 3705 characters dropped from the middle; 4000 shown\n\n\\n\");\n95\t}\n96\t\n97\t/**\n98\t * The reply to a slash command on a closed issue or pull request.\n99\t *\n100\t * The comment itself is left alone, unlike the in-progress guard, which deletes. That\n101\t * guard deletes because the comment it caught would otherwise race a running agent and\n102\t * end up in its context. Nothing is running here and nothing is racing, so removing\n103\t * somebody's words would cost something and buy nothing.\n104\t */\n105\texport function commandOnClosedNotice(\n106\t  commenter: string,\n107\t  command: string,\n108\t  state: TargetState,\n109\t  number: number,\n110\t): string {\n111\t  const what = state.kind === \"unknown\"\n112\t    ? `Atomaton: \\`${command}\\` was not run, because the state of #${number} could not be read (${state.why}), and a command is not started on a target that might be closed.`\n113\t    : `Atomaton: \\`${command}\\` was not run, because #${number} is closed.`;\n114\t  return [\n115\t    `${mentionPrefix(commenter ? [commenter] : [])}${what}`,\n116\t    \"\",\n117\t    state.kind === \"unknown\"\n118\t      ? \"Comment again once it can be read.\"\n119\t      : recoveryAdvice(state, number, command),\n120\t  ].join(\"\\n\");\n121\t}\n122\t\n123\t/** Everything the escalation below needs, gathered by the caller that was dispatching. */\n124\texport interface RefusedDispatch {\n125\t  agent: string;\n126\t  number: number;\n127\t  /** Why the dispatch was happening, in the words the dispatching caller used. */\n128\t  context: string;\n129\t  state: TargetState;\n130\t  /** Who asked for this run, resolved by the chain that carries the login onward. */\n131\t  notify: string;\n132\t}\n133\t\n134\t/**\n135\t * The escalation posted when the machinery declines to dispatch onto a closed target.\n136\t *\n137\t * Written for whoever gets the mention rather than for a log, because the person\n138\t * reading it did not ask for a dispatch and does not care that one was refused. What\n139\t * they need is the thing that is now not going to happen, and what to do about it —\n140\t * \"the dispatch was rejected\" is the machine's account of the same event and tells\n141\t * them neither.\n142\t *\n143\t * Nothing retries after this. That is stated outright: a notice that leaves it open\n144\t * whether something else will pick the work up is one people wait on.\n145\t */\n146\texport function dispatchRefusedNotice(refused: RefusedDispatch): string {\n147\t  const { agent, number, context, state, notify } = refused;\n148\t  const why = state.kind === \"unknown\"\n149\t    ? `the state of #${number} could not be read (${state.why})`\n150\t    : `#${number} is closed`;\n151\t  return [\n152\t    `${mentionPrefix(notify ? [notify] : [])}Atomaton: \\`${agent}\\` was not started on #${number}, because ${why}.`,\n153\t    \"\",\n154\t    `What was about to happen: ${context}.`,\n155\t    \"\",\n156\t    \"Nothing will retry this.\",\n157\t    \"\",\n158\t    state.kind === \"unknown\"\n159\t      ? `Start it by hand once #${number} can be read: comment \\`/${agent}\\` on it.`\n160\t      : recoveryAdvice(state, number, `/${agent}`),\n161\t  ].join(\"\\n\");\n162\t}",
+      "tool_call_id": "call_00_K6z6W5LIqVpQrLYhOiv45419"
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts/stop_on_close.ts lines 1-147 of 147\n\n1\t#!/usr/bin/env bun\n2\t/**\n3\t * stop_on_close.ts — closing an issue an agent is working on asks that run to stop.\n4\t *\n5\t * ## Why closing has to mean something\n6\t *\n7\t * It already looked like it did. #803 was closed by hand while its run held the\n8\t * in-progress label; the run kept going for five more minutes, opened a pull request,\n9\t * and nothing anywhere said that closing had not stopped it. A gesture that reads as\n10\t * \"stop this\" and does nothing is worse than no gesture, because the person walks\n11\t * away believing it worked.\n12\t *\n13\t * ## Why a stop rather than a reopen\n14\t *\n15\t * Reopening would undo a decision a person just made, and the comment guard's reason\n16\t * for deleting does not apply here: that guard prevents a second run from racing the\n17\t * first, and closing starts no run. So the issue stays closed and the work stops —\n18\t * which is what closing appeared to mean all along.\n19\t *\n20\t * ## Why only a person'\n\n[atomaton] 2277 characters dropped from the middle; 4000 shown\n\n{ name?: string }[];\n73\t  user?: { login?: string; type?: string };\n74\t}\n75\t\n76\tfunction main(): void {\n77\t  const { values } = parseArgs({\n78\t    args: Bun.argv.slice(2),\n79\t    options: {\n80\t      number: { type: \"string\" },\n81\t      closer: { type: \"string\" },\n82\t      \"closer-type\": { type: \"string\" },\n83\t    },\n84\t  });\n85\t\n86\t  if (!values.number) {\n87\t    console.error(\"usage: stop_on_close.ts --number N --closer LOGIN [--closer-type Bot|User]\");\n88\t    process.exit(2);\n89\t  }\n90\t\n91\t  const repo = process.env.GITHUB_REPOSITORY ?? \"\";\n92\t  const number = String(values.number);\n93\t  const closer = (values.closer ?? \"\").trim();\n94\t\n95\t  if ((values[\"closer-type\"] ?? \"\").trim() === \"Bot\") {\n96\t    console.error(`#${number} was closed by a bot, which is how an agent finishes its own work. Nothing to stop.`);\n97\t    return;\n98\t  }\n99\t\n100\t  const { code, stdout, stderr } = gh(\"api\", `repos/${repo}/issues/${number}`);\n101\t  // A failed lookup is not \"no label\". This decides whether a run is still going, and\n102\t  // the answer it could not determine must not be the one that stays quiet — the same\n103\t  // rule `guard_comment_during_run.ts` follows for the same reason.\n104\t  if (code !== 0) {\n105\t    console.error(`::error::Could not read #${number}, so this cannot tell whether a run is in progress: ${stderr || stdout}`);\n106\t    process.exit(1);\n107\t  }\n108\t\n109\t  let issue: IssueForClose;\n110\t  try {\n111\t    issue = JSON.parse(stdout) as IssueForClose;\n112\t  } catch {\n113\t    console.error(`::error::Could not parse the response for #${number}.`);\n114\t    process.exit(1);\n115\t  }\n116\t\n117\t  const label = getLabel(\"in_progress\");\n118\t  const inProgress = (issue.labels ?? []).some((l) => l.name === label);\n119\t  if (!inProgress) {\n120\t    console.error(`#${number} carries no '${label}' label, so no run is working on it. Nothing to stop.`);\n121\t    return;\n122\t  }\n123\t\n124\t  const author = (issue.user?.login ?? \"\").trim();\n125\t  const authorIsBot = (issue.user?.type ?? \"\") === \"Bot\";\n126\t  const mentions = mentionsForClose(closer, author, authorIsBot);\n127\t  const children = runningChildren(repo, Number(number));\n128\t\n129\t  const posted = gh(\n130\t    \"issue\", \"comment\", number, \"--repo\", repo,\n131\t    \"--body\", stopOnCloseBody(mentions, Number(number), children),\n132\t  );\n133\t  // Fatal, like `/stop`'s own request. This comment IS the stop: without it the run\n134\t  // polls, finds nothing, and keeps going — while the person who closed the issue has\n135\t  // every reason to believe it is winding down.\n136\t  if (posted.code !== 0) {\n137\t    console.error(`::error::Could not post the stop request on #${number}: ${posted.stderr || posted.stdout}`);\n138\t    process.exit(1);\n139\t  }\n140\t\n141\t  console.error(\n142\t    `#${number} was closed by ${closer || \"(unknown)\"} while a run held '${label}'. Stop requested` +\n143\t      `${children.length ? `; children still running: ${children.join(\", \")}` : \"\"}.`,\n144\t  );\n145\t}\n146\t\n147\tif (import.meta.main) main();",
+      "tool_call_id": "call_01_UpZsg9netKCKLByAIoWl7615"
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts/guard_command_on_closed.ts lines 1-91 of 91\n\n1\t#!/usr/bin/env bun\n2\t/**\n3\t * guard_command_on_closed.ts — a slash command on a closed issue or pull request does\n4\t * not start an agent.\n5\t *\n6\t * Starting work on something somebody has closed is the machinery disagreeing with a\n7\t * decision rather than acting on one, and until now it did that quietly: `/engineer`\n8\t * on a closed issue dispatched a run exactly as it would on an open one.\n9\t *\n10\t * ## Why the comment is left alone\n11\t *\n12\t * `guard_comment_during_run.ts` deletes the comment it catches, because that comment\n13\t * would otherwise race a running agent and end up in its context. Nothing is running\n14\t * here and nothing is racing, so deleting somebody's words would cost something and\n15\t * buy nothing. The command does not run; the comment stays.\n16\t *\n17\t * ## Why `/stop` is exempt\n18\t *\n19\t * An agent can close the issue it is working on and keep going — that is a normal\n20\t * path — so a closed issue can still have a run on it. Refusing `/stop` there would\n21\t * take away the only way to stop that run, which is the one moment the command exists\n22\t * for. The in-progress guard carves out the same exception for the same reason.\n23\t *\n24\t * Usage:\n25\t *   guard_command_on_closed.ts --number N --commenter LOGIN --command /engineer\n26\t * Writes `blocked=true|false` to $GITHUB_OUTPUT.\n27\t */\n28\timport { appendFileSync } from \"node:fs\";\n29\timport { parseArgs } from \"node:util\";\n30\timport { gh } from \"../lib/gh.ts\";\n31\timport { LLM_CONTEXT_TAG } from \"../lib/tags.ts\";\n32\timport { readTargetState } from \"../lib/target-state.ts\";\n33\timport { commandOnClosedNotice, mayStartWorkOn } from \"../domain/closed-issue.ts\";\n34\timport { defineScript } from \"./lib/script-ref.ts\";\n35\t\n36\texport interface GuardCommandOnClosedArgs {\n37\t  number: string | number;\n38\t  commenter: string;\n39\t  command: string;\n40\t}\n41\t\n42\texport const ref = defineScript<GuardCommandOnClosedArgs>(import.meta.url);\n43\t\n44\tfunction main(): void {\n45\t  const { values } = parseArgs({\n46\t    args: Bun.argv.slice(2),\n47\t    options: {\n48\t      number: { type: \"string\" },\n49\t      commenter: { type: \"string\" },\n50\t      command: { type: \"string\" },\n51\t    },\n52\t  });\n53\t\n54\t  if (!values.number) {\n55\t    console.error(\"usage: guard_command_on_closed.ts --number N --commenter LOGIN --command /agent\");\n56\t    process.exit(2);\n57\t  }\n58\t\n59\t  const repo = process.env.GITHUB_REPOSITORY ?? \"\";\n60\t  const number = Number(values.number);\n61\t  const command = (values.command ?? \"\").trim() || \"the command\";\n62\t  const githubOutput = process.env.GITHUB_OUTPUT;\n63\t  const say = (blocked: boolean) => {\n64\t    if (githubOutput) appendFileSync(githubOutput, `blocked=${blocked}\\n`);\n65\t  };\n66\t\n67\t  const state = readTargetState(number, repo);\n68\t  if (mayStartWorkOn(state)) {\n69\t    say(false);\n70\t    return;\n71\t  }\n72\t\n73\t  // Tagged out of the model's context like every other notice addressed to a person.\n74\t  // A run may still be going on a closed issue — an agent can close its own — and an\n75\t  // untagged copy would be read by that agent as an instruction, when what it says is\n76\t  // that somebody else's command was refused.\n77\t  const posted = gh(\n78\t    \"issue\", \"comment\", String(number), \"--repo\", repo,\n79\t    \"--body\", [LLM_CONTEXT_TAG.write(\"exclude\"), commandOnClosedNotice(values.commenter ?? \"\", command, state, number)].join(\"\\n\"),\n80\t  );\n81\t  if (posted.code !== 0) {\n82\t    console.error(`Warning: could not post the refusal on #${number}: ${posted.stderr || posted.stdout}`);\n83\t  }\n84\t\n85\t  say(true);\n86\t  console.error(\n87\t    `Refused '${command}' on #${number}: ${state.kind === \"unknown\" ? `state unreadable (${state.why})` : \"not open\"}.`,\n88\t  );\n89\t}\n90\t\n91\tif (import.meta.main) main();",
+      "tool_call_id": "call_02_wxFQqieNnjql7QulJfHC9496"
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/dispatch.ts lines 1-153 of 153\n\n1\t/**\n2\t * dispatch.ts — start an agent run by dispatching the runner workflow.\n3\t *\n4\t * Four places hand work to another agent: an orchestrator launching sub-agents,\n5\t * a created PR summoning its reviewer, a merged PR re-invoking the agent that\n6\t * opened it, and the aggregation gate re-invoking an orchestrator once its\n7\t * sub-issues are done. Each had built its own `gh workflow run` call, and the\n8\t * copies had diverged in the two ways that matter.\n9\t *\n10\t * They disagreed on how the workflow is named -- `||`, `??`, a hardcoded\n11\t * string, and a per-call option nothing ever passed.\n12\t *\n13\t * More seriously, two of them ignored the exit code and wrote the ops-log\n14\t * dispatch entry unconditionally. That entry is not bookkeeping: it is the\n15\t * signal `atomaton-runner`'s `chain_continues` output reads to decide whether work\n16\t * is still in flight, and `shouldReleaseGuard` keeps the `atomaton/in-progress`\n17\t * label held whenever\n\n[atomaton] 3563 characters dropped from the middle; 4000 shown\n\nd. */\n90\t  | \"refused-closed\"\n91\t  /** GitHub rejected the dispatch. Nothing is running and nothing will retry. */\n92\t  | \"failed\";\n93\t\n94\t/**\n95\t * Refuse to start an agent on a target that is not open, and say what will not happen.\n96\t *\n97\t * Here rather than at the four call sites, for the reason this module exists: each of\n98\t * them built its own `gh workflow run` and the copies diverged. A guard that has to be\n99\t * remembered is one the fifth caller will not have.\n100\t *\n101\t * The notice goes on the target itself, because that is where somebody looking for\n102\t * this work will look, and a closed issue is still readable. `notify` carries whoever\n103\t * asked for the run -- see `lib/notify.ts`, which settles that question for every path\n104\t * that starts one.\n105\t */\n106\tfunction refuseClosedTarget(d: RunnerDispatch, state: TargetState): \"refused-closed\" {\n107\t  const log = d.log ?? ((message: string) => console.error(message));\n108\t  const body = dispatchRefusedNotice({\n109\t    agent: d.agent,\n110\t    number: Number(d.number),\n111\t    context: d.context,\n112\t    state,\n113\t    notify: d.notify ?? \"\",\n114\t  });\n115\t  const { code, stdout, stderr } = gh(\n116\t    \"issue\", \"comment\", String(d.number), ...(d.repo ? [\"--repo\", d.repo] : []), \"--body\", body,\n117\t  );\n118\t  // A warning rather than a throw: the refusal stands either way, and the caller has\n119\t  // its own way of reporting. What is lost is the person being told, which is worth a\n120\t  // line in the log that says so rather than an exception that hides the refusal.\n121\t  if (code !== 0) {\n122\t    log(`${d.context}: refused to dispatch onto #${d.number} (not open), and could not post the notice: ${stderr || stdout}`);\n123\t  } else {\n124\t    log(`${d.context}: refused to dispatch onto #${d.number} (not open); notice posted`);\n125\t  }\n126\t  return \"refused-closed\";\n127\t}\n128\t\n129\t/**\n130\t * Dispatch the runner, unless the target is not open.\n131\t *\n132\t * Callers that have a fallback (closing an issue directly rather than asking an agent\n133\t * to) branch on the outcome; callers that do not should at least not treat anything\n134\t * but `\"dispatched\"` as success.\n135\t */\n136\texport function dispatchRunner(d: RunnerDispatch): DispatchOutcome {\n137\t  const state = readTargetState(d.number, d.repo);\n138\t  if (!mayStartWorkOn(state)) return refuseClosedTarget(d, state);\n139\t\n140\t  const args = [\n141\t    ...(d.repo ? [\"--repo\", d.repo] : []),\n142\t    \"--field\", `agent=${d.agent}`,\n143\t    \"--field\", `number=${d.number}`,\n144\t    \"--field\", `type=${d.type}`,\n145\t    \"--field\", `notify=${d.notify ?? \"\"}`,\n146\t    // Always sent, so the input has a value on every path rather than defaulting in\n147\t    // one place and being absent in another.\n148\t    \"--field\", `reload_count=${d.reloadCount ?? 0}`,\n149\t  ];\n150\t  if (!dispatchWorkflow(d.context, runnerWorkflow(), args, d.log)) return \"failed\";\n151\t  logDispatch(d.type, d.agent, { number: Number(d.number) });\n152\t  return \"dispatched\";\n153\t}",
+      "tool_call_id": "call_03_itww5Kw28VQ1zfJkiPBs4519"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_UNheRAq9hlGV2cnZeRpv3520",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/target-state.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_cw7X2g4pHu2RfMCF3W2G5130",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/scripts/watch_for_stop.ts\"}"
+          }
+        },
+        {
+          "id": "call_02_n4W4MqplUf6n8YlUlAja3104",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/workflows\"}"
+          }
+        },
+        {
+          "id": "call_03_Y6AN4Befy2SkHnu9uEMM5535",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \".github/atomaton-runtime\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/target-state.ts lines 1-66 of 66\n\n1\t/**\n2\t * target-state.ts — read whether an issue or pull request is open, closed, or merged.\n3\t *\n4\t * The one lookup behind every guard in `domain/closed-issue.ts`, which decides what to\n5\t * do with the answer. Three callers need it — the slash-command guard, the stop-on-close\n6\t * job, and `dispatchRunner` — and a fourth will be added by whoever adds the next way\n7\t * to start an agent, so it is a function rather than three spellings of one `gh` call.\n8\t *\n9\t * ## Why the issues endpoint, and not `gh pr view` / `gh issue view`\n10\t *\n11\t * `GET /repos/{owner}/{repo}/issues/{n}` answers for both. `gh issue view` on a pull\n12\t * request number refuses, and picking the right one first would mean already knowing\n13\t * which kind of thing the number names — which is the trap #811 is about, one layer\n14\t * down: `repository.issue(number:)` does not resolve a pull request either, and every\n15\t * caller that passed one got an empty answer rather than an error.\n16\t *\n17\t * The same response carries `pull_request.merged_at`, which is the only way to tell a\n18\t * merged pull request from a closed one. That distinction is not cosmetic: GitHub\n19\t * cannot reopen a merged pull request, so a notice telling somebody to reopen one is\n20\t * advice that cannot be taken.\n21\t *\n22\t * ## Why `ghRead`\n23\t *\n24\t * A failure here refuses to start work. That is the right answer for \"this target is\n25\t * closed\" and the wrong one for \"GitHub returned 504\", and the two are indistinguishable\n26\t * at this level — so the retry happens below, and only a failure that outlasts it\n27\t * becomes `unknown`. Without that, a blip would stall a chain that had nothing wrong\n28\t * with it.\n29\t */\n30\timport { ghRead } from \"./gh.ts\";\n31\timport type { TargetState } from \"../domain/closed-issue.ts\";\n32\t\n33\tinterface IssueOrPr {\n34\t  state?: string;\n35\t  pull_request?: { merged_at?: string | null };\n36\t}\n37\t\n38\t/**\n39\t * The state of `number` in `repo`, or `unknown` with the reason.\n40\t *\n41\t * `repo` may be empty when the caller runs inside a checkout of the repository it\n42\t * means; `gh` fills the placeholders in from the remote. Never throws — the callers\n43\t * all have something to say about not knowing, and none of them have anything to do\n44\t * with an exception.\n45\t */\n46\texport function readTargetState(number: number | string, repo?: string): TargetState {\n47\t  const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;\n48\t  const { code, stdout, stderr } = ghRead(\"api\", path);\n49\t  if (code !== 0) {\n50\t    return { kind: \"unknown\", why: (stderr || stdout || `gh exited ${code}`).trim().split(\"\\n\")[0] ?? \"\" };\n51\t  }\n52\t\n53\t  let parsed: IssueOrPr;\n54\t  try {\n55\t    parsed = JSON.parse(stdout) as IssueOrPr;\n56\t  } catch {\n57\t    return { kind: \"unknown\", why: \"the response was not JSON\" };\n58\t  }\n59\t\n60\t  // An unrecognised state is not \"open\". GitHub answers `open` or `closed` here, so a\n61\t  // third value means this is reading something it does not understand, and the\n62\t  // permissive reading is the one that lets work through.\n63\t  if (parsed.state === \"open\") return { kind: \"open\" };\n64\t  if (parsed.state === \"closed\") return { kind: \"closed\", merged: Boolean(parsed.pull_request?.merged_at) };\n65\t  return { kind: \"unknown\", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };\n66\t}",
+      "tool_call_id": "call_00_UNheRAq9hlGV2cnZeRpv3520"
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts/watch_for_stop.ts lines 1-129 of 129\n\n1\t#!/usr/bin/env bun\n2\t/**\n3\t * watch_for_stop.ts — Poll an issue/PR for a stop request and, when one arrives,\n4\t * create the file `atoma run --stop-file` is watching.\n5\t *\n6\t * Runs in the background for the length of the agent step and is killed with it.\n7\t *\n8\t * ## Why polling\n9\t *\n10\t * A stop is decided outside the job, and nothing outside a job can write into that\n11\t * job's filesystem. Something inside has to go and look. GitHub has no push channel\n12\t * a running job can subscribe to, so this is the only shape available, and its cost\n13\t * is one API request per interval — around 110 for a full-length run.\n14\t *\n15\t * ## Why it only looks at requests newer than the run\n16\t *\n17\t * A stop from last week is not a stop of this run. Without the cutoff, an issue that\n18\t * was ever stopped could never be worked on again: every run would find the old\n19\t * request on its first poll and stop before doing anything.\n20\t *\n21\t * ## Why\n\n[atomaton] 1225 characters dropped from the middle; 4000 shown\n\n about 110 requests against a 1000/hour limit, and a person waits at most half\n53\t * a minute plus however long the agent's current tool call takes -- which is usually\n54\t * the larger half.\n55\t */\n56\tconst DEFAULT_INTERVAL_SECONDS = 30;\n57\t\n58\texport interface StopComment {\n59\t  body?: string;\n60\t  created_at?: string;\n61\t}\n62\t\n63\t/**\n64\t * Whether any of these comments is a stop request belonging to this run.\n65\t *\n66\t * Exported for its test: the cutoff is the part that is easy to get subtly wrong, and\n67\t * getting it wrong in the permissive direction means an issue that can never be\n68\t * worked on again.\n69\t */\n70\texport function stopRequested(comments: StopComment[], since: Date): boolean {\n71\t  return comments.some((c) => {\n72\t    if (!STOP_TAG.has(c.body ?? \"\")) return false;\n73\t    const at = c.created_at ? Date.parse(c.created_at) : NaN;\n74\t    // An unparseable timestamp is not a reason to ignore a stop somebody asked for.\n75\t    // The failure it risks -- stopping one run early -- is recoverable by a comment;\n76\t    // the other direction is a run nobody can interrupt.\n77\t    return Number.isNaN(at) || at > since.getTime();\n78\t  });\n79\t}\n80\t\n81\tfunction poll(repo: string, number: string, since: Date): boolean {\n82\t  const { code, stdout } = gh(\n83\t    \"api\", `repos/${repo}/issues/${number}/comments`,\n84\t    \"--method\", \"GET\",\n85\t    \"-f\", `since=${since.toISOString()}`,\n86\t    \"--jq\", \"[.[] | {body, created_at}]\",\n87\t  );\n88\t  if (code !== 0) return false;\n89\t  try {\n90\t    return stopRequested(JSON.parse(stdout || \"[]\") as StopComment[], since);\n91\t  } catch {\n92\t    return false;\n93\t  }\n94\t}\n95\t\n96\tasync function main(): Promise<void> {\n97\t  const { values } = parseArgs({\n98\t    args: Bun.argv.slice(2),\n99\t    options: {\n100\t      number: { type: \"string\" },\n101\t      \"stop-file\": { type: \"string\" },\n102\t      since: { type: \"string\" },\n103\t      \"interval-seconds\": { type: \"string\" },\n104\t    },\n105\t  });\n106\t\n107\t  if (!values.number || !values[\"stop-file\"] || !values.since) {\n108\t    console.error(\"usage: watch_for_stop.ts --number N --stop-file PATH --since ISO8601\");\n109\t    process.exit(2);\n110\t  }\n111\t\n112\t  const repo = process.env.GITHUB_REPOSITORY ?? \"\";\n113\t  const since = new Date(values.since);\n114\t  const intervalMs = (Number(values[\"interval-seconds\"]) || DEFAULT_INTERVAL_SECONDS) * 1000;\n115\t\n116\t  console.error(`Watching #${values.number} for a stop request since ${since.toISOString()}`);\n117\t\n118\t  for (;;) {\n119\t    await Bun.sleep(intervalMs);\n120\t    if (!poll(repo, String(values.number), since)) continue;\n121\t    // Content, not an empty file: a person reading the run's directory afterwards\n122\t    // should find out why the run stopped without having to know what the path means.\n123\t    writeFileSync(values[\"stop-file\"], `stop requested on #${values.number}\\n`);\n124\t    console.error(`Stop request found; wrote ${values[\"stop-file\"]}`);\n125\t    return;\n126\t  }\n127\t}\n128\t\n129\tif (import.meta.main) await main();",
+      "tool_call_id": "call_01_cw7X2g4pHu2RfMCF3W2G5130"
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows:\n\nactions/\natomaton-check.wac.ts (15065B)\natomaton-deploy.wac.ts (7338B)\natomaton-entry.wac.ts (2510B)\natomaton-manual-comment.wac.ts (11239B)\natomaton-pr-merged.wac.ts (5711B)\natomaton-runner.wac.ts (86733B)\natomaton-sub-issue-closed.wac.ts (6357B)\natomaton-validate-pr.wac.ts (9389B)",
+      "tool_call_id": "call_02_n4W4MqplUf6n8YlUlAja3104"
+    },
+    {
+      "role": "tool",
+      "content": ".github/atomaton-runtime:\n\nscripts/\ntools/",
+      "tool_call_id": "call_03_Y6AN4Befy2SkHnu9uEMM5535"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_u6joxM5KPj53ASVflYzg0343",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/workflows/atomaton-sub-issue-closed.wac.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_GpsJsEkYEFyq7noivIcZ7966",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/workflows/atomaton-manual-comment.wac.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows/atomaton-sub-issue-closed.wac.ts lines 1-159 of 159\n\n1\timport { Workflow } from \"@github-actions-workflow-ts/lib\";\n2\timport type { IssuesClosedEvent } from \"@octokit/webhooks-types\";\n3\timport { ActionsCheckoutV4 } from \"@github-actions-workflow-ts/actions\";\n4\timport { DefinedJob, startJob, TypedOutputsStep } from \"./actions/base.ts\";\n5\timport { githubEvent, githubEventRaw, isRepositoryMember } from \"./actions/github-context.ts\";\n6\timport { ATOMATON_WORKFLOW_PERMISSIONS } from \"./actions/permissions.ts\";\n7\timport { scriptCommand, scriptCommandWithArgs } from \"./actions/script-call.ts\";\n8\timport { SetupBunAction } from \"./actions/third-party.ts\";\n9\timport { ref as dispatchIfSiblingsDoneRef } from \"../scripts/dispatch_if_siblings_done.ts\";\n10\timport { ref as checkSubIssueClosureRef } from \"../scripts/check_sub_issue_closure.ts\";\n11\timport { ref as pruneAtomaDataRef } from \"../scripts/prune_atomaton_data.ts\";\n12\timport { ref as stopOnCloseRef } from \"../scripts/stop_on_close.\n\n[atomaton] 2951 characters dropped from the middle; 4000 shown\n\n\t      CLOSED_NUM: githubEvent<IssuesClosedEvent>((e) => e.issue.number),\n85\t      GH_TOKEN: \"${{ github.token }}\",\n86\t      OWNER: \"${{ github.repository_owner }}\",\n87\t      REPO: githubEvent<IssuesClosedEvent>((e) => e.repository.name),\n88\t    },\n89\t    run: `${scriptCommand(checkSubIssueClosureRef)}\\n`,\n90\t  },\n91\t  [\"is_sub_issue\", \"parent_number\", \"closed_via_pr\"] as const,\n92\t);\n93\t\n94\texport const atomaSubIssueClosed = new Workflow(\"atomaton-sub-issue-closed\", {\n95\t  name: \"Atomaton Sub-Issue Closed\",\n96\t  on: {\n97\t    issues: { types: [\"closed\"] },\n98\t  },\n99\t  permissions: ATOMATON_WORKFLOW_PERMISSIONS,\n100\t}).addJobs(\n101\t  startJob(\n102\t    \"check\",\n103\t    {\n104\t      \"runs-on\": \"ubuntu-latest\",\n105\t      // Only a repository member closing an issue triggers parent aggregation.\n106\t      if: isRepositoryMember(githubEventRaw<IssuesClosedEvent>((e) => e.issue.author_association)),\n107\t      outputs: {\n108\t        is_sub_issue: checkStep.outputs.is_sub_issue,\n109\t        parent_number: checkStep.outputs.parent_number,\n110\t        closed_via_pr: checkStep.outputs.closed_via_pr,\n111\t      },\n112\t    },\n113\t    [new ActionsCheckoutV4({}), new SetupBunAction({ name: \"Setup Bun\" }), checkStep],\n114\t  )\n115\t    .then(\n116\t      (checkJob) =>\n117\t        new DefinedJob(\n118\t          \"aggregate\",\n119\t          {\n120\t            \"runs-on\": \"ubuntu-latest\",\n121\t            if: `${checkJob.rawOutputs.is_sub_issue} == 'true' && ${checkJob.rawOutputs.closed_via_pr} != 'true'`,\n122\t          },\n123\t          [\n124\t            new ActionsCheckoutV4({}),\n125\t            new SetupBunAction({ name: \"Setup Bun\" }),\n126\t            new TypedOutputsStep({\n127\t              name: \"Check siblings and re-trigger orchestrator\",\n128\t              shell: \"bash\",\n129\t              env: {\n130\t                GH_TOKEN: \"${{ github.token }}\",\n131\t                OWNER: \"${{ github.repository_owner }}\",\n132\t                REPO: githubEvent<IssuesClosedEvent>((e) => e.repository.name),\n133\t                PARENT: checkJob.outputs.parent_number,\n134\t                CLOSED_NUM: githubEvent<IssuesClosedEvent>((e) => e.issue.number),\n135\t              },\n136\t              run: `${scriptCommandWithArgs(dispatchIfSiblingsDoneRef, { repo: \"\\${OWNER}/\\${REPO}\", parent: \"\\${PARENT}\", \"closed-num\": \"\\${CLOSED_NUM}\" })}\n137\t`,\n138\t            }),\n139\t          ],\n140\t          [checkJob],\n141\t        ),\n142\t    )\n143\t    .jobs()\n144\t    .concat([\n145\t      new DefinedJob(\n146\t        \"stop-run\",\n147\t        {\n148\t          \"runs-on\": \"ubuntu-latest\",\n149\t          if: `${githubEventRaw<IssuesClosedEvent>((e) => e.sender.type)} != 'Bot'`,\n150\t        },\n151\t        [new ActionsCheckoutV4({}), new SetupBunAction({ name: \"Setup Bun\" }), stopOnCloseStep],\n152\t      ),\n153\t      new DefinedJob(\"prune\", { \"runs-on\": \"ubuntu-latest\" }, [\n154\t        new ActionsCheckoutV4({}),\n155\t        new SetupBunAction({ name: \"Setup Bun\" }),\n156\t        pruneStep,\n157\t      ]),\n158\t    ]),\n159\t);",
+      "tool_call_id": "call_00_u6joxM5KPj53ASVflYzg0343"
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows/atomaton-manual-comment.wac.ts lines 1-280 of 280\n\n1\timport { Workflow } from \"@github-actions-workflow-ts/lib\";\n2\timport type { IssueCommentCreatedEvent } from \"@octokit/webhooks-types\";\n3\timport { ActionsCheckoutV4 } from \"@github-actions-workflow-ts/actions\";\n4\timport { startJob, TypedOutputsStep } from \"./actions/base.ts\";\n5\timport { githubEvent, githubEventRaw, isRepositoryMember } from \"./actions/github-context.ts\";\n6\timport { ATOMATON_WORKFLOW_PERMISSIONS } from \"./actions/permissions.ts\";\n7\timport { scriptCommand, scriptCommandWithArgs } from \"./actions/script-call.ts\";\n8\timport { SetupBunAction } from \"./actions/third-party.ts\";\n9\timport { dispatchToAtomaRunner } from \"./atomaton-runner.wac.ts\";\n10\timport { ref as parseCommentCommandRef } from \"../scripts/parse_comment_command.ts\";\n11\timport { ref as guardCommentRef } from \"../scripts/guard_comment_during_run.ts\";\n12\timport { ref as guardCommandOnClosedRef } from \"../scripts/guard_command_on_closed.ts\";\n13\timport\n\n[atomaton] 8315 characters dropped from the middle; 4000 shown\n\n now that the guard reads the parse -- so what it\n200\t * suppresses is the dispatch, which is the thing it was protecting all along.\n201\t */\n202\tconst dispatchStep = new TypedOutputsStep(\n203\t  {\n204\t    name: \"Decide what to dispatch\",\n205\t    id: \"dispatch\",\n206\t    shell: \"bash\",\n207\t    env: {\n208\t      FROM_COMMAND: parseCommandStep.outputs.agent,\n209\t      FROM_RESUME: resumeStep.outputs.agent,\n210\t      BLOCKED: guardStep.outputs.blocked,\n211\t      CLOSED: closedGuardStep.outputs.blocked,\n212\t    },\n213\t    run: `if [ \"$BLOCKED\" = \"true\" ] || [ \"$CLOSED\" = \"true\" ]; then\n214\t  AGENT=\"\"\n215\telse\n216\t  AGENT=\"\\${FROM_COMMAND:-\\${FROM_RESUME}}\"\n217\tfi\n218\techo \"agent=\\${AGENT}\" >> \"$GITHUB_OUTPUT\"\n219\techo \"dispatching: \\${AGENT:-nothing}\"\n220\t`,\n221\t  },\n222\t  [\"agent\"] as const,\n223\t);\n224\t\n225\tconst commandErrorStep = new TypedOutputsStep({\n226\t  name: \"Report invalid slash command\",\n227\t  if: `${parseCommandStep.rawOutputs.error} != ''`,\n228\t  shell: \"bash\",\n229\t  env: {\n230\t    GH_TOKEN: \"${{ github.token }}\",\n231\t    NUMBER: targetStep.outputs.number,\n232\t    ERROR: parseCommandStep.outputs.error,\n233\t  },\n234\t  run: `gh issue comment \"\\${NUMBER}\" --body \"Atomaton command error: \\${ERROR}\"\n235\t`,\n236\t});\n237\t\n238\texport const atomaManualComment = new Workflow(\"atomaton-manual-comment\", {\n239\t  name: \"Atomaton Manual Comment\",\n240\t  on: {\n241\t    issue_comment: { types: [\"created\"] },\n242\t  },\n243\t  permissions: ATOMATON_WORKFLOW_PERMISSIONS,\n244\t}).addJobs(\n245\t  startJob(\n246\t    \"parse\",\n247\t    {\n248\t      \"runs-on\": \"ubuntu-latest\",\n249\t      // Broader than PARSE_ALLOWED on purpose: this job now also needs to\n250\t      // run for ANY human comment (regardless of association) so guardStep\n251\t      // can reject it while atomaton/in-progress is active -- actual\n252\t      // parsing/dispatch stays restricted to PARSE_ALLOWED via\n253\t      // parseCommandStep's own `if:` above.\n254\t      if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch'))`,\n255\t      outputs: {\n256\t        agent: dispatchStep.outputs.agent,\n257\t        session_mode: parseCommandStep.outputs.session_mode,\n258\t        number: targetStep.outputs.number,\n259\t        type: targetStep.outputs.type,\n260\t        notify: targetStep.outputs.notify,\n261\t      },\n262\t    },\n263\t    [\n264\t      new ActionsCheckoutV4({}),\n265\t      new SetupBunAction({ name: \"Setup Bun\" }),\n266\t      // Parse first: the guard below has to know whether this is the one command it\n267\t      // must let through.\n268\t      parseCommandStep,\n269\t      guardStep,\n270\t      closedGuardStep,\n271\t      targetStep,\n272\t      stopStep,\n273\t      resumeStep,\n274\t      dispatchStep,\n275\t      commandErrorStep,\n276\t    ],\n277\t  )\n278\t    .then((parseJob) => dispatchToAtomaRunner(parseJob, \"inherit\", parseJob.outputs.session_mode))\n279\t    .jobs(),\n280\t);",
+      "tool_call_id": "call_01_GpsJsEkYEFyq7noivIcZ7966"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_0sroszzy62nvjwl2010n74hy",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"max_matches\": 60, \"path\": \".\", \"pattern\": \"dispatchRunner\"}"
+          }
+        },
+        {
+          "id": "call_01_di7ujq6pyqwj80a1a3es52dh",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"max_matches\": 40, \"path\": \".\", \"pattern\": \"atomaton:dispatch\"}"
+          }
+        },
+        {
+          "id": "call_02_rbkpuuojm9yzcxdtk0j7hgvy",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/scripts/request_stop.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "27 matching line(s) under .:\n\n./tests/e2e/launch-sub-agent.e2e.test.ts:41:      // 4. dispatchRunner reads the sub-issue's state, and starts nothing on one it\n./src/lib/target-state.ts:6: * job, and `dispatchRunner` — and a fourth will be added by whoever adds the next way\n./src/lib/dispatch.ts:136:export function dispatchRunner(d: RunnerDispatch): DispatchOutcome {\n./src/lib/dispatch-targets.ts:16:import { dispatchRunner } from \"./dispatch.ts\";\n./src/lib/dispatch-targets.ts:96:    dispatchRunner({\n./src/lib/aggregation.ts:24:import { dispatchRunner } from \"./dispatch.ts\";\n./src/lib/aggregation.ts:88:   * a person as much as a failure does -- and `dispatchRunner` has already told the one\n./src/lib/aggregation.ts:227:  const outcome = dispatchRunner({\n./src/lib/aggregation.ts:241:  // been told by `dispatchRunner` itself. Kept apart from `dispatch-failed` so this\n./src/lib/aggregation.test.ts:54:// a failure; `dispatchRunner` reads its state and refuses to dispatch onto\n./src/lib/aggregation.test.ts:85:    // The person who asked for the run is told on the issue, by `dispatchRunner`.\n./src/atomaton-runtime/tools/lib/dispatch_sub_agent.ts:4:import { dispatchRunner } from \"../../../lib/dispatch.ts\";\n./src/atomaton-runtime/tools/lib/dispatch_sub_agent.ts:45:  const outcome = dispatchRunner({\n./src/atomaton-runtime/tools/mcp/atomaton.ts:29:import { dispatchRunner } from \"../../../lib/dispatch.ts\";\n./src/atomaton-runtime/tools/mcp/atomaton.ts:242:  const outcome = dispatchRunner({\n./src/scripts/dispatch_if_siblings_done.test.ts:19:            // The parent's state. `dispatchRunner` refuses to start an agent on\n./.github/atomaton-runtime/tools/mcp/github.ts:7366:function dispatchRunner(d) {\n./.github/atomaton-runtime/tools/mcp/github.ts:7458:  const outcome = dispatchRunner({\n./.github/atomaton-runtime/tools/mcp/github.ts:18890:  return dispatchRunner({\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:6792:function dispatchRunner(d) {\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:6869:  const outcome = dispatchRunner({\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:7017:  const outcome = dispatchRunner({\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:18305:  const outcome = dispatchRunner({\n./.github/atomaton-runtime/scripts/dispatch_if_siblings_done.ts:208:function dispatchRunner(d) {\n./.github/atomaton-runtime/scripts/dispatch_if_siblings_done.ts:392:  const outcome = dispatchRunner({\n./.github/atomaton-runtime/scripts/aggregate_sub_issues.ts:211:function dispatchRunner(d) {\n./.github/atomaton-runtime/scripts/aggregate_sub_issues.ts:395:  const outcome = dispatchRunner({",
+      "tool_call_id": "call_00_0sroszzy62nvjwl2010n74hy"
+    },
+    {
+      "role": "tool",
+      "content": "9 matching line(s) under .:\n\n./src/workflows/atomaton-manual-comment.wac.ts:41:  ` contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch')) ||\\n` +\n./src/workflows/atomaton-manual-comment.wac.ts:254:      if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch'))`,\n./src/lib/agent-name.ts:7: * and into the `atomaton:agent`/`atomaton:dispatch`/`atomaton:origin-agent` comment\n./src/scripts/parse_comment_command.ts:30:const DISPATCH_RE = new RegExp(`^<!--\\\\s*atomaton:dispatch\\\\s*=\\\\s*(${AGENT_NAME_PATTERN})\\\\s*-->`);\n./src/scripts/parse_comment_command.test.ts:29:  test(\"parses the atomaton:dispatch= comment form\", () => {\n./src/scripts/parse_comment_command.test.ts:30:    expect(parseCommentCommand(\"<!-- atomaton:dispatch=engineer -->\")).toEqual({\n./.github/workflows/atomaton-manual-comment.yml:27:    if: (github.event.comment.user.type != 'Bot') || (github.event.comment.user.type == 'Bot' && contains(github.event.comment.body, 'atomaton:dispatch'))\n./.github/workflows/atomaton-manual-comment.yml:44:           contains(github.event.comment.body, 'atomaton:dispatch')) ||\n./.github/atomaton-runtime/scripts/parse_comment_command.ts:43:var DISPATCH_RE = new RegExp(`^<!--\\\\s*atomaton:dispatch\\\\s*=\\\\s*(${AGENT_NAME_PATTERN})\\\\s*-->`);",
+      "tool_call_id": "call_01_di7ujq6pyqwj80a1a3es52dh"
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts/request_stop.ts lines 1-119 of 119\n\n1\t#!/usr/bin/env bun\n2\t/**\n3\t * request_stop.ts — Act on a `/stop` comment: remove it, and post the request the\n4\t * running job polls for.\n5\t *\n6\t * ## Why the request is a comment\n7\t *\n8\t * Nothing outside a workflow job can reach into that job's filesystem, so a stop has\n9\t * to be left somewhere both sides can see. A comment is that place, and it is also\n10\t * the record of who asked and when — a label would have needed a second thing to\n11\t * carry the same information.\n12\t *\n13\t * The running job polls for `STOP_TAG` and, when it finds one newer than its own\n14\t * start, writes the file `atoma run --stop-file` is watching. See `watch_for_stop.ts`.\n15\t *\n16\t * ## Why the human's comment is deleted\n17\t *\n18\t * A stop must not become the next run's context. The whole point is that the run is\n19\t * paused rather than told something; a `/stop` sitting in the session would be read\n20\t * by the resumed agent as an instruction it has to acc\n\n[atomaton] 1122 characters dropped from the middle; 4000 shown\n\n will read it. */\n49\texport function stopRequestedNotice(commenter: string, deleted: boolean, children: number[]): string {\n50\t  const mention = commenter ? `@${commenter} ` : \"\";\n51\t  const lines = [\n52\t    LLM_CONTEXT_TAG.write(\"exclude\"),\n53\t    STOP_TAG.write(\"requested\"),\n54\t    `${mention}Atomaton: stop requested.`,\n55\t    \"\",\n56\t    deleted\n57\t      ? \"Your `/stop` comment was removed so it does not become part of the agent's context.\"\n58\t      : \"Your `/stop` comment could not be removed, so it may end up in the agent's context.\",\n59\t    \"\",\n60\t    // The lag is real and it is the thing people will misread. A stop is picked up on\n61\t    // the next poll and taken at the next turn, so the agent can finish a tool call\n62\t    // and start another one after the request. Without this line that reads as the\n63\t    // command having done nothing.\n64\t    \"The run will stop after its current step, so it may take a minute. Nothing is lost when it does: the session is saved and can be continued.\",\n65\t  ];\n66\t  if (children.length > 0) {\n67\t    lines.push(\n68\t      \"\",\n69\t      `This issue also has work running on ${children.map((n) => `#${n}`).join(\", \")}. ` +\n70\t        \"A stop here does not reach those — comment `/stop` on each one you want stopped.\",\n71\t    );\n72\t  }\n73\t  return lines.join(\"\\n\");\n74\t}\n75\t\n76\tfunction main(): void {\n77\t  const { values } = parseArgs({\n78\t    args: Bun.argv.slice(2),\n79\t    options: {\n80\t      number: { type: \"string\" },\n81\t      \"comment-id\": { type: \"string\" },\n82\t      commenter: { type: \"string\" },\n83\t    },\n84\t  });\n85\t\n86\t  if (!values.number || !values[\"comment-id\"]) {\n87\t    console.error(\"usage: request_stop.ts --number N --comment-id ID --commenter LOGIN\");\n88\t    process.exit(2);\n89\t  }\n90\t\n91\t  const repo = process.env.GITHUB_REPOSITORY ?? \"\";\n92\t  const number = String(values.number);\n93\t\n94\t  const { code: delCode, stdout: delOut, stderr: delErr } = gh(\n95\t    \"api\", \"--method\", \"DELETE\", `repos/${repo}/issues/comments/${values[\"comment-id\"]}`,\n96\t  );\n97\t  const deleted = delCode === 0;\n98\t  if (!deleted) {\n99\t    console.error(`Warning: failed to delete comment #${values[\"comment-id\"]} on #${number}: ${delErr || delOut}`);\n100\t  }\n101\t\n102\t  const children = runningChildren(repo, Number(number));\n103\t\n104\t  const { code, stdout, stderr } = gh(\n105\t    \"issue\", \"comment\", number, \"--repo\", repo,\n106\t    \"--body\", stopRequestedNotice(values.commenter ?? \"\", deleted, children),\n107\t  );\n108\t  // Fatal, unlike the deletion. This comment IS the request: without it the run\n109\t  // polls, finds nothing, and keeps going, and the person is told a stop is coming\n110\t  // that never arrives.\n111\t  if (code !== 0) {\n112\t    console.error(`Could not post the stop request on #${number}: ${stderr || stdout}`);\n113\t    process.exit(1);\n114\t  }\n115\t\n116\t  console.error(`Stop requested on #${number}${children.length ? ` (children running: ${children.join(\", \")})` : \"\"}`);\n117\t}\n118\t\n119\tif (import.meta.main) main();",
+      "tool_call_id": "call_02_rbkpuuojm9yzcxdtk0j7hgvy"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_RBmxfsrgJA1ufgGFspiv5644",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/scripts/parse_comment_command.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_oeEpP1Db2iTtXT07WGJd6963",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/agent-name.ts\"}"
+          }
+        },
+        {
+          "id": "call_02_K8nw2Zyh8VUmYtAejK1z7844",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/operations.md\", \"offset\": 225, \"limit\": 48}"
+          }
+        },
+        {
+          "id": "call_03_wVdQzH84kTDjh6PlTFYk0641",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"path\": \"src/workflows/atomaton-runner.wac.ts\", \"pattern\": \"export function dispatchToAtomaRunner|gh workflow run|uses:|dispatchWorkflow\", \"context\": 6}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/scripts/parse_comment_command.ts lines 1-89 of 89\n\n1\t#!/usr/bin/env bun\n2\t/**\n3\t * parse_comment_command.ts — Parse a GitHub comment and extract either a\n4\t * slash-command agent name and optional session mode, or a control command, from\n5\t * any line.\n6\t *\n7\t * Human commands must occupy their own line: `/engineer` or\n8\t * `/engineer recover`. Instructions belong on following lines. Internal\n9\t * dispatch comments remain accepted for automation.\n10\t *\n11\t * Env: ATOMATON_COMMENT_BODY\n12\t * Writes `matched`, `agent`, `control`, `session_mode`, and `error` to\n13\t * $GITHUB_OUTPUT.\n14\t */\n15\timport { appendFileSync } from \"node:fs\";\n16\timport { AGENT_NAME_PATTERN } from \"../lib/agent-name.ts\";\n17\timport { isControlCommand, type ControlCommand } from \"../domain/control-commands.ts\";\n18\timport { defineScript } from \"./lib/script-ref.ts\";\n19\t\n20\texport const ref = defineScript(import.meta.url);\n21\t\n22\tconst COMMAND_RE = new RegExp(`^\\\\/(${AGENT_NAME_PATTERN})(?:\\\\s+(.*))?$`);\n23\t// Deli\n\n[atomaton] 38 characters dropped from the middle; 4000 shown\n\nlib/tags.ts, and the difference is\n24\t// load-bearing: this must be anchored to the start of a line so a dispatch\n25\t// marker quoted inside a human's comment cannot trigger a run, whereas\n26\t// `DISPATCH_TAG` matches anywhere in a body by design. The whitespace\n27\t// tolerance around `=` is likewise wider than the tag writer ever emits --\n28\t// it costs nothing and this is the one place reading a marker a human may\n29\t// have retyped by hand.\n30\tconst DISPATCH_RE = new RegExp(`^<!--\\\\s*atomaton:dispatch\\\\s*=\\\\s*(${AGENT_NAME_PATTERN})\\\\s*-->`);\n31\t\n32\texport interface ParsedCommentCommand {\n33\t  agent: string;\n34\t  control: ControlCommand;\n35\t  sessionMode: \"continue\" | \"recover\";\n36\t  error: string;\n37\t}\n38\t\n39\tconst NOTHING: ParsedCommentCommand = { agent: \"\", control: \"\", sessionMode: \"continue\", error: \"\" };\n40\t\n41\texport function parseCommentCommand(body: string): ParsedCommentCommand {\n42\t  if (!body) return NOTHING;\n43\t  for (const rawLine of body.split(\"\\n\")) {\n44\t    const line = rawLine.trim();\n45\t    const commandMatch = COMMAND_RE.exec(line);\n46\t    if (commandMatch) {\n47\t      const name = commandMatch[1]!;\n48\t      const modifier = commandMatch[2]?.trim() ?? \"\";\n49\t\n50\t      // Before the agent branch, so a control command never reaches it. See\n51\t      // `domain/control-commands.ts`.\n52\t      if (isControlCommand(name)) {\n53\t        if (!modifier) return { ...NOTHING, control: name };\n54\t        // `/resume 直して` is the one mistake worth naming, because the thing the\n55\t        // person wanted exists and is one line away: an ordinary agent command\n56\t        // resumes the same session AND carries the instruction, which is why\n57\t        // `/resume` deliberately takes none.\n58\t        return {\n59\t          ...NOTHING,\n60\t          error: `'/${name}' takes nothing after it. To resume with an instruction, use '/<agent>' and put the instruction on the following lines.`,\n61\t        };\n62\t      }\n63\t\n64\t      if (!modifier) return { ...NOTHING, agent: name };\n65\t      if (modifier === \"recover\") return { ...NOTHING, agent: name, sessionMode: \"recover\" };\n66\t      return {\n67\t        ...NOTHING,\n68\t        error: `Unknown command syntax: '/${name} ${modifier}'. Put instructions on the lines after '/${name}', or use '/${name} recover'.`,\n69\t      };\n70\t    }\n71\t    const dispatchMatch = DISPATCH_RE.exec(line);\n72\t    if (dispatchMatch) return { ...NOTHING, agent: dispatchMatch[1]! };\n73\t  }\n74\t  return NOTHING;\n75\t}\n76\t\n77\tfunction main(): void {\n78\t  const body = process.env.ATOMATON_COMMENT_BODY ?? \"\";\n79\t  const { agent, control, sessionMode, error } = parseCommentCommand(body);\n80\t  const matched = agent ? \"true\" : \"false\";\n81\t\n82\t  const githubOutput = process.env.GITHUB_OUTPUT;\n83\t  if (githubOutput) {\n84\t    appendFileSync(githubOutput, `matched=${matched}\\nagent=${agent}\\ncontrol=${control}\\n`);\n85\t    appendFileSync(githubOutput, `session_mode=${sessionMode}\\nerror=${error}\\n`);\n86\t  }\n87\t}\n88\t\n89\tif (import.meta.main) main();",
+      "tool_call_id": "call_00_RBmxfsrgJA1ufgGFspiv5644"
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/agent-name.ts lines 1-43 of 43\n\n1\t/**\n2\t * agent-name.ts — the one definition of what a valid agent name looks like.\n3\t *\n4\t * An agent name is not decoration: it is spliced into a filesystem path\n5\t * (`--agent-def .github/atomaton/agent-definitions/<name>.md`), into shell text\n6\t * inside generated workflow YAML, into `gh workflow run --field agent=<name>`,\n7\t * and into the `atomaton:agent`/`atomaton:dispatch`/`atomaton:origin-agent` comment\n8\t * tags. So \"what counts as a name\" is a security boundary, and it was\n9\t * previously written out five separate times -- four TypeScript regexes and one\n10\t * bash ERE -- with no link between them.\n11\t *\n12\t * They had already drifted. `extract_directive.ts` used `[a-z][a-z0-9-]+`\n13\t * (two characters minimum) where everything else used `*`, so a one-character\n14\t * agent was dispatchable by comment and by `launch_sub_agent` but silently\n15\t * ignored as a handoff directive. Nothing documented the difference, because it\n16\t * was not a decision.\n17\t *\n18\t * `AGENT_NAME_PATTERN` is exported as a bare pattern BODY rather than a\n19\t * `RegExp` because two of its consumers cannot use one: `lib/tags.ts` embeds it\n20\t * in a larger HTML-comment regex, and `workflows/atomaton-runner.wac.ts` generates\n21\t * it into a bash `[[ =~ ]]` test. Generating the bash copy from this constant\n22\t * is what makes the workflow's own check provably the same rule as the\n23\t * TypeScript one, rather than a hand-kept-in-step transcription.\n24\t */\n25\t\n26\t/**\n27\t * Lowercase letter, then lowercase letters/digits/hyphens. No anchors, no\n28\t * capture group -- callers add what they need. Deliberately narrow: it has to\n29\t * be safe as a path segment, as a shell word, and as a regex-free literal.\n30\t */\n31\texport const AGENT_NAME_PATTERN = \"[a-z][a-z0-9-]*\";\n32\t\n33\tconst AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);\n34\t\n35\t/**\n36\t * True if `value` is a well-formed agent name. Says nothing about whether a\n37\t * definition file for it exists -- callers that need that check it separately\n38\t * (see `extract_directive.ts`, which requires a matching `<name>.md` before\n39\t * dispatching, so a syntactically valid but unknown name cannot start a run).\n40\t */\n41\texport function isAgentName(value: string): boolean {\n42\t  return AGENT_NAME_RE.test(value);\n43\t}",
+      "tool_call_id": "call_01_oeEpP1Db2iTtXT07WGJd6963"
+    },
+    {
+      "role": "tool",
+      "content": "docs/operations.md lines 225-272 of 693\n\n225\t\n226\t| label | what it means |\n227\t| --- | --- |\n228\t| `atomaton/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |\n229\t| `atomaton/sub-issue` | this issue is a child delivery task Atomaton created, with an `atomaton:parent=N` tag in its body saying whose |\n230\t| `atomaton/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |\n231\t\n232\tThe last two are read together, and that is why there are two. A parent is\n233\tre-invoked once no open sibling carries **both**: a sub-issue created as a later\n234\tphase of a plan and never launched must not hold the parent back, or the count could\n235\tnever reach zero. Rename any of them under `chain.labels` — see\n236\t[configuration.md](configuration.md#chain).\n237\t\n238\t## Manual commands and recovery\n239\t\n240\tAn agent command must occupy its own line. Put instructions on following lines:\n241\t\n242\t```text\n243\t/engineer\n244\tImplement the remaining acceptance criteria.\n245\t```\n246\t\n247\tText after an agent name on the command line is rejected rather than guessed at,\n248\tbecause the name is used as a filename and as a shell word. A comment says so on\n249\tthe issue; a new issue's body reports it as a warning on the workflow run and\n250\tstarts nothing.\n251\t\n252\tThe only supported modifier is `recover`, and only in a comment — a new issue's\n253\tfirst line takes a bare name and nothing else:\n254\t\n255\t```text\n256\t/engineer recover\n257\tContinue from the current Issue, repository, pull request, and CI state.\n258\t```\n259\t\n260\tRecovery archives the previous agent session, does not restore its assistant/tool history, rebuilds a fresh session from current GitHub events, and then runs the named agent. Repository branches and GitHub state are not reset. Internal automation dispatches continue existing sessions by default.\n261\t\n262\t### Stopping a run, and continuing it\n263\t\n264\t`/stop` on its own line stops the agent currently running on that issue or pull\n265\trequest. `/resume` continues it.\n266\t\n267\t```text\n268\t/stop\n269\t```\n270\t\n271\tThree things are worth knowing about it.\n272\t\n\n[421 more lines. Read again with offset: 273.]",
+      "tool_call_id": "call_02_K8nw2Zyh8VUmYtAejK1z7844"
+    },
+    {
+      "role": "tool",
+      "content": "29 line(s), match and context, under src/workflows/atomaton-runner.wac.ts:\n\n1109-  run: `if ! [[ \"$DIRECTIVE\" =~ ^${AGENT_NAME_PATTERN}$ ]]; then\n1110-  echo \"::error::Invalid directive value: \\${DIRECTIVE}\"\n1111-  exit 1\n1112-fi\n1113-\n1114-echo \"Dispatching '\\${DIRECTIVE}' on \\${TYPE} #\\${NUMBER} via atomaton-runner.yml ...\"\n1115:# Use gh workflow run with the current GH_TOKEN (caller's token, e.g. from issue_comment event).\n1116-# This preserves the caller's token permissions (PR creation OK for issue_comment events).\n1117:gh workflow run atomaton-runner.yml \\\\\n1118-  --field agent=\"$DIRECTIVE\" \\\\\n1119-  --field number=\"$NUMBER\" \\\\\n1120-  --field type=\"$TYPE\" \\\\\n1121-  --field notify=\"$NOTIFY\"\n1122-`,\n1123-});\n--\n1808- * a name at the call site (GitHub Actions' own job graph requires a stable\n1809- * reference to appear in both the `jobs:` map and any `needs:`/output read\n1810- * -- no TS wrapper can make that indirection disappear, it isn't a styling\n1811- * choice), but everything *after* that reference is now one line instead of\n1812- * eight.\n1813- */\n1814:export function dispatchToAtomaRunner<TOutputs extends Record<\"agent\" | \"number\" | \"type\" | \"notify\", string>>(\n1815-  routeJob: DefinedJob<TOutputs>,\n1816-  secrets?: \"inherit\" | Record<string, string>,\n1817-  sessionMode = \"continue\",\n1818-): ReturnType<typeof atomaRunnerWorkflow.call> {\n1819-  return atomaRunnerWorkflow.call(\"run\", {\n1820-    needs: [routeJob],",
+      "tool_call_id": "call_03_wVdQzH84kTDjh6PlTFYk0641"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_meKPfbKfMf4GInS7ljAt8286",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/workflows/atomaton-runner.wac.ts\", \"offset\": 1040, \"limit\": 100}"
+          }
+        },
+        {
+          "id": "call_01_dSQShZfkDuSEXyQ2jGwH6989",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/workflows/atomaton-runner.wac.ts\", \"offset\": 1795, \"limit\": 60}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows/atomaton-runner.wac.ts lines 1040-1139 of 1831\n\n1040\t    // The target number and nothing else. The tally is counted from that object's\n1041\t    // comments rather than carried in the session, so `new_event_count` and the\n1042\t    // directive are no longer inputs -- see `domain/dispatch-chain.ts` for why the\n1043\t    // stored counter could never reach 1.\n1044\t    //\n1045\t    // This must stay AFTER `postResultCommentStep`: the tally includes this run's\n1046\t    // own result comment, so counting before it is posted is counting one short.\n1047\t    run: `${scriptCommandWithArgs(manageDispatchLoopRef, {\n1048\t      number: \"${{ inputs.number }}\",\n1049\t    })}\\n`,\n1050\t  },\n1051\t  [\"auto_dispatch_count\", \"loop_limit_reached\", \"handoff_limit\", \"runs_without_change\", \"stop_reason\"] as const,\n1052\t);\n1053\t\n1054\t// Whether the atomaton/in-progress SerializationGuard should be released after\n1055\t// this run is a real domain decision (see domain/serialization-guard.ts's\n1056\t// s\n\n[atomaton] 985 characters dropped from the middle; 4000 shown\n\nStep.outputs.loop_limit_reached,\n1074\t      \"chain-continues\": runAgentStep.outputs.chain_continues,\n1075\t      directive: runAgentStep.outputs.directive,\n1076\t    })}\\n`,\n1077\t  },\n1078\t  [\"should_release\"] as const,\n1079\t);\n1080\t\n1081\tconst removeLabelStep = new TypedOutputsStep({\n1082\t  name: \"Remove atomaton/in-progress label on completion\",\n1083\t  if: `always() && ${decideGuardReleaseStep.rawOutputs.should_release} == 'true'`,\n1084\t  shell: \"bash\",\n1085\t  env: {\n1086\t    GH_TOKEN: \"${{ github.token }}\",\n1087\t    NUMBER: \"${{ inputs.number }}\",\n1088\t  },\n1089\t  run: `${scriptCommandWithArgs(manageInProgressLabelRef, { action: \"remove\", number: \"\\${NUMBER}\" })}\n1090\t`,\n1091\t});\n1092\t\n1093\tconst DISPATCH_NEXT_GUARD =\n1094\t  `${runAgentStep.rawOutcome} == 'success' && ${runAgentStep.rawOutputs.directive} != '' && ` +\n1095\t  `${runAgentStep.rawOutputs.limit_reached} != 'true' && ` +\n1096\t  `${runAgentStep.rawOutputs.stop_requested} != 'true'`;\n1097\t\n1098\tconst dispatchNextAgentStep = new TypedOutputsStep({\n1099\t  name: \"Dispatch next agent\",\n1100\t  if: `${DISPATCH_NEXT_GUARD} && ${loopControlStep.rawOutputs.loop_limit_reached} != 'true'`,\n1101\t  shell: \"bash\",\n1102\t  env: {\n1103\t    GH_TOKEN: \"${{ github.token }}\",\n1104\t    DIRECTIVE: runAgentStep.outputs.directive,\n1105\t    NUMBER: \"${{ inputs.number }}\",\n1106\t    TYPE: \"${{ inputs.type }}\",\n1107\t    NOTIFY: notifyStep.outputs.notify,\n1108\t  },\n1109\t  run: `if ! [[ \"$DIRECTIVE\" =~ ^${AGENT_NAME_PATTERN}$ ]]; then\n1110\t  echo \"::error::Invalid directive value: \\${DIRECTIVE}\"\n1111\t  exit 1\n1112\tfi\n1113\t\n1114\techo \"Dispatching '\\${DIRECTIVE}' on \\${TYPE} #\\${NUMBER} via atomaton-runner.yml ...\"\n1115\t# Use gh workflow run with the current GH_TOKEN (caller's token, e.g. from issue_comment event).\n1116\t# This preserves the caller's token permissions (PR creation OK for issue_comment events).\n1117\tgh workflow run atomaton-runner.yml \\\\\n1118\t  --field agent=\"$DIRECTIVE\" \\\\\n1119\t  --field number=\"$NUMBER\" \\\\\n1120\t  --field type=\"$TYPE\" \\\\\n1121\t  --field notify=\"$NOTIFY\"\n1122\t`,\n1123\t});\n1124\t\n1125\tconst loopLimitCommentStep = new TypedOutputsStep({\n1126\t  name: \"Comment on loop limit reached\",\n1127\t  if: `${DISPATCH_NEXT_GUARD} && ${loopControlStep.rawOutputs.loop_limit_reached} == 'true'`,\n1128\t  shell: \"bash\",\n1129\t  env: {\n1130\t    GH_TOKEN: \"${{ github.token }}\",\n1131\t    NUMBER: \"${{ inputs.number }}\",\n1132\t    DIRECTIVE: runAgentStep.outputs.directive,\n1133\t    NOTIFY: notifyStep.outputs.notify,\n1134\t    RUN_URL: \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\n1135\t    // The whole sentence, from the step that decided, rather than assembled here.\n1136\t    //\n1137\t    // It used to be built from the handoff count whatever the reason, with the\n1138\t    // limit spliced in -- and there are two limits now. A chain stopped because its\n1139\t    // last two runs changed nothing would have been told it had made too many\n\n[692 more lines. Read again with offset: 1140.]",
+      "tool_call_id": "call_00_meKPfbKfMf4GInS7ljAt8286"
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows/atomaton-runner.wac.ts lines 1795-1831 of 1831\n\n1795\t  atoma_version?: string;\n1796\t}\n1797\t\n1798\t/** Type-safe `workflow_call` invocation of this workflow from other `*.wac.ts` files. */\n1799\texport const atomaRunnerWorkflow = defineCallableWorkflow<AtomaRunnerInputs>(atomaRunner);\n1800\t\n1801\t/**\n1802\t * Every caller of this workflow (`atomaton-entry`, `atoma-auto-trigger`,\n1803\t * `atomaton-manual-comment`, `atoma-pr-review`) follows the exact same shape:\n1804\t * a \"route\" job resolves `agent`/`number`/`type`/`notify` as its own job\n1805\t * outputs, then hands off to `atomaton-runner` gated on `agent` being non-empty.\n1806\t * That `needs:`/`if:`/`with:` wiring was near-identically hand-copied 4\n1807\t * times -- this collapses it to one call. The route job itself still needs\n1808\t * a name at the call site (GitHub Actions' own job graph requires a stable\n1809\t * reference to appear in both the `jobs:` map and any `needs:`/output read\n1810\t * -- no TS wrapper can make that indirection disappear, it isn't a styling\n1811\t * choice), but everything *after* that reference is now one line instead of\n1812\t * eight.\n1813\t */\n1814\texport function dispatchToAtomaRunner<TOutputs extends Record<\"agent\" | \"number\" | \"type\" | \"notify\", string>>(\n1815\t  routeJob: DefinedJob<TOutputs>,\n1816\t  secrets?: \"inherit\" | Record<string, string>,\n1817\t  sessionMode = \"continue\",\n1818\t): ReturnType<typeof atomaRunnerWorkflow.call> {\n1819\t  return atomaRunnerWorkflow.call(\"run\", {\n1820\t    needs: [routeJob],\n1821\t    if: `${routeJob.rawOutputs.agent} != ''`,\n1822\t    with: {\n1823\t      agent: routeJob.outputs.agent,\n1824\t      number: routeJob.outputs.number,\n1825\t      type: routeJob.outputs.type,\n1826\t      notify: routeJob.outputs.notify,\n1827\t      session_mode: sessionMode,\n1828\t    },\n1829\t    secrets,\n1830\t  });\n1831\t}",
+      "tool_call_id": "call_01_dSQShZfkDuSEXyQ2jGwH6989"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_9e1ObBWc0RW8OBjB1tYZ8539",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/dispatch-targets.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_4geR088VWpbTQzLZlw7e5073",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/aggregation.ts\", \"limit\": 100, \"offset\": 180}"
+          }
+        },
+        {
+          "id": "call_02_q6Ax8NCRGmivDgrQYF9Y3584",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"pattern\": \"refused-closed\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/dispatch-targets.ts lines 1-163 of 163\n\n1\t/**\n2\t * dispatch-targets.ts — the workflows an agent's own actions have to start.\n3\t *\n4\t * All four exist for one reason: GitHub starts no workflow run for events its\n5\t * own token triggers. An agent opening a pull request fires no\n6\t * `pull_request.opened`; an agent merging fires no `push`. So anything that\n7\t * would have chained off those events has to be dispatched explicitly, and\n8\t * `workflow_dispatch` is the documented exception that still runs.\n9\t *\n10\t * Every one is best-effort. A dispatch that fails must not fail the action that\n11\t * prompted it — a pull request that exists without its CI started is recoverable,\n12\t * one that was never created is not.\n13\t */\n14\timport { dispatchWorkflow, gh } from \"./gh.ts\";\n15\timport { getDeployTargets, getWorkflowName } from \"./config.ts\";\n16\timport { dispatchRunner } from \"./dispatch.ts\";\n17\timport { resolveNotify } from \"./notify.ts\";\n18\timport { isIssueBranch } from \"./branch-plac\n\n[atomaton] 4430 characters dropped from the middle; 4000 shown\n\nng): boolean {\n110\t  return dispatchWorkflow(\"dispatchCi\", getWorkflowName(\"ci\", DEFAULT_CI_WORKFLOW), [\"--ref\", branch], log);\n111\t}\n112\t\n113\t/**\n114\t * Kick off the deployment workflow after a merge.\n115\t *\n116\t * Required, not a nicety: this merge is performed with GITHUB_TOKEN, so it fires\n117\t * no `push` on the base branch and a deployment waiting on that chain never\n118\t * runs.\n119\t *\n120\t * A project either names its own workflow in `deploy.your_workflow`, or declares\n121\t * `deploy.atomaton_runs.targets` and lets `atomaton-deploy.yml` run them. In the second\n122\t * case the decision is made HERE rather than in the workflow: a dispatch that\n123\t * starts a runner only to discover that nothing deploys on merge is a wasted run\n124\t * on every single merge, and this is the one trigger where the question can be\n125\t * answered before starting anything. The tag trigger has no such luxury -- `on:`\n126\t * takes no expression -- so that one filters after the fact.\n127\t *\n128\t * A declaration that does not parse is not this function's to report. It fails\n129\t * loudly inside the deploy run, where the log belongs to the deployment; here it\n130\t * would fail a merge that is otherwise complete.\n131\t */\n132\texport function dispatchCd(baseRef: string): boolean {\n133\t  // Only a merge that actually lands work deploys. A sub-issue's pull request\n134\t  // merges into its parent's branch, which is still in progress — deploying\n135\t  // there would ship half a feature, once per child.\n136\t  if (isIssueBranch(baseRef)) {\n137\t    log(`dispatchCd: merged into ${baseRef}, which is work in progress; not deploying`);\n138\t    return false;\n139\t  }\n140\t\n141\t  const configured = getWorkflowName(\"cd\");\n142\t  if (!configured) {\n143\t    const { targets, problems } = getDeployTargets();\n144\t    if (problems.length === 0 && targetsForMerge(targets).length === 0) {\n145\t      log(\"dispatchCd: no deploy.atomaton_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch\");\n146\t      return false;\n147\t    }\n148\t  }\n149\t\n150\t  const workflow = configured || DEFAULT_CD_WORKFLOW;\n151\t  // No `--ref` rather than a guessed one. This used to fall back to `\"main\"`,\n152\t  // in a file that argues a hundred lines above that guessing a workflow name\n153\t  // \"would dispatch a workflow that does not exist\" -- and on a repository whose\n154\t  // default branch is `develop`, the guess made the dispatch fail, logged as a\n155\t  // WARN, so the merge landed and nothing deployed. Omitted, `gh workflow run`\n156\t  // uses the repository's real default branch, which is what `getBaseBranch()`\n157\t  // already relies on for the same reason.\n158\t  const args = baseRef ? [\"--ref\", baseRef] : [];\n159\t  // Only the shipped workflow understands why it was started. A project's own\n160\t  // deployment workflow gets the bare dispatch it has always got.\n161\t  if (!configured) args.push(\"-f\", \"trigger=merge\");\n162\t  return dispatchWorkflow(\"dispatchCd\", workflow, args, log);\n163\t}",
+      "tool_call_id": "call_00_9e1ObBWc0RW8OBjB1tYZ8539"
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/aggregation.ts lines 180-279 of 289\n\n180\t\n181\t  // The exit code matters here: this read IS the idempotency check. A failed one\n182\t  // returns no comments, the marker is not found, and both racing callers then\n183\t  // decide they are the first — which is the one thing the marker exists to\n184\t  // prevent. Not finding the marker and not being able to look are different\n185\t  // answers, and only one of them means \"go ahead\".\n186\t  const { code: commentsCode, stdout: commentsOut } = gh(\n187\t    \"issue\", \"view\", String(opts.parent), \"--repo\", opts.repo,\n188\t    \"--json\", \"comments\", \"--jq\", \".comments[].body\",\n189\t  );\n190\t  if (commentsCode !== 0) {\n191\t    const why = `could not read #${opts.parent}'s comments, so this cannot tell whether the aggregation already ran`;\n192\t    console.error(`${why}; not dispatching`);\n193\t    return { kind: \"undetermined\", why };\n194\t  }\n195\t  if (commentsOut.includes(AGGREGATED_TAG.write(opts.closedNum))) {\n196\t    // Another caller already \n\n[atomaton] 2100 characters dropped from the middle; 4000 shown\n\nated` marker above is already\n237\t  // written at this point, so a failed dispatch cannot be retried by the racing\n238\t  // caller either -- saying so is the only way it reaches a human.\n239\t  if (outcome === \"dispatched\") return { kind: \"dispatched\" };\n240\t  // A closed parent is not a fault, and the person who asked for the run has already\n241\t  // been told by `dispatchRunner` itself. Kept apart from `dispatch-failed` so this\n242\t  // does not read in the log as GitHub having rejected something.\n243\t  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };\n244\t}\n245\t\n246\t/**\n247\t * Resolves `subIssueNum`'s orchestrator parent from its own `atomaton:parent`\n248\t * tag, then runs the dispatch gate on it with retry enabled (GitHub's\n249\t * search index is only eventually consistent -- the sub-issue we just\n250\t * closed a moment ago may still be reported as open for a second or two).\n251\t * Returns `not-tracked` when `subIssueNum` carries no parent tag at all (not\n252\t * every closed issue is a tracked Atomaton sub-issue), and `undetermined` when its\n253\t * body could not be read -- which is a different thing, because an unread body\n254\t * may belong to a sub-issue that just completed.\n255\t *\n256\t * The one canonical \"a sub-issue just closed -- is its parent ready?\"\n257\t * entry point, used identically by mcp/github.ts's closeIssue() and\n258\t * concludeIssue's bot-authored-issue branch (previously both\n259\t * spawned the now-removed dispatch_orchestrator_if_ready.ts script).\n260\t */\n261\texport async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssueNum: number): Promise<DispatchGateResult> {\n262\t  // Deliberately the `atomaton:parent` tag alone, NOT `lib/parent-issue.ts`, which\n263\t  // prefers GitHub's native sub-issue link.\n264\t  //\n265\t  // This module is tag-based end to end: `countOpenSiblings` finds siblings with\n266\t  // `atomaton:parent=N in:body`, so a parent discovered through the native link\n267\t  // would have no countable siblings and the gate would conclude \"all done\" on\n268\t  // the strength of a search that could never have found any. Reading the richer\n269\t  // answer here would make the two halves disagree about what a sibling is.\n270\t  //\n271\t  // Written down because the shared reader now exists and looks like the obvious\n272\t  // thing to switch to.\n273\t  const { code, stdout } = gh(\"issue\", \"view\", String(subIssueNum), \"--repo\", repo, \"--json\", \"body\", \"--jq\", \".body\");\n274\t  // A body that could not be read is not a body without a parent tag. Reported as\n275\t  // itself, because the two lead to opposite places: no tag means this issue is\n276\t  // untracked and there is nothing to do, while an unread body means a tracked\n277\t  // sub-issue may have just completed and the orchestrator is never told.\n278\t  if (code !== 0) {\n279\t    const why = `could not read issue #${subIssueNum}; cannot tell whether it belongs to a parent`;\n\n[10 more lines. Read again with offset: 280.]",
+      "tool_call_id": "call_01_4geR088VWpbTQzLZlw7e5073"
+    },
+    {
+      "role": "tool",
+      "content": "16 matching line(s) under .:\n\n./src/lib/dispatch.ts:90:  | \"refused-closed\"\n./src/lib/dispatch.ts:106:function refuseClosedTarget(d: RunnerDispatch, state: TargetState): \"refused-closed\" {\n./src/lib/dispatch.ts:126:  return \"refused-closed\";\n./src/lib/aggregation.ts:243:  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };\n./src/atomaton-runtime/tools/lib/dispatch_sub_agent.ts:52:  if (outcome === \"refused-closed\") {\n./src/atomaton-runtime/tools/mcp/atomaton.ts:251:  if (outcome === \"refused-closed\") {\n./.github/atomaton-runtime/tools/mcp/github.ts:7364:  return \"refused-closed\";\n./.github/atomaton-runtime/tools/mcp/github.ts:7468:  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:6790:  return \"refused-closed\";\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:6876:  if (outcome === \"refused-closed\") {\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:7027:  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };\n./.github/atomaton-runtime/tools/mcp/atomaton.ts:18314:  if (outcome === \"refused-closed\") {\n./.github/atomaton-runtime/scripts/dispatch_if_siblings_done.ts:206:  return \"refused-closed\";\n./.github/atomaton-runtime/scripts/dispatch_if_siblings_done.ts:402:  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };\n./.github/atomaton-runtime/scripts/aggregate_sub_issues.ts:209:  return \"refused-closed\";\n./.github/atomaton-runtime/scripts/aggregate_sub_issues.ts:405:  return outcome === \"refused-closed\" ? { kind: \"parent-closed\" } : { kind: \"dispatch-failed\" };",
+      "tool_call_id": "call_02_q6Ax8NCRGmivDgrQYF9Y3584"
     }
   ],
   "metadata": {
     "github_context": {
       "agent": "engineer",
-      "event_count": 6,
-      "snapshot_hash": "1ae3e017e4ae1de500a5de65cf7332575d345023da17d0f078e1a73fc17685ab",
-      "version": 1,
+      "event_count": 8,
+      "resolved_number": "831",
+      "snapshot_hash": "ec55dde9e23995d783ec07c281dd9b4dea9e77ebb2c7251b1b2c575524b6fe51",
       "type": "issue",
-      "resolved_number": "831"
+      "version": 1
     }
   },
   "atoma_runs": [
@@ -178,6 +611,14 @@
       "messages": 15,
       "seconds": 21,
       "started": "2026-09-19T12:10:42Z"
+    },
+    {
+      "ended": "2026-09-19T12:13:52Z",
+      "ended_because": "stopped",
+      "iterations": 9,
+      "messages": 54,
+      "seconds": 65,
+      "started": "2026-09-19T12:12:47Z"
     }
   ]
 }
