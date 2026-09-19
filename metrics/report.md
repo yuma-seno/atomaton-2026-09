@@ -10,10 +10,10 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest | median round trips | median seconds each |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Last 7 days | 50 | 26% | 374 | 3,392 | 46 | 23.7 |
-| Last 30 days | 50 | 26% | 374 | 3,392 | 46 | 23.7 |
-| Last year | 50 | 26% | 374 | 3,392 | 46 | 23.7 |
-| All time | 50 | 26% | 374 | 3,392 | 46 | 23.7 |
+| Last 7 days | 51 | 27.5% | 262 | 3,392 | 40 | 22.5 |
+| Last 30 days | 51 | 27.5% | 262 | 3,392 | 40 | 22.5 |
+| Last year | 51 | 27.5% | 262 | 3,392 | 40 | 22.5 |
+| All time | 51 | 27.5% | 262 | 3,392 | 40 | 22.5 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
@@ -22,7 +22,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `completed` | 37 |
 | `failed` | 8 |
 | `runtime` | 3 |
-| `stopped` | 2 |
+| `stopped` | 3 |
 
 ## Last 7 days
 
@@ -35,7 +35,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 137,006 | 7,118,379 | 13,911,470 | 13,911,470 | 70,374,061 |
-| messages per session | 172 | 541 | 1,598 | 1,598 | 7,815 |
+| messages per session | 172 | 541 | 1,598 | 1,598 | 7,854 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -48,16 +48,16 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,267 | 14 | 25 | 0.6% |
-| `grep` | 562 | 11 | 0 | 2% |
-| `read` | 544 | 2 | 0 | 0.4% |
+| `grep` | 567 | 11 | 0 | 1.9% |
+| `read` | 561 | 2 | 0 | 0.4% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 49 | 2 | 0 | 4.1% |
+| `list` | 49 | 1 | 0 | 2% |
 | `search__search_issues` | 49 | 0 | 0 | 0% |
 | `search__search_code` | 45 | 0 | 0 | 0% |
 | `glob` | 44 | 1 | 0 | 2.3% |
-| `list` | 43 | 1 | 0 | 2.3% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `github__get_issue` | 29 | 0 | 0 | 0% |
 | `write` | 29 | 0 | 0 | 0% |
@@ -124,7 +124,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 61,265 | 5,399,337 | 13,911,470 | 13,911,470 | 83,134,567 |
-| messages per session | 172 | 541 | 1,598 | 1,598 | 7,815 |
+| messages per session | 172 | 541 | 1,598 | 1,598 | 7,854 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -137,16 +137,16 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,267 | 14 | 25 | 0.6% |
-| `grep` | 562 | 11 | 0 | 2% |
-| `read` | 544 | 2 | 0 | 0.4% |
+| `grep` | 567 | 11 | 0 | 1.9% |
+| `read` | 561 | 2 | 0 | 0.4% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 49 | 2 | 0 | 4.1% |
+| `list` | 49 | 1 | 0 | 2% |
 | `search__search_issues` | 49 | 0 | 0 | 0% |
 | `search__search_code` | 45 | 0 | 0 | 0% |
 | `glob` | 44 | 1 | 0 | 2.3% |
-| `list` | 43 | 1 | 0 | 2.3% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `github__get_issue` | 29 | 0 | 0 | 0% |
 | `write` | 29 | 0 | 0 | 0% |
@@ -213,7 +213,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 26,784 | 382,963 | 9,000,677 | 39,737,697 | 186,411,597 |
-| messages per session | 172 | 541 | 1,598 | 1,598 | 7,815 |
+| messages per session | 172 | 541 | 1,598 | 1,598 | 7,854 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -226,16 +226,16 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,267 | 14 | 25 | 0.6% |
-| `grep` | 562 | 11 | 0 | 2% |
-| `read` | 544 | 2 | 0 | 0.4% |
+| `grep` | 567 | 11 | 0 | 1.9% |
+| `read` | 561 | 2 | 0 | 0.4% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 49 | 2 | 0 | 4.1% |
+| `list` | 49 | 1 | 0 | 2% |
 | `search__search_issues` | 49 | 0 | 0 | 0% |
 | `search__search_code` | 45 | 0 | 0 | 0% |
 | `glob` | 44 | 1 | 0 | 2.3% |
-| `list` | 43 | 1 | 0 | 2.3% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `github__get_issue` | 29 | 0 | 0 | 0% |
 | `write` | 29 | 0 | 0 | 0% |
@@ -302,7 +302,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 26,784 | 382,963 | 9,000,677 | 39,737,697 | 186,411,597 |
-| messages per session | 10 | 113 | 601 | 1,598 | 20,614 |
+| messages per session | 10 | 113 | 601 | 1,598 | 20,653 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -317,8 +317,8 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `shell__shell_execute` | 4,532 | 633 | 157 | 14% |
 | `filesystem__read_text_file` | 593 | 43 | 24 | 7.3% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
-| `grep` | 562 | 11 | 0 | 2% |
-| `read` | 544 | 2 | 0 | 0.4% |
+| `grep` | 567 | 11 | 0 | 1.9% |
+| `read` | 561 | 2 | 0 | 0.4% |
 | `filesystem_readonly__read_file` | 358 | 12 | 5 | 3.4% |
 | `filesystem__list_directory` | 264 | 6 | 0 | 2.3% |
 | `github__check_merge_readiness` | 235 | 3 | 0 | 1.3% |
@@ -343,8 +343,8 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__get_pr_diff` | 55 | 4 | 0 | 7.3% |
 | `github__get_issue_comments` | 53 | 8 | 0 | 15.1% |
 | `filesystem__search_files` | 50 | 0 | 43 | 0% |
+| `list` | 49 | 1 | 0 | 2% |
 | `glob` | 44 | 1 | 0 | 2.3% |
-| `list` | 43 | 1 | 0 | 2.3% |
 | `github__create_issue` | 41 | 4 | 0 | 9.8% |
 | `github__get_branch` | 39 | 13 | 0 | 33.3% |
 | `filesystem_readonly__search_files` | 38 | 1 | 21 | 2.6% |
