@@ -49,6 +49,7 @@ function stringTag(key, valuePattern) {
   return makeTag(key, valuePattern, (raw) => raw, (value) => value);
 }
 var STOP_TAG = stringTag("stop", "requested");
+var ENDED_TAG = stringTag("ended", "stopped|limit|done");
 var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
@@ -94,6 +95,16 @@ function mostRecentAgent(bodies) {
   }
   return "";
 }
+function mostRecentAgentOn(repo, number) {
+  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]");
+  if (code !== 0)
+    return "";
+  try {
+    return mostRecentAgent(JSON.parse(stdout || "[]"));
+  } catch {
+    return "";
+  }
+}
 function main() {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { number: { type: "string" } } });
   if (!values.number) {
@@ -129,5 +140,6 @@ if (import.meta.main)
   main();
 export {
   mostRecentAgent,
+  mostRecentAgentOn,
   ref
 };

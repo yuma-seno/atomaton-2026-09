@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.147",
+  "version": "v0.1.148",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -38,6 +38,7 @@
     ".github/atomaton-runtime/scripts/resolve_runner.ts",
     ".github/atomaton-runtime/scripts/restore_agent_session.ts",
     ".github/atomaton-runtime/scripts/restore_workspace.ts",
+    ".github/atomaton-runtime/scripts/resume_subtree.ts",
     ".github/atomaton-runtime/scripts/run_checks.ts",
     ".github/atomaton-runtime/scripts/run_deploy.ts",
     ".github/atomaton-runtime/scripts/run_environment_setup.ts",
