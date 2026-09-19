@@ -16,7 +16,7 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
-import { AGENT_TAG, CHANGED_TAG, PARENT_TAG } from "../lib/tags.ts";
+import { AGENT_TAG, CHANGED_TAG, ENDED_TAG, PARENT_TAG } from "../lib/tags.ts";
 import { shouldMentionOnCompletion } from "../domain/completion-mention.ts";
 import { redact } from "../domain/redaction.ts";
 import { renderTokenLine } from "../domain/token-line.ts";
@@ -244,6 +244,12 @@ export function buildCommentBody(args: {
   const lines = [
     AGENT_TAG.write(args.agent),
     CHANGED_TAG.write(args.changed === true ? "yes" : "no"),
+    // How this run ended, so the thread can be asked later. `/resume` over a work tree
+    // needs to know which nodes under the one it was given were interrupted, and the
+    // alternative -- "has a saved session" -- is true of every node that ever ran.
+    ENDED_TAG.write(
+      args.stopRequested === "true" ? "stopped" : args.limitReached === "true" ? "limit" : "done",
+    ),
   ];
   if (args.salvaged === true) {
     lines.push(

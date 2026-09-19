@@ -12,6 +12,7 @@ import { ref as guardCommentRef } from "../scripts/guard_comment_during_run.ts";
 import { ref as guardCommandOnClosedRef } from "../scripts/guard_command_on_closed.ts";
 import { ref as requestStopRef } from "../scripts/request_stop.ts";
 import { ref as resolveResumeAgentRef } from "../scripts/resolve_resume_agent.ts";
+import { ref as resumeSubtreeRef } from "../scripts/resume_subtree.ts";
 
 // Invoke agents via /agent-name slash command in issue/PR comments.
 // Slash-command DISPATCH is restricted to OWNER/MEMBER/COLLABORATOR (see
@@ -193,6 +194,31 @@ const resumeStep = new TypedOutputsStep(
 );
 
 /**
+ * `/resume`: bring back the rest of what a stop held.
+ *
+ * The node the comment was typed on goes through the ordinary dispatch below, like
+ * every other command. This starts its descendants, because a stop reaches the work
+ * under an issue and a resume that did not would leave a chain half-running — and
+ * would hand somebody the checklist the work tree exists to remove.
+ *
+ * Best-effort: it starts runs and reports, and never fails the job. The run the person
+ * asked for is already on its way by the time this matters.
+ */
+const resumeSubtreeStep = new TypedOutputsStep({
+  name: "Resume the work this issue was stopped with",
+  if: `${parseCommandStep.rawOutputs.control} == 'resume' && ${guardStep.rawOutputs.blocked} != 'true' && ${closedGuardStep.rawOutputs.blocked} != 'true'`,
+  shell: "bash",
+  env: {
+    GH_TOKEN: "${{ github.token }}",
+    GITHUB_REPOSITORY: "${{ github.repository }}",
+    NUMBER: githubEvent<IssueCommentCreatedEvent>((e) => e.issue.number),
+    NOTIFY: githubEvent<IssueCommentCreatedEvent>((e) => e.comment.user.login),
+  },
+  run: `${scriptCommandWithArgs(resumeSubtreeRef, { number: "\${NUMBER}", notify: "\${NOTIFY}" })}
+`,
+});
+
+/**
  * The one agent name this job dispatches, from whichever command produced it.
  *
  * Also where the guard finally takes effect. It used to work by suppressing the
@@ -271,6 +297,7 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
       targetStep,
       stopStep,
       resumeStep,
+      resumeSubtreeStep,
       dispatchStep,
       commandErrorStep,
     ],

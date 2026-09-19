@@ -76,6 +76,22 @@ function stringTag(key: string, valuePattern: string): AtomatonTag<string> {
  */
 export const STOP_TAG = stringTag("stop", "requested");
 
+/**
+ * How a run ended, written on its own result comment.
+ *
+ * Asked by `/resume` over a work tree: "which nodes under this one were stopped?" is
+ * a question about the thread, and without this it could only be guessed from the
+ * presence of a session — which almost every node that ever ran has. The thread
+ * already carries `AGENT_TAG` for the same kind of question (`resolve_resume_agent.ts`
+ * reads it to name the agent), so the ending goes beside it rather than into a store
+ * that would have to be kept in sync.
+ *
+ * `stopped` is a person's stop or a closed issue's; `limit` is a spent iteration or
+ * time budget; `done` is every ordinary ending. Only the first is resumed
+ * automatically, because only it was interrupted rather than finished.
+ */
+export const ENDED_TAG = stringTag("ended", "stopped|limit|done");
+
 /** Sub-issue -> orchestrator parent ISSUE link (set via `github__create_issue`'s `sub_issue: true`). */
 export const PARENT_TAG = numericTag("parent");
 /** PR -> the issue it closes/was created to address (set via `github__create_pr`). */
@@ -140,12 +156,12 @@ export function readAnyParentTag(text: string): number | undefined {
  * model, reaching the model.
  *
  * A tag on a line of its own takes the whole line with it, line ending included.
- * `
+ * `
 ` as well as `
 `: the machinery writes its comments through `gh --body` and gets
  * `
 `, but an issue or pull request body a person edited in the browser comes back
- * with `
+ * with `
 `, and those are the bodies `parent`, `notify` and `origin-agent` live in.
  * Matching only `
 ` left a stray carriage return and a blank line at the top of exactly

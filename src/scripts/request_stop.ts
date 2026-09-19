@@ -34,7 +34,8 @@
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
 import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
-import { runningChildren } from "../lib/running-children.ts";
+import { descendants, nodesToStop, subtree } from "../domain/work-tree.ts";
+import { readWorkTree, requestStopAcross } from "../lib/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface RequestStopArgs {
@@ -61,7 +62,7 @@ export const ref = defineScript<RequestStopArgs>(import.meta.url);
  * is a fact worth recording — written without the `@`, which is what would turn a
  * record into a second notification.
  */
-export function stopRequestedNotice(commenter: string, deleted: boolean, children: number[]): string {
+export function stopRequestedNotice(commenter: string, deleted: boolean, alsoReached: number[]): string {
   const whose = commenter ? `${commenter}'s` : "The";
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
@@ -78,11 +79,16 @@ export function stopRequestedNotice(commenter: string, deleted: boolean, childre
     // command having done nothing.
     "The run will stop after its current step, so it may take a minute, and it will report here when it has.",
   ];
-  if (children.length > 0) {
+  if (alsoReached.length > 0) {
+    // Named rather than counted, so a person can see whether the stop went where they
+    // meant it to. This used to be the opposite list — the work a stop could NOT
+    // reach, with instructions to go and stop each piece by hand — which was the
+    // machinery handing somebody a checklist because its own vocabulary was one node
+    // wide. See `domain/work-tree.ts`.
     lines.push(
       "",
-      `This issue also has work running on ${children.map((n) => `#${n}`).join(", ")}. ` +
-        "A stop here does not reach those — comment `/stop` on each one you want stopped.",
+      `It also reached the work running on ${alsoReached.map((n) => `#${n}`).join(", ")}, ` +
+        "which is under this issue. `/resume` here brings all of it back.",
     );
   }
   return lines.join("\n");
@@ -114,21 +120,30 @@ function main(): void {
     console.error(`Warning: failed to delete comment #${values["comment-id"]} on #${number}: ${delErr || delOut}`);
   }
 
-  const children = runningChildren(repo, Number(number));
+  // The subtree, not this node. A person points at an issue and means the work under
+  // it — `domain/work-tree.ts` has why stop and close differ in finality rather than
+  // in reach.
+  //
+  // Read before posting, so the receipt can name what the stop actually reached rather
+  // than what it could not.
+  const root = Number(number);
+  const { nodes } = readWorkTree(repo, root);
+  const under = nodesToStop(descendants(subtree(nodes, root), root)).map((node) => node.number);
 
-  const { code, stdout, stderr } = gh(
-    "issue", "comment", number, "--repo", repo,
-    "--body", stopRequestedNotice(values.commenter ?? "", deleted, children),
+  const result = requestStopAcross(
+    repo,
+    root,
+    stopRequestedNotice(values.commenter ?? "", deleted, under),
   );
-  // Fatal, unlike the deletion. This comment IS the request: without it the run
-  // polls, finds nothing, and keeps going, and the person is told a stop is coming
-  // that never arrives.
-  if (code !== 0) {
-    console.error(`Could not post the stop request on #${number}: ${stderr || stdout}`);
-    process.exit(1);
-  }
+  // Fatal only when the root got nothing. That comment IS the request: without it the
+  // run polls, finds nothing, and keeps going, and the person is told a stop is coming
+  // that never arrives. A descendant that could not be reached is a warning — the rest
+  // of the stop stands, and failing the step would report that none of it happened.
+  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
+  for (const problem of result.problems) console.error(`::warning::${problem}`);
+  if (rootFailed) process.exit(1);
 
-  console.error(`Stop requested on #${number}${children.length ? ` (children running: ${children.join(", ")})` : ""}`);
+  console.error(`Stop requested across #${root}: ${result.stopped.length ? result.stopped.map((n) => `#${n}`).join(", ") : "no run was holding anything"}`);
 }
 
 if (import.meta.main) main();

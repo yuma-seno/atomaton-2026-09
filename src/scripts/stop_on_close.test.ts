@@ -3,129 +3,170 @@ import { rmSync } from "node:fs";
 import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 
 /**
- * The gesture this makes honest. Closing an issue looked like stopping the run on it
- * and did nothing, so what these assert is not that a comment is posted but that the
- * right closes post one and the wrong ones stay silent.
+ * Closing ends a line of work, not one node. What these assert is the reach: the right
+ * closes stop and close everything under them, and the wrong ones touch nothing.
+ *
+ * Every list rule names the tag it is searching for, and that is not decoration. The
+ * fake `gh` matches a rule when each string appears somewhere in the argv, and the
+ * pull request search carries `atomaton:parent-issue=` — which contains "issue". A rule
+ * of `["issue", "list"]` therefore swallows the `gh pr list` call as well, and the pull
+ * request half of the tree comes back empty while every assertion about it still reads
+ * as if it had been looked for. Two tests passed that way before this comment existed.
  */
 describe("stop_on_close.ts", () => {
-  const ISSUE_IN_PROGRESS = JSON.stringify({
-    labels: [{ name: "atomaton/in-progress" }],
-    user: { login: "atomaton-bot", type: "Bot" },
-  });
+  const RUNNING_ROOT = JSON.stringify({ state: "open", labels: [{ name: "atomaton/in-progress" }] });
+  const CLOSED_ARGS = ["--number", "803", "--closer", "octocat", "--closer-type", "User"];
 
   function run(args: string[], rules: { match: string[]; stdout?: string; code?: number }[]) {
     const configDir = makeConfigDir({});
     try {
-      return {
-        ...runWithFakeGh(scriptPath("stop_on_close.ts"), args, {
-          cwd: configDir,
-          env: { GITHUB_REPOSITORY: "owner/repo" },
-          rules,
-        }),
-        configDir,
-      };
+      return runWithFakeGh(scriptPath("stop_on_close.ts"), args, {
+        cwd: configDir,
+        env: { GITHUB_REPOSITORY: "owner/repo" },
+        rules,
+      });
     } finally {
       rmSync(configDir, { recursive: true, force: true });
     }
   }
 
   test("asks the run to stop, and says so where the run is looking", () => {
-    const r = run(
-      ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
-      [
-        { match: ["api", "issues/803"], stdout: ISSUE_IN_PROGRESS },
-        { match: ["issue", "list"], stdout: "[]" },
-        { match: ["issue", "comment"] },
-      ],
-    );
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      { match: ["issue", "comment"] },
+    ]);
     expect(r.status).toBe(0);
     const comment = r.ghCalls.find((c) => c.includes("comment"))?.join(" ") ?? "";
-    // The stop tag is the request: the running job polls for it. Without it this is
-    // a notice telling somebody a stop is coming that never arrives.
+    // The stop tag is the request: the running job polls for it. Without it this is a
+    // notice telling somebody a stop is coming that never arrives.
     expect(comment).toContain("atomaton:stop=requested");
     expect(comment).toContain("Closing does not stop a run by itself");
-    // The run's own result comment says those, seconds later, and mentions them
-    // there. Saying it twice was two notifications for one close.
+    // The run's own result comment says those, seconds later, and mentions them there.
     expect(comment).not.toContain("@octocat");
     expect(comment).not.toContain("/resume");
   });
 
   /**
-   * An agent closing the issue it is working on is how it finishes. The workflow
-   * gates on this too; the script refuses as well, so the rule survives somebody
-   * calling it from somewhere else.
+   * An agent closing the issue it is working on is how it finishes. The workflow gates
+   * on this too; the script refuses as well, so the rule survives being called from
+   * somewhere else.
    */
-  test("a bot's close stops nothing, and reads nothing to find that out", () => {
+  test("a bot's close reaches nothing, and reads nothing to find that out", () => {
     const r = run(["--number", "803", "--closer", "atomaton-bot", "--closer-type", "Bot"], []);
     expect(r.status).toBe(0);
     expect(r.ghCalls).toEqual([]);
   });
 
-  test("no run holds the issue, so there is nothing to stop", () => {
-    const r = run(
-      ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
-      [{ match: ["api", "issues/803"], stdout: JSON.stringify({ labels: [], user: { login: "octocat", type: "User" } }) }],
-    );
+  /**
+   * The case the old shape got wrong. It read the root's label, found none, and
+   * returned — right about the root and wrong about the work, because an issue can be
+   * closed with nothing running on it and a live chain underneath.
+   */
+  test("closes the work under an issue even when nothing was running on it", () => {
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
+      {
+        match: ["issue", "list", "parent="],
+        stdout: JSON.stringify([
+          { number: 807, body: "<!-- atomaton:parent=803 -->", state: "OPEN", labels: [] },
+        ]),
+      },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      { match: ["issue", "comment"] },
+      { match: ["issue", "close"] },
+    ]);
+    expect(r.status).toBe(0);
+    expect(r.ghCalls.some((c) => c[0] === "issue" && c[1] === "close" && c.includes("807"))).toBe(true);
+  });
+
+  test("nothing running and nothing open under it is nothing to do", () => {
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+    ]);
     expect(r.status).toBe(0);
     expect(r.ghCalls.some((c) => c.includes("comment"))).toBe(false);
+    expect(r.ghCalls.some((c) => c.includes("close"))).toBe(false);
   });
 
   /**
-   * A failed lookup is not "no label". Answering it as one would leave the run going
-   * and nobody told, which is the state this script exists to end.
+   * A failed read is not "nothing to do". Answering it as one would close an issue and
+   * leave the chain under it running, with nobody told.
    */
-  test("a state it could not read fails loudly rather than staying quiet", () => {
-    const r = run(
-      ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
-      [{ match: ["api", "issues/803"], code: 1, stdout: "gh: not found" }],
-    );
+  test("a tree it could not read fails loudly rather than staying quiet", () => {
+    const r = run(CLOSED_ARGS, [{ match: ["api", "issues/803"], code: 1, stdout: "gh: not found" }]);
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain("::error::");
-    expect(r.ghCalls.some((c) => c.includes("comment"))).toBe(false);
+    expect(r.ghCalls.some((c) => c.includes("close"))).toBe(false);
   });
 
   /**
-   * Nobody is mentioned, whoever filed the issue. The receipt informs; the run's
-   * result comment is what calls a person back.
+   * A stop reaches every running node under the closed one, and each is told where it
+   * came from — nobody typed anything there, and an unexplained stop reads as a
+   * malfunction.
    */
-  test("a human author is not mentioned either", () => {
-    const r = run(
-      ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
-      [
-        {
-          match: ["api", "issues/803"],
-          stdout: JSON.stringify({
+  test("a running sub-issue is stopped and told why", () => {
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
+      {
+        match: ["issue", "list", "parent="],
+        stdout: JSON.stringify([
+          {
+            number: 807,
+            body: "<!-- atomaton:parent=803 -->",
+            state: "OPEN",
             labels: [{ name: "atomaton/in-progress" }],
-            user: { login: "hubot-human", type: "User" },
-          }),
-        },
-        { match: ["issue", "list"], stdout: "[]" },
-        { match: ["issue", "comment"] },
-      ],
-    );
+          },
+        ]),
+      },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
+      { match: ["issue", "comment"] },
+      { match: ["issue", "close"] },
+    ]);
     expect(r.status).toBe(0);
-    const comment = r.ghCalls.find((c) => c.includes("comment"))?.join(" ") ?? "";
-    expect(comment).not.toContain("@");
+    const toChild = r.ghCalls.find((c) => c.includes("comment") && c.includes("807"))?.join(" ") ?? "";
+    expect(toChild).toContain("atomaton:stop=requested");
+    expect(toChild).toContain("#803 was closed");
   });
 
   /**
-   * A parent's chain can be running on its children, and closing the parent does not
-   * reach them. Saying nothing would leave a person reading a quiet issue as a
-   * stopped one.
+   * A merged pull request has left the tree: GitHub cannot close one, and attempting it
+   * would report a failure that is not one.
    */
-  test("children still running are named", () => {
-    const r = run(
-      ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
-      [
-        { match: ["api", "issues/803"], stdout: ISSUE_IN_PROGRESS },
-        {
-          match: ["issue", "list"],
-          stdout: JSON.stringify([{ number: 807, body: "<!-- atomaton:parent=803 -->" }]),
-        },
-        { match: ["issue", "comment"] },
-      ],
-    );
+  test("a merged pull request under the issue is left alone", () => {
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      {
+        match: ["pr", "list", "parent-issue="],
+        stdout: JSON.stringify([
+          { number: 817, body: "<!-- atomaton:parent-issue=803 -->", state: "MERGED", labels: [] },
+        ]),
+      },
+      { match: ["issue", "comment"] },
+    ]);
     expect(r.status).toBe(0);
-    expect(r.ghCalls.find((c) => c.includes("comment"))?.join(" ") ?? "").toContain("#807");
+    expect(r.ghCalls.some((c) => c[0] === "pr" && c[1] === "close")).toBe(false);
+  });
+
+  /** An open pull request is a node like any other, and closes with its issue. */
+  test("an open pull request under the issue is closed with it", () => {
+    const r = run(CLOSED_ARGS, [
+      { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      {
+        match: ["pr", "list", "parent-issue="],
+        stdout: JSON.stringify([
+          { number: 826, body: "<!-- atomaton:parent-issue=803 -->", state: "OPEN", labels: [] },
+        ]),
+      },
+      { match: ["issue", "comment"] },
+      { match: ["pr", "close"] },
+    ]);
+    expect(r.status).toBe(0);
+    expect(r.ghCalls.some((c) => c[0] === "pr" && c[1] === "close" && c.includes("826"))).toBe(true);
   });
 });
