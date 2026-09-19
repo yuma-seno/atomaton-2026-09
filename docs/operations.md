@@ -307,6 +307,49 @@ is executing. It still posts the request, and it also lists the sub-issues that 
 running so you can stop those. It does not stop them for you: their sessions are
 separate, and stopping work nobody asked to stop is the worse mistake.
 
+### Closing an issue a run is working on
+
+**Closing it stops the run.** It did not use to: the run kept going, and one of them
+went on for five more minutes and opened a pull request nobody was waiting for. So
+closing now posts the same stop request `/stop` does, and Atomaton replies saying so.
+
+The issue stays closed. Nothing reopens it for you — closing is your decision, and
+a machine that undid it would be arguing rather than reporting. To pick the work
+back up, reopen the issue and comment `/resume`.
+
+Everything true of `/stop` is true here: it takes up to a minute or two, the session
+is saved, and sub-issues running under a closed parent are named in the reply but
+not stopped.
+
+An agent closing the issue it is working on is a different thing and is left alone.
+That is how a run finishes.
+
+### Commands and dispatches on something already closed
+
+**A slash command on a closed issue or pull request does not run.** Atomaton replies
+naming the command that did not run and what to do: reopen and comment again. A
+merged pull request gets different advice, because GitHub cannot reopen one — open
+an issue for the follow-up instead.
+
+Your comment is left where it is. The in-progress guard deletes what it catches
+because that comment would otherwise reach a running agent; nothing is running here,
+so there is nothing to keep it out of.
+
+`/stop` is exempt, for the same reason it is exempt from the other guard: an agent
+can close its own issue and keep working, so a closed issue can still have a run on
+it.
+
+**Atomaton's own handoffs are refused the same way**, and this is the case that
+costs something. When an orchestrator's last sub-issue lands, its parent is
+re-invoked — and if somebody closed that parent meanwhile, nothing starts. The
+notice says what was about to happen, that nothing will retry it, and how to run it
+by hand. It mentions whoever asked for the run in the first place, which is the
+login the chain has been carrying all along.
+
+A target whose state cannot be read is treated as closed rather than as open. Work
+that should not have started is harder to undo than work that has to be started
+again.
+
 ## Dispatch, handoff, aggregation, idempotency
 
 - Textual handoff is a standalone `/agent-name` line with the request on following lines; the name must have a definition in `agent-definitions/`, otherwise it is ignored and no dispatch happens.

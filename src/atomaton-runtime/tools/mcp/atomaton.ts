@@ -239,8 +239,8 @@ function handleReloadEnvironment(args: z.infer<typeof RELOAD_ENVIRONMENT_SCHEMA>
       `(reload ${next} of ${limit}). Reason: ${args.reason}`,
   );
 
-  const dispatched = dispatchRunner({
-    context: `reload_environment: restarting ${agent} on #${number} after a rebuild`,
+  const outcome = dispatchRunner({
+    context: `${agent} was to be restarted on #${number} after an environment rebuild`,
     agent,
     type: (process.env.ATOMATON_RUN_TYPE ?? "").trim() === "pr" ? "pr" : "issue",
     number,
@@ -248,7 +248,16 @@ function handleReloadEnvironment(args: z.infer<typeof RELOAD_ENVIRONMENT_SCHEMA>
     reloadCount: next,
     log,
   });
-  if (!dispatched) {
+  if (outcome === "refused-closed") {
+    // Closed underneath this run -- merged, or closed by a person while it worked.
+    // A rebuild is not worth restarting into, and the agent is told why rather than
+    // being sent to read a workflow log that contains no error.
+    mcpFail(
+      `#${number} is no longer open, so the environment was not rebuilt and nothing was restarted. ` +
+        "Report what you found rather than retrying.",
+    );
+  }
+  if (outcome !== "dispatched") {
     // The comment above is already posted, so saying nothing here would leave an
     // issue claiming a restart that never happened. An error keeps the turn.
     mcpFail(

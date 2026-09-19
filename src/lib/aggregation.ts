@@ -55,7 +55,7 @@ export interface DispatchGateOptions {
 }
 
 /**
- * What the gate did, as one of six distinguishable answers.
+ * What the gate did, as one of seven distinguishable answers.
  *
  * It used to be `{ready, remaining, dispatched}`, in which
  * `{ready: true, dispatched: false}` meant four different things: another
@@ -81,6 +81,15 @@ export type DispatchGateResult =
   /** Everything was ready and the dispatch itself failed. Nothing will retry. */
   | { kind: "dispatch-failed" }
   /**
+   * Everything was ready and the parent is closed, so no orchestrator was started.
+   *
+   * Distinct from `dispatch-failed` because nothing malfunctioned: somebody closed the
+   * parent while its children were finishing. Work is still left undone, so this needs
+   * a person as much as a failure does -- and `dispatchRunner` has already told the one
+   * who asked for the run, which is why this kind carries no `why`.
+   */
+  | { kind: "parent-closed" }
+  /**
    * Something could not be read or written, so the gate refused to decide.
    *
    * Distinct from every answer above, because the safe move here is to do
@@ -91,7 +100,7 @@ export type DispatchGateResult =
 
 /** True when the orchestrator was not started and something is left undone. */
 export function needsAttention(result: DispatchGateResult): boolean {
-  return result.kind === "dispatch-failed" || result.kind === "undetermined";
+  return result.kind === "dispatch-failed" || result.kind === "undetermined" || result.kind === "parent-closed";
 }
 
 /**
@@ -123,6 +132,12 @@ export function describeGateResult(result: DispatchGateResult, closedNum: number
         `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` +
         `The aggregation marker is already written, so no other caller will retry: ` +
         `re-run the orchestrator by hand.`
+      );
+    case "parent-closed":
+      return (
+        `All sub-tasks of ${which} complete, but ${which} is closed, so no orchestrator was started. ` +
+        `The aggregation marker is already written, so no other caller will retry: ` +
+        `reopen it and run the orchestrator by hand. Whoever asked for the run has been told on the issue.`
       );
     case "undetermined":
       return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
@@ -209,8 +224,8 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
     return { kind: "undetermined", why };
   }
 
-  const dispatched = dispatchRunner({
-    context: `dispatchOrchestratorIfReady: re-invoking orchestrator on #${opts.parent}`,
+  const outcome = dispatchRunner({
+    context: `all sub-issues of #${opts.parent} are complete, so its orchestrator was to be re-invoked`,
     agent: "orchestrator",
     type: "issue",
     number: opts.parent,
@@ -221,7 +236,11 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   // Reported rather than assumed. The `atomaton:aggregated` marker above is already
   // written at this point, so a failed dispatch cannot be retried by the racing
   // caller either -- saying so is the only way it reaches a human.
-  return dispatched ? { kind: "dispatched" } : { kind: "dispatch-failed" };
+  if (outcome === "dispatched") return { kind: "dispatched" };
+  // A closed parent is not a fault, and the person who asked for the run has already
+  // been told by `dispatchRunner` itself. Kept apart from `dispatch-failed` so this
+  // does not read in the log as GitHub having rejected something.
+  return outcome === "refused-closed" ? { kind: "parent-closed" } : { kind: "dispatch-failed" };
 }
 
 /**
