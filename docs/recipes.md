@@ -16,7 +16,7 @@ line you edit.
 | [switch between the Chat Completions and Responses APIs](#switch-between-the-chat-completions-and-responses-apis) | `provider`, in an agent definition |
 | [reach a provider the table does not list](#reach-a-provider-the-table-does-not-list) | the `OPENAI_BASE_URL` repository variable |
 | [prefer particular upstream providers](#prefer-particular-upstream-providers) | `extra_body`, in an agent definition |
-| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.from_pull_request` and `deploy.atomaton_runs` |
+| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.from_pull_request` and `deploy.on_merge` |
 | [have agents start your own CI and deployment](#have-agents-start-your-own-ci-and-deployment) | `checks.your_workflow` and `deploy.your_workflow` |
 | [make a workflow of your own work when Atomaton starts it](#make-a-workflow-of-your-own-work-when-atomaton-starts-it) | `workflow_dispatch`, in that workflow |
 | [check your config before pushing it](#check-your-config-before-pushing-it) | nothing — one command |
@@ -151,18 +151,18 @@ Write no workflow. Describe the pipeline as commands in `config.yaml`:
 
 ```yaml
 checks:
-  atomaton_runs:
-    commands:
-      - bun install --frozen-lockfile
-      - bun run typecheck
-      - bun test
+  from_pull_request:
+    - name: verify
+      commands:
+        - bun install --frozen-lockfile
+        - bun run typecheck
+        - bun test
 
 deploy:
-  atomaton_runs:
-    targets:
-      - name: staging
-        on: merge
-        commands: ["./scripts/deploy.sh staging"]
+  on_merge:
+    - name: staging
+      branches: [develop]
+      commands: ["./scripts/deploy.sh staging"]
 ```
 
 Nothing needs pointing at these. `atomaton-check.yml` and `atomaton-deploy.yml` are what a
@@ -174,8 +174,8 @@ every path and every branch, and no permission grants it. So a repository whose 
 lives in `config.yaml` is one an agent can set up, extend and repair; one whose pipeline
 lives in workflow YAML always needs a person.
 
-The trigger kinds, where credentials go, and the four things commands cannot express are
-in [docs/configuration.md](configuration.md).
+The three deploy lists, where credentials go, and the four things commands cannot
+express are in [docs/configuration.md](configuration.md).
 
 ### Have agents start your own CI and deployment
 
@@ -190,9 +190,10 @@ deploy:
 ```
 
 Name each file exactly as it is called, or the dispatch fails silently and every merge
-is refused for a missing check. **Delete the `atomaton_runs` block in the section you name
-a workflow in.** The two are alternatives: declaring both fails the pull request's
-check, naming the section, rather than resolving by a precedence rule.
+is refused for a missing check. **Delete Atomaton's lists in the section you name a
+workflow in.** The two are alternatives: declaring both fails the pull request's
+check, naming the section and every list you left behind, rather than resolving by a
+precedence rule.
 
 Name `deploy.your_workflow` even when your deployment is already chained off CI or off a
 push to the base branch. An agent merge is performed with `GITHUB_TOKEN`, and GitHub
@@ -356,8 +357,8 @@ packages are in the deliverable and are not repeated there. See
 Steps 2 and 3 are two keys in the same file, which does not make them one step:
 authorising a credential does not deliver it. `checks` and `deploy` need no third step at
 all, because their commands run in a workflow of their own rather than beside an agent —
-a secret named in `deploy.atomaton_runs.secrets` is in that job's environment and there is
-no server to route it to.
+a secret named on a deployment's entry is in that job's environment and there is no
+server to route it to.
 
 You never edit a workflow for any of this, and there is no tools file to edit: the one
 `atoma` is handed is written at the start of each run — from the servers Atomaton ships and

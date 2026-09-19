@@ -15,7 +15,7 @@
  * failure that exists only on the other machine.
  *
  * The workaround, which this repository was itself using, is to put the setup at
- * the front of `checks.atomaton_runs.commands` -- `bun install --frozen-lockfile`
+ * the front of a `checks.from_pull_request` entry -- `bun install --frozen-lockfile`
  * before the tests -- and remember to keep it in step with
  * `environment.setup_commands`. Two statements of one fact, either of which can
  * be updated alone.
@@ -33,7 +33,7 @@
  *                      agent add a dependency and prove the addition works in the
  *                      same pull request, rather than waiting for a merge to find
  *                      out. It grants nothing new: this job already runs
- *                      `checks.atomaton_runs.commands` from that same branch.
+ *                      `checks.from_pull_request` from that same branch.
  *   deployment         the tag or the default branch, both of them post-merge.
  *
  * ## No credentials

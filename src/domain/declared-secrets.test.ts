@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
-  DEPLOY_SECRETS,
-  isSecretDestinationName,
+  DEPLOY_JOB_RESERVED,
   resolveDeclaredSecrets,
   SECRET_SLOTS,
   TOOL_SECRETS,
 } from "./declared-secrets.ts";
+
+/** What a deployment's own entry gets, named for the entry it came from. */
+const DEPLOY_ENTRY = { field: "deploy.on_merge[0].secrets", reserved: DEPLOY_JOB_RESERVED };
 
 describe("resolveDeclaredSecrets", () => {
   test("no declaration is the normal case, not a problem", () => {
@@ -51,14 +53,16 @@ describe("resolveDeclaredSecrets", () => {
   // Each destination guards its own environment, so the reserved set differs.
   // A deployment never sees the provider key, and may legitimately carry one.
   test("what is reserved depends on the destination", () => {
-    expect(resolveDeclaredSecrets(["OPENAI_API_KEY"], DEPLOY_SECRETS).names).toEqual(["OPENAI_API_KEY"]);
-    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], DEPLOY_SECRETS).problems).toHaveLength(1);
+    expect(resolveDeclaredSecrets(["OPENAI_API_KEY"], DEPLOY_ENTRY).names).toEqual(["OPENAI_API_KEY"]);
+    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], DEPLOY_ENTRY).problems).toHaveLength(1);
     expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], TOOL_SECRETS).names).toEqual(["ATOMATON_DEPLOY_TARGET"]);
   });
 
+  // The field is per call, not per reserved set, so an entry's problem names the
+  // entry. "deploy declares a bad secret" leaves somebody reading three lists.
   test("every message names the field it came from", () => {
     expect(resolveDeclaredSecrets(["bad name"], TOOL_SECRETS).problems[0]).toContain("tools.secrets");
-    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atomaton_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], DEPLOY_ENTRY).problems[0]).toContain("deploy.on_merge[0].secrets");
   });
 
   test("rejects a name that collides with the internal slots", () => {
@@ -93,13 +97,7 @@ describe("resolveDeclaredSecrets", () => {
   });
 });
 
-describe("isSecretDestinationName", () => {
-  // Two, since a check has no credential to declare: its commands are the pull
-  // request's own, so a secret named for them would be one the change can read.
-  test("accepts the destinations that exist and nothing else", () => {
-    expect(["tools", "deploy"].every(isSecretDestinationName)).toBe(true);
-    expect(isSecretDestinationName("checks")).toBe(false);
-    expect(isSecretDestinationName("agent")).toBe(false);
-    expect(isSecretDestinationName("toString")).toBe(false);
-  });
-});
+// `isSecretDestinationName` was here, guarding a `--destination` flag that chose
+// between `tools.secrets` and a deploy-wide `secrets` list. The second is gone: a
+// deployment names its credentials on the entry that uses them, so there is one
+// whole-workflow list left and nothing to choose between.

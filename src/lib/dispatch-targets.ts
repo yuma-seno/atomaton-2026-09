@@ -12,11 +12,11 @@
  * one that was never created is not.
  */
 import { dispatchWorkflow, gh } from "./gh.ts";
-import { getDeployTargets, getWorkflowName } from "./config.ts";
+import { getDeployJobs, getWorkflowName } from "./config.ts";
 import { dispatchRunner } from "./dispatch.ts";
 import { resolveNotify } from "./notify.ts";
 import { isIssueBranch } from "./branch-placement.ts";
-import { targetsForMerge } from "../domain/deploy-targets.ts";
+import { mergeMightDeploy, resolveDeployJobs } from "../domain/deploy-jobs.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
 
 // The two shipped workflow names now live in `domain/shipped-workflows.ts`. They were
@@ -118,12 +118,17 @@ export function dispatchCi(branch: string): boolean {
  * runs.
  *
  * A project either names its own workflow in `deploy.your_workflow`, or declares
- * `deploy.atomaton_runs.targets` and lets `atomaton-deploy.yml` run them. In the second
- * case the decision is made HERE rather than in the workflow: a dispatch that
- * starts a runner only to discover that nothing deploys on merge is a wasted run
- * on every single merge, and this is the one trigger where the question can be
- * answered before starting anything. The tag trigger has no such luxury -- `on:`
- * takes no expression -- so that one filters after the fact.
+ * `deploy.on_merge` and lets `atomaton-deploy.yml` run it. In the second case the
+ * decision is made HERE rather than in the workflow: a dispatch that starts a runner
+ * only to discover that nothing deploys on merge is a wasted run on every single
+ * merge, and this is the one trigger where the question can be answered before
+ * starting anything. The tag trigger has no such luxury -- `on:` takes no expression
+ * -- so that one filters after the fact.
+ *
+ * It asks the weaker of the two questions -- `mergeMightDeploy`, not
+ * `selectDeployJobs` -- because it knows less than the run does: the config it reads
+ * predates the merge it is reacting to, and the repository's default branch is not
+ * visible from here. An entry that might apply counts as one that does.
  *
  * A declaration that does not parse is not this function's to report. It fails
  * loudly inside the deploy run, where the log belongs to the deployment; here it
@@ -140,9 +145,11 @@ export function dispatchCd(baseRef: string): boolean {
 
   const configured = getWorkflowName("cd");
   if (!configured) {
-    const { targets, problems } = getDeployTargets();
-    if (problems.length === 0 && targetsForMerge(targets).length === 0) {
-      log("dispatchCd: no deploy.atomaton_runs.targets deploy on merge, and deploy.your_workflow is unset; nothing to dispatch");
+    const { jobs, problems } = resolveDeployJobs(getDeployJobs());
+    if (problems.length === 0 && !mergeMightDeploy(jobs, baseRef)) {
+      log(
+        `dispatchCd: nothing in deploy.on_merge covers ${baseRef || "this branch"}, and deploy.your_workflow is unset; nothing to dispatch`,
+      );
       return false;
     }
   }

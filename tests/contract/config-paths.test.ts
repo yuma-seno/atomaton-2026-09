@@ -26,8 +26,9 @@
  * is a line; the cost of not adding one is measured in rejected pull requests.
  */
 import { describe, expect, test } from "bun:test";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../../src/domain/check-jobs.ts";
 import { knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
-import { runsOnPath } from "../../src/lib/config.ts";
+import { DEPLOY_ARMS } from "../../src/domain/deploy-jobs.ts";
 
 /**
  * The keys a person can actually set: the schema's leaves, minus the levels where any
@@ -45,7 +46,11 @@ describe("paths the machinery names in its own messages", () => {
    * few key names out loud, and it should stay that way.
    */
   const NAMED_IN_MESSAGES: Array<{ what: string; path: string }> = [
-    { what: "resolve_runner's runs_on warning", path: runsOnPath() },
+    // `rules.where` is what every problem a list produces is prefixed with, and what
+    // `plan_checks.ts` names when an arm could not be read at all.
+    { what: "the pull request's checks", path: CHECKS_FROM_PULL_REQUEST.where },
+    { what: "the credentialed checks", path: CHECKS_FROM_DEFAULT_BRANCH.where },
+    ...Object.values(DEPLOY_ARMS).map((arm) => ({ what: `deploy's \`${arm.key}\` list`, path: arm.rules.where })),
   ];
 
   test("each one is a key the validator accepts", () => {
@@ -63,5 +68,16 @@ describe("paths the machinery names in its own messages", () => {
   // an empty list is indistinguishable from a list whose entries were all removed.
   test("the list is not empty", () => {
     expect(NAMED_IN_MESSAGES.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The one message that tells an adopter what to WRITE rather than what is wrong,
+   * so every key in it is one they will type.
+   */
+  test("the empty-checks warning names only keys the validator accepts", () => {
+    const settable = new Set(settableKeys());
+    const named = [...NO_PULL_REQUEST_CHECKS.matchAll(/`([a-z_]+(?:\.[a-z_]+)+)`/g)].map((m) => m[1] as string);
+    expect(named.length, "the warning names no key, so this checks nothing").toBeGreaterThan(0);
+    expect(named.filter((path) => !settable.has(path))).toEqual([]);
   });
 });

@@ -200,10 +200,9 @@ describe("config.yaml's recognised keys", () => {
   /**
    * Every settable key is written down somewhere a person can find it.
    *
-   * `checks.atomaton_runs.runs_on`, `deploy.atomaton_runs.targets` and the three
-   * `chain.labels` entries were each settable and each undocumented when this
-   * test was written -- five keys an adopter could only find by reading the
-   * validator's schema.
+   * A per-arm `runs_on`, the deploy lists and the three `chain.labels` entries
+   * were each settable and each undocumented when this test was written -- five
+   * keys an adopter could only find by reading the validator's schema.
    */
   test("the configuration reference documents every settable key", () => {
     const tokens = documentedTokens("docs/configuration.md");
@@ -217,7 +216,7 @@ describe("config.yaml's recognised keys", () => {
    * The reverse, and the direction that does real damage: a key documented but not
    * read is one an adopter writes, and `validate_deliverable.ts` then fails their
    * pull request for following the documentation. This page said `checks.secrets`
-   * and `deploy.secrets` when both had moved under `atomaton_runs`.
+   * and `deploy.secrets` when neither had ever existed at that depth.
    *
    * Only dotted paths are policed. A bare leaf name in prose -- `policy`, `gates`
    * -- is a word as often as it is a key, and a test that cannot tell the two apart

@@ -59,14 +59,23 @@ export interface AtomaConfig {
     your_workflow?: string;
   };
 
-  /** How a merged change ships. The same two arms. */
+  /**
+   * How a merged change ships: one list per event that ships it, or a workflow of
+   * your own. Declaring both is a configuration error.
+   *
+   * Three lists rather than one with an `on:` key, because the entries are not the
+   * same shape — a merge deployment is selected by branch and a tag deployment by
+   * tag pattern. `resolveDeployJobs` owns their interior, including which of
+   * `branches:` and `tags:` each list has; see `domain/deploy-jobs.ts` for why the
+   * combination nobody should write has no spelling.
+   */
   deploy?: {
-    atomaton_runs?: {
-      /** Validated by `resolveDeployTargets`, which owns what a malformed one means. */
-      targets?: unknown;
-      secrets?: string[];
-      runs_on?: string | string[];
-    };
+    /** Deploys when a change lands on a branch. Naming none means the default branch. */
+    on_merge?: unknown;
+    /** Deploys when a matching tag is pushed. */
+    on_tag?: unknown;
+    /** Deploys only when someone dispatches the workflow. */
+    on_demand?: unknown;
     your_workflow?: string;
   };
 

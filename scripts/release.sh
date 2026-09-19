@@ -2,7 +2,7 @@
 #
 # release.sh — publish the deliverable as a release asset.
 #
-# The deployment this project declares in `deploy.atomaton_runs.targets`. Everything a release
+# The deployment this project declares in `deploy.on_merge`. Everything a release
 # does is here, in a file an agent can write, rather than in a workflow file it
 # cannot — which is the whole reason the pipeline moved into configuration.
 #
@@ -11,7 +11,7 @@
 # there is no separate tagging step to remember. Releasing is therefore an
 # ordinary reviewed change: bump the version, and merging it publishes.
 #
-# Idempotent, and that is what makes `on: merge` safe. This runs after every
+# Idempotent, and that is what makes `on_merge` safe. This runs after every
 # merge, finds a release already exists for the declared version, and stops
 # before installing anything. Only a merge that changes the version reaches the
 # build.

@@ -30,6 +30,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
+import { resolveDeployJobs } from "../../src/domain/deploy-jobs.ts";
 
 const CHECK = "scripts/check-live-tools.sh";
 const RELEASE = "scripts/release.sh";
@@ -151,7 +152,7 @@ describe("where it is wired", () => {
    * Whose release runs it.
 
    * `scripts/release.sh` and `scripts/check-live-tools.sh` are Atomaton's own and
-   * neither ships. What ships is `deploy.atomaton_runs.targets: []`, so an adopter's
+   * neither ships. What ships is an empty `deploy`, so an adopter's
    * release runs nothing until they wire it. Three places described the check
    * without saying whose release it was, which read -- in a file that ships, and in
    * the guide an adopter operates from -- as a promise about theirs.
@@ -164,7 +165,7 @@ describe("where it is wired", () => {
     expect(
       shipped.includes("before a release ships"),
       "a shipped file must not say the reader's release checks this: theirs ships with " +
-        "deploy.atomaton_runs.targets empty and runs nothing",
+        "deploy ships empty and runs nothing",
     ).toBe(false);
     expect(shipped).toContain("scripts/release.sh");
   });
@@ -180,11 +181,15 @@ describe("where it is wired", () => {
   });
 
   /**
-   * The fact both claims turn on. If a default ever ships a target, the two
+   * The fact both claims turn on. If a default ever ships a deployment, the two
    * paragraphs above become wrong in the other direction and should be revisited.
+   *
+   * Resolved rather than grepped: the shipped file is mostly commented-out examples,
+   * and a string check cannot tell a live entry from one behind a `#`.
    */
-  test("the shipped config wires no deployment target", () => {
-    expect(body("src/atomaton/config.yaml")).toContain("targets: []");
+  test("the shipped config wires no deployment", () => {
+    const config = Bun.YAML.parse(body("src/atomaton/config.yaml")) as { deploy?: unknown };
+    expect(resolveDeployJobs(config.deploy)).toEqual({ jobs: [], problems: [] });
   });
 
   /**

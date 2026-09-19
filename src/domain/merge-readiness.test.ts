@@ -263,7 +263,7 @@ describe("decideMergeReadiness", () => {
 
   test("a governed change elsewhere gets no advice about CI", () => {
     const { blockers } = decideMergeReadiness(signals({ governancePaths: [".github/atomaton/agent-definitions/x.md"] }));
-    expect(blockers[0]?.detail).not.toContain("checks.atomaton_runs.commands");
+    expect(blockers[0]?.detail).not.toContain("checks.from_pull_request");
   });
 
   test("the blocker names a few paths rather than every one", () => {

@@ -14,7 +14,7 @@ import { declarationIn } from "./read_secret_names.ts";
  * `.github/atomaton/config.yaml` from the working directory, and a harness that
  * puts one there would hide a regression that reintroduced it.
  */
-function run(config: Record<string, unknown> | null, destination = "tools") {
+function run(config: Record<string, unknown> | null) {
   const dir = mkdtempSync(join(tmpdir(), "atomaton-declared-"));
   const configPath = join(dir, "trusted-config.yaml");
   const outputPath = join(dir, "github_output");
@@ -24,7 +24,7 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
   try {
     const r = spawnSync(
       "bun",
-      ["run", scriptPath("read_secret_names.ts"), "--destination", destination, "--config", configPath],
+      ["run", scriptPath("read_secret_names.ts"), "--config", configPath],
       { encoding: "utf8", cwd: dir, env: { ...process.env, GITHUB_OUTPUT: outputPath } },
     );
     return { ...r, outputs: parseGithubOutput(readFileSync(outputPath, "utf8")) };
@@ -34,28 +34,24 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
-  // `deploy` carries its list inside `atomaton_runs`, the arm Atomaton
-  // runs itself; `tools` has no arms, so its list stays at the top of the section.
-  test("picks the destination's own list", () => {
-    const config = `
-tools:
-  secrets: [A]
-deploy:
-  atomaton_runs:
-    secrets: [C]
-`;
-    expect(declarationIn(config, "tools")).toEqual(["A"]);
-    expect(declarationIn(config, "deploy")).toEqual(["C"]);
+  /**
+   * `tools.secrets` and nothing else. A check or a deployment names its credentials
+   * on the entry that uses them, and those travel in the matrix its planning job
+   * published -- not through this step, whose one job is the agent's own process.
+   */
+  test("reads tools.secrets", () => {
+    expect(declarationIn("tools:\n  secrets: [A]\n")).toEqual(["A"]);
   });
 
   test("an absent section declares nothing", () => {
-    expect(declarationIn("{}", "tools")).toBeUndefined();
+    expect(declarationIn("{}")).toBeUndefined();
   });
 
-  // The other arm: a project that names its own workflow gives that workflow its
-  // secrets itself, so there is nothing here for Atomaton's step to be handed.
-  test("a section on the your_workflow arm declares nothing", () => {
-    expect(declarationIn("deploy:\n  your_workflow: cd.yml\n", "deploy")).toBeUndefined();
+  // Crossing these would put a deployment credential in the agent's own
+  // environment, which is the boundary these lists exist to draw.
+  test("a deployment's own credentials are not the agent's", () => {
+    const config = "tools:\n  secrets: [A]\ndeploy:\n  on_merge:\n    - name: ship\n      secrets: [C]\n";
+    expect(declarationIn(config)).toEqual(["A"]);
   });
 });
 
@@ -67,25 +63,21 @@ describe("read_secret_names.ts", () => {
   });
 
   // Crossing these would put a deployment credential in the agent's own
-  // environment, which is the boundary these lists exist to draw. A check has no
-  // list at all -- its commands are the pull request's own.
-  test("reads only the destination it was asked for", () => {
+  // environment, which is the boundary these lists exist to draw.
+  test("a deployment's credentials do not reach the agent", () => {
     const config = {
       tools: { secrets: ["SLACK_TOKEN"] },
-      deploy: { atomaton_runs: { secrets: ["AWS_ROLE_ARN"] } },
+      deploy: { on_merge: [{ name: "ship", secrets: ["AWS_ROLE_ARN"], commands: ["x"] }] },
     };
-    expect(JSON.parse(run(config, "tools").outputs.names!)).toEqual(["SLACK_TOKEN"]);
-    expect(JSON.parse(run(config, "deploy").outputs.names!)).toEqual(["AWS_ROLE_ARN"]);
+    expect(JSON.parse(run(config).outputs.names!)).toEqual(["SLACK_TOKEN"]);
   });
 
   // The workflow indexes into this unconditionally, so it has to be valid JSON
   // even when nothing is configured -- which is the common case.
   test("publishes an empty array when nothing is declared", () => {
-    for (const destination of ["tools", "deploy"]) {
-      const r = run({}, destination);
-      expect(r.status, destination).toBe(0);
-      expect(JSON.parse(r.outputs.names!), destination).toEqual([]);
-    }
+    const r = run({});
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.outputs.names!)).toEqual([]);
   });
 
   // The state of a repository that has configured none. Failing every run over
@@ -114,12 +106,6 @@ describe("read_secret_names.ts", () => {
     expect(r.stderr.match(/::error::/g)).toHaveLength(2);
   });
 
-  test("refuses a destination it does not know", () => {
-    const r = run({}, "agent");
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain("unknown destination");
-  });
-
   // Requiring the argument made a deployment break itself: the release that
   // first passed `--config` met the previous release's workflow, which did not.
   // The record of that incident (issue #353) describes the failing run as
@@ -140,7 +126,7 @@ describe("read_secret_names.ts", () => {
     mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });
     writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify({ tools: { secrets: ["SHOULD_NOT_APPEAR"] } }));
     try {
-      const r = spawnSync("bun", ["run", scriptPath("read_secret_names.ts"), "--destination", "tools"], {
+      const r = spawnSync("bun", ["run", scriptPath("read_secret_names.ts")], {
         encoding: "utf8",
         cwd: dir,
         env: { ...process.env, GITHUB_OUTPUT: outputPath },

@@ -7,13 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import { DEFAULT_GOVERNED_PATHS } from "../domain/merge-readiness.ts";
-import {
-  resolveDeclaredSecrets,
-  SECRET_DESTINATIONS,
-  type SecretDestinationName,
-  type SecretsResolution,
-} from "../domain/declared-secrets.ts";
-import { resolveDeployTargets, type DeployTargetsResolution } from "../domain/deploy-targets.ts";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "../domain/check-jobs.ts";
 import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/declared-jobs.ts";
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
@@ -161,7 +155,7 @@ export function getGovernedPaths(): readonly string[] {
 /**
  * This project's conditional merge gates, validated.
  *
- * Problems come back rather than throwing, like `getDeployTargets()`, because the
+ * Problems come back rather than throwing, like the deploy lists do, because the
  * caller turns them into a blocker: a gate that cannot be read must stop the
  * merge, and a thrown error at this depth would surface as a tool failure that
  * loses the verdict instead of reporting it.
@@ -203,10 +197,7 @@ export function getMergeGates(): MergeGatesResolution {
  * the change being judged can read.
  */
 export function getPullRequestChecks(): DeclaredJobsResolution {
-  return resolveDeclaredJobs(loadConfig().checks?.from_pull_request, {
-    where: "checks.from_pull_request",
-    secretsAllowed: false,
-  });
+  return resolveDeclaredJobs(loadConfig().checks?.from_pull_request, CHECKS_FROM_PULL_REQUEST);
 }
 
 /**
@@ -217,21 +208,20 @@ export function getPullRequestChecks(): DeclaredJobsResolution {
  * pull request cannot add a job, rename one, or change which secret one receives.
  */
 export function getDefaultBranchChecks(): DeclaredJobsResolution {
-  return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, {
-    where: "checks.from_default_branch",
-    secretsAllowed: true,
-  });
+  return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH);
 }
 
 /**
- * This project's deployments, validated.
+ * This project's whole `deploy` section, unvalidated.
  *
- * Problems come back rather than throwing so the deploy workflow can report all
- * of them at once and fail, instead of deploying the targets that happened to
- * parse.
+ * `resolveDeployJobs` is what reads it, and it lives in `domain/` so that
+ * `deliverable-integrity.ts` can run the same reader over a pull request's config
+ * without a file on disk. Handing back the raw section rather than the resolution
+ * keeps one reader rather than two that can disagree about what a malformed list
+ * means.
  */
-export function getDeployTargets(): DeployTargetsResolution {
-  return resolveDeployTargets(loadConfig().deploy?.atomaton_runs?.targets);
+export function getDeployJobs(): unknown {
+  return loadConfig().deploy;
 }
 
 /**
@@ -288,32 +278,13 @@ export function getReloadLimit(): unknown {
   return loadConfig().environment?.max_reloads;
 }
 
-/**
- * The raw `runs_on` a project declared for one of the two jobs that run its own
- * commands, or undefined.
- *
- * Raw for `resolveRunsOn` to interpret, like every other limit and setting here:
- * the domain module owns what a bad value means and owns the default, so one
- * fallback exists rather than two that can disagree.
- */
-export function getRunsOn(): unknown {
-  // Only `deploy` has one. On the checks side the machine moved onto the job that
-  // runs there -- see `domain/declared-jobs.ts` -- because one runner for every check
-  // is what made a macOS test and a Linux lint the same job. `deploy` follows in
-  // #871, and this goes with it.
-  return loadConfig().deploy?.atomaton_runs?.runs_on;
-}
-
-/**
- * The dotted path `getRunsOn` reads, for the messages that name it.
- *
- * Here rather than at the caller. `resolve_runner.ts` built it as `${field}.runs_on`
- * and went on emitting `checks.runs_on` after the key moved under an arm -- so
- * the warning telling an adopter to fix their configuration named a key the validator
- * rejects, and following it failed their pull request. A path assembled where it is
- * used cannot notice that the reader moved; one that sits beside the reader can at
- * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.
- */
-export function runsOnPath(): string {
-  return "deploy.atomaton_runs.runs_on";
-}
+// `getRunsOn` and `runsOnPath` were here, reading a single `deploy.atomaton_runs.runs_on`
+// (as `deploy` was spelled then)
+// for one job that ran every deployment. The machine moved onto the entry -- see
+// `domain/declared-jobs.ts` -- because one runner for every deployment is what made a
+// release and a cloud rollout the same job, exactly as it had made a macOS test and a
+// Linux lint the same check.
+//
+// What they were guarding against survives in `config-paths.test.ts`: the warning they
+// produced named `checks.runs_on`, a key that has never existed, because the message was
+// assembled where it was used and could not notice that the reader had moved.

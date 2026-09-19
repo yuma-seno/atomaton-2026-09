@@ -22,12 +22,16 @@
  * (which would also mean keeping the whole set outside GitHub, since a secret
  * cannot be read back to add one key to it).
  *
- * ## One mechanism, three destinations
+ * ## One mechanism, two kinds of declaration
  *
- * `tools.secrets` and `deploy.atomaton_runs.secrets`
- * are separate lists because they arrive in separate workflows, in separate jobs,
- * in separate processes. The nesting is the boundary and not a filing convention:
- * only `tools.secrets` enters the agent's own environment, so a prompt injection
+ * `tools.secrets` is a list for a whole workflow: the agent's own process gets
+ * every name in it. A check or a deployment declares its credentials per entry
+ * instead — see `domain/declared-jobs.ts` — so a token reaches the one job that
+ * asked for it and no other. Both arrive here; what differs is who the list
+ * belongs to.
+ *
+ * The separation is the boundary and not a filing convention: only
+ * `tools.secrets` enters the agent's own environment, so a prompt injection
  * carried in an issue body reaches those and no deployment credential. It could
  * still propose a command that reads one — but that is a change to config.yaml,
  * which is governed, so a person sees it first.
@@ -176,40 +180,38 @@ export const TOOL_SECRETS: SecretDestination = {
 
 
 /**
- * The deploy job's own variables, from two places.
+ * The variable every job built from a declared entry already has.
  *
- * `atomaton-deploy.wac.ts` puts `GH_TOKEN` and the three `ATOMATON_DEPLOY_*` inputs in
- * the command step's `env:`, and `run_deploy.ts` sets `ATOMATON_DEPLOY_TARGET` per
- * command as it runs them. Both belong here: the declared slots are `export`ed
- * into that same shell before the command runs, so either could be replaced.
- *
- * The three inputs matter more than they look. `ATOMATON_DEPLOY_REF` and
- * `ATOMATON_DEPLOY_TRIGGER` are what select which targets a run deploys — declaring
- * one would not leak anything, it would quietly redirect the deployment.
+ * `ATOMATON_COMMANDS` is the list the job is running, and `GH_TOKEN` is the run's own
+ * token — both in the command step's `env:`, and the declared slots are `export`ed
+ * into that same shell before the first command, so either could be replaced. A
+ * `GH_TOKEN` arriving from configuration and silently standing in for the workflow's
+ * own is the kind of thing that works in testing and is a security incident in
+ * production.
  */
-export const DEPLOY_SECRETS: SecretDestination = {
-  field: "deploy.atomaton_runs.secrets",
-  reserved: new Set([
-    "ATOMATON_DEPLOY_REF",
-    "ATOMATON_DEPLOY_TARGET",
-    "ATOMATON_DEPLOY_TARGET_INPUT",
-    "ATOMATON_DEPLOY_TRIGGER",
-    "GH_TOKEN",
-  ]),
-};
+const JOB_ENV: readonly string[] = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 
-/** Every destination, for the callers that need to name one from a string. */
-export const SECRET_DESTINATIONS = {
-  tools: TOOL_SECRETS,
-  deploy: DEPLOY_SECRETS,
-} as const;
+/**
+ * Names a credentialed CHECK's environment already uses.
+ *
+ * `ATOMATON_PR_TREE` is where the pull request was put for these commands to read.
+ * Shadowing it would point a check at a directory of the declaration's choosing, and
+ * the check would report on something other than the change.
+ */
+export const CHECK_JOB_RESERVED: ReadonlySet<string> = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 
-export type SecretDestinationName = keyof typeof SECRET_DESTINATIONS;
-
-/** True when `value` names one of the destinations above. */
-export function isSecretDestinationName(value: string): value is SecretDestinationName {
-  return Object.hasOwn(SECRET_DESTINATIONS, value);
-}
+/**
+ * Names a DEPLOYMENT's environment already uses.
+ *
+ * `ATOMATON_DEPLOY_TARGET` is how a command tells which deployment it is running
+ * under, so a project can keep one script for several targets. Shadowing it would
+ * make that script ship the wrong one.
+ *
+ * The inputs that SELECT what deploys are no longer here, and that is the point of
+ * the split: they are read by the planning job, which holds no declared credential
+ * and so has nothing to shadow them with.
+ */
+export const DEPLOY_JOB_RESERVED: ReadonlySet<string> = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
 export interface SecretsResolution {
   /** Declared names, in slot order. Empty when nothing is configured. */
