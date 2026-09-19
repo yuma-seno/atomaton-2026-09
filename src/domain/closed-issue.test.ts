@@ -3,7 +3,6 @@ import {
   commandOnClosedNotice,
   dispatchRefusedNotice,
   mayStartWorkOn,
-  mentionsForClose,
   recoveryAdvice,
   stopOnCloseNotice,
   type TargetState,
@@ -47,39 +46,19 @@ describe("recoveryAdvice", () => {
   });
 });
 
-describe("mentionsForClose", () => {
-  test("the closer is always told", () => {
-    expect(mentionsForClose("alice", "", false)).toEqual(["alice"]);
-  });
-
-  test("a human author is told as well", () => {
-    expect(mentionsForClose("alice", "bob", false)).toEqual(["alice", "bob"]);
-  });
-
-  /**
-   * Most issues here are filed by an agent. Mentioning the bot that filed one is noise
-   * in a notice whose whole value is that people read it.
-   */
-  test("an agent that filed the issue is not mentioned", () => {
-    expect(mentionsForClose("alice", "github-actions[bot]", true)).toEqual(["alice"]);
-  });
-
-  test("closing your own issue mentions you once", () => {
-    expect(mentionsForClose("alice", "alice", false)).toEqual(["alice"]);
-  });
-});
-
+/**
+ * A receipt, and everything it says is something the workflow posting it knows.
+ *
+ * The run's own result comment follows ten to thirty seconds later. The two used to
+ * overlap on every line and mention the same person twice, and this half was the one
+ * saying things it could not know yet.
+ */
 describe("stopOnCloseNotice", () => {
-  const notice = stopOnCloseNotice(["alice", "bob"], 803);
-
-  test("mentions everyone it was given", () => {
-    expect(notice).toContain("@alice @bob");
-  });
+  const notice = stopOnCloseNotice(803);
 
   /**
-   * Three facts, each of which the person cannot get from what they can see: the run
-   * did not stop when they closed it, it is not stopping instantly, and the issue is
-   * not coming back on its own.
+   * Two facts the person cannot get from what they can see: the run did not stop
+   * when they closed it, and it is not stopping instantly either.
    */
   test("says the close did not stop the run", () => {
     expect(notice).toContain("Closing does not stop a run by itself");
@@ -89,9 +68,27 @@ describe("stopOnCloseNotice", () => {
     expect(notice).toContain("after its current step");
   });
 
-  test("says the issue stays closed, and how to continue", () => {
+  test("says the issue stays closed, and that the run will report", () => {
     expect(notice).toContain("#803 stays closed");
-    expect(notice).toContain("/resume");
+    expect(notice).toContain("report here");
+  });
+
+  /**
+   * The run saves the session, and it has not stopped yet. Claiming otherwise here
+   * was a sentence about something that had not happened.
+   */
+  test("does not claim what only the run can know", () => {
+    expect(notice).not.toContain("session is saved");
+    expect(notice).not.toContain("/resume");
+  });
+
+  /**
+   * A mention means "your turn". The person who just closed the issue has taken
+   * theirs and has nothing to do but wait; the turn comes back when the run reports,
+   * and that comment mentions them. One event, one notification.
+   */
+  test("notifies nobody", () => {
+    expect(notice).not.toContain("@");
   });
 });
 

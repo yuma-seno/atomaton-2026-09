@@ -16,9 +16,14 @@ describe("request_stop.ts", () => {
     expect(stopRequestedNotice("octocat", true, [])).toContain(LLM_CONTEXT_TAG.write("exclude"));
   });
 
-  test("mentions whoever asked", () => {
-    expect(stopRequestedNotice("octocat", true, [])).toContain("@octocat");
-    expect(stopRequestedNotice("", true, [])).not.toContain("@");
+  // A receipt, not a call to action. The run posts its own result comment seconds
+  // later and mentions them there; a mention here would be a second notification for
+  // one event, saying what the other one is about to say.
+  test("names whose comment it was, and notifies nobody", () => {
+    const notice = stopRequestedNotice("octocat", true, []);
+    expect(notice).toContain("octocat's");
+    expect(notice).not.toContain("@octocat");
+    expect(stopRequestedNotice("", true, [])).toContain("The `/stop` comment");
   });
 
   // The existing in-progress guard also deletes comments. Someone whose `/stop`
@@ -30,10 +35,13 @@ describe("request_stop.ts", () => {
 
   // The lag is what people will misread: a stop is picked up on the next poll and
   // taken at the next turn, so the agent can finish a tool call and start another.
-  test("says the stop is not immediate, and that nothing is lost", () => {
+  test("says the stop is not immediate, and that the run will report", () => {
     const notice = stopRequestedNotice("octocat", true, []);
     expect(notice).toContain("current step");
-    expect(notice).toContain("session is saved");
+    expect(notice).toContain("report here");
+    // The run saves the session; until it has, this cannot say so.
+    expect(notice).not.toContain("session is saved");
+    expect(notice).not.toContain("/resume");
   });
 
   // A parent keeps the in-progress label while its chain runs on a sub-issue, so a

@@ -43,8 +43,11 @@ describe("stop_on_close.ts", () => {
     // The stop tag is the request: the running job polls for it. Without it this is
     // a notice telling somebody a stop is coming that never arrives.
     expect(comment).toContain("atomaton:stop=requested");
-    expect(comment).toContain("@octocat");
-    expect(comment).toContain("/resume");
+    expect(comment).toContain("Closing does not stop a run by itself");
+    // The run's own result comment says those, seconds later, and mentions them
+    // there. Saying it twice was two notifications for one close.
+    expect(comment).not.toContain("@octocat");
+    expect(comment).not.toContain("/resume");
   });
 
   /**
@@ -81,8 +84,11 @@ describe("stop_on_close.ts", () => {
     expect(r.ghCalls.some((c) => c.includes("comment"))).toBe(false);
   });
 
-  /** A human who filed the issue is told as well; the agent that filed one is not. */
-  test("a human author is mentioned beside the closer", () => {
+  /**
+   * Nobody is mentioned, whoever filed the issue. The receipt informs; the run's
+   * result comment is what calls a person back.
+   */
+  test("a human author is not mentioned either", () => {
     const r = run(
       ["--number", "803", "--closer", "octocat", "--closer-type", "User"],
       [
@@ -99,8 +105,7 @@ describe("stop_on_close.ts", () => {
     );
     expect(r.status).toBe(0);
     const comment = r.ghCalls.find((c) => c.includes("comment"))?.join(" ") ?? "";
-    expect(comment).toContain("@octocat");
-    expect(comment).toContain("@hubot-human");
+    expect(comment).not.toContain("@");
   });
 
   /**

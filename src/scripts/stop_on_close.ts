@@ -38,7 +38,7 @@ import { gh } from "../lib/gh.ts";
 import { getLabel } from "../lib/config.ts";
 import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
 import { runningChildren } from "../lib/running-children.ts";
-import { mentionsForClose, stopOnCloseNotice } from "../domain/closed-issue.ts";
+import { stopOnCloseNotice } from "../domain/closed-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface StopOnCloseArgs {
@@ -56,8 +56,8 @@ export const ref = defineScript<StopOnCloseArgs>(import.meta.url);
  * session, for the same reason `/stop`'s own notice is excluded — it is addressed to
  * a person, and an agent reading it would take it as something it was told.
  */
-export function stopOnCloseBody(mentions: readonly string[], number: number, children: readonly number[]): string {
-  const lines = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopOnCloseNotice(mentions, number)];
+export function stopOnCloseBody(number: number, children: readonly number[]): string {
+  const lines = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopOnCloseNotice(number)];
   if (children.length > 0) {
     lines.push(
       "",
@@ -70,7 +70,6 @@ export function stopOnCloseBody(mentions: readonly string[], number: number, chi
 
 interface IssueForClose {
   labels?: { name?: string }[];
-  user?: { login?: string; type?: string };
 }
 
 function main(): void {
@@ -121,14 +120,11 @@ function main(): void {
     return;
   }
 
-  const author = (issue.user?.login ?? "").trim();
-  const authorIsBot = (issue.user?.type ?? "") === "Bot";
-  const mentions = mentionsForClose(closer, author, authorIsBot);
   const children = runningChildren(repo, Number(number));
 
   const posted = gh(
     "issue", "comment", number, "--repo", repo,
-    "--body", stopOnCloseBody(mentions, Number(number), children),
+    "--body", stopOnCloseBody(Number(number), children),
   );
   // Fatal, like `/stop`'s own request. This comment IS the stop: without it the run
   // polls, finds nothing, and keeps going — while the person who closed the issue has
