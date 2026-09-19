@@ -53,10 +53,17 @@
  *   plan_deploy.ts --ref refs/tags/v1.0.0 --default-branch main --event push
  *                  [--trigger merge] [--target production]
  */
+import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { resolveDeployJobs, selectDeployJobs } from "../domain/deploy-jobs.ts";
+import {
+  mayDispatchNewTags,
+  resolveDeployJobs,
+  selectDeployJobs,
+  type DeployRequest,
+} from "../domain/deploy-jobs.ts";
 import { deploymentRefusal, readBranchRules } from "../lib/branch-rules.ts";
 import { getDeploySection } from "../lib/config.ts";
+import { readTagNames } from "../lib/git-tags.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -102,6 +109,44 @@ function branchRefusal(repo: string, branch: string): string {
     return `no repository was given, so the rules on '${branch}' could not be read.`;
   }
   return deploymentRefusal(branch, readBranchRules(repo, branch));
+}
+
+/**
+ * Publish the tags that exist BEFORE these deployments run, for the job that
+ * dispatches whatever they add.
+ *
+ * Empty means "there is nothing to watch for", and that job is skipped on it. Three
+ * ways to get there, and none of them is a failure: the project declares no `on_tag`
+ * entry, nothing is deploying so nothing can tag, or this run was itself started by
+ * a tag and so must not start another — see `mayDispatchNewTags`.
+ *
+ * A tag list that could not be READ is none of those. It fails, because the whole
+ * point of the comparison is that nothing else would notice a tag deployment going
+ * missing. `dispatch_new_tags.ts` has the rest of the reasoning.
+ */
+function publishTagsBefore(
+  repo: string,
+  jobs: readonly { trigger: string }[],
+  selected: readonly unknown[],
+  request: DeployRequest,
+): void {
+  const watching =
+    selected.length > 0 && jobs.some((job) => job.trigger === "tag") && mayDispatchNewTags(request);
+  if (!watching) return;
+
+  const tags = repo ? readTagNames(repo) : null;
+  if (tags === null) {
+    console.error(
+      "::error::The repository's tags could not be read, so a tag these deployments create would " +
+        "never be deployed. `on_tag` is declared, so this is refused rather than skipped.",
+    );
+    process.exit(1);
+  }
+  const output = process.env.GITHUB_OUTPUT;
+  const line = `tags_before=${JSON.stringify(tags)}\n`;
+  if (output) appendFileSync(output, line);
+  else process.stdout.write(line);
+  console.error(`Watching for tags these deployments add; ${tags.length} exist now.`);
 }
 
 export function main(): void {
@@ -152,6 +197,7 @@ export function main(): void {
   }
 
   publishMatrix(selected, { what: "deployment" });
+  publishTagsBefore(repo, jobs, selected, request);
 }
 
 if (import.meta.main) main();

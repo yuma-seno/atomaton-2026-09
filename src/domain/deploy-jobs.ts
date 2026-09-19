@@ -262,6 +262,29 @@ function mergeJobsFor(jobs: readonly DeployJob[], branch: string, defaultBranch:
   );
 }
 
+/** Entries that deploy for `tag`. */
+function tagJobsFor(jobs: readonly DeployJob[], tag: string): readonly DeployJob[] {
+  if (!tag) return [];
+  return jobs.filter((job) => job.trigger === "tag" && job.refs.some((pattern) => refMatches(pattern, tag)));
+}
+
+/**
+ * Whether a run started this way may start further runs for tags it creates.
+ *
+ * A deployment that tags — `gh release create`, say — creates that tag with
+ * GITHUB_TOKEN, and GitHub starts no workflow run for its own token's events. So
+ * `on_tag` never fired for the tags a project's own release makes, which is the
+ * fifth instance of the hole `dispatchCd` exists to bridge. The run that created the
+ * tag is the only thing that knows, so it dispatches.
+ *
+ * Except when it was itself started by a tag. A deployment that tags, started by a
+ * tag, would dispatch itself forever; there is no state anywhere that would stop it,
+ * so the rule is that a tag run is a leaf.
+ */
+export function mayDispatchNewTags(request: DeployRequest): boolean {
+  return !request.ref.startsWith("refs/tags/") && request.trigger !== "tag";
+}
+
 /**
  * Whether a merge into `branch` might deploy anything.
  *
@@ -302,12 +325,14 @@ export function selectDeployJobs(
   }
   if (request.event === "push") {
     const tag = tagOf(request.ref);
-    if (tag) return jobs.filter((job) => job.trigger === "tag" && job.refs.some((p) => refMatches(p, tag)));
+    if (tag) return tagJobsFor(jobs, tag);
     return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
   }
   // A dispatch. `dispatchCd` sends `merge` after an agent's merge, which uses
-  // GITHUB_TOKEN and so fires no `push` for anything to catch.
+  // GITHUB_TOKEN and so fires no `push` for anything to catch; `dispatch_new_tags.ts`
+  // sends `tag` for the same reason, after a deployment created one.
   if (request.trigger === "merge") return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+  if (request.trigger === "tag") return tagJobsFor(jobs, tagOf(request.ref));
   // Nobody named a target and nothing says this is a merge, so it is somebody asking.
   // That is exactly what `on_demand` is, and running the arm whose name is the trigger
   // is the same rule the other two follow.

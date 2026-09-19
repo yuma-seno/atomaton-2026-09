@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  mayDispatchNewTags,
   mergeMightDeploy,
   refMatches,
   refPatternProblem,
@@ -198,6 +199,47 @@ describe("selectDeployJobs", () => {
       expect(names(selectDeployJobs(jobs, dispatch({ trigger: "demand" })))).toEqual(["rollback"]);
       expect(names(selectDeployJobs(jobs, dispatch({})))).toEqual(["rollback"]);
     });
+
+    /**
+     * `dispatch_new_tags.ts` sends this after a deployment created a tag: the tag was
+     * made with GITHUB_TOKEN, so no `push` arrived for anything to catch.
+     */
+    test("`trigger=tag` selects the tag entries for that tag", () => {
+      const req = dispatch({ trigger: "tag", ref: "refs/tags/v2.0.0" });
+      expect(names(selectDeployJobs(jobs, req))).toEqual(["production"]);
+    });
+
+    test("and matches nothing when no pattern claims the tag", () => {
+      expect(selectDeployJobs(jobs, dispatch({ trigger: "tag", ref: "refs/tags/nightly" }))).toEqual([]);
+    });
+  });
+});
+
+/**
+ * A deployment that tags, started by a tag, would dispatch itself forever: nothing
+ * anywhere holds state that would stop it. So a tag run is a leaf.
+ */
+describe("mayDispatchNewTags", () => {
+  const req = (over: Partial<DeployRequest>): DeployRequest =>
+    ({ ref: "refs/heads/main", defaultBranch: "main", event: "push", trigger: "", target: "", ...over });
+
+  test("a merge run may, because that is where a release tag comes from", () => {
+    expect(mayDispatchNewTags(req({}))).toBe(true);
+    expect(mayDispatchNewTags(req({ event: "workflow_dispatch", trigger: "merge" }))).toBe(true);
+  });
+
+  test("a dispatch by hand may too — it can deploy something that tags", () => {
+    expect(mayDispatchNewTags(req({ event: "workflow_dispatch", trigger: "demand" }))).toBe(true);
+  });
+
+  test("a pushed tag may not", () => {
+    expect(mayDispatchNewTags(req({ ref: "refs/tags/v1.0.0" }))).toBe(false);
+  });
+
+  test("and neither may a run this mechanism itself started", () => {
+    expect(mayDispatchNewTags(req({ event: "workflow_dispatch", trigger: "tag", ref: "refs/tags/v1.0.0" }))).toBe(
+      false,
+    );
   });
 });
 

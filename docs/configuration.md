@@ -319,6 +319,14 @@ for other reasons costs you a few seconds and no red run. Schedules are not
 supported: a cron expression can only be written in a workflow's `on:`, so it
 cannot come from configuration.
 
+**A tag your own deployment creates starts `on_tag` too.** It has to be arranged
+rather than inherited: a deployment that cuts a release creates its tag with the
+run's own token, and GitHub starts no workflow run for events its own token
+triggers — so `on_tag` would fire for a tag you pushed by hand and never for the
+one your release made. The run that created it dispatches, once per new tag. A
+run that was itself started by a tag does not, or a deployment that tags would
+start itself forever.
+
 Deployments run **one at a time, in declared order**, and the first failure stops
 the rest: with one deployment already broken, continuing puts more of your estate
 in an unknown state rather than less.
