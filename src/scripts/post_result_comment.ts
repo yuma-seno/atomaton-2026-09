@@ -285,7 +285,15 @@ export function buildCommentBody(args: {
     })
   ) {
     lines.push(
-      `@${args.notify} — **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`,
+      // Named by how the run actually ended. This sentence used to say "task
+      // completed" whatever happened, which no one saw on a stopped run because a
+      // stopped run rarely got a mention at all -- and the moment it did, it was
+      // telling the person who had just stopped it that it had finished. "Review the
+      // results" is dropped for the same reason: a run cut short may have none.
+      args.stopRequested === "true" || args.limitReached === "true"
+        ? `@${args.notify} — **${args.agent}** ${args.stopRequested === "true" ? "was stopped" : "ran out of iterations"} ` +
+          `before it finished, and no agent will run next. Resume it, or say what to do instead.`
+        : `@${args.notify} — **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`,
       "",
     );
   }
