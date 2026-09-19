@@ -37,19 +37,78 @@ export function isIssueBranch(name: string): boolean {
   return name.startsWith(BRANCH_PREFIX);
 }
 
-/** The branch this run is checked out on, however it can be determined. */
+/**
+ * What to say when this run has no branch at all.
+ *
+ * The state, not the symptom. This used to be "Cannot determine branch name; set
+ * BRANCH env", and before that the third route below handed git's own description
+ * of a detached HEAD -- `(HEAD detached at pull/802/head)` -- to `git push -u
+ * origin <that>`, which answered `fatal: invalid refspec`. An agent reading a raw
+ * git failure concludes the tool is broken; what it needs to know is that this
+ * checkout has no branch to push, so there is nothing for these tools to publish.
+ */
+const NO_BRANCH_MESSAGE =
+  "This run is on a detached checkout with no local branch, so there is no branch to push: " +
+  "commit_and_push and create_pr cannot publish this run's work. Report the work on the issue instead.";
+
+/**
+ * Whether `name` is a branch that exists locally -- `refs/heads/<name>` -- rather
+ * than a name git merely printed.
+ *
+ * Asked rather than assumed, because every route below can hand back a string that
+ * looks like a branch and is not one: `git branch --points-at HEAD` prints its own
+ * pseudo-entry for a detached HEAD, and `BRANCH` is set by the runner from
+ * whatever `git rev-parse --abbrev-ref HEAD` said. `git show-ref --verify` is the
+ * check git itself uses for "is this a ref", so a name that is not one -- including
+ * the pseudo-entry, whose parentheses are not valid in a refname -- fails here
+ * rather than at the push.
+ */
+function isLocalBranch(name: string): boolean {
+  if (!name || name === "HEAD" || name.startsWith("(")) return false;
+  return gitRun("show-ref", "--verify", "--quiet", `refs/heads/${name}`).code === 0;
+}
+
+/**
+ * The branch this run is checked out on, however it can be determined.
+ *
+ * Every route answers only with a name that resolves as `refs/heads/<name>`, and
+ * nothing resolves to the literal `HEAD`, an empty string, or git's description of
+ * a detached HEAD. A route that cannot answer falls through to the next; when none
+ * can, the run has no branch and says so (see `NO_BRANCH_MESSAGE`).
+ */
 export function resolveBranch(): string {
   const fromEnv = (process.env.BRANCH ?? "").trim();
-  if (fromEnv && fromEnv !== "HEAD") return fromEnv;
+  if (isLocalBranch(fromEnv)) return fromEnv;
   {
     const { code, stdout } = gitRun("rev-parse", "--abbrev-ref", "HEAD");
-    if (code === 0 && stdout && stdout !== "HEAD") return stdout;
+    const name = code === 0 ? stdout.trim() : "";
+    if (isLocalBranch(name)) return name;
   }
   {
+    // The case this route allows: a detached HEAD at a commit that a LOCAL branch
+    // points at, so there is a name the work belongs on and a branch to push.
+    //
+    // The case it rejects, and the one a `pr` run is in: a detached HEAD at a commit
+    // that only a remote-tracking or `refs/pull/<n>/head` ref points at. That commit
+    // is a tip of something, but nothing local names it, so there is no branch to
+    // push and the honest answer is the refusal below rather than a string git will
+    // reject as a refspec.
+    //
+    // `git branch --points-at HEAD` lists the allowed branch -- but its first line is
+    // git's own pseudo-entry for the detached HEAD, `(HEAD detached at
+    // pull/802/head)`, which `--format` does not suppress and which is a description
+    // rather than a ref. Every line is therefore checked, not just the first: a name
+    // beginning with `(` and a name that does not resolve as `refs/heads/<name>` are
+    // both rejected.
     const { code, stdout } = gitRun("branch", "--format=%(refname:short)", "--points-at=HEAD");
-    if (code === 0 && stdout) return stdout.split("\n")[0]!;
+    if (code === 0) {
+      for (const line of stdout.split("\n")) {
+        const name = line.trim();
+        if (isLocalBranch(name)) return name;
+      }
+    }
   }
-  throw new Error("Cannot determine branch name; set BRANCH env");
+  throw new Error(NO_BRANCH_MESSAGE);
 }
 
 
