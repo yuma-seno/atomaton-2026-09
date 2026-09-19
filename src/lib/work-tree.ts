@@ -4,11 +4,25 @@
  *
  * ## Why a walk rather than one query
  *
- * There is no single query for "everything under #803". The edge lives in issue and
- * pull request bodies as a tag, so the tree is found by descending one level at a
- * time: the children of a node are the issues carrying `atomaton:parent=<n>` and the
- * pull requests carrying `atomaton:parent-issue=<n>`. Two searches per level, and the
- * trees this builds are shallow — an issue, its sub-issues, their pull requests.
+ * There is no single query for "everything under #803", so the tree is found by
+ * descending one level at a time. The trees this builds are shallow — an issue, its
+ * sub-issues, their pull requests.
+ *
+ * ## Two sources for one edge, and why neither alone will do
+ *
+ * The tag, because `addSubIssue` is best-effort: a sub-issue an agent created can
+ * carry `atomaton:parent=<n>` and no native link at all. `parent-issue.ts` reached the
+ * same conclusion walking upward, and reads both for the same reason.
+ *
+ * GitHub's own links, because the tag only exists where an agent has been. An issue a
+ * person opened, decomposed with the sub-issue control and closed is a tree this would
+ * otherwise see as a single node — and closing it would leave its children open. That
+ * argument is `issue-links.ts`'s, written before this file existed, and this file was
+ * built tag-only anyway by copying the narrower reader next to it.
+ *
+ * So: the union. The tag search carries labels and answers in one call per level; the
+ * native links are asked once per level and cost a second read only for what they alone
+ * found, which is by construction the node no agent made.
  *
  * ## The search is a prefilter, never the answer
  *
@@ -26,6 +40,7 @@
  */
 import { gh, ghRead } from "./gh.ts";
 import { getLabel } from "./config.ts";
+import { issueLinks } from "./issue-links.ts";
 import { ENDED_TAG, LLM_CONTEXT_TAG, PARENT_ISSUE_TAG, PARENT_TAG, STOP_TAG } from "./tags.ts";
 import {
   closeReachedNotice,
@@ -58,8 +73,8 @@ function parseListed(stdout: string): Listed[] {
   }
 }
 
-/** The root, read through the endpoint that answers for an issue and a pull request alike. */
-function readRoot(repo: string, number: number): { node?: WorkNode; problem?: string } {
+/** One node, read through the endpoint that answers for an issue and a pull request alike. */
+function readNode(repo: string, number: number): { node?: WorkNode; problem?: string } {
   const { code, stdout, stderr } = ghRead("api", `repos/${repo}/issues/${number}`);
   if (code !== 0) {
     return { problem: `could not read #${number}: ${(stderr || stdout).trim().split("\n")[0] ?? ""}` };
@@ -135,6 +150,34 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     });
   }
 
+  // What no agent tagged. `issueLinks` reads GitHub's own sub-issue links and the pull
+  // requests that say they close this issue, and its docstring is the argument for
+  // asking it at all: "the relationships have to survive an issue a person opened,
+  // decomposed and closed without an agent ever touching it, and markers only exist
+  // where an agent has been."
+  //
+  // A union rather than a replacement, because the tag survives what the native link
+  // does not: `addSubIssue` is best-effort, so a sub-issue can carry the tag and no
+  // link. `parent-issue.ts` reaches the same conclusion walking the other way.
+  const links = issueLinks(repo, parent);
+  if (links.unavailable) {
+    problems.push(`could not read GitHub's own links for #${parent}: ${links.unavailable}`);
+  }
+  const already = new Set(nodes.map((node) => node.number));
+  for (const linked of [...links.children, ...links.pullRequests]) {
+    if (already.has(linked.number)) continue;
+    // Only these need a second read. The search above returns labels; this one does
+    // not, and `running` is what decides whether a stop has anywhere to go. Rare by
+    // construction — it is the node an agent did not create.
+    const { node, problem } = readNode(repo, linked.number);
+    if (!node) {
+      problems.push(problem ?? `could not read #${linked.number}`);
+      continue;
+    }
+    already.add(linked.number);
+    nodes.push({ ...node, parent });
+  }
+
   return { nodes, problems };
 }
 
@@ -145,7 +188,7 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
  * subtree it is closing is the whole one.
  */
 export function readWorkTree(repo: string, root: number): { nodes: WorkNode[]; problems: string[] } {
-  const { node, problem } = readRoot(repo, root);
+  const { node, problem } = readNode(repo, root);
   if (!node) return { nodes: [], problems: [problem ?? `could not read #${root}`] };
 
   const nodes: WorkNode[] = [node];
@@ -202,6 +245,14 @@ export function commentOn(repo: string, number: number, body: string): boolean {
 export interface SubtreeStop {
   /** The nodes a stop request was posted on, the root included when it was running. */
   stopped: number[];
+  /**
+   * Whether the comment meant for the person landed on the root.
+   *
+   * Its own field, because callers used to decide this by looking for the root|s number
+   * in the problem strings -- which matched a problem ABOUT the root as readily as a
+   * failure to reach it, and turned a warning about its links into a failed step.
+   */
+  rootNotified: boolean;
   /** Anything that could not be read or written. A partial answer says so. */
   problems: string[];
 }
@@ -227,11 +278,9 @@ export function requestStopAcross(
   const all = subtree(nodes, root);
   const stopped: number[] = [];
 
-  if (!commentOn(repo, root, rootBody)) {
-    problems.push(`could not post the stop request on #${root}`);
-  } else if (all.find((node) => node.number === root)?.running) {
-    stopped.push(root);
-  }
+  const rootNotified = commentOn(repo, root, rootBody);
+  if (!rootNotified) problems.push(`could not post the stop request on #${root}`);
+  else if (all.find((node) => node.number === root)?.running) stopped.push(root);
 
   for (const node of nodesToStop(descendants(all, root))) {
     const body = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopReachedNotice(root)].join("\n");
@@ -239,7 +288,7 @@ export function requestStopAcross(
     else problems.push(`could not post the stop request on #${node.number}`);
   }
 
-  return { stopped, problems };
+  return { stopped, rootNotified, problems };
 }
 
 /** What a subtree-wide close did. */
@@ -261,11 +310,9 @@ export function closeSubtreeUnder(repo: string, root: number, rootBody: string):
   const stopped: number[] = [];
   const closed: number[] = [];
 
-  if (!commentOn(repo, root, rootBody)) {
-    problems.push(`could not post the stop request on #${root}`);
-  } else if (all.find((node) => node.number === root)?.running) {
-    stopped.push(root);
-  }
+  const rootNotified = commentOn(repo, root, rootBody);
+  if (!rootNotified) problems.push(`could not post the stop request on #${root}`);
+  else if (all.find((node) => node.number === root)?.running) stopped.push(root);
 
   const under = descendants(all, root);
   for (const node of nodesToStop(under)) {
@@ -283,5 +330,5 @@ export function closeSubtreeUnder(repo: string, root: number, rootBody: string):
     else problems.push(`could not close #${node.number}`);
   }
 
-  return { stopped, closed, problems };
+  return { stopped, closed, rootNotified, problems };
 }
