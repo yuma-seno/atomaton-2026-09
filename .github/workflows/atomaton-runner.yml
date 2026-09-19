@@ -160,11 +160,6 @@ jobs:
           mv "atomaton-machinery" "${RUNNER_TEMP}/atomaton-machinery"
           echo "ATOMATON_MACHINERY_ROOT=${RUNNER_TEMP}/atomaton-machinery" >> "$GITHUB_ENV"
           echo "machinery moved to ${RUNNER_TEMP}/atomaton-machinery; the work tree holds only the repository"
-      - name: Set branch env for PR type
-        if: inputs.type != 'issue'
-        shell: bash
-        run: |
-          echo "BRANCH=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
       - name: Setup Bun
         with:
           bun-version: latest
@@ -191,6 +186,48 @@ jobs:
           fi
           git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
           git checkout -B "${BRANCH_NAME}" "refs/remotes/origin/${BRANCH_NAME}"
+      - name: Resolve the pull request's head branch
+        id: pr-branch
+        if: inputs.type == 'pr'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_pr_branch.ts" --repo "${{ github.repository }}" --number "${{ inputs.number }}"
+      - name: Check out the pull request's head branch
+        if: inputs.type == 'pr'
+        shell: bash
+        env:
+          BRANCH_NAME: ${{ steps.pr-branch.outputs.branch }}
+        run: |
+          if [ -z "${BRANCH_NAME}" ]; then
+            echo "no pull request head branch to check out; this run stays on the detached checkout"
+            exit 0
+          fi
+
+          # The remote-tracking ref as well, so a later `sync_branch` compares against
+          # something current rather than against nothing.
+          if ! git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"; then
+            echo "::warning::could not fetch ${BRANCH_NAME} from origin; this run stays on the detached checkout"
+            exit 0
+          fi
+
+          # `HEAD`, and deliberately not `$GITHUB_SHA`. `actions/checkout` checked
+          # `refs/pull/N/head` out detached, so HEAD is the pull request's own head
+          # commit -- that much is certain. `$GITHUB_SHA` is the dispatch ref's tip
+          # instead, and this run is dispatched by `gh workflow run` with no `--ref`, so
+          # that is the DEFAULT branch: naming it here would check the run out onto the
+          # default branch and commit its tree on top of the pull request -- measured, the
+          # working tree came back as the base commit with the pull request's own change
+          # gone. In a checkout that holds only the pull request it is not even present,
+          # and the checkout fails outright. Re-labelling HEAD is the whole operation: the
+          # same commit, now with the branch name the pull request is already from.
+          if ! git checkout -B "${BRANCH_NAME}" HEAD; then
+            echo "::warning::could not check out ${BRANCH_NAME}; this run stays on the detached checkout"
+            exit 0
+          fi
+          echo "BRANCH=${BRANCH_NAME}" >> $GITHUB_ENV
+          echo "on the pull request's head branch: ${BRANCH_NAME}"
       - name: Cache MCP server package downloads
         with:
           path: ~/.npm
