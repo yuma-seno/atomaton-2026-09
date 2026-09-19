@@ -21,7 +21,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { makeConfigDir, runWithFakeGh, type FakeGhRule } from "../scripts/testing/harness.ts";
+import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../scripts/testing/harness.ts";
 import { extractImageUrls, sniffMimeType } from "./issue-images.ts";
 import { looksTransient } from "./gh.ts";
 import { injectSummary } from "./inject-sub-results.ts";
@@ -41,7 +41,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   test("counts open siblings via gh issue list", () => {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${join(LIB_DIR, "sibling-check.ts")}";
+      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings({ repo: "owner/repo", parent: 5 }));
     `);
     try {
@@ -59,7 +59,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   test("prints 0 when no siblings are open", () => {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${join(LIB_DIR, "sibling-check.ts")}";
+      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings({ repo: "owner/repo", parent: 5 }));
     `);
     try {
@@ -74,7 +74,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   test("--exclude drops a specific issue number regardless of its live open state", () => {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${join(LIB_DIR, "sibling-check.ts")}";
+      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings({ repo: "owner/repo", parent: 5, exclude: 10 }));
     `);
     try {
@@ -322,7 +322,7 @@ describe("branch-placement.ts resolveBranch", () => {
   /** Calls `resolveBranch` in a subprocess whose cwd is `cwd`, and reports which way it went. */
   function resolveIn(cwd: string, env: Record<string, string>): { ok?: string; error?: string } {
     const { file, dir } = makeShim(`
-      import { resolveBranch } from "${join(LIB_DIR, "branch-placement.ts")}";
+      import { resolveBranch } from "${importable(join(LIB_DIR, "branch-placement.ts"))}";
       try {
         console.log(JSON.stringify({ ok: resolveBranch() }));
       } catch (e) {
@@ -439,7 +439,7 @@ describe("issue-branches.ts collectIssueBranches", () => {
   function run(rules: FakeGhRule[]) {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { collectIssueBranches } from "${join(LIB_DIR, "issue-branches.ts")}";
+      import { collectIssueBranches } from "${importable(join(LIB_DIR, "issue-branches.ts"))}";
       console.log(JSON.stringify(collectIssueBranches("owner/repo", 12)));
     `);
     try {

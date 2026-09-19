@@ -178,6 +178,10 @@ describe("fetch_events.ts", () => {
     }
   });
 
+  // Two whole runs of the script, each making a dozen or so `gh` calls, and every one
+  // of those spawns the fake as its own process. Bun`s default 5s is not enough for
+  // that on a cold Windows spawn -- and until the fake was actually reachable this
+  // test never got far enough to find out.
   test("Issue and linked PR runs produce the same serial context and canonical key", () => {
     const dir = mkdtempSync(join(tmpdir(), "atomaton-fetch-linked-"));
     const issueEventsFile = join(dir, "issue-events.json");
@@ -256,5 +260,5 @@ describe("fetch_events.ts", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 60_000);
 });
