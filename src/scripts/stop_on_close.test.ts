@@ -5,6 +5,13 @@ import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 /**
  * Closing ends a line of work, not one node. What these assert is the reach: the right
  * closes stop and close everything under them, and the wrong ones touch nothing.
+ *
+ * Every list rule names the tag it is searching for, and that is not decoration. The
+ * fake `gh` matches a rule when each string appears somewhere in the argv, and the
+ * pull request search carries `atomaton:parent-issue=` — which contains "issue". A rule
+ * of `["issue", "list"]` therefore swallows the `gh pr list` call as well, and the pull
+ * request half of the tree comes back empty while every assertion about it still reads
+ * as if it had been looked for. Two tests passed that way before this comment existed.
  */
 describe("stop_on_close.ts", () => {
   const RUNNING_ROOT = JSON.stringify({ state: "open", labels: [{ name: "atomaton/in-progress" }] });
@@ -26,8 +33,8 @@ describe("stop_on_close.ts", () => {
   test("asks the run to stop, and says so where the run is looking", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list"], stdout: "[]" },
-      { match: ["pr", "list"], stdout: "[]" },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
       { match: ["issue", "comment"] },
     ]);
     expect(r.status).toBe(0);
@@ -61,12 +68,12 @@ describe("stop_on_close.ts", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
       {
-        match: ["issue", "list"],
+        match: ["issue", "list", "parent="],
         stdout: JSON.stringify([
           { number: 807, body: "<!-- atomaton:parent=803 -->", state: "OPEN", labels: [] },
         ]),
       },
-      { match: ["pr", "list"], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -77,8 +84,8 @@ describe("stop_on_close.ts", () => {
   test("nothing running and nothing open under it is nothing to do", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
-      { match: ["issue", "list"], stdout: "[]" },
-      { match: ["pr", "list"], stdout: "[]" },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
     ]);
     expect(r.status).toBe(0);
     expect(r.ghCalls.some((c) => c.includes("comment"))).toBe(false);
@@ -105,7 +112,7 @@ describe("stop_on_close.ts", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
       {
-        match: ["issue", "list"],
+        match: ["issue", "list", "parent="],
         stdout: JSON.stringify([
           {
             number: 807,
@@ -115,7 +122,7 @@ describe("stop_on_close.ts", () => {
           },
         ]),
       },
-      { match: ["pr", "list"], stdout: "[]" },
+      { match: ["pr", "list", "parent-issue="], stdout: "[]" },
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -132,9 +139,9 @@ describe("stop_on_close.ts", () => {
   test("a merged pull request under the issue is left alone", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list"], stdout: "[]" },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
       {
-        match: ["pr", "list"],
+        match: ["pr", "list", "parent-issue="],
         stdout: JSON.stringify([
           { number: 817, body: "<!-- atomaton:parent-issue=803 -->", state: "MERGED", labels: [] },
         ]),
@@ -149,9 +156,9 @@ describe("stop_on_close.ts", () => {
   test("an open pull request under the issue is closed with it", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list"], stdout: "[]" },
+      { match: ["issue", "list", "parent="], stdout: "[]" },
       {
-        match: ["pr", "list"],
+        match: ["pr", "list", "parent-issue="],
         stdout: JSON.stringify([
           { number: 826, body: "<!-- atomaton:parent-issue=803 -->", state: "OPEN", labels: [] },
         ]),
