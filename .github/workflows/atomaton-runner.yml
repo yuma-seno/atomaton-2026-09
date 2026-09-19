@@ -3,8 +3,8 @@
 # Edits here are lost when this file is regenerated upstream.
 #
 # To change what CI or deployment DOES, you do not need this file: put the
-# commands in .github/atomaton/config.yaml under `checks.atomaton_runs.commands` or
-# `deploy.atomaton_runs.targets`. That file is yours, it survives upgrades, and an
+# commands in .github/atomaton/config.yaml, under `checks` or `deploy`. That
+# file is yours, it survives upgrades, and an
 # agent can write it -- GitHub refuses to let one write a workflow.
 # See docs/configuration.md, "The pipeline as commands".
 #
@@ -664,7 +664,7 @@ jobs:
             echo "::warning::Could not read .github/atomaton/config.yaml from ${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
           fi
 
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/read_secret_names.ts" --destination "tools" --config "$RUNNER_TEMP/atomaton-declared-secrets.yaml"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/read_secret_names.ts" --config "$RUNNER_TEMP/atomaton-declared-secrets.yaml"
       - name: Collect this run's credentials into a file
         shell: bash
         env:

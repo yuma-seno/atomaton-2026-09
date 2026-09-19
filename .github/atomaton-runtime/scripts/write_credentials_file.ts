@@ -38,16 +38,9 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var DEPLOY_SECRETS = {
-  field: "deploy.atomaton_runs.secrets",
-  reserved: new Set([
-    "ATOMATON_DEPLOY_REF",
-    "ATOMATON_DEPLOY_TARGET",
-    "ATOMATON_DEPLOY_TARGET_INPUT",
-    "ATOMATON_DEPLOY_TRIGGER",
-    "GH_TOKEN"
-  ])
-};
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";

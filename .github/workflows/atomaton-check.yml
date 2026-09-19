@@ -3,8 +3,8 @@
 # Edits here are lost when this file is regenerated upstream.
 #
 # To change what CI or deployment DOES, you do not need this file: put the
-# commands in .github/atomaton/config.yaml under `checks.atomaton_runs.commands` or
-# `deploy.atomaton_runs.targets`. That file is yours, it survives upgrades, and an
+# commands in .github/atomaton/config.yaml, under `checks` or `deploy`. That
+# file is yours, it survives upgrades, and an
 # agent can write it -- GitHub refuses to let one write a workflow.
 # See docs/configuration.md, "The pipeline as commands".
 #
@@ -94,10 +94,10 @@ jobs:
       - name: Run this check's commands
         shell: bash
         env:
-          ATOMATON_CHECK_COMMANDS: ${{ toJSON(matrix.commands) }}
+          ATOMATON_COMMANDS: ${{ toJSON(matrix.commands) }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "$ATOMATON_CHECK_COMMANDS" | jq -r ".[]" | while IFS= read -r command; do
+          echo "$ATOMATON_COMMANDS" | jq -r ".[]" | while IFS= read -r command; do
             echo "::group::$command"
             if ! bash -c "$command"; then
               echo "::endgroup::"
@@ -147,12 +147,12 @@ jobs:
           ATOMATON_SECRET_9: ${{ secrets[matrix.secrets[9]] }}
           ATOMATON_SECRET_NAMES: ${{ toJSON(matrix.secrets) }}
           ATOMATON_PR_TREE: ${{ github.workspace }}/.atomaton-pull-request
-          ATOMATON_CHECK_COMMANDS: ${{ toJSON(matrix.commands) }}
+          ATOMATON_COMMANDS: ${{ toJSON(matrix.commands) }}
           GH_TOKEN: ${{ github.token }}
         run: |
           # Credentials arrive in numbered slots because this file is generated and cannot
-          # know what a project called its Slack token; config.yaml does, and the resolve
-          # step above published that list. Put the declared name back on each slot before
+          # know what a project called its Slack token; config.yaml does, and the names
+          # travelled here beside them. Put the declared name back on each slot before
           # anything that needs one runs.
           ATOMATON_DECLARED_SECRETS="${ATOMATON_SECRET_NAMES:-[]}"
           ATOMATON_DECLARED_COUNT=$(echo "$ATOMATON_DECLARED_SECRETS" | jq -r 'length')
@@ -169,7 +169,7 @@ jobs:
             slot=$((slot + 1))
           done
 
-          echo "$ATOMATON_CHECK_COMMANDS" | jq -r ".[]" | while IFS= read -r command; do
+          echo "$ATOMATON_COMMANDS" | jq -r ".[]" | while IFS= read -r command; do
             echo "::group::$command"
             if ! bash -c "$command"; then
               echo "::endgroup::"

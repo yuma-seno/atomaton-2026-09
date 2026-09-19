@@ -24,7 +24,7 @@ environment:
   max_reloads: 3
 
 
-# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name
+# How a change is verified. Either let Atomaton run your checks, or name
 # `your_workflow` instead. Both is a configuration error.
 checks:
   # The commands this pull request declares, run in this pull request's own tree.
@@ -54,17 +54,15 @@ checks:
   # your_workflow: ci.yml
 
 
-# How a merged change ships. The same two arms.
+# How a merged change ships. One list per event that ships it.
 deploy:
-  atomaton_runs:
-    # Each names an environment, when it ships, and the commands that ship it.
-    targets:
-      - name: release
-        on: merge
-        commands:
-          - "./scripts/release.sh"
-    secrets: []
-    runs_on: ubuntu-latest
+  # Lands on the default branch, so `branches` is left out — that is what naming
+  # none means. `on_tag` and `on_demand` are absent rather than empty: this
+  # repository ships one thing, and an empty list would read as one it forgot.
+  on_merge:
+    - name: release
+      commands:
+        - "./scripts/release.sh"
   # your_workflow: cd.yml
 
 
@@ -102,9 +100,8 @@ chain:
 # is declared here rather than in a second file; the generator writes the part the
 # core reads. Most projects never edit past this line.
 tools:
-  # Repository secrets the servers may reach. Separate from the lists under
-  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own
-  # environment.
+  # Repository secrets the servers may reach. Separate from the ones a check or a
+  # deployment names on its own entry: only these enter an agent's own environment.
   secrets: []
 
   # Your own tool servers, and overrides of the ones Atomaton ships.
