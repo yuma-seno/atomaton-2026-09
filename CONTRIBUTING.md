@@ -102,6 +102,22 @@ exists without a release behind it.
 
 Nothing writes to main, so none of this needs a ruleset bypass.
 
+**`release.sh` also runs `scripts/check-live-tools.sh`**, between building `dist/`
+and creating the release. That script starts every tool server the artifact would
+ship and asks `atoma validate --with-live-tools` what each server actually
+advertises — which is what says whether a `tool_allowlist` pattern still names a
+tool that exists, and whether any server has stopped starting. Nothing else here
+asks either question: `probe-tool-servers.ts` reads the tool list out of the
+model's request, which proves a server registered something but not that a pattern
+still matches it.
+
+It runs here, on the default branch and against `dist/`, and deliberately not on
+the pull request: it starts processes, and `tools.servers` lets a pull request name
+any `command`. `validate_deliverable.ts` reads a pull request's `.github/atomaton/`
+as data and runs nothing under `--root`, and that guarantee is not tradeable. The
+cost is that a guard which has stopped guarding is found after the merge that broke
+it rather than as a red check on its pull request.
+
 Both kinds of merge reach it, by different routes. Yours fires `push` on the
 default branch, which `atomaton-deploy.yml` listens for. An agent's fires nothing —
 GitHub starts no workflow run for events its own token triggers — so `mergePr`
