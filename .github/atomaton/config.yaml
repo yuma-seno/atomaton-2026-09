@@ -63,6 +63,19 @@ deploy:
     - name: release
       commands:
         - "./scripts/release.sh"
+
+  # TEMPORARY, for #872. A deployment that creates a tag, and a deployment that
+  # answers to it — the pair that proves a machine-made tag reaches `on_tag`,
+  # which no `push` event ever announces. Removed once the run has been read.
+  on_demand:
+    - name: tag-probe
+      commands:
+        - 'gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/probe-872" -f sha="$GITHUB_SHA"'
+  on_tag:
+    - name: probe-arrived
+      tags: ["probe-*"]
+      commands:
+        - 'echo "on_tag ran for $GITHUB_REF as $ATOMATON_DEPLOY_TARGET"'
   # your_workflow: cd.yml
 
 
