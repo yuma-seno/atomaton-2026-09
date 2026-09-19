@@ -130,8 +130,26 @@ const planDefaultBranchChecksJob = new DefinedJob<{ jobs: string }>(
       name: "Read the credentialed checks this project declares",
       id: PLAN_STEP_ID,
       shell: "bash",
-      run: `${scriptCommand(planDefaultBranchChecksRef)}
-`,
+      // The default branch may predate this script, and says so rather than
+      // answering as though it had looked. It happens once, in the repository that
+      // builds the deliverable: the workflow and the script arrive in one release
+      // for everyone else, but here the pull request carrying both is checked by a
+      // default branch that has neither yet.
+      //
+      // `[]` is what it publishes, because there is nothing to run and the job that
+      // collects verdicts reads a skipped matrix as a pass. The warning is what keeps
+      // that from being silent: an empty answer and an unaskable question look
+      // identical afterwards, and only one of them is a project with no such check.
+      run: [
+        `PLANNER="\${ATOMATON_MACHINERY_ROOT:-.}/${planDefaultBranchChecksRef.runtimePath}"`,
+        'if [ ! -f "$PLANNER" ]; then',
+        '  echo "::warning::$PLANNER is not on the default branch yet, so no credentialed check could be planned. This is expected once, on the change that adds it."',
+        `  echo "jobs=[]" >> "\$GITHUB_OUTPUT"`,
+        "  exit 0",
+        "fi",
+        `bun run "\$PLANNER"`,
+        "",
+      ].join("\n"),
     }),
   ],
 );

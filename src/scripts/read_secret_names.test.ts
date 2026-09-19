@@ -34,15 +34,12 @@ function run(config: Record<string, unknown> | null, destination = "tools") {
 }
 
 describe("declarationIn", () => {
-  // `checks` and `deploy` carry their list inside `atomaton_runs`, the arm Atomaton
+  // `deploy` carries its list inside `atomaton_runs`, the arm Atomaton
   // runs itself; `tools` has no arms, so its list stays at the top of the section.
   test("picks the destination's own list", () => {
     const config = `
 tools:
   secrets: [A]
-checks:
-  atomaton_runs:
-    secrets: [B]
 deploy:
   atomaton_runs:
     secrets: [C]
@@ -70,22 +67,21 @@ describe("read_secret_names.ts", () => {
   });
 
   // Crossing these would put a deployment credential in the agent's own
-  // environment, which is the boundary the three lists exist to draw.
+  // environment, which is the boundary these lists exist to draw. A check has no
+  // list at all -- its commands are the pull request's own.
   test("reads only the destination it was asked for", () => {
     const config = {
       tools: { secrets: ["SLACK_TOKEN"] },
-      checks: { atomaton_runs: { secrets: ["NPM_TOKEN"] } },
       deploy: { atomaton_runs: { secrets: ["AWS_ROLE_ARN"] } },
     };
     expect(JSON.parse(run(config, "tools").outputs.names!)).toEqual(["SLACK_TOKEN"]);
-    expect(JSON.parse(run(config, "checks").outputs.names!)).toEqual(["NPM_TOKEN"]);
     expect(JSON.parse(run(config, "deploy").outputs.names!)).toEqual(["AWS_ROLE_ARN"]);
   });
 
   // The workflow indexes into this unconditionally, so it has to be valid JSON
   // even when nothing is configured -- which is the common case.
   test("publishes an empty array when nothing is declared", () => {
-    for (const destination of ["tools", "checks", "deploy"]) {
+    for (const destination of ["tools", "deploy"]) {
       const r = run({}, destination);
       expect(r.status, destination).toBe(0);
       expect(JSON.parse(r.outputs.names!), destination).toEqual([]);
