@@ -4113,15 +4113,17 @@
   {
     "path": "sessions/issue-831/engineer.json",
     "agent": "engineer",
-    "messages": 15,
-    "calls": 5,
+    "messages": 54,
+    "calls": 33,
     "failed": 0,
     "refused": 0,
     "skills": [],
     "tools": {
       "github__get_issue": 2,
       "github__get_issue_comments": 1,
-      "grep": 2
+      "grep": 7,
+      "list": 6,
+      "read": 17
     },
     "acts": {},
     "runs": [
@@ -4132,6 +4134,14 @@
         "messages": 15,
         "seconds": 21,
         "started": "2026-09-19T12:10:42Z"
+      },
+      {
+        "ended": "2026-09-19T12:13:52Z",
+        "ended_because": "stopped",
+        "iterations": 9,
+        "messages": 54,
+        "seconds": 65,
+        "started": "2026-09-19T12:12:47Z"
       }
     ]
   },
