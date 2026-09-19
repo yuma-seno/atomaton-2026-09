@@ -159,6 +159,163 @@ describe("mcp/github.ts", () => {
     }
   });
 
+  /**
+   * A `pr` run's worktree: checked out at `refs/pull/<n>/head` with no local branch,
+   * which is what #803 hit. `git branch --points-at HEAD` prints git's own
+   * description of the detached HEAD, and that description used to be handed to
+   * `git push -u origin <that>` as a refspec.
+   *
+   * Two things have to hold, and the second is the one that matters: the refusal
+   * says what the run cannot do, and NO COMMIT IS MADE -- `commitAndPush` resolves
+   * the branch before `git add -A` and `git commit` for exactly this reason, so the
+   * work stays in the worktree where the agent can still report it. A commit that
+   * cannot be pushed is work the run loses.
+   */
+  test("commit_and_push on a detached HEAD refuses before committing", async () => {
+    const { root, work } = makeRemoteBranchFixture();
+    try {
+      git(work, "config", "user.name", "Atomaton Test");
+      git(work, "config", "user.email", "atomaton@example.com");
+      git(work, "checkout", "--detach", "HEAD");
+      git(work, "branch", "-D", "atomaton/issue-1");
+      writeFileSync(join(work, "fix.txt"), "the fix\n");
+      const before = git(work, "rev-parse", "HEAD");
+
+      const response = await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0",
+          id: 6,
+          method: "tools/call",
+          params: { name: "commit_and_push", arguments: { message: "fix the findings" } },
+        },
+        // What the runner sets on a `pr` run: the branch env is the literal HEAD.
+        { BRANCH: "HEAD", ATOMATON_RUN_TYPE: "pr", ISSUE_NUMBER: "802" },
+        work,
+      );
+
+      expect(response.result.isError).toBe(true);
+      const message = response.result.content[0].text as string;
+      expect(message, "the refusal names the state, not a git refspec").toContain("no branch to push");
+      expect(message).not.toContain("refspec");
+      // The part that matters: no commit was created, and the change is still there.
+      expect(git(work, "rev-parse", "HEAD"), "a commit was stranded").toBe(before);
+      expect(git(work, "status", "--porcelain")).toContain("fix.txt");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("create_pr on a detached HEAD refuses with the same message", async () => {
+    const { root, work } = makeRemoteBranchFixture();
+    try {
+      git(work, "checkout", "--detach", "HEAD");
+      git(work, "branch", "-D", "atomaton/issue-1");
+
+      const response = await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0",
+          id: 7,
+          method: "tools/call",
+          params: { name: "create_pr", arguments: { title: "Test PR" } },
+        },
+        {
+          BRANCH: "HEAD",
+          ATOMATON_RUN_TYPE: "pr",
+          ISSUE_NUMBER: "802",
+          PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+          FAKE_GH_RESPONSES: "[]",
+        },
+        work,
+      );
+
+      expect(response.result.isError).toBe(true);
+      expect(response.result.content[0].text).toContain("no branch to push");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The other half: the routes that must keep working. An `issue` run starts on the
+   * base branch with no branch of its own, `commit_and_push` names one at the first
+   * commit, and `create_pr` then reads that same branch back out of HEAD. Verifying
+   * the branch with `show-ref` is new, so this is what says it did not break the
+   * ordinary path.
+   */
+  test("an issue run still creates its branch and opens a pull request from it", async () => {
+    const { root, work } = makeRemoteBranchFixture();
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-issue-branch-"));
+    const log = join(dir, "gh.log");
+    try {
+      git(work, "config", "user.name", "Atomaton Test");
+      git(work, "config", "user.email", "atomaton@example.com");
+      // The runner checks out the base branch when there is nothing to resume.
+      git(work, "checkout", "-B", "main");
+      git(work, "branch", "-D", "atomaton/issue-1");
+      writeFileSync(join(work, "work.txt"), "the work\n");
+
+      const env = {
+        ATOMATON_RUN_TYPE: "issue",
+        ISSUE_NUMBER: "1",
+        BRANCH: "",
+        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH ?? ""}`,
+        FAKE_GH_LOG: log,
+        FAKE_GH_RESPONSES: JSON.stringify([
+          { match: ["matching-refs"], stdout: "[]" },
+          { match: ["issue", "view", "1"], stdout: "" },
+          { match: ["pr", "list"], stdout: "[]" },
+          { match: ["pr", "create"], stdout: "https://github.com/owner/repo/pull/123" },
+          { match: ["workflow", "run"], stdout: "" },
+          { match: ["api", "issues/123"], stdout: JSON.stringify({ body: "", login: "someone", type: "User" }) },
+          { match: ["issue", "comment"], stdout: "" },
+          { match: ["pr", "comment"], stdout: "" },
+        ]),
+      };
+
+      const pushed = await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0",
+          id: 8,
+          method: "tools/call",
+          params: { name: "commit_and_push", arguments: { message: "do the work" } },
+        },
+        env,
+        work,
+      );
+      expect(pushed.result.isError, pushed.result.content?.[0]?.text).toBeFalsy();
+      expect(JSON.parse(pushed.result.content[0].text)).toMatchObject({ committed: true, pushed: true });
+      expect(git(work, "branch", "--show-current")).toBe("atomaton/issue-1");
+
+      const opened = await sendRequest(
+        "github.ts",
+        {
+          jsonrpc: "2.0",
+          id: 9,
+          method: "tools/call",
+          params: { name: "create_pr", arguments: { title: "Test PR" } },
+        },
+        env,
+        work,
+      );
+      expect(opened.result.isError, opened.result.content?.[0]?.text).toBeFalsy();
+      expect(JSON.parse(opened.result.content[0].text).number).toBe(123);
+      // `gh pr create` was handed the branch the commit created, not HEAD or a
+      // detached-HEAD description.
+      const created = readFileSync(log, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line) as string[])
+        .find((argv) => argv.includes("pr") && argv.includes("create"));
+      expect(created).toContain("atomaton/issue-1");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("sync_branch reports divergence without rewriting local history", async () => {
     const { root, seed, work } = makeRemoteBranchFixture();
     try {
