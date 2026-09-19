@@ -17,6 +17,7 @@
 import { describe, expect, test } from "bun:test";
 import { unknownToolMessage } from "./mcp-tool.ts";
 import { nothingToCommit } from "./gh.ts";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -283,6 +284,152 @@ describe("mcp-tool schema helpers", () => {
     }) as Record<string, any>;
     expect(labelsSchema.type).toBe("array");
     expect(labelsSchema.items.type).toBe("string");
+  });
+});
+
+/**
+ * `resolveBranch` answers "which branch is this run on", and every route has to
+ * answer with a branch.
+ *
+ * It used to hand back whatever git printed. On a detached HEAD that is git's own
+ * pseudo-entry, `(HEAD detached at pull/802/head)` -- `--format` does not suppress
+ * it -- and `commit_and_push` passed it straight to `git push -u origin <that>`,
+ * which answered `fatal: invalid refspec`. Two runs lost their commits to it (#247,
+ * #803): an agent reading a raw git failure concludes the tool is broken, not that
+ * its checkout has no branch to publish.
+ *
+ * A real repository, because the question is what git says -- the pseudo-entry is
+ * git's output and a faked `git` would only assert this file's own idea of it.
+ */
+describe("branch-placement.ts resolveBranch", () => {
+  function git(cwd: string, ...args: string[]): string {
+    return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+  }
+
+  /** A repository with one commit on a real branch, and git identity configured. */
+  function makeRepo(): { root: string; repo: string } {
+    const root = mkdtempSync(join(tmpdir(), "atomaton-resolve-branch-"));
+    const repo = join(root, "repo");
+    git(root, "init", "--initial-branch=main", repo);
+    git(repo, "config", "user.name", "Atomaton Test");
+    git(repo, "config", "user.email", "atomaton@example.com");
+    writeFileSync(join(repo, "value.txt"), "one\n");
+    git(repo, "add", "value.txt");
+    git(repo, "commit", "-m", "initial");
+    return { root, repo };
+  }
+
+  /** Calls `resolveBranch` in a subprocess whose cwd is `cwd`, and reports which way it went. */
+  function resolveIn(cwd: string, env: Record<string, string>): { ok?: string; error?: string } {
+    const { file, dir } = makeShim(`
+      import { resolveBranch } from "${join(LIB_DIR, "branch-placement.ts")}";
+      try {
+        console.log(JSON.stringify({ ok: resolveBranch() }));
+      } catch (e) {
+        console.log(JSON.stringify({ error: (e as Error).message }));
+      }
+    `);
+    try {
+      return JSON.parse(runWithFakeGh(file, [], { cwd, env }).stdout.trim()) as { ok?: string; error?: string };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  test("BRANCH naming a real branch is the answer", () => {
+    const { root, repo } = makeRepo();
+    try {
+      git(repo, "branch", "atomaton/issue-808");
+      expect(resolveIn(repo, { BRANCH: "atomaton/issue-808" }).ok).toBe("atomaton/issue-808");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("on a real branch, HEAD names it", () => {
+    const { root, repo } = makeRepo();
+    try {
+      expect(resolveIn(repo, { BRANCH: "" }).ok).toBe("main");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The `--points-at` route exists for exactly this: a detached HEAD that genuinely
+   * sits at a branch tip, where the branch is the name the work belongs on. It must
+   * keep answering, or the fix for the pseudo-entry would break the case the route
+   * was written for. (`main` is deleted here so that only one branch points at the
+   * commit -- with several, which one answers is git's listing order, and the route
+   * is a fallback rather than a place to resolve that.)
+   */
+  test("a detached HEAD at a branch tip still answers with that branch", () => {
+    const { root, repo } = makeRepo();
+    try {
+      git(repo, "branch", "atomaton/issue-808");
+      git(repo, "checkout", "--detach", "HEAD");
+      git(repo, "branch", "-D", "main");
+      // The pseudo-entry is printed here too, and is what must be skipped.
+      const listing = git(repo, "branch", "--format=%(refname:short)", "--points-at=HEAD").split("\n");
+      expect(listing[0]).toStartWith("(");
+      expect(listing).toContain("atomaton/issue-808");
+      expect(resolveIn(repo, { BRANCH: "" }).ok).toBe("atomaton/issue-808");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The reported failure, reproduced: a checkout detached at a fetched pull-request
+   * head, with no local branch pointing at it -- what a `pr` run has. `git branch
+   * --points-at HEAD` prints `(HEAD detached at pull/802/head)` and nothing else,
+   * and that description used to be returned as though it were a branch name.
+   */
+  test("a detached-HEAD description is never returned, and the refusal names the state", () => {
+    const { root, repo } = makeRepo();
+    try {
+      git(repo, "update-ref", "refs/remotes/pull/802/head", git(repo, "rev-parse", "HEAD"));
+      git(repo, "checkout", "--detach", "refs/remotes/pull/802/head");
+      // No local branch at this commit, so the pseudo-entry is all git prints.
+      git(repo, "branch", "-D", "main");
+      expect(git(repo, "branch", "--format=%(refname:short)", "--points-at=HEAD")).toBe(
+        "(HEAD detached at pull/802/head)",
+      );
+
+      const r = resolveIn(repo, { BRANCH: "HEAD" });
+      expect(r.ok, "the pseudo-entry was returned as a branch name").toBeUndefined();
+      // What the agent needs to know: this run has no branch to push. Not a refspec
+      // error, which reads as the tool being broken.
+      expect(r.error).toContain("detached checkout with no local branch");
+      expect(r.error).toContain("no branch to push");
+      expect(r.error).not.toContain("refspec");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /** `BRANCH` is set by the runner, so a stale or wrong value must not be trusted either. */
+  test("a BRANCH value that is not a local branch falls through to git", () => {
+    const { root, repo } = makeRepo();
+    try {
+      expect(resolveIn(repo, { BRANCH: "atomaton/issue-808" }).ok, "a branch that does not exist").toBe("main");
+      expect(resolveIn(repo, { BRANCH: "(HEAD detached at pull/802/head)" }).ok).toBe("main");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("no branch at all, and no BRANCH: the refusal rather than an empty string", () => {
+    const { root, repo } = makeRepo();
+    try {
+      git(repo, "checkout", "--detach", "HEAD");
+      git(repo, "branch", "-D", "main");
+      const r = resolveIn(repo, { BRANCH: "" });
+      expect(r.ok).toBeUndefined();
+      expect(r.error).toContain("no branch to push");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
