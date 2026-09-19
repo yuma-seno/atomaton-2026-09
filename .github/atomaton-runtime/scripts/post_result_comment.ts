@@ -49,6 +49,7 @@ function stringTag(key, valuePattern) {
   return makeTag(key, valuePattern, (raw) => raw, (value) => value);
 }
 var STOP_TAG = stringTag("stop", "requested");
+var ENDED_TAG = stringTag("ended", "stopped|limit|done");
 var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
@@ -240,7 +241,8 @@ function lastAgentText(sessionPath, from) {
 function buildCommentBody(args) {
   const lines = [
     AGENT_TAG.write(args.agent),
-    CHANGED_TAG.write(args.changed === true ? "yes" : "no")
+    CHANGED_TAG.write(args.changed === true ? "yes" : "no"),
+    ENDED_TAG.write(args.stopRequested === "true" ? "stopped" : args.limitReached === "true" ? "limit" : "done")
   ];
   if (args.salvaged === true) {
     lines.push("> [!WARNING]", "> This run ended before it wrote a report. Below is the last thing it said,", "> from the middle of the work \u2014 not a conclusion, and not a summary of what it found.", "");

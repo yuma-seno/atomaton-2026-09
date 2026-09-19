@@ -20,6 +20,23 @@ function run(cmd) {
 function gh(...args) {
   return run(["gh", ...args]);
 }
+function ghRead(...args) {
+  let result = gh(...args);
+  for (const delay of [2000, 6000]) {
+    if (result.code === 0 || !looksTransient(result))
+      return result;
+    console.error(`::warning::gh ${args.slice(0, 2).join(" ")} failed transiently, retrying: ${result.stderr || result.stdout}`);
+    Bun.sleepSync(delay);
+    result = gh(...args);
+  }
+  return result;
+}
+function looksTransient(result) {
+  const text = `${result.stderr} ${result.stdout}`;
+  if (/HTTP (429|5[0-9][0-9])(?![0-9])/.test(text))
+    return true;
+  return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
+}
 
 // src/lib/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
@@ -48,6 +65,7 @@ function stringTag(key, valuePattern) {
   return makeTag(key, valuePattern, (raw) => raw, (value) => value);
 }
 var STOP_TAG = stringTag("stop", "requested");
+var ENDED_TAG = stringTag("ended", "stopped|limit|done");
 var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
@@ -59,6 +77,57 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
+
+// src/domain/work-tree.ts
+var MAX_DEPTH = 10;
+function subtree(nodes, root) {
+  const byParent = new Map;
+  const byNumber = new Map;
+  for (const node of nodes) {
+    byNumber.set(node.number, node);
+    if (node.parent === undefined)
+      continue;
+    const siblings = byParent.get(node.parent) ?? [];
+    siblings.push(node);
+    byParent.set(node.parent, siblings);
+  }
+  const start = byNumber.get(root);
+  if (!start)
+    return [];
+  const found = [start];
+  const seen = new Set([root]);
+  let frontier = [root];
+  for (let depth = 0;depth < MAX_DEPTH && frontier.length > 0; depth += 1) {
+    const next = [];
+    for (const parent of frontier) {
+      for (const child of byParent.get(parent) ?? []) {
+        if (seen.has(child.number))
+          continue;
+        seen.add(child.number);
+        found.push(child);
+        next.push(child.number);
+      }
+    }
+    frontier = next;
+  }
+  return found;
+}
+function nodesToStop(nodes) {
+  return nodes.filter((node) => node.running);
+}
+function descendants(nodes, root) {
+  return nodes.filter((node) => node.number !== root);
+}
+function stopReachedNotice(root) {
+  return [
+    `Atomaton: a stop on #${root} reached this work, so the run here has been asked to stop.`,
+    "",
+    "It stops after its current step, so it may take a minute, and it will report here when it has.",
+    "",
+    `To pick the work back up, comment \`/resume\` on #${root} \u2014 that restarts everything this stop held, rather than this piece alone.`
+  ].join(`
+`);
+}
 
 // src/lib/config.ts
 import { readFileSync } from "fs";
@@ -110,18 +179,126 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-// src/lib/running-children.ts
-function runningChildren(repo, parent) {
-  const label = getLabel("in_progress");
-  const { code, stdout } = gh("issue", "list", "--repo", repo, "--state", "open", "--limit", "200", "--search", `atomaton:parent=${parent} in:body`, "--label", label, "--json", "number,body");
-  if (code !== 0)
-    return [];
+// src/lib/work-tree.ts
+function labelNames(labels) {
+  return (labels ?? []).map((l) => typeof l === "string" ? l : l.name ?? "");
+}
+function parseListed(stdout) {
   try {
-    const issues = JSON.parse(stdout || "[]");
-    return issues.filter((i) => PARENT_TAG.read(i.body ?? "") === parent).map((i) => i.number);
+    return JSON.parse(stdout || "[]");
   } catch {
     return [];
   }
+}
+function readRoot(repo, number) {
+  const { code, stdout, stderr } = ghRead("api", `repos/${repo}/issues/${number}`);
+  if (code !== 0) {
+    return { problem: `could not read #${number}: ${(stderr || stdout).trim().split(`
+`)[0] ?? ""}` };
+  }
+  let raw;
+  try {
+    raw = JSON.parse(stdout);
+  } catch {
+    return { problem: `the response for #${number} was not JSON` };
+  }
+  const isPr = raw.pull_request !== undefined;
+  const merged = Boolean(raw.pull_request?.merged_at);
+  const state = merged ? "merged" : raw.state === "open" ? "open" : "closed";
+  if (raw.state !== "open" && raw.state !== "closed") {
+    return { problem: `#${number} reported an unrecognised state ${JSON.stringify(raw.state ?? null)}` };
+  }
+  return {
+    node: {
+      number,
+      kind: isPr ? "pull-request" : "issue",
+      state,
+      parent: PARENT_TAG.read(raw.body ?? "") ?? PARENT_ISSUE_TAG.read(raw.body ?? ""),
+      running: labelNames(raw.labels).includes(getLabel("in_progress"))
+    }
+  };
+}
+function readChildren(repo, parent) {
+  const label = getLabel("in_progress");
+  const nodes = [];
+  const problems = [];
+  const issues = ghRead("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_TAG.write(parent)} in:body`, "--json", "number,body,state,labels");
+  if (issues.code !== 0)
+    problems.push(`could not list the sub-issues of #${parent}`);
+  for (const found of parseListed(issues.stdout)) {
+    if (PARENT_TAG.read(found.body ?? "") !== parent)
+      continue;
+    nodes.push({
+      number: found.number,
+      kind: "issue",
+      state: found.state === "OPEN" ? "open" : "closed",
+      parent,
+      running: labelNames(found.labels).includes(label)
+    });
+  }
+  const prs = ghRead("pr", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_ISSUE_TAG.write(parent)} in:body`, "--json", "number,body,state,labels");
+  if (prs.code !== 0)
+    problems.push(`could not list the pull requests for #${parent}`);
+  for (const found of parseListed(prs.stdout)) {
+    if (PARENT_ISSUE_TAG.read(found.body ?? "") !== parent)
+      continue;
+    nodes.push({
+      number: found.number,
+      kind: "pull-request",
+      state: found.state === "OPEN" ? "open" : found.state === "MERGED" ? "merged" : "closed",
+      parent,
+      running: labelNames(found.labels).includes(label)
+    });
+  }
+  return { nodes, problems };
+}
+function readWorkTree(repo, root) {
+  const { node, problem } = readRoot(repo, root);
+  if (!node)
+    return { nodes: [], problems: [problem ?? `could not read #${root}`] };
+  const nodes = [node];
+  const problems = [];
+  const seen = new Set([root]);
+  let frontier = [root];
+  for (let depth = 0;depth < MAX_DEPTH && frontier.length > 0; depth += 1) {
+    const next = [];
+    for (const parent of frontier) {
+      const found = readChildren(repo, parent);
+      problems.push(...found.problems);
+      for (const child of found.nodes) {
+        if (seen.has(child.number))
+          continue;
+        seen.add(child.number);
+        nodes.push(child);
+        if (child.kind === "issue")
+          next.push(child.number);
+      }
+    }
+    frontier = next;
+  }
+  return { nodes, problems };
+}
+function commentOn(repo, number, body) {
+  return gh("issue", "comment", String(number), "--repo", repo, "--body", body).code === 0;
+}
+function requestStopAcross(repo, root, rootBody) {
+  const { nodes, problems } = readWorkTree(repo, root);
+  const all = subtree(nodes, root);
+  const stopped = [];
+  if (!commentOn(repo, root, rootBody)) {
+    problems.push(`could not post the stop request on #${root}`);
+  } else if (all.find((node) => node.number === root)?.running) {
+    stopped.push(root);
+  }
+  for (const node of nodesToStop(descendants(all, root))) {
+    const body = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopReachedNotice(root)].join(`
+`);
+    if (commentOn(repo, node.number, body))
+      stopped.push(node.number);
+    else
+      problems.push(`could not post the stop request on #${node.number}`);
+  }
+  return { stopped, problems };
 }
 
 // src/scripts/lib/script-ref.ts
@@ -133,7 +310,7 @@ function defineScript(importMetaUrl) {
 
 // src/scripts/request_stop.ts
 var ref = defineScript(import.meta.url);
-function stopRequestedNotice(commenter, deleted, children) {
+function stopRequestedNotice(commenter, deleted, alsoReached) {
   const whose = commenter ? `${commenter}'s` : "The";
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
@@ -144,8 +321,8 @@ function stopRequestedNotice(commenter, deleted, children) {
     "",
     "The run will stop after its current step, so it may take a minute, and it will report here when it has."
   ];
-  if (children.length > 0) {
-    lines.push("", `This issue also has work running on ${children.map((n) => `#${n}`).join(", ")}. ` + "A stop here does not reach those \u2014 comment `/stop` on each one you want stopped.");
+  if (alsoReached.length > 0) {
+    lines.push("", `It also reached the work running on ${alsoReached.map((n) => `#${n}`).join(", ")}, ` + "which is under this issue. `/resume` here brings all of it back.");
   }
   return lines.join(`
 `);
@@ -170,13 +347,16 @@ function main() {
   if (!deleted) {
     console.error(`Warning: failed to delete comment #${values["comment-id"]} on #${number}: ${delErr || delOut}`);
   }
-  const children = runningChildren(repo, Number(number));
-  const { code, stdout, stderr } = gh("issue", "comment", number, "--repo", repo, "--body", stopRequestedNotice(values.commenter ?? "", deleted, children));
-  if (code !== 0) {
-    console.error(`Could not post the stop request on #${number}: ${stderr || stdout}`);
+  const root = Number(number);
+  const { nodes } = readWorkTree(repo, root);
+  const under = nodesToStop(descendants(subtree(nodes, root), root)).map((node) => node.number);
+  const result = requestStopAcross(repo, root, stopRequestedNotice(values.commenter ?? "", deleted, under));
+  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
+  for (const problem of result.problems)
+    console.error(`::warning::${problem}`);
+  if (rootFailed)
     process.exit(1);
-  }
-  console.error(`Stop requested on #${number}${children.length ? ` (children running: ${children.join(", ")})` : ""}`);
+  console.error(`Stop requested across #${root}: ${result.stopped.length ? result.stopped.map((n) => `#${n}`).join(", ") : "no run was holding anything"}`);
 }
 if (import.meta.main)
   main();
