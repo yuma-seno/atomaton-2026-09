@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.143",
+  "version": "v0.1.144",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -33,6 +33,7 @@
     ".github/atomaton-runtime/scripts/resolve_issue_branch.ts",
     ".github/atomaton-runtime/scripts/resolve_notify.ts",
     ".github/atomaton-runtime/scripts/resolve_orchestrator_parent.ts",
+    ".github/atomaton-runtime/scripts/resolve_pr_branch.ts",
     ".github/atomaton-runtime/scripts/resolve_resume_agent.ts",
     ".github/atomaton-runtime/scripts/resolve_runner.ts",
     ".github/atomaton-runtime/scripts/restore_agent_session.ts",

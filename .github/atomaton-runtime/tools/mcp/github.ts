@@ -18776,22 +18776,34 @@ function branchOfIssue(issue) {
 function isIssueBranch(name) {
   return name.startsWith(BRANCH_PREFIX);
 }
+var NO_BRANCH_MESSAGE = "This run is on a detached checkout with no local branch, so there is no branch to push: " + "commit_and_push and create_pr cannot publish this run's work. Report the work on the issue instead.";
+function isLocalBranch(name) {
+  if (!name || name === "HEAD" || name.startsWith("("))
+    return false;
+  return gitRun("show-ref", "--verify", "--quiet", `refs/heads/${name}`).code === 0;
+}
 function resolveBranch() {
   const fromEnv = (process.env.BRANCH ?? "").trim();
-  if (fromEnv && fromEnv !== "HEAD")
+  if (isLocalBranch(fromEnv))
     return fromEnv;
   {
     const { code, stdout } = gitRun("rev-parse", "--abbrev-ref", "HEAD");
-    if (code === 0 && stdout && stdout !== "HEAD")
-      return stdout;
+    const name = code === 0 ? stdout.trim() : "";
+    if (isLocalBranch(name))
+      return name;
   }
   {
     const { code, stdout } = gitRun("branch", "--format=%(refname:short)", "--points-at=HEAD");
-    if (code === 0 && stdout)
-      return stdout.split(`
-`)[0];
+    if (code === 0) {
+      for (const line of stdout.split(`
+`)) {
+        const name = line.trim();
+        if (isLocalBranch(name))
+          return name;
+      }
+    }
   }
-  throw new Error("Cannot determine branch name; set BRANCH env");
+  throw new Error(NO_BRANCH_MESSAGE);
 }
 function stackedBaseFor(repo, issue) {
   const found = parentIssueOf(repo, issue);
