@@ -95,6 +95,13 @@ which is what makes an `on_demand` rollback useful.
 Deployments run one at a time, in declared order, and the first failure stops the
 rest. `$ATOMATON_DEPLOY_TARGET` holds the entry's name inside its commands.
 
+**A branch named in `branches` must require a pull request**, through a ruleset
+covering it. The run is refused otherwise — a branch anyone can push to is a
+deployment anyone can run, with its credentials, on a commit nobody read. The
+shipped ruleset covers the default branch and nothing else, so writing
+`branches: [develop]` means adding a ruleset for `develop` as well; that is a
+repository setting, not a file, so say so rather than trying to write it.
+
 ## Credentials
 
 Never write a credential into `config.yaml` or into a command. Both are committed

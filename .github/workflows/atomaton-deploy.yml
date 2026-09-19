@@ -42,6 +42,7 @@ jobs:
       contents: read
     outputs:
       jobs: ${{ steps.plan.outputs.jobs }}
+      tags_before: ${{ steps.plan.outputs.tags_before }}
     steps:
       - name: Checkout the default branch, which decides what may be deployed
         uses: actions/checkout@v4
@@ -60,6 +61,8 @@ jobs:
           ATOMATON_DEPLOY_TRIGGER: ${{ inputs.trigger }}
           ATOMATON_DEPLOY_TARGET_INPUT: ${{ inputs.target }}
           ATOMATON_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          ATOMATON_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           PLANNER="${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts"
           if [ ! -f "$PLANNER" ]; then
@@ -67,7 +70,7 @@ jobs:
             echo "jobs=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts" --ref "${ATOMATON_DEPLOY_REF}" --default-branch "${ATOMATON_DEFAULT_BRANCH}" --event "${ATOMATON_DEPLOY_EVENT}" --trigger "${ATOMATON_DEPLOY_TRIGGER}" --target "${ATOMATON_DEPLOY_TARGET_INPUT}"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts" --ref "${ATOMATON_DEPLOY_REF}" --default-branch "${ATOMATON_DEFAULT_BRANCH}" --event "${ATOMATON_DEPLOY_EVENT}" --trigger "${ATOMATON_DEPLOY_TRIGGER}" --target "${ATOMATON_DEPLOY_TARGET_INPUT}" --repo "${ATOMATON_REPO}"
   deploy:
     name: deploy (${{ matrix.name }})
     needs:
@@ -140,3 +143,30 @@ jobs:
             fi
             echo "::endgroup::"
           done
+  dispatch-new-tags:
+    needs:
+      - plan-deploy
+      - deploy
+    if: ${{ needs.plan-deploy.outputs.tags_before != '' && needs.deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout the default branch, for the script
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Setup Bun
+        with:
+          bun-version: latest
+        uses: oven-sh/setup-bun@v2
+      - name: Deploy any tag these deployments created
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATOMATON_REPO: ${{ github.repository }}
+          ATOMATON_TAGS_BEFORE: ${{ needs.plan-deploy.outputs.tags_before }}
+        run: |
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_new_tags.ts" --repo "${ATOMATON_REPO}"

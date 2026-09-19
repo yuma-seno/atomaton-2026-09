@@ -85,7 +85,7 @@ function gh(...args) {
 
 // src/lib/branch-rules.ts
 var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
-function readRequiredChecks(repo, baseRef) {
+function readBranchRules(repo, baseRef) {
   if (!baseRef)
     return { known: false, why: "no base branch was given" };
   const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
@@ -95,6 +95,7 @@ function readRequiredChecks(repo, baseRef) {
         known: true,
         enforceable: false,
         contexts: [],
+        pullRequestRequired: false,
         why: "branch rules are not available on this repository (they are a paid feature on a " + "private one), so GitHub cannot require a status check or refuse a merge here"
       };
     }
@@ -105,7 +106,8 @@ function readRequiredChecks(repo, baseRef) {
     return {
       known: true,
       enforceable: true,
-      contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context)
+      contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context),
+      pullRequestRequired: rules.some((rule) => rule.type === "pull_request")
     };
   } catch {
     return { known: false, why: `the branch rules for ${baseRef} were not valid JSON` };
@@ -283,7 +285,7 @@ function main() {
     log("could not read the pull request's head SHA");
     process.exit(1);
   }
-  const required = readRequiredChecks(repo, baseRef);
+  const required = readBranchRules(repo, baseRef);
   if (!required.known) {
     log(`cannot validate: ${required.why}`);
     process.exit(1);

@@ -2,6 +2,7 @@
 // @bun
 
 // src/scripts/plan_deploy.ts
+import { appendFileSync as appendFileSync2 } from "fs";
 import { parseArgs } from "util";
 
 // src/domain/declared-secrets.ts
@@ -287,6 +288,14 @@ function mergeJobsFor(jobs, branch, defaultBranch) {
     return [];
   return jobs.filter((job) => job.trigger === "merge" && (job.refs.length === 0 ? branch === defaultBranch : job.refs.some((pattern) => refMatches(pattern, branch))));
 }
+function tagJobsFor(jobs, tag) {
+  if (!tag)
+    return [];
+  return jobs.filter((job) => job.trigger === "tag" && job.refs.some((pattern) => refMatches(pattern, tag)));
+}
+function mayDispatchNewTags(request) {
+  return !request.ref.startsWith("refs/tags/") && request.trigger !== "tag";
+}
 function selectDeployJobs(jobs, request) {
   if (request.target) {
     const named = jobs.find((job) => job.name === request.target);
@@ -295,12 +304,78 @@ function selectDeployJobs(jobs, request) {
   if (request.event === "push") {
     const tag = tagOf(request.ref);
     if (tag)
-      return jobs.filter((job) => job.trigger === "tag" && job.refs.some((p) => refMatches(p, tag)));
+      return tagJobsFor(jobs, tag);
     return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
   }
   if (request.trigger === "merge")
     return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+  if (request.trigger === "tag")
+    return tagJobsFor(jobs, tagOf(request.ref));
   return jobs.filter((job) => job.trigger === "demand");
+}
+
+// src/lib/gh.ts
+function run(cmd) {
+  const proc = Bun.spawnSync({
+    cmd,
+    stdout: "pipe",
+    stderr: "pipe"
+  });
+  return {
+    code: proc.exitCode ?? 1,
+    stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "",
+    stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
+  };
+}
+function ghCommand() {
+  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
+  return fake ? [process.execPath, fake] : ["gh"];
+}
+function gh(...args) {
+  return run([...ghCommand(), ...args]);
+}
+
+// src/lib/branch-rules.ts
+var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
+function readBranchRules(repo, baseRef) {
+  if (!baseRef)
+    return { known: false, why: "no base branch was given" };
+  const { code, stdout, stderr } = gh("api", `repos/${repo}/rules/branches/${baseRef}`);
+  if (code) {
+    if (FEATURE_UNAVAILABLE.test(`${stderr} ${stdout}`)) {
+      return {
+        known: true,
+        enforceable: false,
+        contexts: [],
+        pullRequestRequired: false,
+        why: "branch rules are not available on this repository (they are a paid feature on a " + "private one), so GitHub cannot require a status check or refuse a merge here"
+      };
+    }
+    return { known: false, why: `the branch rules for ${baseRef} could not be read` };
+  }
+  try {
+    const rules = JSON.parse(stdout || "[]");
+    return {
+      known: true,
+      enforceable: true,
+      contexts: rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => rule.parameters?.required_status_checks ?? []).map((check) => check.context),
+      pullRequestRequired: rules.some((rule) => rule.type === "pull_request")
+    };
+  } catch {
+    return { known: false, why: `the branch rules for ${baseRef} were not valid JSON` };
+  }
+}
+function deploymentRefusal(branch, rules) {
+  if (!rules.known) {
+    return `${rules.why}, so whether a pull request is required on '${branch}' could not be established. ` + "A deployment runs with credentials, so this is refused rather than assumed: fix the read, " + "or move the deployment to a branch whose rules can be seen.";
+  }
+  if (!rules.enforceable) {
+    return `${rules.why}. A deployment runs with credentials and GitHub will not refuse a direct push ` + `to '${branch}' here, so nothing would stand between an unreviewed commit and those ` + "credentials. Deploy from a repository where a ruleset can require a pull request.";
+  }
+  if (!rules.pullRequestRequired) {
+    return `'${branch}' is not covered by a ruleset requiring a pull request, so anyone who can push ` + "to it can run this deployment's commands with its credentials. Add a ruleset that requires " + `a pull request on '${branch}', or deploy from a branch that has one.`;
+  }
+  return "";
 }
 
 // src/lib/config.ts
@@ -357,6 +432,15 @@ function getDeploySection() {
   return loadConfig().deploy;
 }
 
+// src/lib/git-tags.ts
+function readTagNames(repo) {
+  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", ".[].ref");
+  if (code)
+    return null;
+  return stdout.split(`
+`).map((line) => line.trim()).filter((line) => line.startsWith("refs/tags/")).map((line) => line.slice("refs/tags/".length));
+}
+
 // src/scripts/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
 function publishMatrix(jobs, options) {
@@ -389,6 +473,39 @@ function defineScript(importMetaUrl) {
 
 // src/scripts/plan_deploy.ts
 var ref = defineScript(import.meta.url);
+function branchBeingDeployed(request) {
+  if (request.ref.startsWith("refs/tags/"))
+    return "";
+  if (request.event !== "push" && request.trigger !== "merge")
+    return "";
+  return request.ref.startsWith("refs/heads/") ? request.ref.slice("refs/heads/".length) : "";
+}
+function branchRefusal(repo, branch) {
+  if (!branch)
+    return "";
+  if (!repo) {
+    return `no repository was given, so the rules on '${branch}' could not be read.`;
+  }
+  return deploymentRefusal(branch, readBranchRules(repo, branch));
+}
+function publishTagsBefore(repo, jobs, selected, request) {
+  const watching = selected.length > 0 && jobs.some((job) => job.trigger === "tag") && mayDispatchNewTags(request);
+  if (!watching)
+    return;
+  const tags = repo ? readTagNames(repo) : null;
+  if (tags === null) {
+    console.error("::error::The repository's tags could not be read, so a tag these deployments create would " + "never be deployed. `on_tag` is declared, so this is refused rather than skipped.");
+    process.exit(1);
+  }
+  const output = process.env.GITHUB_OUTPUT;
+  const line = `tags_before=${JSON.stringify(tags)}
+`;
+  if (output)
+    appendFileSync2(output, line);
+  else
+    process.stdout.write(line);
+  console.error(`Watching for tags these deployments add; ${tags.length} exist now.`);
+}
 function main() {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -397,7 +514,8 @@ function main() {
       "default-branch": { type: "string" },
       event: { type: "string" },
       trigger: { type: "string" },
-      target: { type: "string" }
+      target: { type: "string" },
+      repo: { type: "string" }
     }
   });
   const request = {
@@ -407,6 +525,7 @@ function main() {
     trigger: (values.trigger ?? "").trim(),
     target: (values.target ?? "").trim()
   };
+  const repo = (values.repo ?? "").trim();
   const { jobs, problems } = resolveDeployJobs(getDeploySection());
   if (problems.length > 0) {
     for (const problem of problems)
@@ -420,7 +539,16 @@ function main() {
     console.error(`::error::No deployment named '${request.target}'. Configured: ${known}.`);
     process.exit(1);
   }
+  if (selected.length > 0) {
+    const refusal = branchRefusal(repo, branchBeingDeployed(request));
+    if (refusal) {
+      console.error(`::error::${refusal}`);
+      console.error(`::error::Refused to deploy: ${selected.map((job) => job.name).join(", ")}.`);
+      process.exit(1);
+    }
+  }
   publishMatrix(selected, { what: "deployment" });
+  publishTagsBefore(repo, jobs, selected, request);
 }
 if (import.meta.main)
   main();
