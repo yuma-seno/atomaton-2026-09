@@ -66,6 +66,25 @@ jobs:
           CLOSED_NUM: ${{ github.event.issue.number }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_if_siblings_done.ts" --repo "${OWNER}/${REPO}" --parent "${PARENT}" --closed-num "${CLOSED_NUM}"
+  stop-run:
+    runs-on: ubuntu-latest
+    if: github.event.sender.type != 'Bot'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        with:
+          bun-version: latest
+        uses: oven-sh/setup-bun@v2
+      - name: Stop the run this close did not stop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          CLOSER: ${{ github.event.sender.login }}
+          CLOSER_TYPE: ${{ github.event.sender.type }}
+        run: |
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/stop_on_close.ts" --number "${NUMBER}" --closer "${CLOSER}" --closer-type "${CLOSER_TYPE}"
   prune:
     runs-on: ubuntu-latest
     steps:
