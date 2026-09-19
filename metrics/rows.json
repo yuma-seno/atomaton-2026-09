@@ -4339,6 +4339,18 @@
     ]
   },
   {
+    "path": "sessions/issue-872/engineer.json",
+    "agent": "engineer",
+    "messages": 2,
+    "calls": 0,
+    "failed": 0,
+    "refused": 0,
+    "skills": [],
+    "tools": {},
+    "acts": {},
+    "runs": []
+  },
+  {
     "path": "sessions/issue-873/engineer.json",
     "agent": "engineer",
     "messages": 118,
