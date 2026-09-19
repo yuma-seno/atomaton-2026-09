@@ -356,8 +356,10 @@ job, and this deliberately does not duplicate it.
 execute that pull request inside the job that decides whether it may merge. This
 one reads the pull request's `.github/atomaton/` as data and runs nothing under
 `--root`. The half that needs live servers — whether an allowlist pattern still
-names a tool that exists, whether a server starts at all — runs on the other end
-of the pipeline instead, in the release. See [Checks, deployment, and the jobs you
+names a tool that exists, whether a server starts at all — belongs on the other end
+of the pipeline instead, in a release. Atomaton runs it in its own; your release
+does not until you put it there, because `deploy.atomaton_runs.targets` ships
+empty. See [Checks, deployment, and the jobs you
 will see](#checks-deployment-and-the-jobs-you-will-see).
 
 **Why this exists.** Atoma resolves every `mcp_servers` name against the tools
@@ -409,9 +411,12 @@ and every branch, and no permission grants it. So a repository whose pipeline li
 in `config.yaml` is one an agent can set up, extend and repair; one whose pipeline
 lives in workflow YAML always needs a person.
 
-**A release starts the servers it would ship, and stops before publishing if they
-disagree with it.** `scripts/release.sh` runs `scripts/check-live-tools.sh` between
-building `dist/` and creating the release. That script starts every tool server
+**Atomaton's release starts the servers it would ship, and stops before publishing
+if they disagree with it.** `scripts/release.sh` runs `scripts/check-live-tools.sh`
+between building `dist/` and creating the release. Both are Atomaton's own and
+neither ships, so this is a description of how Atomaton is released rather than of
+what your pipeline does: `deploy.atomaton_runs.targets` ships empty, and wiring the
+same check into your release is yours to do. That script starts every tool server
 the artifact declares and asks `atoma validate --with-live-tools` what each one
 actually advertises, which is what decides whether every `tool_allowlist` /
 `tool_denylist` pattern still names a tool that exists, whether two `unprefixed`

@@ -55,12 +55,15 @@ servers:
       # that write are the ones left out.
       #
       # A pattern here that matches nothing is reported at startup, in the run's log,
-      # so this list cannot quietly stop applying. It is checked against the live
-      # server before a release ships too -- `atoma validate --with-live-tools` asks
-      # this server what it offers and holds every pattern here to it. That runs
-      # after a merge, against the artifact being published, and not on a pull
-      # request: starting a pull request's declared servers is not something a
-      # check that reads its configuration as data may do.
+      # so this list cannot quietly stop applying.
+      #
+      # Atomaton's own release checks it against the live server as well:
+      # `scripts/release.sh` asks these servers what they offer and holds every
+      # pattern here to it before publishing. That is Atomaton's release, not this
+      # repository's -- `deploy.atomaton_runs.targets` ships empty, so nothing here
+      # runs it for you unless you wire it. Whichever release runs it, it runs after
+      # a merge and never on a pull request: starting a pull request's declared
+      # servers is not something a check that reads its configuration as data may do.
       tool_allowlist:
         - read
         - grep

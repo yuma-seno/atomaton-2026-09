@@ -148,6 +148,46 @@ describe("where it is wired", () => {
   });
 
   /**
+   * Whose release runs it.
+
+   * `scripts/release.sh` and `scripts/check-live-tools.sh` are Atomaton's own and
+   * neither ships. What ships is `deploy.atomaton_runs.targets: []`, so an adopter's
+   * release runs nothing until they wire it. Three places described the check
+   * without saying whose release it was, which read -- in a file that ships, and in
+   * the guide an adopter operates from -- as a promise about theirs.
+   *
+   * The wrong version of this is not a wrong fact anyone can check; it is a guard a
+   * reader believes they have.
+   */
+  test("what ships does not promise the reader a check only Atomaton's release runs", () => {
+    const shipped = body("src/atomaton-runtime/tools/defaults.yaml");
+    expect(
+      shipped.includes("before a release ships"),
+      "a shipped file must not say the reader's release checks this: theirs ships with " +
+        "deploy.atomaton_runs.targets empty and runs nothing",
+    ).toBe(false);
+    expect(shipped).toContain("scripts/release.sh");
+  });
+
+  /** The same claim, in the guide an adopter operates from. */
+  test("the operations guide says whose release starts the servers", () => {
+    const guide = body("docs/operations.md");
+    expect(guide).toContain("Atomaton's release starts the servers it would ship");
+    expect(
+      guide.includes("**A release starts the servers it would ship"),
+      "an unqualified 'a release' reads as the reader's own",
+    ).toBe(false);
+  });
+
+  /**
+   * The fact both claims turn on. If a default ever ships a target, the two
+   * paragraphs above become wrong in the other direction and should be revisited.
+   */
+  test("the shipped config wires no deployment target", () => {
+    expect(body("src/atomaton/config.yaml")).toContain("targets: []");
+  });
+
+  /**
    * And the pull request path stays free of it.
    *
    * This is the constraint the issue names as immovable, and it is the one an
