@@ -71,8 +71,12 @@ var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
 // src/lib/gh.ts
+function ghCommand() {
+  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
+  return fake ? [process.execPath, fake] : ["gh"];
+}
 function ghBytes(...args) {
-  const proc = Bun.spawnSync({ cmd: ["gh", ...args], stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawnSync({ cmd: [...ghCommand(), ...args], stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode ?? 1, bytes: proc.stdout ?? new Uint8Array };
 }
 
