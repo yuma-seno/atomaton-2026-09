@@ -52,7 +52,7 @@ jobs:
         id: runner
         shell: bash
         run: |
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_runner.ts" --field "deploy"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_runner.ts"
   deploy:
     needs:
       - pick-runner

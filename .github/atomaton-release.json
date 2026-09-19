@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.152",
+  "version": "v0.1.153",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -20,7 +20,7 @@
     ".github/atomaton-runtime/scripts/notify_limit_reached.ts",
     ".github/atomaton-runtime/scripts/parse_comment_command.ts",
     ".github/atomaton-runtime/scripts/parse_pr_metadata.ts",
-    ".github/atomaton-runtime/scripts/plan_default_branch_checks.ts",
+    ".github/atomaton-runtime/scripts/plan_checks.ts",
     ".github/atomaton-runtime/scripts/post_result_comment.ts",
     ".github/atomaton-runtime/scripts/prune_atomaton_data.ts",
     ".github/atomaton-runtime/scripts/read_secret_names.ts",
@@ -39,7 +39,6 @@
     ".github/atomaton-runtime/scripts/restore_agent_session.ts",
     ".github/atomaton-runtime/scripts/restore_workspace.ts",
     ".github/atomaton-runtime/scripts/resume_subtree.ts",
-    ".github/atomaton-runtime/scripts/run_checks.ts",
     ".github/atomaton-runtime/scripts/run_deploy.ts",
     ".github/atomaton-runtime/scripts/run_environment_setup.ts",
     ".github/atomaton-runtime/scripts/save_agent_session.ts",
