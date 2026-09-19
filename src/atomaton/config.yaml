@@ -39,6 +39,20 @@ checks:
       - bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/scan_secrets.ts"
     runs_on: ubuntu-latest
 
+  # Checks that need a credential. The commands come from the DEFAULT BRANCH, so a
+  # pull request cannot choose what runs. The pull request arrives as a path to read
+  # at $ATOMATON_PR_TREE: data, never something to execute.
+  #
+  # Each entry becomes its own job and names its own secrets, so a token reaches the
+  # one check that asked for it rather than every check you have.
+  default_branch_runs:
+    jobs: []
+    # jobs:
+    #   - name: cloud-names
+    #     secrets: [AWS_ROLE_ARN]
+    #     commands:
+    #       - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
+
   # your_workflow: ci.yml
 
 

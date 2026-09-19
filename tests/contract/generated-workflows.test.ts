@@ -793,7 +793,7 @@ describe("generated workflows", () => {
 
     // A check that cannot talk to GitHub is the only thing in the system that
     // cannot, and the failure reads as a broken command rather than no token.
-    const runChecks = check.jobs?.[CHECK_JOB_NAME]?.steps?.find((s) => s.name === "Run the configured checks");
+    const runChecks = check.jobs?.["pull-request-checks"]?.steps?.find((s) => s.name === "Run the configured checks");
     expect(runChecks?.env?.GH_TOKEN).toBe("${{ github.token }}");
 
     const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
@@ -1002,7 +1002,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { "runs-on"?: unknown; needs?: unknown }> };
 
     for (const [file, workJob] of [
-      ["atomaton-check", CHECK_JOB_NAME],
+      ["atomaton-check", "pull-request-checks"],
       ["atomaton-deploy", "deploy"],
     ] as const) {
       const workflow = Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument;
