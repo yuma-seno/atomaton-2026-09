@@ -85,7 +85,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { decideValidationOutcome } from "../domain/pr-validation.ts";
 import { gh } from "../lib/gh.ts";
-import { readRequiredChecks } from "../lib/branch-rules.ts";
+import { readBranchRules } from "../lib/branch-rules.ts";
 import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../lib/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -311,7 +311,7 @@ function main(): void {
   // FAILING run as passed, suppress the failure comment, and — because that
   // comment is also the retry tally — leave the retry limit that bounds the
   // engineer/CI loop unable to ever fire.
-  const required = readRequiredChecks(repo, baseRef);
+  const required = readBranchRules(repo, baseRef);
   if (!required.known) {
     log(`cannot validate: ${required.why}`);
     process.exit(1);

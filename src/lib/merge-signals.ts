@@ -13,7 +13,7 @@
  * server's tool registry.
  */
 import { gh } from "./gh.ts";
-import { readRequiredChecks } from "./branch-rules.ts";
+import { readBranchRules } from "./branch-rules.ts";
 import { getGovernedPaths, getMergeGates, getMergePolicy } from "./config.ts";
 import { governedPathsIn, type MergeSignals } from "../domain/merge-readiness.ts";
 import { pathPatternProblem } from "../domain/path-patterns.ts";
@@ -103,7 +103,7 @@ interface ChangedFilesRead {
 /**
  * What this pull request changes, and what happened to each file.
  *
- * Fails CLOSED, unlike `readRequiredChecks` in `branch-rules.ts`, and the two differ because of
+ * Fails CLOSED, unlike `readBranchRules` in `branch-rules.ts`, and the two differ because of
  * what each failure costs. An unreadable rule list only makes a refusal less
  * specific; an unreadable file list, treated as empty, would let an agent merge
  * exactly the change the governance gate and every declared merge gate exist to
@@ -252,7 +252,7 @@ export function gatherMergeSignals(
 
   // One read, two gates. A failure to read it is a problem rather than an empty
   // list, so both gates block instead of quietly finding nothing.
-  const required = readRequiredChecks(repo, baseRefName);
+  const required = readBranchRules(repo, baseRefName);
   if (!required.known) log(`WARN ${required.why}; blockers will be less specific`);
 
   const changed = readChangedFiles(repo, num);

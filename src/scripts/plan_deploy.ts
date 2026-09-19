@@ -38,12 +38,24 @@
  * person already approved; the tree being deployed supplies only what the commands
  * operate on.
  *
+ * ## And which branches may start one at all
+ *
+ * The declaration coming from the default branch says what a deployment DOES. It
+ * says nothing about whether the commit being deployed was ever reviewed, and
+ * `branches: [develop]` is enough to answer that with "no": anyone who can push to
+ * `develop` then runs those commands, with those credentials.
+ *
+ * So a merge deployment's branch has to be covered by a ruleset requiring a pull
+ * request, and the run is refused when it is not — or when the rules could not be
+ * read. See `deploymentRefusal`.
+ *
  * Usage:
  *   plan_deploy.ts --ref refs/tags/v1.0.0 --default-branch main --event push
  *                  [--trigger merge] [--target production]
  */
 import { parseArgs } from "node:util";
 import { resolveDeployJobs, selectDeployJobs } from "../domain/deploy-jobs.ts";
+import { deploymentRefusal, readBranchRules } from "../lib/branch-rules.ts";
 import { getDeploySection } from "../lib/config.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
@@ -59,9 +71,38 @@ export interface PlanDeployArgs {
   trigger?: string;
   /** A single entry to deploy, by name. */
   target?: string;
+  /** `owner/name`, for reading the branch's rules. */
+  repo: string;
 }
 
 export const ref = defineScript<PlanDeployArgs>(import.meta.url);
+
+/**
+ * The branch whose protection decides whether this run may deploy, or "" when the
+ * question does not arise.
+ *
+ * A tag is not a branch and has no branch rules to read — GitHub's endpoint answers
+ * for branches only. A tag deployment is reached by pushing a tag, which is its own
+ * unreviewed path and its own problem; refusing every tag deployment for the want of
+ * a branch rule would be answering a question nobody asked.
+ */
+function branchBeingDeployed(request: { ref: string; event: string; trigger: string }): string {
+  if (request.ref.startsWith("refs/tags/")) return "";
+  if (request.event !== "push" && request.trigger !== "merge") return "";
+  return request.ref.startsWith("refs/heads/") ? request.ref.slice("refs/heads/".length) : "";
+}
+
+/** The refusal for `branch`, or "" when nothing stands in the way. */
+function branchRefusal(repo: string, branch: string): string {
+  if (!branch) return "";
+  if (!repo) {
+    // Fails closed, like every other missing input here. The workflow always passes
+    // `--repo`; an older one that did not would otherwise deploy with the check
+    // silently skipped, which is the shape this guard exists to refuse.
+    return `no repository was given, so the rules on '${branch}' could not be read.`;
+  }
+  return deploymentRefusal(branch, readBranchRules(repo, branch));
+}
 
 export function main(): void {
   const { values } = parseArgs({
@@ -72,6 +113,7 @@ export function main(): void {
       event: { type: "string" },
       trigger: { type: "string" },
       target: { type: "string" },
+      repo: { type: "string" },
     },
   });
   const request = {
@@ -81,6 +123,7 @@ export function main(): void {
     trigger: (values.trigger ?? "").trim(),
     target: (values.target ?? "").trim(),
   };
+  const repo = (values.repo ?? "").trim();
 
   const { jobs, problems } = resolveDeployJobs(getDeploySection());
   if (problems.length > 0) {
@@ -94,6 +137,18 @@ export function main(): void {
     const known = jobs.map((job) => job.name).join(", ") || "none are configured";
     console.error(`::error::No deployment named '${request.target}'. Configured: ${known}.`);
     process.exit(1);
+  }
+
+  // Asked only when something would actually deploy, so an ordinary push to an
+  // unprotected feature branch -- which selects nothing -- costs no API call and
+  // produces no refusal about a branch nobody was deploying from.
+  if (selected.length > 0) {
+    const refusal = branchRefusal(repo, branchBeingDeployed(request));
+    if (refusal) {
+      console.error(`::error::${refusal}`);
+      console.error(`::error::Refused to deploy: ${selected.map((job) => job.name).join(", ")}.`);
+      process.exit(1);
+    }
   }
 
   publishMatrix(selected, { what: "deployment" });
