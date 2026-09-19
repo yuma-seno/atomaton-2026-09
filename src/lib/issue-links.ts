@@ -29,27 +29,49 @@ interface GqlPr extends GqlIssue {
 }
 
 interface GqlIssueLinks {
-  parent: GqlIssue | null;
-  subIssues: { nodes: GqlIssue[] };
-  closedByPullRequestsReferences: { nodes: GqlPr[] };
-  timelineItems: { nodes: { source?: GqlPr }[] };
+  __typename: string;
+  parent?: GqlIssue | null;
+  subIssues?: { nodes: GqlIssue[] };
+  closedByPullRequestsReferences?: { nodes: GqlPr[] };
+  timelineItems?: { nodes: { source?: GqlPr }[] };
+  /** A pull request's own link: the issues it says it closes. */
+  closingIssuesReferences?: { nodes: GqlIssue[] };
 }
 
 interface GqlResponse {
-  repository?: { issue?: GqlIssueLinks | null } | null;
+  repository?: { issueOrPullRequest?: GqlIssueLinks | null } | null;
 }
 
+/**
+ * `issueOrPullRequest`, because `issue(number:)` answers only for an issue.
+ *
+ * Given a pull request's number it returns null and a NOT_FOUND error -- measured:
+ * "Could not resolve to an Issue with the number of 826" for a pull request that
+ * exists. Every caller passing one therefore got empty links and a message that read
+ * like GitHub being unwell, when the number was fine and the question was wrong.
+ *
+ * The two kinds are asked different things because they ARE different, not to be
+ * thorough. An issue has a parent and sub-issues; a pull request has neither, and
+ * what it has instead is the issue it closes -- which is its parent in the same
+ * sense (see `domain/work-tree.ts`). A pull request is a leaf.
+ */
 const QUERY = `
 query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
   repository(owner:$owner, name:$name) {
-    issue(number:$number) {
-      parent { number title state }
-      subIssues(first:$limit) { nodes { number title state } }
-      closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
-        nodes { number title state merged body }
+    issueOrPullRequest(number:$number) {
+      __typename
+      ... on Issue {
+        parent { number title state }
+        subIssues(first:$limit) { nodes { number title state } }
+        closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
+          nodes { number title state merged body }
+        }
+        timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
+          nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+        }
       }
-      timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
-        nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+      ... on PullRequest {
+        closingIssuesReferences(first:$limit) { nodes { number title state } }
       }
     }
   }
@@ -78,7 +100,8 @@ export function issueLinks(repo: string, number: number): IssueLinks {
 
   let issue: GqlIssueLinks | null = null;
   try {
-    issue = ghGraphql<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issue ?? null;
+    issue = ghGraphql<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT })
+      .repository?.issueOrPullRequest ?? null;
   } catch (error) {
     const why = (error as Error).message;
     console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
@@ -86,21 +109,33 @@ export function issueLinks(repo: string, number: number): IssueLinks {
   }
   // A null issue is not a failure: the number may simply not exist. Said as
   // itself rather than as empty links.
-  if (!issue) return { children: [], pullRequests: [], unavailable: `issue #${number} was not found` };
+  if (!issue) return { children: [], pullRequests: [], unavailable: `#${number} was not found` };
+
+  // A pull request is a leaf, and the issue it closes is its parent. Nothing else
+  // it could answer is a link in the sense the caller means: its own number is not
+  // one of its pull requests, and it has no children.
+  if (issue.__typename === "PullRequest") {
+    const closes = issue.closingIssuesReferences?.nodes ?? [];
+    return {
+      parent: closes[0] ? normalise(closes[0]) : undefined,
+      children: [],
+      pullRequests: [],
+    };
+  }
 
   // GitHub's own closing links first — where they exist they are authoritative.
   // Then the cross-reference timeline, filtered to pull requests that say they
   // close this issue, which is the only way a sub-issue's stacked pull request
   // appears at all.
-  const declared = issue.closedByPullRequestsReferences.nodes.map(asPr);
-  const referenced = issue.timelineItems.nodes
+  const declared = (issue.closedByPullRequestsReferences?.nodes ?? []).map(asPr);
+  const referenced = (issue.timelineItems?.nodes ?? [])
     .map((node) => node.source)
     .filter((source): source is GqlPr => Boolean(source?.number) && claimsToClose(source?.body ?? "", number))
     .map(asPr);
 
   return {
     parent: issue.parent ? normalise(issue.parent) : undefined,
-    children: issue.subIssues.nodes.map(normalise),
+    children: (issue.subIssues?.nodes ?? []).map(normalise),
     pullRequests: dedupeByNumber(declared, referenced),
   };
 }
