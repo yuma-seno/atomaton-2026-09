@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+
+const NEWLINE = String.fromCharCode(10);
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { toolDefaults } from "../../src/domain/shipped-servers.ts";
@@ -1193,5 +1195,65 @@ describe("generated workflows", () => {
       }
     }
     expect(named, "the workflows name some scripts at all").toBeGreaterThan(0);
+  });
+
+  /**
+   * A person closing an issue an agent is working on has to reach the run.
+   *
+   * #803 was closed by hand while its run held the in-progress label; the run went
+   * on for five more minutes and opened a pull request. The job below is what makes
+   * the gesture mean what it looks like, and its condition is the whole of the
+   * subtlety: an agent closing its own issue is a normal path, so only a person's
+   * close stops anything.
+   */
+  test("a person closing an issue stops the run on it, and an agent closing one does not", () => {
+    type WorkflowDocument = { jobs?: Record<string, { if?: string; steps?: { run?: string }[] }> };
+    const workflow = Bun.YAML.parse(
+      readFileSync("dist/.github/workflows/atomaton-sub-issue-closed.yml", "utf8"),
+    ) as WorkflowDocument;
+
+    const job = workflow.jobs?.["stop-run"];
+    expect(job, "closing an issue must be able to stop the run on it").toBeDefined();
+    expect(job?.if ?? "", "an agent closing its own issue is how it finishes").toContain("sender.type != 'Bot'");
+    expect(job?.steps?.map((s) => s.run ?? "").join(NEWLINE)).toContain("stop_on_close.ts");
+
+    // It depends on nothing: the aggregation half of this workflow is gated on the
+    // issue being a tracked sub-issue, and a run is just as live on one that is not.
+    expect(job).not.toHaveProperty("needs");
+  });
+
+  /**
+   * A slash command on a closed issue does not start an agent -- and the three ways
+   * that guard could fire where it should not are all in its condition.
+   *
+   * Without the parsed-command clause it would answer ordinary comments on every
+   * closed issue in the repository. Without the `/stop` exemption it would take away
+   * the only way to stop a run whose agent closed its own issue. Without the
+   * in-progress clause a person would get two notices for one comment.
+   */
+  test("a command on a closed issue is refused, except the one that stops a run", () => {
+    type Step = { id?: string; if?: string; run?: string; env?: Record<string, string> };
+    type WorkflowDocument = { jobs?: Record<string, { steps?: Step[] }> };
+    const workflow = Bun.YAML.parse(
+      readFileSync("dist/.github/workflows/atomaton-manual-comment.yml", "utf8"),
+    ) as WorkflowDocument;
+    const steps = workflow.jobs?.parse?.steps ?? [];
+
+    const guard = steps.find((s) => s.id === "closed-guard");
+    expect(guard, "a command on a closed issue must be refused").toBeDefined();
+    const condition = guard?.if ?? "";
+    expect(condition, "an ordinary comment on a closed issue is just a comment").toContain(
+      "steps.command.outputs.agent != '' || steps.command.outputs.control != ''",
+    );
+    expect(condition, "/stop is the one command a closed issue still needs").toContain(
+      "steps.command.outputs.control != 'stop'",
+    );
+    expect(condition, "one comment earns one notice").toContain("steps.guard.outputs.blocked != 'true'");
+
+    // The refusal has to reach the dispatch, which is the thing it suppresses -- the
+    // in-progress guard learned the same lesson and is read at the same place.
+    const dispatch = steps.find((s) => s.id === "dispatch");
+    expect(dispatch?.env?.CLOSED ?? "", "the guard must reach the dispatch").toContain("closed-guard");
+    expect(dispatch?.run ?? "").toContain('"$CLOSED" = "true"');
   });
 });

@@ -38,6 +38,9 @@ describe.skipIf(!atomaAvailable)("E2E: real atoma binary + real mcp/atomaton.ts"
       { match: ["issue", "comment"] },
       { match: ["issue", "edit"] },
       { match: ["workflow", "run"] },
+      // 4. dispatchRunner reads the sub-issue's state, and starts nothing on one it
+      //    cannot confirm is open.
+      { match: ["api", "issues"], stdout: JSON.stringify({ state: "open" }) },
     ]);
 
     const dir = mkdtempSync(join(tmpdir(), "atomaton-e2e-"));

@@ -9,6 +9,7 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { ref as dispatchIfSiblingsDoneRef } from "../scripts/dispatch_if_siblings_done.ts";
 import { ref as checkSubIssueClosureRef } from "../scripts/check_sub_issue_closure.ts";
 import { ref as pruneAtomaDataRef } from "../scripts/prune_atomaton_data.ts";
+import { ref as stopOnCloseRef } from "../scripts/stop_on_close.ts";
 
 // FALLBACK for manually closed sub-issues.
 // Primary aggregation happens in atomaton-pr-merged.wac.ts (pull_request_target).
@@ -17,6 +18,11 @@ import { ref as pruneAtomaDataRef } from "../scripts/prune_atomaton_data.ts";
 // Job graph:
 //   check --> aggregate
 //   prune            (independent; every closed issue, not only sub-issues)
+//   stop-run         (independent; a person closing an issue an agent is working on)
+//
+// `stop-run` rides on this event for the same reason `prune` does: closing is the
+// moment the question becomes askable, so the trigger and the condition are one thing.
+// It is not about sub-issues either, and depends on nothing above it.
 
 // Pruning rides on this event rather than on a schedule, because closing an issue is
 // the moment its stored session becomes dead -- so the trigger and the condition are
@@ -35,6 +41,36 @@ const pruneStep = new TypedOutputsStep(
       GITHUB_REPOSITORY: "${{ github.repository }}",
     },
     run: `${scriptCommand(pruneAtomaDataRef)}\n`,
+  },
+  [] as const,
+);
+
+/**
+ * A person closed an issue an agent is working on, so the run is asked to stop.
+ *
+ * Gated on the closer being a person. An agent closing the issue it is working on is
+ * a normal path -- `domain/atomaton-data-pruning.ts` is built around it -- and
+ * stopping that run would cut it off in the middle of finishing. The script checks
+ * the in-progress label and does nothing when no run holds it, so this job is cheap
+ * on the ordinary close.
+ */
+const stopOnCloseStep = new TypedOutputsStep(
+  {
+    name: "Stop the run this close did not stop",
+    shell: "bash",
+    env: {
+      GH_TOKEN: "${{ github.token }}",
+      GITHUB_REPOSITORY: "${{ github.repository }}",
+      NUMBER: githubEvent<IssuesClosedEvent>((e) => e.issue.number),
+      CLOSER: githubEvent<IssuesClosedEvent>((e) => e.sender.login),
+      CLOSER_TYPE: githubEvent<IssuesClosedEvent>((e) => e.sender.type),
+    },
+    run: `${scriptCommandWithArgs(stopOnCloseRef, {
+      number: "\${NUMBER}",
+      closer: "\${CLOSER}",
+      "closer-type": "\${CLOSER_TYPE}",
+    })}
+`,
   },
   [] as const,
 );
@@ -106,6 +142,14 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
     )
     .jobs()
     .concat([
+      new DefinedJob(
+        "stop-run",
+        {
+          "runs-on": "ubuntu-latest",
+          if: `${githubEventRaw<IssuesClosedEvent>((e) => e.sender.type)} != 'Bot'`,
+        },
+        [new ActionsCheckoutV4({}), new SetupBunAction({ name: "Setup Bun" }), stopOnCloseStep],
+      ),
       new DefinedJob("prune", { "runs-on": "ubuntu-latest" }, [
         new ActionsCheckoutV4({}),
         new SetupBunAction({ name: "Setup Bun" }),

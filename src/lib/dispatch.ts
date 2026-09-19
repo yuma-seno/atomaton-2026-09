@@ -21,9 +21,18 @@
  * Binding the two together here is the point of this module: the ops-log entry
  * is written if and only if GitHub accepted the dispatch, and it cannot be
  * forgotten by the next call site added.
+ *
+ * The same argument put the closed-target guard here. #803 was closed by hand while
+ * its sub-issues were finishing, and eighteen seconds later the aggregation gate
+ * dispatched an orchestrator onto it -- which ran for five minutes and opened a pull
+ * request nobody was waiting for. None of the four call sites looked at the state of
+ * the number it was dispatching onto, and a guard that each of them has to remember is
+ * one the fifth will not have. See #827.
  */
-import { dispatchWorkflow } from "./gh.ts";
+import { dispatchWorkflow, gh } from "./gh.ts";
 import { logDispatch } from "./ops-log.ts";
+import { readTargetState } from "./target-state.ts";
+import { dispatchRefusedNotice, mayStartWorkOn, type TargetState } from "../domain/closed-issue.ts";
 
 /** The reusable workflow every agent run enters through. */
 function runnerWorkflow(): string {
@@ -66,11 +75,68 @@ export interface RunnerDispatch {
 }
 
 /**
- * Dispatch the runner. Returns whether GitHub accepted it -- callers that have
- * a fallback (closing an issue directly rather than asking an agent to) branch
- * on this; callers that do not should at least not treat failure as success.
+ * What a dispatch did, as three answers rather than two.
+ *
+ * It used to be a boolean, and `false` already meant two things once this module
+ * started refusing closed targets: GitHub rejected the call, or the target was in no
+ * state to receive one. Only the first is a fault, only the second has a person
+ * already being told, and a caller that cannot tell them apart reports the wrong one.
+ * The same lesson `DispatchGateResult` in `aggregation.ts` was written down for.
  */
-export function dispatchRunner(d: RunnerDispatch): boolean {
+export type DispatchOutcome =
+  /** GitHub accepted it and the ops-log entry is written. */
+  | "dispatched"
+  /** The target is closed, or its state could not be read. Nobody was dispatched, and the escalation is posted. */
+  | "refused-closed"
+  /** GitHub rejected the dispatch. Nothing is running and nothing will retry. */
+  | "failed";
+
+/**
+ * Refuse to start an agent on a target that is not open, and say what will not happen.
+ *
+ * Here rather than at the four call sites, for the reason this module exists: each of
+ * them built its own `gh workflow run` and the copies diverged. A guard that has to be
+ * remembered is one the fifth caller will not have.
+ *
+ * The notice goes on the target itself, because that is where somebody looking for
+ * this work will look, and a closed issue is still readable. `notify` carries whoever
+ * asked for the run -- see `lib/notify.ts`, which settles that question for every path
+ * that starts one.
+ */
+function refuseClosedTarget(d: RunnerDispatch, state: TargetState): "refused-closed" {
+  const log = d.log ?? ((message: string) => console.error(message));
+  const body = dispatchRefusedNotice({
+    agent: d.agent,
+    number: Number(d.number),
+    context: d.context,
+    state,
+    notify: d.notify ?? "",
+  });
+  const { code, stdout, stderr } = gh(
+    "issue", "comment", String(d.number), ...(d.repo ? ["--repo", d.repo] : []), "--body", body,
+  );
+  // A warning rather than a throw: the refusal stands either way, and the caller has
+  // its own way of reporting. What is lost is the person being told, which is worth a
+  // line in the log that says so rather than an exception that hides the refusal.
+  if (code !== 0) {
+    log(`${d.context}: refused to dispatch onto #${d.number} (not open), and could not post the notice: ${stderr || stdout}`);
+  } else {
+    log(`${d.context}: refused to dispatch onto #${d.number} (not open); notice posted`);
+  }
+  return "refused-closed";
+}
+
+/**
+ * Dispatch the runner, unless the target is not open.
+ *
+ * Callers that have a fallback (closing an issue directly rather than asking an agent
+ * to) branch on the outcome; callers that do not should at least not treat anything
+ * but `"dispatched"` as success.
+ */
+export function dispatchRunner(d: RunnerDispatch): DispatchOutcome {
+  const state = readTargetState(d.number, d.repo);
+  if (!mayStartWorkOn(state)) return refuseClosedTarget(d, state);
+
   const args = [
     ...(d.repo ? ["--repo", d.repo] : []),
     "--field", `agent=${d.agent}`,
@@ -81,7 +147,7 @@ export function dispatchRunner(d: RunnerDispatch): boolean {
     // one place and being absent in another.
     "--field", `reload_count=${d.reloadCount ?? 0}`,
   ];
-  if (!dispatchWorkflow(d.context, runnerWorkflow(), args, d.log)) return false;
+  if (!dispatchWorkflow(d.context, runnerWorkflow(), args, d.log)) return "failed";
   logDispatch(d.type, d.agent, { number: Number(d.number) });
-  return true;
+  return "dispatched";
 }

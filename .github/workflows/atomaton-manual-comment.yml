@@ -60,6 +60,20 @@ jobs:
           COMMENTER: ${{ github.event.comment.user.login }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/guard_comment_during_run.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
+      - name: 'Guard: refuse a command on a closed issue or pull request'
+        id: closed-guard
+        if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop' && (steps.command.outputs.agent != '' || steps.command.outputs.control != '') && steps.guard.outputs.blocked != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          COMMENTER: ${{ github.event.comment.user.login }}
+          FROM_COMMAND: ${{ steps.command.outputs.agent }}
+          FROM_CONTROL: ${{ steps.command.outputs.control }}
+        run: |
+          COMMAND="${FROM_COMMAND:-${FROM_CONTROL}}"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/guard_command_on_closed.ts" --number "${NUMBER}" --commenter "${COMMENTER}" --command "/${COMMAND}"
       - name: Resolve target context
         id: target
         shell: bash
@@ -101,8 +115,9 @@ jobs:
           FROM_COMMAND: ${{ steps.command.outputs.agent }}
           FROM_RESUME: ${{ steps.resume.outputs.agent }}
           BLOCKED: ${{ steps.guard.outputs.blocked }}
+          CLOSED: ${{ steps.closed-guard.outputs.blocked }}
         run: |
-          if [ "$BLOCKED" = "true" ]; then
+          if [ "$BLOCKED" = "true" ] || [ "$CLOSED" = "true" ]; then
             AGENT=""
           else
             AGENT="${FROM_COMMAND:-${FROM_RESUME}}"

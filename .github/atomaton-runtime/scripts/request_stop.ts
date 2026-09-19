@@ -21,6 +21,45 @@ function gh(...args) {
   return run(["gh", ...args]);
 }
 
+// src/lib/agent-name.ts
+var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
+var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
+
+// src/lib/tags.ts
+var TAG_PREFIX = `atomaton:`;
+var EVERY_TAG_PATTERN = [];
+function makeTag(key, valuePattern, parse, render) {
+  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
+  EVERY_TAG_PATTERN.push(pattern);
+  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
+  return {
+    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
+    read: (text) => {
+      const m = re.exec(text);
+      return m ? parse(m[1]) : undefined;
+    },
+    has: (text) => re.test(text)
+  };
+}
+function numericTag(key) {
+  return makeTag(key, "\\d+", Number, String);
+}
+function stringTag(key, valuePattern) {
+  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
+}
+var STOP_TAG = stringTag("stop", "requested");
+var PARENT_TAG = numericTag("parent");
+var PARENT_ISSUE_TAG = numericTag("parent-issue");
+var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
+var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
+var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
+var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
+var CHANGED_TAG = stringTag("changed", "yes|no");
+var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
+var AGGREGATED_TAG = numericTag("aggregated");
+var SUB_RESULT_TAG = numericTag("sub-result");
+var CI_RETRY_TAG = numericTag("ci-retry");
+
 // src/lib/config.ts
 import { readFileSync } from "fs";
 
@@ -71,54 +110,7 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-// src/lib/agent-name.ts
-var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
-var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
-
-// src/lib/tags.ts
-var TAG_PREFIX = `atomaton:`;
-var EVERY_TAG_PATTERN = [];
-function makeTag(key, valuePattern, parse, render) {
-  const pattern = `<!--\\s*${TAG_PREFIX}${key}=(?:${valuePattern})\\s*-->`;
-  EVERY_TAG_PATTERN.push(pattern);
-  const re = new RegExp(`<!--\\s*${TAG_PREFIX}${key}=(${valuePattern})\\s*-->`);
-  return {
-    write: (value) => `<!-- ${TAG_PREFIX}${key}=${render(value)} -->`,
-    read: (text) => {
-      const m = re.exec(text);
-      return m ? parse(m[1]) : undefined;
-    },
-    has: (text) => re.test(text)
-  };
-}
-function numericTag(key) {
-  return makeTag(key, "\\d+", Number, String);
-}
-function stringTag(key, valuePattern) {
-  return makeTag(key, valuePattern, (raw) => raw, (value) => value);
-}
-var STOP_TAG = stringTag("stop", "requested");
-var PARENT_TAG = numericTag("parent");
-var PARENT_ISSUE_TAG = numericTag("parent-issue");
-var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
-var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
-var DISPATCH_TAG = stringTag("dispatch", AGENT_NAME_PATTERN);
-var AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
-var CHANGED_TAG = stringTag("changed", "yes|no");
-var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
-var AGGREGATED_TAG = numericTag("aggregated");
-var SUB_RESULT_TAG = numericTag("sub-result");
-var CI_RETRY_TAG = numericTag("ci-retry");
-
-// src/scripts/lib/script-ref.ts
-import { basename } from "path";
-import { fileURLToPath } from "url";
-function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
-}
-
-// src/scripts/request_stop.ts
-var ref = defineScript(import.meta.url);
+// src/lib/running-children.ts
 function runningChildren(repo, parent) {
   const label = getLabel("in_progress");
   const { code, stdout } = gh("issue", "list", "--repo", repo, "--state", "open", "--limit", "200", "--search", `atomaton:parent=${parent} in:body`, "--label", label, "--json", "number,body");
@@ -131,6 +123,16 @@ function runningChildren(repo, parent) {
     return [];
   }
 }
+
+// src/scripts/lib/script-ref.ts
+import { basename } from "path";
+import { fileURLToPath } from "url";
+function defineScript(importMetaUrl) {
+  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
+}
+
+// src/scripts/request_stop.ts
+var ref = defineScript(import.meta.url);
 function stopRequestedNotice(commenter, deleted, children) {
   const mention = commenter ? `@${commenter} ` : "";
   const lines = [

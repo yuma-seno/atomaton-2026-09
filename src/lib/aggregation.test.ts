@@ -49,17 +49,42 @@ const NO_MARKER: FakeGhRule = { match: ["issue", "view"], stdout: "some unrelate
 // claiming the completion, and starting the orchestrator.
 const MARKER_WRITES: FakeGhRule = { match: ["issue", "comment"], code: 0 };
 const DISPATCH_WORKS: FakeGhRule = { match: ["workflow", "run"], code: 0 };
-// `resolveNotify` looks the parent up to find someone to mention. Best-effort
-// by design, so an unmatched call would only log a WARN -- described anyway, so
-// the happy path has no failures in it at all.
-const NOTIFY_LOOKUP: FakeGhRule = { match: ["api", "issues"], stdout: "{}" };
+// Two calls read the parent through this endpoint, and only one of them is
+// optional. `resolveNotify` looks it up to find someone to mention and tolerates
+// a failure; `dispatchRunner` reads its state and refuses to dispatch onto
+// anything it cannot confirm is open. So this answers with a state -- `{}` used
+// to be enough, and would now make every test below report a closed parent.
+const PARENT_IS_OPEN: FakeGhRule = { match: ["api", "issues"], stdout: JSON.stringify({ state: "open" }) };
 
 describe("aggregation.ts dispatch gate", () => {
   test("dispatches once when the siblings are done and nobody claimed it", () => {
-    const { kind, ghCalls } = runGate([NO_SIBLINGS, NO_MARKER, MARKER_WRITES, DISPATCH_WORKS, NOTIFY_LOOKUP]);
+    const { kind, ghCalls } = runGate([NO_SIBLINGS, NO_MARKER, MARKER_WRITES, DISPATCH_WORKS, PARENT_IS_OPEN]);
     expect(kind).toBe("dispatched");
     expect(wroteMarker(ghCalls)).toBe(true);
     expect(dispatched(ghCalls)).toBe(true);
+  });
+
+  /**
+   * The case this gate walked into on #803: the last sibling lands, and the parent
+   * somebody closed in the meantime is not something to start an orchestrator on.
+   *
+   * The marker is already written by then, so nothing else will pick this up -- which
+   * is why the answer has to be its own kind rather than `dispatch-failed`. Nothing
+   * malfunctioned, and work is still left undone.
+   */
+  test("a closed parent is not dispatched onto, and says so as its own answer", () => {
+    const { kind, ghCalls } = runGate([
+      NO_SIBLINGS,
+      NO_MARKER,
+      MARKER_WRITES,
+      DISPATCH_WORKS,
+      { match: ["api", "issues"], stdout: JSON.stringify({ state: "closed" }) },
+    ]);
+    expect(kind).toBe("parent-closed");
+    expect(dispatched(ghCalls)).toBe(false);
+    // The person who asked for the run is told on the issue, by `dispatchRunner`.
+    const notice = ghCalls.find((c) => c.includes("comment") && c.some((a) => a.includes("was not started")));
+    expect(notice?.join(" ")).toContain("Nothing will retry");
   });
 
   test("siblings still open is `waiting`, and nothing is claimed", () => {
