@@ -134,15 +134,15 @@ function defineScript(importMetaUrl) {
 // src/scripts/request_stop.ts
 var ref = defineScript(import.meta.url);
 function stopRequestedNotice(commenter, deleted, children) {
-  const mention = commenter ? `@${commenter} ` : "";
+  const whose = commenter ? `${commenter}'s` : "The";
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
     STOP_TAG.write("requested"),
-    `${mention}Atomaton: stop requested.`,
+    "Atomaton: stop requested.",
     "",
-    deleted ? "Your `/stop` comment was removed so it does not become part of the agent's context." : "Your `/stop` comment could not be removed, so it may end up in the agent's context.",
+    deleted ? `${whose} \`/stop\` comment was removed so it does not become part of the agent's context.` : `${whose} \`/stop\` comment could not be removed, so it may end up in the agent's context.`,
     "",
-    "The run will stop after its current step, so it may take a minute. Nothing is lost when it does: the session is saved and can be continued."
+    "The run will stop after its current step, so it may take a minute, and it will report here when it has."
   ];
   if (children.length > 0) {
     lines.push("", `This issue also has work running on ${children.map((n) => `#${n}`).join(", ")}. ` + "A stop here does not reach those \u2014 comment `/stop` on each one you want stopped.");
