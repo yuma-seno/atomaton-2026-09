@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { makeConfigDir, runWithFakeGh, type FakeGhRule } from "../scripts/testing/harness.ts";
+import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../scripts/testing/harness.ts";
 
 const LIB_DIR = import.meta.dir;
 
@@ -19,7 +19,7 @@ function runGate(rules: FakeGhRule[]): { kind: string; ghCalls: string[][]; stde
   const file = join(dir, "shim.ts");
   writeFileSync(
     file,
-    `import { dispatchOrchestratorIfReady } from "${join(LIB_DIR, "aggregation.ts")}";
+    `import { dispatchOrchestratorIfReady } from "${importable(join(LIB_DIR, "aggregation.ts"))}";
 const result = await dispatchOrchestratorIfReady({ repo: "owner/repo", parent: 5, closedNum: 10 });
 console.log(result.kind);
 `,

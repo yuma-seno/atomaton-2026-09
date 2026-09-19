@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
 
 import { fakeGhEnv } from "./fake-gh-env.ts";
@@ -115,6 +115,23 @@ export function makeConfigDir(config: Record<string, unknown>): string {
   mkdirSync(join(dir, dirname(CONFIG_FILE)), { recursive: true });
   writeFileSync(join(dir, CONFIG_FILE), Bun.YAML.stringify(config));
   return dir;
+}
+
+/**
+ * A module path as an `import` in generated source can carry it.
+ *
+ * A test that writes a temporary `.ts` file importing something from this repository
+ * has to put an absolute path inside a string literal, and on Windows that path is
+ * full of backslashes — which the TypeScript it is written into reads as escapes.
+ * `C:\repos\Atoma\atomaton\src\lib\sibling-check.ts` arrives at the loader as
+ * `C:\reposAtomaatomatonsrclibsibling-check.ts`, and the shim fails to resolve a
+ * package nobody named.
+ *
+ * A `file://` URL rather than escaped backslashes: it is what a loader takes on every
+ * platform, and it cannot be half-applied the way manual escaping can.
+ */
+export function importable(absolutePath: string): string {
+  return pathToFileURL(absolutePath).href;
 }
 
 /** Where the scripts under test live, relative to the repository root. */

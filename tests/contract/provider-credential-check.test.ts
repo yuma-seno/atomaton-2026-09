@@ -30,7 +30,7 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { RUN_CREDENTIALS } from "../../src/domain/declared-secrets.ts";
 import { hermeticEnv } from "../../src/scripts/testing/harness.ts";
 
@@ -170,11 +170,16 @@ function runStep(
   const present = new Set(opts.present ?? []);
   const env: Record<string, string> = {
     ...hermeticEnv(),
-    // The stub first, so what the step asks is observable. With no stub, the system
-    // paths only -- NOT the directory a workflow installs the CLI into, so "there is
-    // no atoma to ask" is a state this can produce on purpose. The utilities the step
-    // needs (`mktemp`, `grep`) are in /usr/bin.
-    PATH: opts.withAtoma === false ? "/usr/bin:/bin" : `${bin}:${process.env.PATH ?? ""}`,
+    // The stub first, so what the step asks is observable. With no stub, the ambient
+    // PATH alone -- which has no `atoma` on it, because the CLI is installed into a
+    // directory a workflow adds, so "there is no atoma to ask" is a state this can
+    // produce simply by leaving the stub out.
+    //
+    // It used to substitute `/usr/bin:/bin` for that case, and both halves were
+    // POSIX-only: the separator is `;` on Windows, and neither directory exists there.
+    // The step's own `bash` then could not be resolved at all, and the test failed on
+    // the shell rather than on anything it was about.
+    PATH: opts.withAtoma === false ? (process.env.PATH ?? "") : `${bin}${delimiter}${process.env.PATH ?? ""}`,
     STUB_MODE: opts.mode ?? "ok",
     STUB_LOG: log,
     AGENT: "engineer",
