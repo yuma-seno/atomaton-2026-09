@@ -629,3 +629,84 @@ describe("nothingToCommit", () => {
     expect(nothingToCommit(result("", "pre-commit hook failed"))).toBe(false);
   });
 });
+
+/**
+ * The question this asks GitHub decides which numbers it can answer for.
+ *
+ * It asked `issue(number:)`, which resolves only an issue: a pull request's number came
+ * back null with a NOT_FOUND error, so every caller passing one got empty links and a
+ * message that read like GitHub being unwell. Measured against the live API — "Could
+ * not resolve to an Issue with the number of 826" for a pull request that exists and is
+ * merged.
+ */
+describe("issue-links.ts issueLinks", () => {
+  function links(payload: unknown) {
+    const { file, dir } = makeShim(`
+      import { issueLinks } from "${importable(join(LIB_DIR, "issue-links.ts"))}";
+      console.log(JSON.stringify(issueLinks("owner/repo", 826)));
+    `);
+    try {
+      const r = runWithFakeGh(file, [], {
+        rules: [{ match: ["api", "graphql"], stdout: JSON.stringify(payload) }],
+      });
+      return JSON.parse(r.stdout || "{}") as {
+        parent?: { number: number };
+        children: { number: number }[];
+        pullRequests: { number: number }[];
+        unavailable?: string;
+      };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * The defect, as a pull request meets it. A pull request has no parent field and no
+   * sub-issues; what it has is the issue it closes, which is its parent in the sense
+   * `domain/work-tree.ts` means — a pull request is a leaf.
+   */
+  test("a pull request's number answers with the issue it closes", () => {
+    const result = links({
+      data: {
+        repository: {
+          issueOrPullRequest: {
+            __typename: "PullRequest",
+            closingIssuesReferences: { nodes: [{ number: 803, title: "parent", state: "CLOSED" }] },
+          },
+        },
+      },
+    });
+    expect(result.parent?.number).toBe(803);
+    expect(result.children).toEqual([]);
+    expect(result.pullRequests).toEqual([]);
+    // The half that made this hard to see: empty links with no `unavailable` read as
+    // "this really has none", which is what a reviewer acted on.
+    expect(result.unavailable).toBeUndefined();
+  });
+
+  test("an issue still answers with its children and its pull requests", () => {
+    const result = links({
+      data: {
+        repository: {
+          issueOrPullRequest: {
+            __typename: "Issue",
+            parent: null,
+            subIssues: { nodes: [{ number: 807, title: "child", state: "CLOSED" }] },
+            closedByPullRequestsReferences: {
+              nodes: [{ number: 826, title: "pr", state: "MERGED", merged: true, body: "" }],
+            },
+            timelineItems: { nodes: [] },
+          },
+        },
+      },
+    });
+    expect(result.children.map((c) => c.number)).toEqual([807]);
+    expect(result.pullRequests.map((p) => p.number)).toEqual([826]);
+  });
+
+  /** A number that names nothing is its own answer, and not an empty set of links. */
+  test("a number that is neither says so rather than answering empty", () => {
+    const result = links({ data: { repository: { issueOrPullRequest: null } } });
+    expect(result.unavailable).toContain("was not found");
+  });
+});
