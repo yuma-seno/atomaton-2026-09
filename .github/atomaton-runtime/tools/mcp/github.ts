@@ -6802,7 +6802,7 @@ function decideMergeReadiness(signals) {
     const rest = signals.governancePaths.length - 5;
     blockers.push({
       kind: "governance-change",
-      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atomaton/config.yaml` (`checks.atomaton_runs.commands`, `deploy.atomaton_runs.targets`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
+      detail: `this pull request changes how agents themselves run (${shown}${rest > 0 ? `, +${rest} more` : ""}); ` + "review it and report, but leave the merge to a person" + (signals.governancePaths.some(isGeneratedWorkflow) ? ". If the intent was to change what CI or deployment does, that belongs in " + "`.github/atomaton/config.yaml` (`checks.pull_request_runs.commands`, `deploy.atomaton_runs.targets`) rather than in a " + "workflow file \u2014 an agent can write config and cannot write a workflow. If this is an " + "upgrade of the generated deliverable, it is exactly what a person should be merging" : "")
     });
   }
   for (const match of signals.gateMatches) {

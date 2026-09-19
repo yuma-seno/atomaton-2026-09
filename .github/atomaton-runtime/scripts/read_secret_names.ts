@@ -38,10 +38,6 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var CHECK_SECRETS = {
-  field: "checks.atomaton_runs.secrets",
-  reserved: new Set(["GH_TOKEN"])
-};
 var DEPLOY_SECRETS = {
   field: "deploy.atomaton_runs.secrets",
   reserved: new Set([
@@ -54,7 +50,6 @@ var DEPLOY_SECRETS = {
 };
 var SECRET_DESTINATIONS = {
   tools: TOOL_SECRETS,
-  checks: CHECK_SECRETS,
   deploy: DEPLOY_SECRETS
 };
 function isSecretDestinationName(value) {
@@ -130,7 +125,7 @@ function declarationIn(configText, destination) {
   const config = Bun.YAML.parse(configText);
   if (destination === "tools")
     return config.tools?.secrets;
-  return (destination === "checks" ? config.checks : config.deploy)?.atomaton_runs?.secrets;
+  return config.deploy?.atomaton_runs?.secrets;
 }
 function main() {
   const { values } = parseArgs({

@@ -38,10 +38,6 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var CHECK_SECRETS = {
-  field: "checks.atomaton_runs.secrets",
-  reserved: new Set(["GH_TOKEN"])
-};
 var DEPLOY_SECRETS = {
   field: "deploy.atomaton_runs.secrets",
   reserved: new Set([
