@@ -18,8 +18,12 @@ function run(cmd) {
     stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
   };
 }
+function ghCommand() {
+  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
+  return fake ? [process.execPath, fake] : ["gh"];
+}
 function gh(...args) {
-  return run(["gh", ...args]);
+  return run([...ghCommand(), ...args]);
 }
 function ghRead(...args) {
   let result = gh(...args);

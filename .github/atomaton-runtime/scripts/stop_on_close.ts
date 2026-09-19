@@ -133,8 +133,12 @@ function run(cmd) {
     stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
   };
 }
+function ghCommand() {
+  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
+  return fake ? [process.execPath, fake] : ["gh"];
+}
 function gh(...args) {
-  return run(["gh", ...args]);
+  return run([...ghCommand(), ...args]);
 }
 function ghRead(...args) {
   let result = gh(...args);
@@ -152,6 +156,21 @@ function looksTransient(result) {
   if (/HTTP (429|5[0-9][0-9])(?![0-9])/.test(text))
     return true;
   return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
+}
+function ghGraphql(query, variables = {}) {
+  const args = ["api", "graphql", "-f", `query=${query}`];
+  for (const [key, value] of Object.entries(variables)) {
+    args.push("-F", `${key}=${value}`);
+  }
+  const { code, stdout, stderr } = gh(...args);
+  if (code !== 0) {
+    throw new Error(`GraphQL query failed: ${stderr || stdout.slice(0, 200)}`);
+  }
+  const result = JSON.parse(stdout);
+  if (result.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+  }
+  return result.data;
 }
 
 // src/lib/config.ts
@@ -204,6 +223,67 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
+// src/domain/issue-links.ts
+var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
+function claimsToClose(body, issue) {
+  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
+}
+function dedupeByNumber(...lists) {
+  const seen = new Map;
+  for (const list of lists)
+    for (const item of list)
+      if (!seen.has(item.number))
+        seen.set(item.number, item);
+  return [...seen.values()].sort((a, b) => a.number - b.number);
+}
+
+// src/lib/issue-links.ts
+var LINK_LIMIT = 50;
+var QUERY = `
+query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
+  repository(owner:$owner, name:$name) {
+    issue(number:$number) {
+      parent { number title state }
+      subIssues(first:$limit) { nodes { number title state } }
+      closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
+        nodes { number title state merged body }
+      }
+      timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
+        nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+      }
+    }
+  }
+}`;
+function normalise(node) {
+  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+}
+function asPr(node) {
+  return { ...normalise(node), merged: Boolean(node.merged) };
+}
+function issueLinks(repo, number) {
+  const [owner, name] = repo.split("/");
+  if (!owner || !name) {
+    return { children: [], pullRequests: [], unavailable: `"${repo}" is not an owner/name repository` };
+  }
+  let issue = null;
+  try {
+    issue = ghGraphql(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issue ?? null;
+  } catch (error) {
+    const why = error.message;
+    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
+    return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
+  }
+  if (!issue)
+    return { children: [], pullRequests: [], unavailable: `issue #${number} was not found` };
+  const declared = issue.closedByPullRequestsReferences.nodes.map(asPr);
+  const referenced = issue.timelineItems.nodes.map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
+  return {
+    parent: issue.parent ? normalise(issue.parent) : undefined,
+    children: issue.subIssues.nodes.map(normalise),
+    pullRequests: dedupeByNumber(declared, referenced)
+  };
+}
+
 // src/lib/work-tree.ts
 function labelNames(labels) {
   return (labels ?? []).map((l) => typeof l === "string" ? l : l.name ?? "");
@@ -215,7 +295,7 @@ function parseListed(stdout) {
     return [];
   }
 }
-function readRoot(repo, number) {
+function readNode(repo, number) {
   const { code, stdout, stderr } = ghRead("api", `repos/${repo}/issues/${number}`);
   if (code !== 0) {
     return { problem: `could not read #${number}: ${(stderr || stdout).trim().split(`
@@ -275,10 +355,26 @@ function readChildren(repo, parent) {
       running: labelNames(found.labels).includes(label)
     });
   }
+  const links = issueLinks(repo, parent);
+  if (links.unavailable) {
+    problems.push(`could not read GitHub's own links for #${parent}: ${links.unavailable}`);
+  }
+  const already = new Set(nodes.map((node) => node.number));
+  for (const linked of [...links.children, ...links.pullRequests]) {
+    if (already.has(linked.number))
+      continue;
+    const { node, problem } = readNode(repo, linked.number);
+    if (!node) {
+      problems.push(problem ?? `could not read #${linked.number}`);
+      continue;
+    }
+    already.add(linked.number);
+    nodes.push({ ...node, parent });
+  }
   return { nodes, problems };
 }
 function readWorkTree(repo, root) {
-  const { node, problem } = readRoot(repo, root);
+  const { node, problem } = readNode(repo, root);
   if (!node)
     return { nodes: [], problems: [problem ?? `could not read #${root}`] };
   const nodes = [node];
@@ -311,11 +407,11 @@ function closeSubtreeUnder(repo, root, rootBody) {
   const all = subtree(nodes, root);
   const stopped = [];
   const closed = [];
-  if (!commentOn(repo, root, rootBody)) {
+  const rootNotified = commentOn(repo, root, rootBody);
+  if (!rootNotified)
     problems.push(`could not post the stop request on #${root}`);
-  } else if (all.find((node) => node.number === root)?.running) {
+  else if (all.find((node) => node.number === root)?.running)
     stopped.push(root);
-  }
   const under = descendants(all, root);
   for (const node of nodesToStop(under)) {
     const body = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), closeReachedNotice(root)].join(`
@@ -332,7 +428,7 @@ function closeSubtreeUnder(repo, root, rootBody) {
     else
       problems.push(`could not close #${node.number}`);
   }
-  return { stopped, closed, problems };
+  return { stopped, closed, rootNotified, problems };
 }
 
 // src/scripts/lib/script-ref.ts
@@ -389,10 +485,9 @@ function main() {
   }
   const result = closeSubtreeUnder(repo, root, stopOnCloseBody(root, toClose.map((n) => n.number), nodesToStop(under).map((n) => n.number)));
   result.problems.push(...readProblems);
-  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
   for (const problem of result.problems)
     console.error(`::warning::${problem}`);
-  if (rootFailed)
+  if (!result.rootNotified)
     process.exit(1);
   console.error(`#${root} was closed by ${closer || "(unknown)"}. ` + `Stopped: ${result.stopped.map((n) => `#${n}`).join(", ") || "none"}. ` + `Closed under it: ${result.closed.map((n) => `#${n}`).join(", ") || "none"}.`);
 }
