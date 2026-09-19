@@ -33,7 +33,7 @@ environment:
 
 Write it here once and every job runs it: the agent's own shell, the checks, and
 the deployment. That is the point of the separate block. Putting `bun install` at
-the front of `checks.atomaton_runs.commands` instead looks equivalent and is not —
+the front of a `checks.from_pull_request` entry instead looks equivalent and is not —
 the agent's shell then has the dependencies and CI installs them again, or the
 reverse, and the two environments drift. A test that passes for the agent and
 fails in CI comes back to an engineer as a defect that does not reproduce.
@@ -43,53 +43,57 @@ a run.
 
 ## Verification
 
-`checks` has two arms and takes exactly one. Fill in `atomaton_runs` and the shipped
+`checks` has two arms and takes exactly one. Fill in Atomaton's lists and the shipped
 workflow runs your commands:
 
 ```yaml
 checks:
-  atomaton_runs:
-    commands:
-      - bun run typecheck
-      - bun test
+  from_pull_request:
+    - name: verify
+      commands:
+        - bun run typecheck
+        - bun test
 ```
 
-They run in order in `atomaton-check.yml`, after the environment setup above, and the
-first failure ends the run.
+Each entry becomes one job in `atomaton-check.yml`, running after the environment setup
+above; its commands run in order and the first failure ends that job.
 Whatever a contributor would type to check the project locally is what belongs
 here — read the README, the package manifest's scripts, and any CONTRIBUTING
 file before writing this, rather than guessing a stack.
 
 **If `checks.your_workflow` already names a workflow, that one is correct.** A
 repository with its own CI has it for reasons that are not in front of you. Leave
-both alone, and in particular do not add `atomaton_runs` beside it: a section
+both alone, and in particular do not add a list beside it: a section
 carrying both arms is reported as a configuration error rather than resolved by a
 precedence rule, so the change comes back rejected instead of half-applied.
 
 ## Deployment
 
-The same two arms, and the same rule — `deploy.atomaton_runs.targets`, or
-`deploy.your_workflow`, never both.
+The same two arms, and the same rule — Atomaton's lists, or `deploy.your_workflow`,
+never both. Here there are three lists, one per event that ships:
 
 ```yaml
 deploy:
-  atomaton_runs:
-    targets:
-      - name: staging
-        on: merge
-        commands: ["./scripts/deploy.sh staging"]
-      - name: production
-        on: tag
-        tags: ["v*"]
-        commands: ["./scripts/deploy.sh prod"]
+  on_merge:
+    - name: staging
+      branches: [develop]
+      commands: ["./scripts/deploy.sh staging"]
+  on_tag:
+    - name: production
+      tags: ["v*"]
+      commands: ["./scripts/deploy.sh prod"]
+  on_demand:
+    - name: rollback
+      commands: ["./scripts/rollback.sh"]
 ```
 
-`on` is `merge` (after a pull request lands), `tag` (a pushed tag matching
-`tags`), or `manual` (only when someone dispatches it by name). A tag pattern is
-a literal or a prefix followed by `*`. Every target can also be dispatched by
-name whatever its trigger, which is what makes a `manual` rollback target useful.
+`branches` exists in `on_merge` and nowhere else; omit it and it means the default
+branch. `tags` exists in `on_tag` and is required there. A pattern is a literal or a
+prefix followed by `*`. Any entry can also be dispatched by name whatever its list,
+which is what makes an `on_demand` rollback useful.
 
-`$ATOMATON_DEPLOY_TARGET` holds the target's name inside its commands.
+Deployments run one at a time, in declared order, and the first failure stops the
+rest. `$ATOMATON_DEPLOY_TARGET` holds the entry's name inside its commands.
 
 ## Credentials
 
@@ -101,17 +105,27 @@ the place that needs it:
 
 ```yaml
 checks:
-  atomaton_runs:
-    secrets: ["NPM_TOKEN"]
+  from_default_branch:
+    - name: cloud-names
+      secrets: ["AWS_ROLE_ARN"]
+      commands: ["./scripts/check-env-names.sh \"$ATOMATON_PR_TREE\""]
 deploy:
-  atomaton_runs:
-    secrets: ["AWS_ROLE_ARN"]
+  on_tag:
+    - name: production
+      tags: ["v*"]
+      secrets: ["AWS_ROLE_ARN"]
+      commands: ["./scripts/deploy.sh prod"]
 ```
 
-It arrives as an environment variable under that name. The three lists —
-`checks.atomaton_runs.secrets`, `deploy.atomaton_runs.secrets` and `tools.secrets` —
-are separate on purpose and must not be merged: each reaches only its own
-destination, and the nesting is what says so.
+It arrives as an environment variable under that name, in that job and no other.
+`tools.secrets` is separate on purpose and must not be merged with these: it is the
+only list that enters the agent's own environment.
+
+**`checks.from_pull_request` has no `secrets` key, and cannot.** Those commands are
+the pull request's own and it may rewrite them, so a credential named beside one is
+one the change being judged can read. A check that needs a credential goes in
+`checks.from_default_branch`, whose commands come from the default branch and which
+is handed the pull request as a path at `$ATOMATON_PR_TREE`.
 
 **`tools.secrets` needs a second step, and the others do not.** Naming a secret
 there authorises the run to hold it; it does not deliver it to any tool. The tool

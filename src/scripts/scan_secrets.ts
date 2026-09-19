@@ -5,7 +5,7 @@
  * Shipped as a default check, and it is the one kind of verification a template
  * can hand every adopter: a credential is a credential in every language, so
  * this needs to know nothing about what the project is written in. The commands
- * beside it in `checks.atomaton_runs.commands` are the project's own and only the project can
+ * beside it in `checks.from_pull_request` are the project's own and only the project can
  * write them.
  *
  * ## Why this branch's commits and not the history

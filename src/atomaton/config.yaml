@@ -60,13 +60,37 @@ checks:
   # your_workflow: ci.yml
 
 
-# How a merged change ships. The same two arms.
+# How a merged change ships. One list per event that ships it, or name
+# `your_workflow` instead. Both is a configuration error.
+#
+# Every entry is a name, the commands that ship it, and — like a check — its own
+# runner and its own secrets. They run one at a time, in declared order, and the
+# first failure stops the rest.
 deploy:
-  atomaton_runs:
-    # Each names an environment, when it ships, and the commands that ship it.
-    targets: []
-    secrets: []
-    runs_on: ubuntu-latest
+  # Ships when a change lands on a branch. `branches` is how you say which; leave it
+  # out and it means the default branch.
+  on_merge: []
+  # on_merge:
+  #   - name: staging
+  #     branches: [develop]
+  #     secrets: [STAGING_TOKEN]
+  #     commands: ["./deploy.sh staging"]
+
+  # Ships when a matching tag is pushed. A literal tag, or a prefix and a `*`.
+  on_tag: []
+  # on_tag:
+  #   - name: production
+  #     tags: ["v*"]
+  #     secrets: [PROD_TOKEN]
+  #     commands: ["./deploy.sh production"]
+
+  # Ships only when someone runs the workflow by hand. Dispatching without naming a
+  # target runs all of these; naming one runs just that, from any list above.
+  on_demand: []
+  # on_demand:
+  #   - name: rollback
+  #     commands: ["./rollback.sh"]
+
   # your_workflow: cd.yml
 
 
@@ -96,9 +120,8 @@ chain:
 # is declared here rather than in a second file; the generator writes the part the
 # core reads. Most projects never edit past this line.
 tools:
-  # Repository secrets the servers may reach. Separate from the lists under
-  # `checks.from_pull_request` and `deploy.atomaton_runs`: only these enter an agent's own
-  # environment.
+  # Repository secrets the servers may reach. Separate from the ones a check or a
+  # deployment names on its own entry: only these enter an agent's own environment.
   secrets: []
 
   # Your own tool servers, and overrides of the ones Atomaton ships.

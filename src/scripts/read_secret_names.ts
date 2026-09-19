@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 /**
  * read_secret_names.ts — publishes, as a step output, which repository secrets
- * this project's configuration lets one destination reach.
+ * this project's configuration lets the AGENT's own process reach.
+ *
+ * `tools.secrets` is the only list read this way, and the only one that is a list
+ * for a whole workflow. A check or a deployment declares its credentials per entry,
+ * and those travel in the matrix its planning job published — see
+ * `domain/declared-jobs.ts`. This used to take a `--destination`, back when `deploy`
+ * had one list shared by every target it ran.
  *
  * The output feeds a computed-key lookup in a later step's `env:`
  * (`secrets[fromJSON(steps.<id>.outputs.names)[i]]`), which is what lets a
@@ -56,55 +62,32 @@
  * near the cause.
  *
  * Usage:
- *   read_secret_names.ts --destination tools|checks|deploy [--config <path>]
+ *   read_secret_names.ts [--config <path>]
  */
 import { appendFileSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import {
-  isSecretDestinationName,
-  resolveDeclaredSecrets,
-  SECRET_DESTINATIONS,
-  type SecretDestinationName,
-} from "../domain/declared-secrets.ts";
+import { resolveDeclaredSecrets, TOOL_SECRETS } from "../domain/declared-secrets.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ReadSecretNamesArgs {
-  /** Which of the configuration's credential lists to publish. */
-  destination: string;
-  /** The trusted config.yaml to read it from — NOT the working tree's. */
+  /** The trusted config.yaml to read the declaration from — NOT the working tree's. */
   config: string;
 }
 
 export const ref = defineScript<ReadSecretNamesArgs>(import.meta.url);
 
-/** The declaration for `destination`, or undefined when the file cannot be used. */
-export function declarationIn(configText: string, destination: SecretDestinationName): unknown {
+/** `tools.secrets` as this text declares it, or undefined when it declares none. */
+export function declarationIn(configText: string): unknown {
   // Parsed here rather than through `lib/config.ts` on purpose: this text comes
   // from the default branch's object store, not from a file on disk, and the
   // separation is what keeps a missing ATOMATON_MACHINERY_ROOT from downgrading a
   // credential decision to the working tree.
-  const config = Bun.YAML.parse(configText) as {
-    tools?: { secrets?: unknown };
-    checks?: { atomaton_runs?: { secrets?: unknown } };
-    deploy?: { atomaton_runs?: { secrets?: unknown } };
-  };
-  // `checks` and `deploy` carry theirs inside `atomaton_runs`: a secret is reached by
-  // the step Atomaton runs, and a project naming its own workflow gives that workflow
-  // its secrets itself. `tools` has no arms -- the servers are always Atomaton's.
-  if (destination === "tools") return config.tools?.secrets;
-  return config.deploy?.atomaton_runs?.secrets;
+  const config = Bun.YAML.parse(configText) as { tools?: { secrets?: unknown } };
+  return config.tools?.secrets;
 }
 
 function main(): void {
-  const { values } = parseArgs({
-    args: Bun.argv.slice(2),
-    options: { destination: { type: "string" }, config: { type: "string" } },
-  });
-  const destination = values.destination ?? "";
-  if (!isSecretDestinationName(destination)) {
-    console.error(`::error::read_secret_names: unknown destination '${destination}'.`);
-    process.exit(2);
-  }
+  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { config: { type: "string" } } });
   let declared: unknown;
   if (!values.config) {
     console.error(
@@ -112,13 +95,13 @@ function main(): void {
     );
   } else {
     try {
-      declared = declarationIn(readFileSync(values.config, "utf8"), destination);
+      declared = declarationIn(readFileSync(values.config, "utf8"));
     } catch (error) {
       console.error(`No credential declaration could be read (${(error as Error).message}); declaring none.`);
     }
   }
 
-  const { names, problems } = resolveDeclaredSecrets(declared, SECRET_DESTINATIONS[destination]);
+  const { names, problems } = resolveDeclaredSecrets(declared, TOOL_SECRETS);
 
   if (problems.length > 0) {
     for (const problem of problems) {
@@ -136,9 +119,7 @@ function main(): void {
   // already public in config.yaml, and saying so makes a missing repository
   // secret diagnosable from the log.
   console.error(
-    names.length > 0
-      ? `Secrets declared for ${destination}: ${names.join(", ")}`
-      : `No secrets declared for ${destination}.`,
+    names.length > 0 ? `Secrets declared in \`tools.secrets\`: ${names.join(", ")}` : "No secrets are declared in `tools.secrets`.",
   );
 }
 

@@ -1,22 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
-  DEPLOY_SECRETS,
+  CHECK_JOB_RESERVED,
+  DEPLOY_JOB_RESERVED,
   RUN_CREDENTIALS,
   SECRET_NAMES_VAR,
   SECRET_SLOT_PREFIX,
   TOOL_SECRETS,
-  type SecretDestination,
 } from "../../src/domain/declared-secrets.ts";
 import { CHECK_JOB_NAME } from "../../src/workflows/atomaton-check.wac.ts";
 
 /**
- * A destination's `reserved` set is a claim about a generated workflow: these are
- * the names that job's own environment already uses, so declaring one would
- * replace a value the job depends on rather than add a credential.
+ * A reserved set is a claim about a generated workflow: these are the names that
+ * job's own environment already uses, so declaring one would replace a value the job
+ * depends on rather than add a credential.
  *
  * Nothing checked the claim. Each set was hand-copied from a step's `env:`, and
- * two of the three had drifted -- `DEPLOY_SECRETS` was missing the three
+ * two of the three had drifted -- the deploy set was missing the three
  * `ATOMA_DEPLOY_*` inputs that select what a run deploys, and `TOOL_SECRETS` was
  * missing `ATOMA_COPILOT_TOKEN`, so a project could name it in `tools.secrets`
  * and overwrite the credential its own run authenticates with.
@@ -45,29 +45,41 @@ function isSecretTransport(name: string): boolean {
   return name.startsWith(SECRET_SLOT_PREFIX) || name === SECRET_NAMES_VAR;
 }
 
-function expectAllReserved(destination: SecretDestination, keys: string[]): void {
-  const unreserved = keys.filter((key) => !isSecretTransport(key) && !destination.reserved.has(key));
-  expect(unreserved, `${destination.field} does not reserve these, so a project could shadow them`).toEqual([]);
+function expectAllReserved(what: string, reserved: ReadonlySet<string>, keys: string[]): void {
+  const unreserved = keys.filter((key) => !isSecretTransport(key) && !reserved.has(key));
+  expect(unreserved, `${what} does not reserve these, so a project could shadow them`).toEqual([]);
 }
 
 describe("reserved names match the workflows they describe", () => {
   test("the agent's step", () => {
-    expectAllReserved(TOOL_SECRETS, carrierEnvKeys("atomaton-runner.yml", "run", "Run agent"));
+    expectAllReserved("tools.secrets", TOOL_SECRETS.reserved, carrierEnvKeys("atomaton-runner.yml", "run", "Run agent"));
   });
 
   /**
-   * The checks step has no such list to reserve against, and that is the point: its
-   * commands are the pull request's own, so a declared credential would be one the
-   * change being judged could read. What is checked instead is that nothing put one
-   * back.
+   * The pull request's own checks have no list to reserve against, and that is the
+   * point: their commands are the pull request's own, so a declared credential would
+   * be one the change being judged could read. What is checked instead is that
+   * nothing put one back.
    */
-  test("the checks step carries no declared credential at all", () => {
+  test("the pull request's check step carries no declared credential at all", () => {
     const keys = carrierEnvKeys("atomaton-check.yml", "pull-request-checks", "Run this check's commands");
     expect(keys.filter((key) => key.startsWith("ATOMATON_SECRET"))).toEqual([]);
   });
 
+  test("the credentialed check step", () => {
+    expectAllReserved(
+      "a `checks.from_default_branch` entry's `secrets`",
+      CHECK_JOB_RESERVED,
+      carrierEnvKeys("atomaton-check.yml", "default-branch-checks", "Run this check's commands"),
+    );
+  });
+
   test("the deploy step", () => {
-    expectAllReserved(DEPLOY_SECRETS, carrierEnvKeys("atomaton-deploy.yml", "deploy", "Deploy the targets this run is for"));
+    expectAllReserved(
+      "a `deploy` entry's `secrets`",
+      DEPLOY_JOB_RESERVED,
+      carrierEnvKeys("atomaton-deploy.yml", "deploy", "Run this deployment's commands"),
+    );
   });
 
   // The other half of the same contract, and the half that actually broke. These

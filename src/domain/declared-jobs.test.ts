@@ -1,8 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_RUNNER, resolveDeclaredJobs } from "./declared-jobs.ts";
+import { DEFAULT_RUNNER, resolveDeclaredJobs, type DeclaredJobsRules } from "./declared-jobs.ts";
 
-const CREDENTIALLED = { where: "checks.from_default_branch", secretsAllowed: true };
-const PULL_REQUEST = { where: "checks.from_pull_request", secretsAllowed: false };
+const CREDENTIALLED: DeclaredJobsRules = {
+  where: "checks.from_default_branch",
+  secrets: { reserved: new Set(["GH_TOKEN"]) },
+};
+const PULL_REQUEST: DeclaredJobsRules = {
+  where: "checks.from_pull_request",
+  secrets: { refused: "These commands come from the pull request, which may rewrite them." },
+};
 
 /**
  * These decide what a token can reach and what a check is allowed to skip, so every
@@ -65,6 +71,41 @@ describe("resolveDeclaredJobs", () => {
       const { jobs, problems } = resolveDeclaredJobs([{ name: "lint", commands: ["x"] }], PULL_REQUEST);
       expect(problems).toEqual([]);
       expect(jobs[0]?.secrets).toEqual([]);
+    });
+
+    /** Writing the key out empty is naming none, not naming one. */
+    test("an empty list where none may be named is not a refusal", () => {
+      const { jobs, problems } = resolveDeclaredJobs([{ name: "lint", commands: ["x"], secrets: [] }], PULL_REQUEST);
+      expect(problems).toEqual([]);
+      expect(jobs).toHaveLength(1);
+    });
+  });
+
+  /**
+   * The same validator `tools.secrets` gets. It used to be a shape check and nothing
+   * more: a check could name `GH_TOKEN` and replace the run's own token, or name
+   * eleven secrets and silently receive ten.
+   */
+  describe("the credentials an entry names", () => {
+    test("a name the job's own environment already uses is refused", () => {
+      const { jobs, problems } = resolveDeclaredJobs(
+        [{ name: "ship", commands: ["x"], secrets: ["GH_TOKEN"] }],
+        CREDENTIALLED,
+      );
+      expect(jobs).toEqual([]);
+      expect(problems[0]).toContain("already part of the environment");
+    });
+
+    test("a problem names the entry, because that is the line to go and edit", () => {
+      const { problems } = resolveDeclaredJobs(
+        [{ name: "a", commands: ["x"] }, { name: "b", commands: ["x"], secrets: ["not a name"] }],
+        CREDENTIALLED,
+      );
+      expect(problems[0]).toContain("checks.from_default_branch[1].secrets");
+    });
+
+    test("a secrets list that is not a list says so", () => {
+      expect(resolveDeclaredJobs([{ name: "a", commands: ["x"], secrets: "X" }], CREDENTIALLED).problems).toHaveLength(1);
     });
   });
 
@@ -143,15 +184,6 @@ describe("resolveDeclaredJobs", () => {
       expect(problems[0]).toContain("`secret`");
     });
 
-    /** A list that owns extra keys says so, and they stop being typos. */
-    test("keys its owner declares are allowed", () => {
-      const { problems } = resolveDeclaredJobs(
-        [{ name: "staging", commands: ["a"], branches: ["develop"] }],
-        { where: "deploy.on_merge", secretsAllowed: true, extraKeys: ["branches"] },
-      );
-      expect(problems).toEqual([]);
-    });
-
     /**
      * One malformed entry does not hide the rest: somebody fixing their configuration
      * should see everything wrong with it, not the first thing.
@@ -162,6 +194,51 @@ describe("resolveDeclaredJobs", () => {
         CREDENTIALLED,
       );
       expect(problems).toHaveLength(2);
+    });
+  });
+
+  /**
+   * A list with keys of its own supplies both the names and the reader, so everything
+   * it did not name stays a typo and its own fields arrive validated in the same pass.
+   */
+  describe("keys a list owns", () => {
+    const WITH_BRANCHES: DeclaredJobsRules<{ branches: readonly string[] }> = {
+      where: "deploy.on_merge",
+      secrets: { reserved: new Set() },
+      extra: {
+        keys: ["branches"],
+        read: (entry, where, problems) => {
+          if (entry.branches !== undefined && !Array.isArray(entry.branches)) {
+            problems.push(`${where}: \`branches\` must be an array.`);
+            return null;
+          }
+          return { branches: (entry.branches as string[]) ?? [] };
+        },
+      },
+    };
+
+    test("its keys are read onto the job", () => {
+      const { jobs, problems } = resolveDeclaredJobs(
+        [{ name: "staging", commands: ["a"], branches: ["develop"] }],
+        WITH_BRANCHES,
+      );
+      expect(problems).toEqual([]);
+      expect(jobs[0]?.branches).toEqual(["develop"]);
+    });
+
+    test("a key no list owns is still a typo", () => {
+      const { problems } = resolveDeclaredJobs([{ name: "staging", commands: ["a"], tags: ["v*"] }], WITH_BRANCHES);
+      expect(problems[0]).toContain("unknown key");
+      expect(problems[0]).toContain("`tags`");
+    });
+
+    test("a reader that refuses drops the entry", () => {
+      const { jobs, problems } = resolveDeclaredJobs(
+        [{ name: "staging", commands: ["a"], branches: "develop" }],
+        WITH_BRANCHES,
+      );
+      expect(jobs).toEqual([]);
+      expect(problems[0]).toContain("`branches` must be an array");
     });
   });
 });

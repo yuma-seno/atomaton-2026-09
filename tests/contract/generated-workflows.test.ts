@@ -787,34 +787,48 @@ describe("generated workflows", () => {
       );
     }
 
-    // Every workflow that carries a credential, and the step whose `env:` gets
-    // the slots. Each pair is generated from the same helper, so the point of
-    // checking all three is that none of them quietly stops using it.
-    // The runner's carrier is the step that writes the credentials file, NOT the
-    // one that runs the agent -- see the test below for why that distinction is
-    // the whole point.
-    const carriers = [
-      { file: "atomaton-runner.yml", job: "run", step: "Collect this run's credentials into a file" },
-      { file: "atomaton-deploy.yml", job: "deploy", step: "Deploy the targets this run is for" },
-    ];
-
-    for (const carrier of carriers) {
-      const workflow = Bun.YAML.parse(readFileSync(join(directory, carrier.file), "utf8")) as WorkflowDocument;
-      const steps = workflow.jobs?.[carrier.job]?.steps ?? [];
-
+    // The agent's own list: `tools.secrets` belongs to the whole workflow, so a step
+    // resolves it and the slots key off that step's output. The carrier is the step
+    // that WRITES the credentials file, not the one that runs the agent -- see the
+    // test below for why that distinction is the whole point.
+    {
+      const workflow = Bun.YAML.parse(readFileSync(join(directory, "atomaton-runner.yml"), "utf8")) as WorkflowDocument;
+      const steps = workflow.jobs?.run?.steps ?? [];
       const resolve = steps.findIndex((step) => step.name === "Resolve which repository secrets may reach this run");
-      const consumer = steps.findIndex((step) => step.name === carrier.step);
-      expect(resolve, `${carrier.file} secret-names step`).toBeGreaterThanOrEqual(0);
-      expect(consumer, `${carrier.file} ${carrier.step}`).toBeGreaterThanOrEqual(0);
-      expect(resolve, `${carrier.file}: names must resolve before the step whose env they key`).toBeLessThan(consumer);
+      const consumer = steps.findIndex((step) => step.name === "Collect this run's credentials into a file");
+      expect(resolve, "atomaton-runner.yml secret-names step").toBeGreaterThanOrEqual(0);
+      expect(consumer, "atomaton-runner.yml credentials step").toBeGreaterThanOrEqual(0);
+      expect(resolve, "names must resolve before the step whose env they key").toBeLessThan(consumer);
 
       const env = steps[consumer]?.env ?? {};
       for (let slot = 0; slot < SECRET_SLOTS; slot++) {
-        expect(env[`${SECRET_SLOT_PREFIX}${slot}`], `${carrier.file} slot ${slot}`).toBe(
+        expect(env[`${SECRET_SLOT_PREFIX}${slot}`], `slot ${slot}`).toBe(
           `\${{ secrets[fromJSON(steps.secret-names.outputs.names || '[]')[${slot}]] }}`,
         );
       }
-      expect(env[SECRET_NAMES_VAR], carrier.file).toBe("${{ steps.secret-names.outputs.names }}");
+      expect(env[SECRET_NAMES_VAR]).toBe("${{ steps.secret-names.outputs.names }}");
+    }
+
+    // A check or a deployment declares its credentials per entry, so the slots key
+    // off the matrix instead -- the same computed-key mechanism, one step closer to
+    // the thing that named them. Both are generated from `matrixSecretEnv()`, so the
+    // point of checking both is that neither quietly stops using it.
+    const matrixCarriers = [
+      { file: "atomaton-check.yml", job: "default-branch-checks", step: "Run this check's commands" },
+      { file: "atomaton-deploy.yml", job: "deploy", step: "Run this deployment's commands" },
+    ];
+    for (const carrier of matrixCarriers) {
+      const workflow = Bun.YAML.parse(readFileSync(join(directory, carrier.file), "utf8")) as WorkflowDocument;
+      const step = (workflow.jobs?.[carrier.job]?.steps ?? []).find((candidate) => candidate.name === carrier.step);
+      expect(step, `${carrier.file} ${carrier.step}`).toBeDefined();
+
+      const env = step?.env ?? {};
+      for (let slot = 0; slot < SECRET_SLOTS; slot++) {
+        expect(env[`${SECRET_SLOT_PREFIX}${slot}`], `${carrier.file} slot ${slot}`).toBe(
+          `\${{ secrets[matrix.secrets[${slot}]] }}`,
+        );
+      }
+      expect(env[SECRET_NAMES_VAR], carrier.file).toBe("${{ toJSON(matrix.secrets) }}");
     }
   });
 
@@ -829,12 +843,11 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const directory = "dist/.github/workflows";
-    // Not atomaton-check.yml: a check carries no declared credential, because its
-    // commands are the pull request's own and a secret named for them would be one
-    // the change being judged can read.
-    const carriers = ["atomaton-runner.yml", "atomaton-deploy.yml"];
-
-    for (const file of carriers) {
+    // The runner alone: it is the only workflow whose credentials are declared in a
+    // whole-workflow list, so it is the only one that fetches the declaration itself.
+    // A check or a deployment gets the same guarantee from the job that PLANS it,
+    // which checks the default branch out -- pinned separately below.
+    for (const file of ["atomaton-runner.yml"]) {
       const workflow = Bun.YAML.parse(readFileSync(join(directory, file), "utf8")) as WorkflowDocument;
       const step = Object.values(workflow.jobs ?? {})
         .flatMap((job) => job.steps ?? [])
@@ -859,6 +872,36 @@ describe("generated workflows", () => {
       // Outside the workspace, so the checkout cannot have brought the file.
       expect(step?.run, `${file} must not trust a path the checkout controls`).toContain(
         "$RUNNER_TEMP/atomaton-declared-secrets.yaml",
+      );
+    }
+  });
+
+  /**
+   * The jobs that decide which credentials a matrix entry gets read the DEFAULT
+   * BRANCH, not the ref that started the run.
+   *
+   * For a check, the ref that started it is the pull request being judged. For a
+   * deployment it is whichever branch or tag was pushed — and since `atomaton-deploy`
+   * now starts for every ref, that is any branch a collaborator can push. Either
+   * would be the thing under review choosing its own credentials.
+   *
+   * Pinned in the generated YAML because losing it is silent: the run still works,
+   * and the declaration simply comes from somewhere else.
+   */
+  test("the jobs that plan a matrix read the default branch", () => {
+    type WorkflowStep = { name?: string; uses?: string; with?: Record<string, string> };
+    type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
+
+    const planners = [
+      { file: "atomaton-check.yml", job: "plan-default-branch-checks" },
+      { file: "atomaton-deploy.yml", job: "plan-deploy" },
+    ];
+    for (const { file, job } of planners) {
+      const workflow = Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}`, "utf8")) as WorkflowDocument;
+      const checkout = (workflow.jobs?.[job]?.steps ?? []).find((step) => step.uses?.startsWith("actions/checkout"));
+      expect(checkout, `${file} has no checkout in ${job}`).toBeDefined();
+      expect(checkout?.with?.ref, `${job} must plan from the default branch`).toBe(
+        "${{ github.event.repository.default_branch }}",
       );
     }
   });
@@ -895,17 +938,16 @@ describe("generated workflows", () => {
     // And the token to spend it with. `contents: write` alone is a permission
     // nothing can reach, which fails as "gh: not authenticated" -- nowhere near
     // the missing piece.
-    const runDeploy = deploy.jobs?.deploy?.steps?.find((s) => s.name === "Deploy the targets this run is for");
+    const runDeploy = deploy.jobs?.deploy?.steps?.find((s) => s.name === "Run this deployment's commands");
     expect(runDeploy?.env?.GH_TOKEN).toBe("${{ github.token }}");
 
-    // `on: merge` has to mean a person's merge too. `on:` cannot say "the default
-    // branch", so the literal branches get narrowed by the job's `if:` -- and
-    // losing either half is silent: too wide deploys from a branch nobody meant,
-    // too narrow deploys from none.
-    expect(deploy.on?.push?.branches, "atomaton-deploy must listen for a merge landing").toContain("main");
-    expect(deploy.jobs?.deploy?.if, "and must require it be the real default branch").toContain(
-      "github.event.repository.default_branch",
-    );
+    // `on_merge` has to mean a person's merge too, into whichever branch the entry
+    // named. `on:` cannot say "the default branch" and cannot read a `branches:` out
+    // of configuration either, so the workflow listens for every ref and the planning
+    // job decides. `main` and `master` were listed literally before, which is why
+    // `branches: [develop]` could not have worked: nothing started a run.
+    expect(deploy.on?.push?.branches, "atomaton-deploy must listen on every branch").toEqual(["**"]);
+    expect(deploy.on?.push?.tags, "and every tag").toEqual(["**"]);
   });
 
   // The step that runs the agent lives for the whole of `atoma run`, so anything
@@ -1084,10 +1126,10 @@ describe("generated workflows", () => {
    * is pinned to `ubuntu-latest`: it is the job that finds out what the configured
    * runner is, so it cannot itself be on it.
    *
-   * The two workflows answer differently because the runner sits at a different
-   * level in each. A check declares its own, so the value rides in the matrix entry
-   * beside its commands; a deployment still shares one, so a `pick-runner` job
-   * publishes it. That difference goes away with #871.
+   * Every one answers the same way now: the runner rides in the matrix entry beside
+   * the commands it belongs to. A deployment used to share one `pick-runner` job
+   * with every other deployment, which is what made a release and a cloud rollout
+   * the same machine.
    *
    * This was once `ubuntu-latest` hardcoded in eleven files, unreachable from
    * `config.yaml` -- and unfixable by an agent, because the fix is in
@@ -1098,30 +1140,40 @@ describe("generated workflows", () => {
     const read = (file: string) =>
       (Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument).jobs ?? {};
 
-    // A check: the runner is the entry's, and `fromJSON` always, so one label and a
-    // self-hosted runner's several are consumed the same way.
-    const checkJobs = read("atomaton-check");
-    for (const [workJob, planJob] of [
-      ["pull-request-checks", "plan-pull-request-checks"],
-      ["default-branch-checks", "plan-default-branch-checks"],
+    // `fromJSON` always, so one label and a self-hosted runner's several are
+    // consumed the same way.
+    for (const [file, workJob, planJob] of [
+      ["atomaton-check", "pull-request-checks", "plan-pull-request-checks"],
+      ["atomaton-check", "default-branch-checks", "plan-default-branch-checks"],
+      ["atomaton-deploy", "deploy", "plan-deploy"],
     ] as const) {
-      const work = checkJobs[workJob];
-      expect(work, `atomaton-check.yml must have a ${workJob} job`).toBeDefined();
+      const jobs = read(file);
+      const work = jobs[workJob];
+      expect(work, `${file}.yml must have a ${workJob} job`).toBeDefined();
       expect(String(work?.["runs-on"] ?? ""), `${workJob} takes the runner its entry declared`).toBe(
         "${{ fromJSON(matrix.runs_on) }}",
       );
       expect(work?.needs, `${workJob} must wait for the job that read the configuration`).toEqual([planJob]);
-      const plan = checkJobs[planJob];
-      expect(plan?.["runs-on"], `${planJob} finds out what the runner is, so it cannot be on it`).toBe(
+      expect(jobs[planJob]?.["runs-on"], `${planJob} finds out what the runner is, so it cannot be on it`).toBe(
         "ubuntu-latest",
       );
     }
+  });
 
-    // A deployment: one runner for the whole arm, published by a job of its own.
-    const deployJobs = read("atomaton-deploy");
-    expect(deployJobs["pick-runner"]?.["runs-on"]).toBe("ubuntu-latest");
-    expect(String(deployJobs["deploy"]?.["runs-on"] ?? "")).toBe("${{ fromJSON(needs.pick-runner.outputs.runs_on) }}");
-    expect(deployJobs["deploy"]?.needs).toEqual(["pick-runner"]);
+  /**
+   * Deployments run one at a time, in declared order, and stop at the first failure.
+   *
+   * What the single job provided by running them in a bash loop, and the one thing a
+   * matrix takes away by default. Losing it is silent and expensive: two deployments
+   * racing, or the rest of an estate shipped after one of them broke.
+   */
+  test("the deploy matrix keeps the order and the stop the loop used to give", () => {
+    type WorkflowDocument = {
+      jobs?: Record<string, { strategy?: { "fail-fast"?: boolean; "max-parallel"?: number } }>;
+    };
+    const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
+    expect(deploy.jobs?.deploy?.strategy?.["max-parallel"], "one deployment at a time").toBe(1);
+    expect(deploy.jobs?.deploy?.strategy?.["fail-fast"], "and none after one fails").toBe(true);
   });
 
   test("authenticate the result-comment GitHub CLI call", () => {

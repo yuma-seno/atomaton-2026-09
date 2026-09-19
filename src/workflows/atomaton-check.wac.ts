@@ -1,11 +1,11 @@
 import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
+import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
 import { scriptCommandWithArgs } from "./actions/script-call.ts";
 import { scriptCommand } from "./actions/script-call.ts";
 import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";
 import { renameSecretSlots } from "./actions/secret-slots.ts";
-import { SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../domain/declared-secrets.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { ref as checkLiveToolsRef } from "../scripts/check_live_tools.ts";
@@ -138,26 +138,6 @@ const planDefaultBranchChecksJob = planJob(
 );
 
 /**
- * The loop both arms run, because running a list of commands is one thing.
- *
- * `matrix.commands` rather than a script reading configuration: the list was already
- * decided by the planning job, from the tree that owns it, and reading it twice is how
- * the two answers come to disagree.
- */
-const RUN_COMMANDS = [
-  'echo "$ATOMATON_CHECK_COMMANDS" | jq -r ".[]" | while IFS= read -r command; do',
-  '  echo "::group::$command"',
-  '  if ! bash -c "$command"; then',
-  '    echo "::endgroup::"',
-  '    echo "::error::${{ matrix.name }}: $command"',
-  "    exit 1",
-  "  fi",
-  '  echo "::endgroup::"',
-  "done",
-  "",
-].join("\n");
-
-/**
  * Checks routinely need a token: `gh` for anything, a package manager reaching a
  * registry that authenticates with it, a submodule. Without one a project's commands
  * are the only ones in the system that cannot talk to GitHub, and the failure reads as
@@ -168,7 +148,7 @@ const RUN_COMMANDS = [
  * is what the code being tested was fetched with.
  */
 const CHECK_ENV = {
-  ATOMATON_CHECK_COMMANDS: "${{ toJSON(matrix.commands) }}",
+  [COMMANDS_VAR]: "${{ toJSON(matrix.commands) }}",
   GH_TOKEN: "${{ github.token }}",
 };
 
@@ -187,7 +167,7 @@ function runPullRequestChecks() {
     name: "Run this check's commands",
     shell: "bash",
     env: CHECK_ENV,
-    run: RUN_COMMANDS,
+    run: RUN_DECLARED_COMMANDS,
   });
 }
 
@@ -202,69 +182,24 @@ function runCredentialledChecks() {
     name: "Run this check's commands",
     shell: "bash",
     env: {
-      // Each slot is keyed by a name this matrix entry declared, so a job is handed
-      // its own credentials and no others. An entry naming fewer than the maximum
-      // leaves the rest empty, which is what an unset secret looks like anyway.
-      ...Object.fromEntries(
-        Array.from({ length: SECRET_SLOTS }, (_, slot) => [
-          `${SECRET_SLOT_PREFIX}${slot}`,
-          `\${{ secrets[matrix.secrets[${slot}]] }}`,
-        ]),
-      ),
-      ATOMATON_SECRET_NAMES: "${{ toJSON(matrix.secrets) }}",
+      ...matrixSecretEnv(),
       ATOMATON_PR_TREE: `\${{ github.workspace }}/${PR_TREE_DIR}`,
       ...CHECK_ENV,
     },
-    run: renameSecretSlots() + "\n" + RUN_COMMANDS,
+    run: renameSecretSlots() + "\n" + RUN_DECLARED_COMMANDS,
   });
 }
-/**
- * One GitHub job per declared check, on the runner that check asked for.
- *
- * `fromJSON(matrix.runs_on)` always, so one label and a self-hosted runner's several
- * are consumed the same way -- see `domain/runner-label.ts`.
- *
- * `if: … != '[]'`, because a matrix over an empty list is an error rather than an
- * empty job. A project that declared none of this arm publishes an empty list, and the
- * job that collects the verdicts reads `skipped` as a pass.
- */
-function matrixJob(jobName: string, planJobName: string, steps: readonly unknown[]): DefinedJob {
-  return new DefinedJob(
-    jobName,
-    {
-      // Named, because GitHub builds a matrix job's name from EVERY field of its
-      // entry when it is not. Measured on the first run of this shape:
-      //
-      //   pull-request-checks (verify, ["ubuntu-latest"], bun run src/scripts/scan_…
-      //
-      // — truncated by the UI, and the one part a person needs is the entry's name,
-      // which is buried among the commands and the runner. That name is also what a
-      // failing check reports itself as, so it is the whole of what somebody sees
-      // when they are looking for which check went wrong.
-      name: `${jobName} (\${{ matrix.name }})`,
-      needs: [planJobName],
-      if: `\${{ needs.${planJobName}.outputs.jobs != '[]' }}`,
-      "runs-on": "${{ fromJSON(matrix.runs_on) }}" as unknown as string,
-      "timeout-minutes": 30,
-      permissions: { contents: "read" },
-      strategy: {
-        // One check's problem should not hide another's.
-        "fail-fast": false,
-        matrix: { include: `\${{ fromJSON(needs.${planJobName}.outputs.jobs) }}` },
-      },
-    } as unknown as GWT.NormalJob,
-    steps as never[],
-  );
-}
+/** One check's problem should not hide another's, so neither arm stops at the first. */
+const CHECK_MATRIX = { timeoutMinutes: 30, failFast: false, permissions: { contents: "read" } } as const;
 
-const pullRequestChecksJob = matrixJob(PULL_REQUEST_JOB_NAME, PLAN_PULL_REQUEST_JOB, [
+const pullRequestChecksJob = matrixJob(PULL_REQUEST_JOB_NAME, PLAN_PULL_REQUEST_JOB, CHECK_MATRIX, [
   new ActionsCheckoutV4({ name: "Checkout the pull request" }),
   new SetupBunAction({ name: "Setup Bun" }),
   environmentSetupStep(),
   runPullRequestChecks(),
 ]);
 
-const defaultBranchChecksJob = matrixJob(DEFAULT_BRANCH_JOB_NAME, PLAN_DEFAULT_BRANCH_JOB, [
+const defaultBranchChecksJob = matrixJob(DEFAULT_BRANCH_JOB_NAME, PLAN_DEFAULT_BRANCH_JOB, CHECK_MATRIX, [
   new ActionsCheckoutV4({
     name: "Checkout the default branch, whose commands these are",
     with: { ref: "${{ github.event.repository.default_branch }}" },

@@ -60,7 +60,7 @@ servers:
       # Atomaton's own release checks it against the live server as well:
       # `scripts/release.sh` asks these servers what they offer and holds every
       # pattern here to it before publishing. That is Atomaton's release, not this
-      # repository's -- `deploy.atomaton_runs.targets` ships empty, so nothing here
+      # repository's -- `deploy` ships empty, so nothing here
       # runs it for you unless you wire it. Whichever release runs it, it runs after
       # a merge and never on a pull request: starting a pull request's declared
       # servers is not something a check that reads its configuration as data may do.

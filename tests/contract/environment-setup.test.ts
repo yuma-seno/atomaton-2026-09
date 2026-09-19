@@ -35,7 +35,7 @@ const JOBS = [
   {
     workflow: "atomaton-deploy",
     job: "deploy",
-    projectCommands: "Deploy the targets this run is for",
+    projectCommands: "Run this deployment's commands",
     why: "the least frequent and the most expensive to get wrong",
   },
 ] as const;

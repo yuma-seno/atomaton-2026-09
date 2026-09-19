@@ -13,7 +13,7 @@
  *
  * `tests/contract/agent-definitions.test.ts` does check that one rule, but
  * adopters never receive it: `build-dist.ts` excludes `*.test.ts` by design. And
- * `config.yaml`'s `checks.atomaton_runs.commands` ships empty, so an adopter's `atomaton-check.yml`
+ * `config.yaml`'s `checks.from_default_branch` ships empty, so an adopter's `atomaton-check.yml`
  * runs nothing at all until they configure it — and whatever they put there is
  * their pipeline, not a place to hide this.
  *

@@ -13,7 +13,7 @@ The deliverable:
 - `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
-- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.atomaton_runs.targets`
+- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.on_merge`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
   every adopter as `.github/atomaton-runtime/scripts/scan_secrets.ts`; this repository
@@ -92,7 +92,7 @@ The version is the single declaration, and `scripts/release.sh` derives the tag
 from it, so there is no tag to push and nothing that can disagree. Releasing is an
 ordinary reviewed change rather than a separate act of remembering.
 
-That script is this project's one `deploy.atomaton_runs.targets` entry, declared `on: merge` in
+That script is this project's one `deploy.on_merge` entry, declared in
 `.github/atomaton/config.yaml`. It runs after every merge and is idempotent: it reads
 the declared version, finds a release already exists for it, and stops before
 installing anything. Only a merge that changes the version reaches the build,

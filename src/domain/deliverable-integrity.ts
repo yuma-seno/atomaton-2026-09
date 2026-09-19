@@ -39,9 +39,10 @@
  * So this module owns exactly one format: config.yaml, which is delivery's own and
  * which the core has never heard of.
  */
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "./check-jobs.ts";
 import { isControlCommand } from "./control-commands.ts";
-import { resolveDeclaredSecrets, SECRET_DESTINATIONS } from "./declared-secrets.ts";
-import { resolveDeployTargets } from "./deploy-targets.ts";
+import { resolveDeclaredSecrets, TOOL_SECRETS } from "./declared-secrets.ts";
+import { DEPLOY_ARMS, resolveDeployJobs } from "./deploy-jobs.ts";
 import { resolveDeclaredJobs } from "./declared-jobs.ts";
 import { resolveMergeGates } from "./merge-gates.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts";
@@ -51,8 +52,8 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
  * does not describe.
  *
  * `null` is not "anything goes" — it is "the key is recognised and something else
- * decides what may be in it". `merge.gates` and `deploy.atomaton_runs.targets`
- * are both `null` here and both validated below by their own resolver.
+ * decides what may be in it". `merge.gates` and `deploy.on_merge` are both `null`
+ * here and both validated below by their own resolver.
  */
 interface Section {
   /** Keys recognised by name. */
@@ -97,7 +98,13 @@ const CONFIG_SCHEMA: Section = {
     },
     deploy: {
       children: {
-        atomaton_runs: { children: { targets: null, secrets: null, runs_on: null } },
+        // Three lists, one per event, and `null` for the same reason as `checks`:
+        // `resolveDeployJobs` describes their interior, including which of
+        // `branches:` and `tags:` each one has. A key in the wrong list is a typo
+        // here, which is the whole point of splitting them.
+        on_merge: null,
+        on_tag: null,
+        on_demand: null,
         your_workflow: null,
       },
     },
@@ -124,16 +131,14 @@ const CONFIG_SCHEMA: Section = {
 };
 
 /**
- * One named arm of a `checks` or `deploy` section, or an empty one.
+ * The last segment of a dotted path — `from_pull_request` of
+ * `checks.from_pull_request`.
  *
- * A section's arms are alternatives to `your_workflow`, which names a workflow of
- * the project's own that nothing here is Atomaton's to validate -- so an absent arm
- * is a project that made another choice, not a fault.
+ * So a list's own rules stay the one place its name is written. Naming the section
+ * here and the key again beside it is how the two came to disagree elsewhere.
  */
-function arm(section: unknown, name: string): Record<string, unknown> {
-  if (!isRecord(section)) return {};
-  const value = section[name];
-  return isRecord(value) ? value : {};
+function leafOf(path: string): string {
+  return path.slice(path.lastIndexOf(".") + 1);
 }
 
 /**
@@ -238,27 +243,22 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // from a precedence puzzle -- which one wins, and does the reader remember? --
   // into a sentence naming the one to delete.
   //
-  // The arm is named for whose commands run, so the two sections spell it
-  // differently: a check runs the pull request's, a deployment runs the branch it
-  // ships from.
-  for (const [section, atomatonArm] of [
-    ["checks", "from_pull_request"],
-    ["deploy", "atomaton_runs"],
+  // A section's Atomaton side is one list for `checks` and three for `deploy`, since
+  // a deployment is selected by the event that starts it. Any of them beside
+  // `your_workflow` is the same mistake.
+  for (const [section, atomatonLists] of [
+    ["checks", [CHECKS_FROM_PULL_REQUEST, CHECKS_FROM_DEFAULT_BRANCH].map((rules) => leafOf(rules.where))],
+    ["deploy", Object.values(DEPLOY_ARMS).map((arm) => arm.key)],
   ] as const) {
     const value = config[section];
-    if (!isRecord(value)) continue;
-    if (value[atomatonArm] !== undefined && value.your_workflow !== undefined) {
-      problems.push(
-        "`" +
-          section +
-          "` sets both `" +
-          atomatonArm +
-          "` and `your_workflow`. They are alternatives: `your_workflow` dispatches a " +
-          "workflow of your own and nothing reads `" +
-          atomatonArm +
-          "`. Remove whichever you did not mean.",
-      );
-    }
+    if (!isRecord(value) || value.your_workflow === undefined) continue;
+    const declared = atomatonLists.filter((list) => value[list] !== undefined);
+    if (declared.length === 0) continue;
+    const named = declared.map((list) => `\`${list}\``).join(" and ");
+    problems.push(
+      `\`${section}\` sets ${named} and \`your_workflow\`. They are alternatives: \`your_workflow\` ` +
+        `dispatches a workflow of your own and nothing reads ${named}. Remove whichever you did not mean.`,
+    );
   }
 
   // ── the resolvers, run early ──────────────────────────────────────────────
@@ -268,17 +268,17 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // `deploy` and `checks` are read for their SHAPE only, which is not the same as
   // taking direction from them. Letting an adopter's pipeline configure this
   // validation — running their commands, deciding what to check from their config
-  // — is ruled out. Asking whether `deploy.atomaton_runs.targets` is a well-formed
-  // array of targets is this deliverable validating itself, and the alternative is
-  // what happens today: `resolveDeployTargets` reports it after the merge, from
-  // the deploy run, where nobody is watching.
+  // — is ruled out. Asking whether `deploy.on_tag` is a well-formed list of
+  // deployments is this deliverable validating itself, and the alternative is what
+  // happened before: the resolver reported it after the merge, from the deploy run,
+  // where nobody is watching.
   //
-  // `checks` and `deploy` carry theirs inside `atomaton_runs` -- the arm that declares
-  // what Atomaton runs also declares what that run may reach. A project naming its own
-  // workflow hands that workflow its own secrets. `tools` has no arms: the servers
-  // are always Atomaton's.
-  const deployRuns = arm(config.deploy, "atomaton_runs");
-  problems.push(...resolveDeployTargets(deployRuns.targets).problems);
+  // Every list's credentials come with it, entry by entry, so this covers them too:
+  // the declaration that says what Atomaton runs is the declaration that says what
+  // that run may reach. A project naming its own workflow hands that workflow its own
+  // secrets. `tools` is the one list belonging to a whole workflow, because the
+  // servers are always Atomaton's.
+  problems.push(...resolveDeployJobs(config.deploy).problems);
 
   // Both check arms, read here so a malformed one fails the pull request that wrote
   // it rather than the planning job that later cannot use it. The import for this
@@ -286,22 +286,11 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // reached the default branch and failed there, where the message belongs to a job
   // nobody was reading.
   const checks = isRecord(config.checks) ? config.checks : {};
-  problems.push(
-    ...resolveDeclaredJobs(checks.from_pull_request, {
-      where: "checks.from_pull_request",
-      secretsAllowed: false,
-    }).problems,
-  );
-  problems.push(
-    ...resolveDeclaredJobs(checks.from_default_branch, {
-      where: "checks.from_default_branch",
-      secretsAllowed: true,
-    }).problems,
-  );
+  problems.push(...resolveDeclaredJobs(checks.from_pull_request, CHECKS_FROM_PULL_REQUEST).problems);
+  problems.push(...resolveDeclaredJobs(checks.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH).problems);
 
   const tools = isRecord(config.tools) ? config.tools : {};
-  problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
+  problems.push(...resolveDeclaredSecrets(tools.secrets, TOOL_SECRETS).problems);
 
 
   // ── a name that resolves to two things ────────────────────────────────────

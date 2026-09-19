@@ -560,7 +560,7 @@ echo "the agent must be finished by $(date -u -d @\${DEADLINE} +%H:%M:%SZ)"
  * thing. `tools` is the destination — a credential declared for checks or for a
  * deployment reaches those workflows and never this one.
  */
-const toolSecretsStep = secretNamesStep("tools");
+const toolSecretsStep = secretNamesStep();
 
 const installAtomaCli = installAtomaCliStep("${{ inputs.atoma_version }}");
 

@@ -441,9 +441,9 @@ What it checks:
   `atoma validate`, so it is the same resolution a run performs rather than an
   imitation of it.
 - `config.yaml` uses only keys Atomaton reads.
-- `checks` and `deploy` each declare one arm. `atomaton_runs` and `your_workflow`
+- `checks` and `deploy` each declare one arm. Atomaton's lists and `your_workflow`
   together are reported here rather than resolved by a precedence rule.
-- `merge.gates`, `deploy.atomaton_runs.targets` and the three `secrets` lists parse.
+- `merge.gates`, every `deploy` list and every `secrets` list parse.
   These were already validated, but at merge time, at deploy time, and when
   a credential was handed out. Nothing new is being judged; it is being judged
   earlier.
@@ -461,7 +461,7 @@ one reads the pull request's `.github/atomaton/` as data and runs nothing under
 `--root`. The half that needs live servers — whether an allowlist pattern still
 names a tool that exists, whether a server starts at all — belongs on the other end
 of the pipeline instead, in a release. Atomaton runs it in its own; your release
-does not until you put it there, because `deploy.atomaton_runs.targets` ships
+does not until you put it there, because `deploy` ships
 empty. See [Checks, deployment, and the jobs you
 will see](#checks-deployment-and-the-jobs-you-will-see).
 
@@ -506,7 +506,7 @@ is, so it cannot be on it.
 `environment.setup_commands`: an agent can change the runner and prove the change in
 the same pull request rather than waiting for a merge to find out.
 
-Two shipped workflows run what `checks.from_pull_request` and `deploy.atomaton_runs` declare
+Two shipped workflows run what `checks` and `deploy` declare
 — `atomaton-check.yml` and `atomaton-deploy.yml`. Neither changes per project, which is
 the whole point: **an agent can write configuration and cannot write a workflow.**
 GitHub refuses `GITHUB_TOKEN` on `.github/workflows/**` by identity, on every path
@@ -518,7 +518,7 @@ lives in workflow YAML always needs a person.
 if they disagree with it.** `scripts/release.sh` runs `scripts/check-live-tools.sh`
 between building `dist/` and creating the release. Both are Atomaton's own and
 neither ships, so this is a description of how Atomaton is released rather than of
-what your pipeline does: `deploy.atomaton_runs.targets` ships empty, and wiring the
+what your pipeline does: `deploy` ships empty, and wiring the
 same check into your release is yours to do. That script starts every tool server
 the artifact declares and asks `atoma validate --with-live-tools` what each one
 actually advertises, which is what decides whether every `tool_allowlist` /

@@ -21,7 +21,7 @@ const SOUND = {
   base_branch: "",
   environment: { setup_commands: [] },
   checks: { from_pull_request: [] },
-  deploy: { atomaton_runs: { targets: [], secrets: [] } },
+  deploy: { on_merge: [], on_tag: [], on_demand: [] },
   merge: { policy: "auto" },
   chain: { labels: { in_progress: "atomaton/in-progress" } },
   tools: { secrets: [] },
@@ -109,15 +109,25 @@ describe("keys nothing reads", () => {
  */
 describe("two arms, and exactly one of them", () => {
   test("declaring both is reported, in either section", () => {
-    for (const section of ["checks", "deploy"] as const) {
-      const arm = section === "checks" ? "from_pull_request" : "atomaton_runs";
-      // `[]` rather than `{}`: `checks.from_pull_request` is a list, and an object
-      // there is a second problem that would hide the count this asserts.
-      const empty = section === "checks" ? [] : {};
-      const problems = problemsFor({ ...SOUND, [section]: { [arm]: empty, your_workflow: DEFAULT_CI_WORKFLOW } });
+    for (const [section, arm] of [["checks", "from_pull_request"], ["deploy", "on_tag"]] as const) {
+      const problems = problemsFor({ ...SOUND, [section]: { [arm]: [], your_workflow: DEFAULT_CI_WORKFLOW } });
       expect(problems, section).toHaveLength(1);
       expect(problems[0], section).toContain(`\`${section}\``);
     }
+  });
+
+  /**
+   * `deploy` has three lists. One sentence naming every one that is set, not three
+   * sentences saying the same thing about a section with one `your_workflow`.
+   */
+  test("several lists beside one your_workflow is one problem naming them all", () => {
+    const problems = problemsFor({
+      ...SOUND,
+      deploy: { on_merge: [], on_tag: [], your_workflow: DEFAULT_CD_WORKFLOW },
+    });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("`on_merge`");
+    expect(problems[0]).toContain("`on_tag`");
   });
 
   test("either arm on its own is sound", () => {
@@ -139,26 +149,37 @@ describe("the resolvers, run early", () => {
     ).toBeGreaterThan(0);
   });
 
-  test("a malformed deploy target is reported", () => {
-    expect(problemsFor({ ...SOUND, deploy: { atomaton_runs: { targets: [{ name: "Prod" }] } } }).length).toBeGreaterThan(
-      0,
-    );
+  test("a malformed deployment is reported", () => {
+    expect(problemsFor({ ...SOUND, deploy: { on_merge: [{ name: "Prod" }] } }).length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The key that only exists in one list. `tags:` on a merge deployment is a
+   * deployment that never happens, and this is where a pull request writing one
+   * finds out.
+   */
+  test("a key in the wrong deploy list is reported", () => {
+    const problems = problemsFor({ ...SOUND, deploy: { on_merge: [{ name: "p", commands: ["a"], tags: ["v*"] }] } });
+    expect(problems[0]).toContain("unknown key");
   });
 
   // A declared credential that collides with one the run needs for itself would
   // replace it. Today that fails the run; here it fails the pull request.
   //
-  // Three destinations, and the declaration sits at a different depth in each:
-  // `tools.secrets` is the agent's own, the other two live inside the arm that
-  // declares the commands they are handed to.
-  test("a reserved credential name is reported for every destination", () => {
-    for (const [section, declaration] of [
-      ["tools", { secrets: ["GH_TOKEN"] }],
-      ["deploy", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
-      ["deploy", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
+  // The declaration sits at a different depth in each place: `tools.secrets` is the
+  // agent's own list, and a check or a deployment names its own on the entry that
+  // uses them.
+  test("a reserved credential name is reported wherever it is declared", () => {
+    for (const [what, declaration] of [
+      ["tools", { tools: { secrets: ["GH_TOKEN"] } }],
+      ["deploy", { deploy: { on_merge: [{ name: "p", commands: ["a"], secrets: ["GH_TOKEN"] }] } }],
+      [
+        "checks",
+        { checks: { from_default_branch: [{ name: "c", commands: ["a"], secrets: ["ATOMATON_PR_TREE"] }] } },
+      ],
     ] as const) {
-      const problems = problemsFor({ ...SOUND, [section]: declaration });
-      expect(problems.length, section).toBeGreaterThan(0);
+      const problems = problemsFor({ ...SOUND, ...declaration });
+      expect(problems.length, what).toBeGreaterThan(0);
     }
   });
 });

@@ -29,10 +29,10 @@
  * Usage:
  *   plan_checks.ts --arm pull-request|default-branch
  */
-import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../domain/check-jobs.ts";
 import { getDefaultBranchChecks, getPullRequestChecks } from "../lib/config.ts";
-import { runsOnOutput } from "../domain/runner-label.ts";
+import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface PlanChecksArgs {
@@ -42,27 +42,8 @@ export interface PlanChecksArgs {
 export const ref = defineScript<PlanChecksArgs>(import.meta.url);
 
 const ARMS = {
-  "pull-request": {
-    read: getPullRequestChecks,
-    key: "checks.from_pull_request",
-    /**
-     * Said only for this arm, because only here is an empty list surprising.
-     *
-     * A project that declares no credentialed check is the shipped default and the
-     * common case. A project that declares nothing to verify a change with has a
-     * required check that passes every pull request without looking at it, which is
-     * the shape this repository keeps finding: cover that is not.
-     */
-    warnWhenEmpty:
-      "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " +
-      "so a pull request satisfying it has not been tested. Add the commands that check this project, " +
-      "or point `checks.your_workflow` at a workflow of your own.",
-  },
-  "default-branch": {
-    read: getDefaultBranchChecks,
-    key: "checks.from_default_branch",
-    warnWhenEmpty: "",
-  },
+  "pull-request": { read: getPullRequestChecks, key: CHECKS_FROM_PULL_REQUEST.where, warnWhenEmpty: NO_PULL_REQUEST_CHECKS },
+  "default-branch": { read: getDefaultBranchChecks, key: CHECKS_FROM_DEFAULT_BRANCH.where, warnWhenEmpty: "" },
 } as const;
 
 export function main(): void {
@@ -80,30 +61,7 @@ export function main(): void {
     process.exit(1);
   }
 
-  // `include` is what a matrix takes, and each entry carries everything its job needs:
-  // the name GitHub shows, the machine, the commands, and the secret names that job —
-  // and only that job — is handed.
-  //
-  // `runs_on` is JSON rather than a bare label so the consumer is always
-  // `fromJSON(...)`, with no branch that behaves differently for one label than for
-  // three. See `runsOnOutput`.
-  const include = jobs.map((job) => ({
-    name: job.name,
-    runs_on: runsOnOutput(job.runsOn),
-    commands: job.commands,
-    secrets: job.secrets,
-  }));
-
-  const output = process.env.GITHUB_OUTPUT;
-  const line = `jobs=${JSON.stringify(include)}\n`;
-  if (output) appendFileSync(output, line);
-  else process.stdout.write(line);
-
-  if (include.length === 0) {
-    console.error(arm.warnWhenEmpty ? `::warning::${arm.warnWhenEmpty}` : `No \`${arm.key}\` checks are declared.`);
-    return;
-  }
-  console.error(`${include.length} \`${arm.key}\` job(s): ${include.map((job) => job.name).join(", ")}`);
+  publishMatrix(jobs, { what: `\`${arm.key}\` job`, warnWhenEmpty: arm.warnWhenEmpty });
 }
 
 if (import.meta.main) main();

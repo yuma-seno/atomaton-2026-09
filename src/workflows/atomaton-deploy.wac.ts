@@ -1,72 +1,185 @@
 import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
-import { pickRunnerJob, PICK_RUNNER_JOB } from "./actions/pick-runner.ts";
+import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
 import { scriptCommandWithArgs } from "./actions/script-call.ts";
-import { renameSecretSlots, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
+import { renameSecretSlots } from "./actions/secret-slots.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
-import { ref as runDeployRef } from "../scripts/run_deploy.ts";
+import { ref as planDeployRef } from "../scripts/plan_deploy.ts";
 
-// Runs whatever config.yaml's `deploy.atomaton_runs.targets` says this project deploys.
+// Runs whatever config.yaml's `deploy` says this project ships.
 //
 // Same reason as atomaton-check: GITHUB_TOKEN cannot write `.github/workflows/**`,
 // so a deployment an agent is expected to author has to be configuration. This
-// is the fixed shell; the targets, their triggers and their commands are all in
-// config.yaml.
+// is the fixed shell; the deployments, the events that start them and their
+// commands are all in config.yaml.
 //
-// Two triggers, for two things GitHub does differently.
+// ## One job per deployment, and why
 //
-// A pushed tag arrives as an event, and `on:` takes no expression -- a tag
-// pattern that an agent can edit cannot live there. So this listens for every
-// tag and `run_deploy.ts` decides whether any target wanted that one. A tag
-// nobody asked for exits clean; a red run per unrelated tag would teach people
-// to ignore the red.
+// It was one job running every selected deployment in order. That made a release
+// and a cloud rollout the same job: one runner, one set of credentials, and a
+// failure reported as "deploy" whichever of them broke. Now each entry is its own
+// GitHub job, so it picks its own machine and is handed the secrets it named and no
+// others -- the arrangement `checks.from_default_branch` already had.
 //
-// A merge arrives two ways, and `on: merge` used to mean only one of them.
+// `max-parallel: 1` and `fail-fast: true` keep what the single job did provide:
+// declared order, and a stop at the first failure. With one deployment already
+// broken, continuing puts more of the estate in an unknown state rather than less.
 //
-// An agent merges with GITHUB_TOKEN, which fires no `push`, so `dispatchCd`
-// starts this run explicitly with `trigger=merge`. It reads the targets before
-// dispatching and does not start a run when no target deploys on merge, so that
-// path costs nothing when unused.
+// ## Two triggers, for the events GitHub does and does not send
 //
-// A person's merge does fire `push`, and nothing was listening -- so a target
-// declared `on: merge` deployed after an agent's merge and silently not after a
-// person's. `push` on the default branch closes that.
+// A pushed tag or branch arrives as an event, and `on:` takes no expression -- a
+// pattern an agent can edit cannot live there. So this listens for every tag and
+// every branch, and `plan_deploy.ts` decides whether any entry wanted that ref. A
+// push nobody deploys plans an empty matrix, skips, and is green; a red run per
+// unrelated push would teach people to ignore the red.
 //
-// The branch list has to be literal, because `on:` takes no expression and there
-// is no way to say "the default branch" there. `main` and `master` cover what
-// repositories are actually called, and the job's `if:` then requires the ref to
-// be the real default branch -- so a repository whose `main` is not the default
-// starts no deployment, and one whose default is neither name uses
-// `deploy.your_workflow`.
+// An agent merges with GITHUB_TOKEN, which fires no `push`, so `dispatchCd` starts
+// this run explicitly with `trigger=merge`. It reads the same lists before
+// dispatching and does not start a run when nothing deploys on a merge there, so
+// that path costs nothing when unused.
 //
-// Schedules are absent on purpose: a cron expression can only be written in
-// `on:`, so it cannot come from configuration, and a fixed daily cron that
-// checks the time in a script burns 24 runs a day to do nothing.
+// `branches: ["**"]`, where it used to be `["main", "master"]` with the job
+// narrowing it again to the real default branch. That pair was the whole of
+// `deploy`'s branch handling, and it meant `on_merge` could only ever mean the
+// default branch: a project deploying a staging environment from `develop` wrote
+// the configuration, and a person's merge to `develop` started no run at all. The
+// branch an entry answers to is now the entry's own `branches:`, read from the
+// default branch by the planning job below.
+//
+// Schedules are absent on purpose: a cron expression can only be written in `on:`,
+// so it cannot come from configuration, and a fixed daily cron that checks the time
+// in a script burns 24 runs a day to do nothing.
 
+const PLAN_JOB = "plan-deploy";
+const DEPLOY_JOB = "deploy";
+const PLAN_STEP_ID = "plan";
+
+/**
+ * Read `deploy` from the DEFAULT BRANCH and publish what this run deploys.
+ *
+ * Its own job with its own checkout, and that separation is the security story of
+ * this workflow. The run below holds `contents: write`, an OIDC identity and every
+ * credential its entry named; the branch that STARTED it must not also be the branch
+ * that says what it may do. Since this workflow now starts for a push to any branch
+ * — it has to, or a project could not deploy from one — that would otherwise be a
+ * pushed branch choosing its own deployment and its own secrets.
+ *
+ * So: what deploys comes from the branch a person approved, and the tree being
+ * deployed supplies only what the commands operate on. It is the same split
+ * `plan-default-branch-checks` makes, for the same reason.
+ */
+const planJob = new DefinedJob<{ jobs: string }>(
+  PLAN_JOB,
+  {
+    "runs-on": "ubuntu-latest",
+    "timeout-minutes": 5,
+    permissions: { contents: "read" },
+    outputs: { jobs: `\${{ steps.${PLAN_STEP_ID}.outputs.jobs }}` },
+  },
+  [
+    new ActionsCheckoutV4({
+      name: "Checkout the default branch, which decides what may be deployed",
+      with: { ref: "${{ github.event.repository.default_branch }}" },
+    }),
+    new SetupBunAction({ name: "Setup Bun" }),
+    new TypedOutputsStep({
+      name: "Read `deploy` and select what this run is for",
+      id: PLAN_STEP_ID,
+      shell: "bash",
+      env: {
+        ATOMATON_DEPLOY_REF: "${{ github.ref }}",
+        ATOMATON_DEPLOY_EVENT: "${{ github.event_name }}",
+        ATOMATON_DEPLOY_TRIGGER: "${{ inputs.trigger }}",
+        ATOMATON_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
+        ATOMATON_DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}",
+      },
+      // The default branch may predate this script, and says so rather than answering
+      // as though it had looked. It happens during an upgrade: a branch carrying the
+      // new workflow is pushed before the release reaches the default branch, and the
+      // workflow file comes from the branch while this checkout comes from the default
+      // branch.
+      //
+      // `[]` is what it publishes, because there is nothing it can plan. The warning
+      // is what keeps that from being silent: "no entry wanted this ref" and "the
+      // question could not be asked" look identical afterwards, and only one of them
+      // is a repository that deploys nothing here.
+      run: [
+        `PLANNER="\${ATOMATON_MACHINERY_ROOT:-.}/${planDeployRef.runtimePath}"`,
+        'if [ ! -f "$PLANNER" ]; then',
+        '  echo "::warning::$PLANNER is not on the default branch yet, so nothing could be planned and nothing was deployed. This is expected once, on the upgrade that adds it."',
+        `  echo "jobs=[]" >> "\$GITHUB_OUTPUT"`,
+        "  exit 0",
+        "fi",
+        scriptCommandWithArgs(planDeployRef, {
+          ref: "${ATOMATON_DEPLOY_REF}",
+          "default-branch": "${ATOMATON_DEFAULT_BRANCH}",
+          event: "${ATOMATON_DEPLOY_EVENT}",
+          trigger: "${ATOMATON_DEPLOY_TRIGGER}",
+          target: "${ATOMATON_DEPLOY_TARGET_INPUT}",
+        }),
+        "",
+      ].join("\n"),
+    }),
+  ],
+);
+
+/**
+ * One deployment's commands, with the credentials that one entry named.
+ *
+ * The checkout is the ref being deployed, not the default branch the plan came from.
+ * A tag deployment builds and ships THAT tag; the commands say what to do and the
+ * tree says what to do it to.
+ */
 const runStep = new TypedOutputsStep({
-  name: "Deploy the targets this run is for",
+  name: "Run this deployment's commands",
   shell: "bash",
   env: {
-    // The other half of `contents: write`. That permission is what lets a
-    // deployment create a release or a tag, and this is what it uses to do it --
-    // granting the one without the other is a permission nothing can reach.
-    // Reserved against `deploy.atomaton_runs.secrets`, so a project cannot shadow it.
+    ...matrixSecretEnv(),
+    [COMMANDS_VAR]: "${{ toJSON(matrix.commands) }}",
+    // Lets a command tell which deployment it is running under, so one script can
+    // serve several entries without each repeating its own name in every line.
+    ATOMATON_DEPLOY_TARGET: "${{ matrix.name }}",
+    // The other half of `contents: write`. That permission is what lets a deployment
+    // create a release or a tag, and this is what it uses to do it -- granting the
+    // one without the other is a permission nothing can reach.
     GH_TOKEN: "${{ github.token }}",
-    ...secretSlotEnv(),
-    ATOMATON_DEPLOY_REF: "${{ github.ref }}",
-    ATOMATON_DEPLOY_TRIGGER: "${{ inputs.trigger }}",
-    ATOMATON_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
   },
-  run: `${renameSecretSlots()}
-${scriptCommandWithArgs(runDeployRef, {
-  ref: "${ATOMATON_DEPLOY_REF}",
-  trigger: "${ATOMATON_DEPLOY_TRIGGER}",
-  target: "${ATOMATON_DEPLOY_TARGET_INPUT}",
-})}
-`,
+  run: renameSecretSlots() + "\n" + RUN_DECLARED_COMMANDS,
 });
+
+const deployJob = matrixJob(
+  DEPLOY_JOB,
+  PLAN_JOB,
+  {
+    timeoutMinutes: 60,
+    // One deployment at a time, in declared order, stopping at the first failure --
+    // what the single job used to provide by running them in a loop.
+    failFast: true,
+    maxParallel: 1,
+    permissions: {
+      // Write because cutting a release is a deployment, and the commonest thing a
+      // deployment does on GitHub itself is create a release or a tag. Read would
+      // mean every project that ships that way needs a personal access token in its
+      // entry's `secrets` instead -- a long-lived credential, manually rotated,
+      // usually scoped wider than this. The weaker-looking permission produces the
+      // worse arrangement.
+      contents: "write",
+      // So a deployment can exchange the run's identity for short-lived cloud
+      // credentials instead of a long-lived key in a repository secret. Declared
+      // here because a job's `permissions:` is one of the few things a command
+      // genuinely cannot express -- unused, it grants nothing.
+      "id-token": "write",
+    },
+  },
+  [
+    new ActionsCheckoutV4({ name: "Checkout the ref being deployed" }),
+    new SetupBunAction({ name: "Setup Bun" }),
+    environmentSetupStep(),
+    runStep,
+  ],
+);
 
 export const atomaDeploy = new Workflow("atomaton-deploy", {
   name: "Atomaton Deploy",
@@ -74,79 +187,33 @@ export const atomaDeploy = new Workflow("atomaton-deploy", {
     workflow_dispatch: {
       inputs: {
         target: {
-          description: "Deploy this one target by name. Leave empty to deploy what the trigger selects.",
+          description: "Deploy this one entry by name. Leave empty to deploy what the trigger selects.",
           required: false,
           type: "string",
           default: "",
         },
         trigger: {
-          description: "Set to 'merge' by dispatchCd after a pull request lands. Leave as 'manual' by hand.",
+          description: "Set to 'merge' by dispatchCd after a pull request lands. Leave as 'demand' by hand.",
           required: false,
           type: "string",
-          default: "manual",
+          default: "demand",
         },
       },
     },
-    // Every tag, filtered by `deploy.atomaton_runs.targets` at run time -- see above. The
-    // branches are the default-branch merge path, narrowed again by the job's
-    // `if:`.
-    // `**`, not `*`. This filter is meant to start the run for every tag and let
-    // `run_deploy.ts` decide whether any target wanted that one -- but GitHub's
-    // `*` does not cross `/`, so a validated `"tags": ["release/*"]` target never
-    // started a run at all. `**` matches the separator too.
-    push: { tags: ["**"], branches: ["main", "master"] },
-  } as unknown as GWT.Workflow["on"],
-  permissions: {
-    // Write because cutting a release is a deployment, and the commonest thing a
-    // deployment does on GitHub itself is create a release or a tag. Read would
-    // mean every project that ships that way needs a personal access token in
-    // `deploy.atomaton_runs.secrets` instead -- a long-lived credential, manually rotated,
-    // usually scoped wider than this. The weaker-looking permission produces the
-    // worse arrangement.
+    // Every tag and every branch, filtered by `deploy` at run time -- see above.
     //
-    // This is the most privileged job in the system: it runs commands a project
-    // wrote, with the credentials it declared, and can now write to the
-    // repository. That is what makes `deploy.atomaton_runs.targets` a governed path worth
-    // reading carefully, and why the declaration comes from the default branch
-    // rather than from the branch under test.
-    contents: "write",
-    // So a deployment can exchange the run's identity for short-lived cloud
-    // credentials instead of a long-lived key in a repository secret. Declared
-    // here because a job's `permissions:` is one of the few things a command
-    // genuinely cannot express -- unused, it grants nothing.
-    "id-token": "write",
-  },
-}).addJobs(
-  pickRunnerJob().then((pick) =>
-    new DefinedJob(
-    "deploy",
-    {
-      needs: [pick.name],
-      // From `deploy.atomaton_runs.runs_on`, via the job above. One runner for the whole job:
-      // the targets run in declared order and stop at the first failure, and that
-      // ordering is the contract -- a runner per target would end it.
-      "runs-on": `\${{ fromJSON(needs.${PICK_RUNNER_JOB}.outputs.runs_on) }}` as unknown as string,
-      // `on:` could not say "the default branch", so this does. A dispatch and a
-      // tag push pass through; a branch push has to be the branch the repository
-      // actually defaults to, which is what stops a `main` that is not the
-      // default from deploying.
-      if: "github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || github.ref_name == github.event.repository.default_branch",
-      "timeout-minutes": 60,
-      // Deployments queue rather than cancel. Cancelling one half way through
-      // leaves the target in a state nobody chose, which is worse than waiting.
-      concurrency: {
-        group: "atomaton-deploy-${{ github.ref }}",
-        "cancel-in-progress": false,
-      },
-      permissions: { contents: "write", "id-token": "write" },
-    },
-    [
-      new ActionsCheckoutV4({ name: "Checkout repository" }),
-      new SetupBunAction({ name: "Setup Bun" }),
-      environmentSetupStep(),
-      secretNamesStep("deploy"),
-      runStep,
-    ],
-    ),
-  ).jobs(),
-);
+    // `**`, not `*`. This filter is meant to start the run for every ref and let
+    // `plan_deploy.ts` decide whether any entry wanted that one -- but GitHub's `*`
+    // does not cross `/`, so a validated `tags: ["release/*"]` entry never started a
+    // run at all, and `branches: ["feature/*"]` would not either. `**` matches the
+    // separator too.
+    push: { tags: ["**"], branches: ["**"] },
+  } as unknown as GWT.Workflow["on"],
+  // Deployments queue rather than cancel. Cancelling one half way through leaves the
+  // target in a state nobody chose, which is worse than waiting. At the workflow
+  // level rather than the job's, because the job is a matrix now: a group evaluated
+  // per entry would have the entries queueing behind each other, which is what
+  // `max-parallel` is for and not what this is for.
+  concurrency: { group: "atomaton-deploy-${{ github.ref }}", "cancel-in-progress": false },
+  permissions: { contents: "read" },
+} as unknown as GWT.Workflow).addJobs([planJob, deployJob]);

@@ -143,7 +143,7 @@ elsewhere — `develop` → `main`, say. Without it every agent pull request aim
 `setup_commands` run before checks, before deployments, and before an agent starts
 — all three, on a cold runner every time. They run through `bash -c`, in order,
 and stop on first failure: before the agent starts, before
-`checks.from_pull_request`, and before `deploy.atomaton_runs.targets`. One
+`checks.from_pull_request`, and before every deployment. One
 declaration, three jobs.
 
 That is the reason to use this field rather than putting `npm ci` at the front of
@@ -183,26 +183,33 @@ its definition. `0` here means the default, not "never".
 
 ## `checks` and `deploy`
 
-Two arms, and exactly one of them. Fill in `atomaton_runs` and the shipped workflow
-runs your commands; name `your_workflow` instead and it dispatches that, and the
-commands are read by nothing. Declaring both is a configuration error rather than
-a precedence puzzle you have to remember the answer to.
+Two arms, and exactly one of them. Fill in Atomaton's lists and the shipped
+workflow runs your commands; name `your_workflow` instead and it dispatches that,
+and the lists are read by nothing. Declaring both is a configuration error rather
+than a precedence puzzle you have to remember the answer to.
 
-Under `atomaton_runs`:
+Atomaton's side is a list of **entries**, and an entry is the same thing in both
+sections: a name, the commands that are it, the machine it runs on, and the
+credentials those commands may reach. Each entry becomes one GitHub job, so it
+picks its own runner and a failure names itself.
 
-- `commands` (checks) — run in order, stopping at the first failure.
-- `targets` (deploy) — each names an environment, the branch or tag that ships
-  to it, and the commands that put it there. Empty means this project deploys
-  nothing yet, which is the state a template has to ship in.
-- `secrets` — repository secrets that step may reach, by name. The values stay
-  in GitHub; only the names are here. Written in full it is
-  `deploy.atomaton_runs.secrets` — the nesting is load-bearing, and `tools.secrets`
-  below says why the lists are separate.
+```yaml
+- name: cloud-names          # its job name; lowercase, digits and hyphens
+  runs_on: ubuntu-latest     # a label, or a list of labels one runner must have
+  secrets: [AWS_ROLE_ARN]    # repository secrets this entry — and only it — receives
+  commands:                  # in order, stopping at the first failure
+    - ./scripts/check-env-names.sh
+```
 
-  **`checks.from_pull_request` has no such list, and cannot.** The commands there
-  are the pull request's own, run in its own tree, so a credential named for them
-  would be a credential the change being judged can read — a pull request may
-  rewrite any command it declares. A check that needs one goes in the other half.
+Which list an entry goes in is what differs. `checks` has two, named for whose
+commands run. `deploy` has three, named for the event that ships it. Both are
+below.
+
+**`checks.from_pull_request` has no `secrets`, and cannot.** The commands there
+are the pull request's own, run in its own tree, so a credential named for them
+would be a credential the change being judged can read — a pull request may
+rewrite any command it declares. A check that needs one goes in the other half.
+The values stay in GitHub either way; only the names are ever here.
 
 ### A check that needs a credential
 
@@ -240,8 +247,6 @@ is no spelling for it: one half has no `secrets` key and the other takes no
 commands from the pull request. A check that genuinely needs both — integration
 tests against a real environment, say — belongs after the merge, or wants a
 credential you would not mind losing.
-- `runs_on` — the GitHub runner label the job asks for. `ubuntu-latest` unless
-  the project needs a larger or self-hosted one.
 
 ### The default check
 
@@ -265,52 +270,72 @@ workflow at all and describe the pipeline as commands:
 
 ```yaml
 checks:
-  atomaton_runs:
-    commands:
-      - bun install --frozen-lockfile
-      - bun run typecheck
-      - bun test
+  from_pull_request:
+    - name: verify
+      commands:
+        - bun install --frozen-lockfile
+        - bun run typecheck
+        - bun test
 
 deploy:
-  atomaton_runs:
-    targets:
-      - name: staging
-        on: merge
-        commands: ["./scripts/deploy.sh staging"]
-      - name: production
-        on: tag
-        tags: ["v*"]
-        commands: ["./scripts/deploy.sh prod"]
+  on_merge:
+    - name: staging
+      branches: [develop]
+      commands: ["./scripts/deploy.sh staging"]
+  on_tag:
+    - name: production
+      tags: ["v*"]
+      secrets: [PROD_TOKEN]
+      commands: ["./scripts/deploy.sh prod"]
+  on_demand:
+    - name: rollback
+      commands: ["./scripts/rollback.sh"]
 ```
 
 Nothing needs pointing at these — `atomaton-check.yml` and `atomaton-deploy.yml` are
 what a section runs when it names no `your_workflow`. Fill in the commands and
 they run.
 
-**Triggers.** `on` is `merge` (a change landing on your default branch, whether an
-agent merged it or you did), `tag` (a pushed tag matching `tags`, which is a
-literal or a prefix followed by `*`), or `manual`. Any target can also be
-dispatched by name whatever its trigger, which is what makes a `manual` rollback
-target worth declaring. A tag no target claimed exits cleanly rather than failing,
-so tagging for other reasons costs you a few seconds and no red run. Schedules are
-not supported: a cron expression can only be written in a workflow's `on:`, so it
+**The three deploy lists are the trigger.** There is no `on:` key to get wrong,
+and no combination to remember:
+
+- `on_merge` ships when a change lands on a branch, whether an agent merged it or
+  you did. `branches` says which; leave it out and it means your default branch,
+  whatever that branch is called. A pattern is a literal name or a prefix and a
+  `*`, so `release/*` covers the lot.
+- `on_tag` ships when a matching tag is pushed. `tags` is required — an entry
+  claiming every tag is never what anyone meant — and takes the same patterns.
+- `on_demand` ships only when someone runs the workflow. Dispatching without
+  naming a target runs all of these; naming one runs exactly that, from any of
+  the three lists. That is what makes a rollback worth declaring.
+
+`branches` exists in `on_merge` and nowhere else, `tags` in `on_tag` and nowhere
+else. A tag pattern on a merge deployment is a deployment that never happens, and
+under one list with an `on:` key that would have been a rule to read after writing
+it; here there is nowhere to write it.
+
+A push nothing claimed deploys nothing and stays green, so tagging and pushing
+for other reasons costs you a few seconds and no red run. Schedules are not
+supported: a cron expression can only be written in a workflow's `on:`, so it
 cannot come from configuration.
 
-`on: merge` reaches your default branch if it is called `main` or `master`. A
-workflow's `on:` cannot say "the default branch", so those two are listed
-literally and then narrowed to the branch your repository actually defaults to. If
-yours is named something else, an agent's merge still deploys — that path is an
-explicit dispatch, not an event — but your own merges will not, and
-`deploy.your_workflow` is the way to cover them.
+Deployments run **one at a time, in declared order**, and the first failure stops
+the rest: with one deployment already broken, continuing puts more of your estate
+in an unknown state rather than less.
 
-**Credentials** go in the list belonging to whatever needs them —
-`deploy.atomaton_runs.secrets`, alongside `tools.secrets`. There is no such list
-under `checks.from_pull_request`: see above for why a check that runs a pull
-request's own commands cannot be given one. Add the secret to the repository
-first; these name it, they do
-not create it. Inside a deployment, `$ATOMATON_DEPLOY_TARGET` holds the target's
-name. `atomaton-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
-login works and is worth preferring over storing a long-lived key at all.
+**Credentials** go on the entry that needs them, beside its commands. Add the
+secret to the repository first; `secrets` names it, it does not create it. Inside
+a deployment, `$ATOMATON_DEPLOY_TARGET` holds that entry's name, so one script can
+serve several. `atomaton-deploy.yml` declares `id-token: write`, so a cloud
+provider's OIDC login works and is worth preferring over storing a long-lived key
+at all.
+
+**What deploys is read from your default branch**, not from the branch or tag
+being deployed. The workflow starts for a push to any ref — it has to, or you
+could not deploy from `develop` — so the ref that starts a run must not also be
+the ref that says what that run may do and which secrets it holds. Your commands
+still operate on the tree being deployed; only the declaration comes from the
+branch a person approved.
 
 **What commands cannot express**, and where you still need a workflow of your own
 through `deploy.your_workflow`:
@@ -333,26 +358,31 @@ commands.
 
 ```yaml
 checks:
-  atomaton_runs:
-    runs_on: macos-latest
+  from_pull_request:
+    - name: test-macos
+      runs_on: macos-latest
+      commands: ["bun test"]
 deploy:
-  atomaton_runs:
-    runs_on: ["self-hosted", "linux", "gpu"]
+  on_tag:
+    - name: firmware
+      runs_on: ["self-hosted", "linux", "gpu"]
+      tags: ["fw-*"]
+      commands: ["./build-and-flash.sh"]
 ```
 
 A string is one runner label. A list is the set of labels one runner must have —
 which is how a self-hosted runner is addressed. Unset takes `ubuntu-latest`.
 
-It sits inside `atomaton_runs` because the machine is a property of the step Atomaton
-runs: a project that names `your_workflow` instead declares its runner in that
+It sits on the entry because the machine is a property of that piece of work: a
+macOS test and a Linux lint are two jobs, and so are a release and a cloud
+rollout. A project that names `your_workflow` instead declares its runners in that
 workflow, where the rest of its pipeline already is.
 
-**One runner, however many labels. Not several runners.** Several would change the
-check run's *name*: `atomaton-check` becomes `atomaton-check (ubuntu-latest)`, so the
-context your ruleset requires stops existing and every pull request waits forever on
-a check that will never report.
+**One runner per entry, however many labels. Not several runners.** Several would
+be a matrix inside a matrix; write a second entry instead, which is what gives
+each one a name and a failure of its own.
 
-This applies to the two jobs that run **your** commands. It does not apply to the
+This applies to the jobs that run **your** commands. It does not apply to the
 agent's own run, which stays on Linux — what isolates a tool server from the others
 is Linux-only top to bottom (`useradd` for the user with no sudo, `setfacl` for the
 ACLs, `prctl(PR_SET_DUMPABLE)`, `/proc/<pid>/environ` being the thing closed). Making
@@ -382,12 +412,13 @@ branch. An agent merge is performed with `GITHUB_TOKEN`, and GitHub starts no
 workflow run for events its own token triggers (see
 [docs/operations.md](operations.md)), so nothing downstream of that merge fires by
 itself and your deployment would silently never run. Defaults to
-`atomaton-deploy.yml`, which does nothing when no target deploys on merge.
+`atomaton-deploy.yml`, which does nothing when nothing deploys on that merge.
 
-**Delete the `atomaton_runs` block in the section you name a workflow in.** The two
+**Delete Atomaton's lists in the section you name a workflow in.** The two
 are alternatives: declaring both fails the pull request's check, naming the
-section, rather than resolving by a precedence rule — so a `commands` list left
-behind is reported instead of sitting there reading as live.
+section and every list you left behind, rather than resolving by a precedence
+rule — so an entry left over is reported instead of sitting there reading as
+live.
 
 A workflow Atomaton is to start must accept `workflow_dispatch`, and a workflow that
 reads the pull request from the event payload gets nothing on a dispatched run.
@@ -648,11 +679,12 @@ first.
 
 Repository secrets the servers may reach, by name.
 
-Separate from `deploy.atomaton_runs.secrets` because the nesting **is** the
-boundary: only these enter an agent's own environment, so a prompt injection
-carried in an issue body reaches them and no deployment credential. Collapsing the
-three into one list would put every credential in every destination while still
-looking like a boundary, which is worse than having no boundary at all.
+Separate from the credentials a check or a deployment names on its own entry,
+because that separation **is** the boundary: only these enter an agent's own
+environment, so a prompt injection carried in an issue body reaches them and no
+deployment credential. Collapsing them into one list would put every credential in
+every destination while still looking like a boundary, which is worse than having
+no boundary at all.
 
 The declaration is here rather than in a repository variable because it is the
 most security-relevant setting this project has. In the config it is versioned, it
@@ -689,8 +721,8 @@ what the run may hold, a server's `env` says which server sees it, and the secon
 is what keeps the first out of the shell. Authorising a credential does not
 deliver it. `checks` and `deploy` need no third step at all, because their
 commands run in a workflow of their own rather than beside an agent — a secret
-named in `deploy.atomaton_runs.secrets` is in that job's environment and there is no
-server to route it to.
+named on a deployment's entry is in that job's environment and there is no server
+to route it to.
 
 The bottom row reads the same whether the server is one of yours or one Atomaton
 ships. For a shipped name, an entry carrying `env` and nothing else is an override

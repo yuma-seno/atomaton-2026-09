@@ -14,13 +14,18 @@
  * simply never arrives, and only whatever needed it fails. So the slot `env:`
  * and the bash that renames the slots are built here, from the same constants,
  * rather than written out three times.
+ *
+ * Two shapes, because there are two kinds of declaration. `tools.secrets` is a list
+ * for a whole workflow, resolved by the step below and read by `secretSlotEnv()`. A
+ * check or a deployment declares its own per entry, so those slots key off
+ * `matrix.secrets` instead — `matrixSecretEnv()` in `declared-job.ts`. Both end in
+ * the same `renameSecretSlots()`, which is the half that must not diverge.
  */
 import {
   RUN_CREDENTIALS,
   SECRET_NAMES_VAR,
   SECRET_SLOT_PREFIX,
   SECRET_SLOTS,
-  type SecretDestinationName,
 } from "../../domain/declared-secrets.ts";
 import { scriptCommandWithArgs } from "./script-call.ts";
 import { ref as readSecretNamesRef } from "../../scripts/read_secret_names.ts";
@@ -68,7 +73,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * the generated workflow needs to know what the line does, not which bug it
  * replaced.
  */
-export function secretNamesStep(destination: SecretDestinationName): TypedOutputsStep<"names"> {
+export function secretNamesStep(): TypedOutputsStep<"names"> {
   const trustedConfig = "$RUNNER_TEMP/atomaton-declared-secrets.yaml";
   return new TypedOutputsStep(
     {
@@ -94,7 +99,7 @@ else
   echo "::warning::Could not read .github/atomaton/config.yaml from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
 fi
 
-${scriptCommandWithArgs(readSecretNamesRef, { destination, config: trustedConfig })}
+${scriptCommandWithArgs(readSecretNamesRef, { config: trustedConfig })}
 `,
     },
     ["names"] as const,
@@ -155,8 +160,8 @@ export function secretSlotEnv(): Record<string, string> {
  */
 export function renameSecretSlots(): string {
   return `# Credentials arrive in numbered slots because this file is generated and cannot
-# know what a project called its Slack token; config.yaml does, and the resolve
-# step above published that list. Put the declared name back on each slot before
+# know what a project called its Slack token; config.yaml does, and the names
+# travelled here beside them. Put the declared name back on each slot before
 # anything that needs one runs.
 ATOMATON_DECLARED_SECRETS="\${${SECRET_NAMES_VAR}:-[]}"
 ATOMATON_DECLARED_COUNT=$(echo "$ATOMATON_DECLARED_SECRETS" | jq -r 'length')
