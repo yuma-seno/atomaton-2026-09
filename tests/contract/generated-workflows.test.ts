@@ -1161,6 +1161,29 @@ describe("generated workflows", () => {
   });
 
   /**
+   * A deployment that cuts a release tags with GITHUB_TOKEN, and GitHub starts no
+   * workflow run for its own token's events — so `on_tag` never fired for a project's
+   * own release tags. The run that made the tag dispatches for it.
+   *
+   * Dispatching needs `actions: write`, and the job that runs a project's deployment
+   * commands must not have it: those commands are the project's own, and `actions:
+   * write` would let one start any workflow in the repository. Pinned here because
+   * that separation is the whole reason there are two jobs, and merging them would
+   * look like a simplification.
+   */
+  test("only the job that runs nothing a project wrote may dispatch a workflow", () => {
+    type WorkflowDocument = { jobs?: Record<string, { permissions?: Record<string, string> }> };
+    const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
+
+    expect(deploy.jobs?.["dispatch-new-tags"]?.permissions?.actions, "the dispatching job needs it").toBe("write");
+    expect(
+      deploy.jobs?.deploy?.permissions?.actions,
+      "the job running a project's commands must not be able to start workflows",
+    ).toBeUndefined();
+    expect(deploy.jobs?.["plan-deploy"]?.permissions?.actions).toBeUndefined();
+  });
+
+  /**
    * Deployments run one at a time, in declared order, and stop at the first failure.
    *
    * What the single job provided by running them in a bash loop, and the one thing a

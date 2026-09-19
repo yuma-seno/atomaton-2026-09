@@ -31,7 +31,7 @@ function plan(args: string[], rulesStdout: string | { code: number } = PROTECTED
         ? { match: ["api", "rules/branches"], stdout: rulesStdout }
         : { match: ["api", "rules/branches"], code: rulesStdout.code, stdout: "" };
     const r = runWithFakeGh(scriptPath("plan_deploy.ts"), ["--repo", "o/r", ...args], {
-      rules: [rule],
+      rules: [rule, { match: ["api", "matching-refs/tags"], stdout: "refs/tags/v1.0.0" }],
       cwd: dir,
       env: { GITHUB_OUTPUT: outputPath },
     });
@@ -140,7 +140,73 @@ describe("plan_deploy.ts", () => {
 
     test("the branch it asks about is the one being deployed", () => {
       const r = plan(PUSH_DEVELOP);
-      expect(r.ghCalls.map((call) => call.join(" "))).toEqual(["api repos/o/r/rules/branches/develop"]);
+      expect(r.ghCalls.map((call) => call.join(" "))).toContain("api repos/o/r/rules/branches/develop");
+    });
+  });
+
+  /**
+   * The snapshot the run compares against afterwards. A deployment that cuts a
+   * release tags with GITHUB_TOKEN, so no `push` arrives and `on_tag` would never
+   * fire for it — see `dispatch_new_tags.ts`.
+   */
+  describe("the tags that existed before", () => {
+    test("a deployment on a project declaring `on_tag` takes one", () => {
+      const r = plan(PUSH_MAIN);
+      expect(JSON.parse(r.outputs.tags_before ?? "null")).toEqual(["v1.0.0"]);
+    });
+
+    /** Nothing to watch for, so nothing is published and the dispatch job is skipped. */
+    test("a project with no tag deployment takes none", () => {
+      const dir = makeConfigDir({ deploy: { on_merge: [{ name: "release", commands: ["./release.sh"] }] } });
+      const outDir = mkdtempSync(join(tmpdir(), "atomaton-plan-"));
+      const outputPath = join(outDir, "github_output");
+      writeFileSync(outputPath, "");
+      try {
+        const r = runWithFakeGh(scriptPath("plan_deploy.ts"), ["--repo", "o/r", ...PUSH_MAIN], {
+          rules: [{ match: ["api", "rules/branches"], stdout: PROTECTED }],
+          cwd: dir,
+          env: { GITHUB_OUTPUT: outputPath },
+        });
+        expect(r.status).toBe(0);
+        expect(parseGithubOutput(readFileSync(outputPath, "utf8")).tags_before).toBeUndefined();
+        expect(r.ghCalls.some((call) => call.join(" ").includes("matching-refs/tags"))).toBe(false);
+      } finally {
+        removeTemp(dir);
+        removeTemp(outDir);
+      }
+    });
+
+    /** A tag run is a leaf: a deployment that tags, started by a tag, would loop. */
+    test("a run started by a tag takes none", () => {
+      const r = plan(["--ref", "refs/tags/v1.0.0", "--default-branch", "main", "--event", "push"]);
+      expect(r.status).toBe(0);
+      expect(r.outputs.tags_before).toBeUndefined();
+    });
+
+    test("a push that deploys nothing takes none", () => {
+      const r = plan(["--ref", "refs/heads/feature-x", "--default-branch", "main", "--event", "push"]);
+      expect(r.outputs.tags_before).toBeUndefined();
+    });
+
+    /**
+     * Refused rather than skipped. Publishing nothing would skip the dispatch job,
+     * and a tag deployment going missing is exactly what nothing else would notice.
+     */
+    test("a tag list that could not be read fails the plan", () => {
+      const dir = makeConfigDir(DEPLOY);
+      try {
+        const r = runWithFakeGh(scriptPath("plan_deploy.ts"), ["--repo", "o/r", ...PUSH_MAIN], {
+          rules: [
+            { match: ["api", "rules/branches"], stdout: PROTECTED },
+            { match: ["api", "matching-refs/tags"], code: 1, stdout: "" },
+          ],
+          cwd: dir,
+        });
+        expect(r.status).toBe(1);
+        expect(r.stderr).toContain("tags could not be read");
+      } finally {
+        removeTemp(dir);
+      }
     });
   });
 });

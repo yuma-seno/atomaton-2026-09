@@ -6,6 +6,7 @@ import { scriptCommandWithArgs } from "./actions/script-call.ts";
 import { renameSecretSlots } from "./actions/secret-slots.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
+import { ref as dispatchNewTagsRef, TAGS_BEFORE_VAR } from "../scripts/dispatch_new_tags.ts";
 import { ref as planDeployRef } from "../scripts/plan_deploy.ts";
 
 // Runs whatever config.yaml's `deploy` says this project ships.
@@ -54,6 +55,7 @@ import { ref as planDeployRef } from "../scripts/plan_deploy.ts";
 
 const PLAN_JOB = "plan-deploy";
 const DEPLOY_JOB = "deploy";
+const DISPATCH_TAGS_JOB = "dispatch-new-tags";
 const PLAN_STEP_ID = "plan";
 
 /**
@@ -70,13 +72,18 @@ const PLAN_STEP_ID = "plan";
  * deployed supplies only what the commands operate on. It is the same split
  * `plan-default-branch-checks` makes, for the same reason.
  */
-const planJob = new DefinedJob<{ jobs: string }>(
+const planJob = new DefinedJob<{ jobs: string; tags_before: string }>(
   PLAN_JOB,
   {
     "runs-on": "ubuntu-latest",
     "timeout-minutes": 5,
     permissions: { contents: "read" },
-    outputs: { jobs: `\${{ steps.${PLAN_STEP_ID}.outputs.jobs }}` },
+    outputs: {
+      jobs: `\${{ steps.${PLAN_STEP_ID}.outputs.jobs }}`,
+      // The tags that existed before anything deployed. Empty when there is nothing
+      // to watch for, which is what skips the job below.
+      tags_before: `\${{ steps.${PLAN_STEP_ID}.outputs.tags_before }}`,
+    },
   },
   [
     new ActionsCheckoutV4({
@@ -187,6 +194,57 @@ const deployJob = matrixJob(
   ],
 );
 
+/**
+ * Start a deploy run for each tag the deployments above created.
+ *
+ * A deployment that cuts a release creates its tag with GITHUB_TOKEN, and GitHub
+ * starts no workflow run for its own token's events — so `on_tag` never fired for a
+ * project's own release tags. The run that made the tag is the only thing that knows
+ * it is new, so that run dispatches. `scripts/dispatch_new_tags.ts` has the whole
+ * argument, including why this is a job of its own: dispatching needs
+ * `actions: write`, and the job that runs a project's deployment commands must not
+ * have it.
+ *
+ * Skipped when `tags_before` is empty, which is how the planning job says there is
+ * nothing to watch for — no `on_tag` entry, nothing deploying, or a run that was
+ * itself started by a tag and so must not start another.
+ *
+ * Skipped too when a deployment failed. Fail-fast already stopped the rest, and a
+ * tag from a run that did not finish is not one to build on.
+ */
+const dispatchNewTagsJob = new DefinedJob(
+  DISPATCH_TAGS_JOB,
+  {
+    needs: [PLAN_JOB, DEPLOY_JOB],
+    if: `\${{ needs.${PLAN_JOB}.outputs.tags_before != '' && needs.${DEPLOY_JOB}.result == 'success' }}`,
+    "runs-on": "ubuntu-latest",
+    "timeout-minutes": 5,
+    // The one job here that may start a workflow, and it runs nothing a project
+    // wrote. `contents: read` is for the checkout that brings the script.
+    permissions: { contents: "read", actions: "write" },
+  },
+  [
+    new ActionsCheckoutV4({
+      name: "Checkout the default branch, for the script",
+      with: { ref: "${{ github.event.repository.default_branch }}" },
+    }),
+    new SetupBunAction({ name: "Setup Bun" }),
+    new TypedOutputsStep({
+      name: "Deploy any tag these deployments created",
+      shell: "bash",
+      env: {
+        GH_TOKEN: "${{ github.token }}",
+        ATOMATON_REPO: "${{ github.repository }}",
+        // Read from here rather than passed as an argument: it is a list, and a
+        // repository with five hundred tags would otherwise be a five-hundred
+        // element argv. See the script.
+        [TAGS_BEFORE_VAR]: `\${{ needs.${PLAN_JOB}.outputs.tags_before }}`,
+      },
+      run: `${scriptCommandWithArgs(dispatchNewTagsRef, { repo: "${ATOMATON_REPO}" })}\n`,
+    }),
+  ],
+);
+
 export const atomaDeploy = new Workflow("atomaton-deploy", {
   name: "Atomaton Deploy",
   on: {
@@ -222,4 +280,4 @@ export const atomaDeploy = new Workflow("atomaton-deploy", {
   // `max-parallel` is for and not what this is for.
   concurrency: { group: "atomaton-deploy-${{ github.ref }}", "cancel-in-progress": false },
   permissions: { contents: "read" },
-} as unknown as GWT.Workflow).addJobs([planJob, deployJob]);
+} as unknown as GWT.Workflow).addJobs([planJob, deployJob, dispatchNewTagsJob]);
