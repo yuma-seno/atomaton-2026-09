@@ -4111,6 +4111,41 @@
     ]
   },
   {
+    "path": "sessions/issue-818/orchestrator.json",
+    "agent": "orchestrator",
+    "messages": 37,
+    "calls": 25,
+    "failed": 0,
+    "refused": 0,
+    "skills": [
+      "delivery/issue-decomposition"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__get_issue": 5,
+      "github__get_pr": 1,
+      "github__get_issue_comments": 3,
+      "github__list_prs": 1,
+      "github__get_branch": 4,
+      "list": 1,
+      "grep": 4,
+      "glob": 2,
+      "read": 2,
+      "atomaton__launch_sub_agent": 1
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-19T18:34:35Z",
+        "ended_because": "completed",
+        "iterations": 7,
+        "messages": 37,
+        "seconds": 89,
+        "started": "2026-09-19T18:33:06Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-831/engineer.json",
     "agent": "engineer",
     "messages": 54,
