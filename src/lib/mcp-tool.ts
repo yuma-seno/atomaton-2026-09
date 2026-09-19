@@ -42,6 +42,7 @@ import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { attachReportChannel } from "./mcp-report.ts";
+import { withoutTags } from "./tags.ts";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 
@@ -278,6 +279,27 @@ export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): Bui
 
 /** Routes one `tools/call` to the tool that owns the name. */
 export type McpDispatch = (name: string, args: Record<string, unknown>) => Promise<McpToolPayload>;
+
+/**
+ * A dispatch whose results carry no Atomaton bookkeeping tags.
+ *
+ * Atomaton keeps state between workflow runs in HTML comments inside issue and pull
+ * request bodies, so a server that hands GitHub text back hands those along with it,
+ * and an agent reads its own delivery machinery's markers as part of the answer it
+ * asked for. `fetch_events.ts` strips the same markers out of the context built
+ * before a run; this is the other way the same text arrives, during one.
+ *
+ * Opt-in rather than applied inside `buildMcpTools`, because it is not true of every
+ * server: the file server returns a file, and a file is text to show as it is, even
+ * where it happens to contain something shaped like a marker. Wrapped by the servers
+ * that speak for GitHub.
+ */
+export function withoutBookkeeping(dispatch: McpDispatch): McpDispatch {
+  return async (name, args) => {
+    const payload = await dispatch(name, args);
+    return { ...payload, text: withoutTags(payload.text) };
+  };
+}
 
 /** Builds an MCP server's `tools/list` array and a single `name -> call` dispatch function from a list of tool specs. */
 export function buildMcpTools(specs: BuiltMcpTool[]): { tools: Tool[]; dispatch: McpDispatch } {

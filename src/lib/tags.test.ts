@@ -65,6 +65,18 @@ describe("withoutTags", () => {
     expect(withoutTags(body)).toBe(body);
   });
 
+  /**
+   * The other way the same text reaches an agent: a tool server hands a pull request
+   * body back inside a JSON document, where the newline after a tag is the two
+   * characters \ and n rather than a real line ending. Matching only a real one left
+   * those behind as escapes, so the body read as starting with blank lines.
+   */
+  test("a body handed back inside JSON is stripped as cleanly as a raw one", () => {
+    const body = [PARENT_TAG.write(788), "Closes #788."].join("\n");
+    const payload = JSON.stringify({ number: 802, state: "OPEN", body });
+    expect(withoutTags(payload)).toBe(JSON.stringify({ number: 802, state: "OPEN", body: "Closes #788." }));
+  });
+
   test("text with no tag in it is returned as it was", () => {
     expect(withoutTags("Just a comment.")).toBe("Just a comment.");
   });

@@ -154,6 +154,11 @@ export function readAnyParentTag(text: string): number | undefined {
  * A tag inside a line takes the spacing on its right, so removing it reads as removing
  * a word rather than leaving a gap where one was.
  *
+ * The line ending may also arrive written rather than typed. A tool server hands a
+ * pull request body back inside a JSON document, where the newline after a tag is
+ * the two characters `\` and `n`; matching only a real one left those behind as
+ * escapes, so the body read as starting with blank lines.
+ *
  * Only a tag with a real value is removed. Prose about the tags -- an issue
  * discussing `<!-- atomaton:parent=N -->` -- does not match the value patterns and
  * survives, which is what keeps this from quietly editing a conversation about
@@ -161,5 +166,6 @@ export function readAnyParentTag(text: string): number | undefined {
  */
 export function withoutTags(text: string): string {
   const tags = EVERY_TAG_PATTERN.join("|");
-  return text.replace(new RegExp(`(?:^[ \\t]*)?(?:${tags})[ \\t]*(?:\\r?\\n)?`, "gm"), "");
+  const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
+  return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
 }
