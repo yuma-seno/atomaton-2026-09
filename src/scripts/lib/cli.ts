@@ -16,6 +16,61 @@
  * expression resolved only when the workflow actually runs -- an inherent
  * limit of generating shell commands, not something any TS layer can close.
  */
+/**
+ * Read the flags a script knows, ignoring loudly any it does not.
+ *
+ * For the two scripts a workflow runs from a DIFFERENT release than its own: the
+ * jobs that deliberately check the default branch out — `plan_checks.ts --arm
+ * default-branch` and `plan_deploy.ts`. Their workflow file comes from the branch
+ * that was pushed and their script from the default branch, so for one cycle, during
+ * an upgrade, the two are different releases.
+ *
+ * `parseArgs` is strict by default and throws `ERR_PARSE_ARGS_UNKNOWN_OPTION` on a
+ * flag it has not heard of. Measured, on the self-deploy pull request for v0.1.156:
+ * the new workflow passed `--repo`, the default branch still held v0.1.155's
+ * `plan_deploy.ts`, and the planning job died — a red run on a branch that would
+ * have deployed nothing anyway.
+ *
+ * `read_secret_names.ts` records the mirror image of this (issue #353): a release
+ * whose workflow starts passing a flag the previous release's script does not
+ * understand breaks its own deploy review, and the conclusion there was that a
+ * missing argument is a degradation worth logging rather than one worth failing a
+ * run over. An argument the script does not KNOW is the same fact from the other
+ * side, so it gets the same answer — and it is said out loud, because "ignored a
+ * flag" and "there was no flag" must not look alike afterwards.
+ *
+ * Every flag these scripts take is a string, so that is all this reads. Absent is
+ * "", which is what each of them already treats as absent.
+ */
+export function parseAcrossReleases(names: readonly string[], argv: readonly string[]): Record<string, string> {
+  const known = new Set(names);
+  const values: Record<string, string> = Object.fromEntries(names.map((name) => [name, ""]));
+  const ignored: string[] = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index] ?? "";
+    if (!token.startsWith("--")) continue;
+    const [flag, inline] = splitFlag(token.slice(2));
+    const value = inline ?? argv[index + 1] ?? "";
+    if (inline === undefined) index += 1;
+    if (known.has(flag)) values[flag] = value;
+    else ignored.push(flag);
+  }
+  if (ignored.length > 0) {
+    console.error(
+      `::warning::Ignored ${ignored.map((flag) => `\`--${flag}\``).join(", ")}: this script is from an ` +
+        "older release than the workflow that ran it. It will understand them once the upgrade reaches " +
+        "the default branch.",
+    );
+  }
+  return values;
+}
+
+/** `name=value` written as one token, or just the name. */
+function splitFlag(token: string): [string, string | undefined] {
+  const at = token.indexOf("=");
+  return at === -1 ? [token, undefined] : [token.slice(0, at), token.slice(at + 1)];
+}
+
 export function toArgv<T extends Record<string, string | number | boolean | undefined>>(args: T): string[] {
   const argv: string[] = [];
   for (const [flag, value] of Object.entries(args)) {

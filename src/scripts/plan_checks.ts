@@ -29,9 +29,9 @@
  * Usage:
  *   plan_checks.ts --arm pull-request|default-branch
  */
-import { parseArgs } from "node:util";
 import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../domain/check-jobs.ts";
 import { getDefaultBranchChecks, getPullRequestChecks } from "../lib/config.ts";
+import { parseAcrossReleases } from "./lib/cli.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -47,7 +47,10 @@ const ARMS = {
 } as const;
 
 export function main(): void {
-  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { arm: { type: "string" } } });
+  // Tolerant of a flag it has not learned yet: the default-branch arm is planned from
+  // a tree that may be an older release than the workflow running it. See
+  // `parseAcrossReleases`.
+  const values = parseAcrossReleases(["arm"], Bun.argv.slice(2));
   const arm = ARMS[(values.arm ?? "") as keyof typeof ARMS];
   if (!arm) {
     console.error(`usage: plan_checks.ts --arm ${Object.keys(ARMS).join("|")}`);
