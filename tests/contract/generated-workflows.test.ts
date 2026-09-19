@@ -883,7 +883,7 @@ describe("generated workflows", () => {
 
     // A check that cannot talk to GitHub is the only thing in the system that
     // cannot, and the failure reads as a broken command rather than no token.
-    const runChecks = check.jobs?.["pull-request-checks"]?.steps?.find((s) => s.name === "Run the configured checks");
+    const runChecks = check.jobs?.["pull-request-checks"]?.steps?.find((s) => s.name === "Run this check's commands");
     expect(runChecks?.env?.GH_TOKEN).toBe("${{ github.token }}");
 
     const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
@@ -1076,43 +1076,52 @@ describe("generated workflows", () => {
   });
 
   /**
-   * The two jobs that run a project's own commands take their runner from
-   * `config.yaml`, and the job that reads it does not.
+   * Every job that runs a project's own commands takes its runner from
+   * `config.yaml`, and the job that reads the configuration does not.
    *
    * `runs-on` accepts no expression that can read a file, so the value has to be a
-   * job output before the real job starts. That is why there is an extra job, and
-   * why it is pinned to `ubuntu-latest`: it is the job that finds out what the
-   * configured runner is, so it cannot itself be on it.
+   * job output before the real job starts. That is why a job goes first, and why it
+   * is pinned to `ubuntu-latest`: it is the job that finds out what the configured
+   * runner is, so it cannot itself be on it.
+   *
+   * The two workflows answer differently because the runner sits at a different
+   * level in each. A check declares its own, so the value rides in the matrix entry
+   * beside its commands; a deployment still shares one, so a `pick-runner` job
+   * publishes it. That difference goes away with #871.
    *
    * This was once `ubuntu-latest` hardcoded in eleven files, unreachable from
    * `config.yaml` -- and unfixable by an agent, because the fix is in
    * `.github/workflows/**`, the one place `GITHUB_TOKEN` cannot write.
    */
-  test("the jobs that run a project's commands take their runner from configuration", () => {
+  test("every job that runs a project's commands takes its runner from configuration", () => {
     type WorkflowDocument = { jobs?: Record<string, { "runs-on"?: unknown; needs?: unknown }> };
+    const read = (file: string) =>
+      (Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument).jobs ?? {};
 
-    for (const [file, workJob] of [
-      ["atomaton-check", "pull-request-checks"],
-      ["atomaton-deploy", "deploy"],
+    // A check: the runner is the entry's, and `fromJSON` always, so one label and a
+    // self-hosted runner's several are consumed the same way.
+    const checkJobs = read("atomaton-check");
+    for (const [workJob, planJob] of [
+      ["pull-request-checks", "plan-pull-request-checks"],
+      ["default-branch-checks", "plan-default-branch-checks"],
     ] as const) {
-      const workflow = Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument;
-      const jobs = workflow.jobs ?? {};
-
-      const pick = jobs["pick-runner"];
-      expect(pick, `${file}.yml must have a pick-runner job`).toBeDefined();
-      expect(pick?.["runs-on"], `${file}.yml: pick-runner finds out what the runner is, so it cannot be on it`).toBe(
+      const work = checkJobs[workJob];
+      expect(work, `atomaton-check.yml must have a ${workJob} job`).toBeDefined();
+      expect(String(work?.["runs-on"] ?? ""), `${workJob} takes the runner its entry declared`).toBe(
+        "${{ fromJSON(matrix.runs_on) }}",
+      );
+      expect(work?.needs, `${workJob} must wait for the job that read the configuration`).toEqual([planJob]);
+      const plan = checkJobs[planJob];
+      expect(plan?.["runs-on"], `${planJob} finds out what the runner is, so it cannot be on it`).toBe(
         "ubuntu-latest",
       );
-
-      const work = jobs[workJob];
-      expect(work, `${file}.yml must have a ${workJob} job`).toBeDefined();
-      expect(
-        String(work?.["runs-on"] ?? ""),
-        `${file}.yml: ${workJob} must read its runner from pick-runner, through fromJSON so one label and ` +
-          `a self-hosted runner's several are consumed the same way`,
-      ).toBe("${{ fromJSON(needs.pick-runner.outputs.runs_on) }}");
-      expect(work?.needs, `${file}.yml: ${workJob} must wait for pick-runner`).toEqual(["pick-runner"]);
     }
+
+    // A deployment: one runner for the whole arm, published by a job of its own.
+    const deployJobs = read("atomaton-deploy");
+    expect(deployJobs["pick-runner"]?.["runs-on"]).toBe("ubuntu-latest");
+    expect(String(deployJobs["deploy"]?.["runs-on"] ?? "")).toBe("${{ fromJSON(needs.pick-runner.outputs.runs_on) }}");
+    expect(deployJobs["deploy"]?.needs).toEqual(["pick-runner"]);
   });
 
   test("authenticate the result-comment GitHub CLI call", () => {

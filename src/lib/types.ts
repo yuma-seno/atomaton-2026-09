@@ -37,7 +37,7 @@ export interface AtomaConfig {
   /**
    * How a change is verified. Exactly one arm; declaring both is a configuration error.
    *
-   * `pull_request_runs` is named for whose code runs: the commands the pull request
+   * `from_pull_request` is named for whose code runs: the commands the pull request
    * itself declares, in its own tree. It reaches no repository secret, and there is
    * nowhere here to name one -- a pull request may rewrite any command it lists, so a
    * credential would be one the change being judged can read.
@@ -46,15 +46,16 @@ export interface AtomaConfig {
    * default branch's commands given the pull request as data, and it is not built.
    */
   checks?: {
-    default_branch_runs?: {
-      /** Each is its own job, so a credential reaches the one check that named it. */
-      jobs?: unknown;
-      runs_on?: string | string[];
-    };
-    pull_request_runs?: {
-      commands?: string[];
-      runs_on?: string | string[];
-    };
+    /**
+     * The pull request's own commands, each entry its own job.
+     *
+     * Validated by `resolveDeclaredJobs`, which owns what a malformed one means and
+     * refuses a secret named here -- see `domain/declared-jobs.ts` for why there is
+     * nowhere to write one.
+     */
+    from_pull_request?: unknown;
+    /** The default branch's commands. These may name secrets. */
+    from_default_branch?: unknown;
     your_workflow?: string;
   };
 

@@ -143,11 +143,11 @@ elsewhere — `develop` → `main`, say. Without it every agent pull request aim
 `setup_commands` run before checks, before deployments, and before an agent starts
 — all three, on a cold runner every time. They run through `bash -c`, in order,
 and stop on first failure: before the agent starts, before
-`checks.pull_request_runs.commands`, and before `deploy.atomaton_runs.targets`. One
+`checks.from_pull_request`, and before `deploy.atomaton_runs.targets`. One
 declaration, three jobs.
 
 That is the reason to use this field rather than putting `npm ci` at the front of
-`checks.pull_request_runs.commands`, which works and drifts: the agent's shell and CI
+`checks.from_pull_request`, which works and drifts: the agent's shell and CI
 then install their dependencies from two places, and a test that passes for the
 agent and fails in CI reaches an engineer as a defect that does not reproduce on
 the machine they can see.
@@ -199,23 +199,22 @@ Under `atomaton_runs`:
   `deploy.atomaton_runs.secrets` — the nesting is load-bearing, and `tools.secrets`
   below says why the lists are separate.
 
-  **`checks.pull_request_runs` has no such list, and cannot.** The commands there
+  **`checks.from_pull_request` has no such list, and cannot.** The commands there
   are the pull request's own, run in its own tree, so a credential named for them
   would be a credential the change being judged can read — a pull request may
   rewrite any command it declares. A check that needs one goes in the other half.
 
 ### A check that needs a credential
 
-`checks.default_branch_runs.jobs` is a list, and each entry becomes its own job:
+`checks.from_default_branch` is a list, and each entry becomes its own job:
 
 ```yaml
 checks:
-  default_branch_runs:
-    jobs:
-      - name: cloud-names
-        secrets: [AWS_ROLE_ARN]
-        commands:
-          - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
+  from_default_branch:
+    - name: cloud-names
+      secrets: [AWS_ROLE_ARN]
+      commands:
+        - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
 ```
 
 Three things differ from the half above, and they are why a credential is safe
@@ -246,7 +245,7 @@ credential you would not mind losing.
 
 ### The default check
 
-A secret scan ships in `checks.pull_request_runs.commands`, and it is the only default.
+A secret scan ships in `checks.from_pull_request`, and it is the only default.
 A credential is a credential in every language, so it is the one verification a
 template can hand a project it knows nothing about — everything else belongs to
 the project.
@@ -306,7 +305,7 @@ explicit dispatch, not an event — but your own merges will not, and
 
 **Credentials** go in the list belonging to whatever needs them —
 `deploy.atomaton_runs.secrets`, alongside `tools.secrets`. There is no such list
-under `checks.pull_request_runs`: see above for why a check that runs a pull
+under `checks.from_pull_request`: see above for why a check that runs a pull
 request's own commands cannot be given one. Add the secret to the repository
 first; these name it, they do
 not create it. Inside a deployment, `$ATOMATON_DEPLOY_TARGET` holds the target's

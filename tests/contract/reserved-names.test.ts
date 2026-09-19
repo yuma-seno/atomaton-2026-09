@@ -62,7 +62,7 @@ describe("reserved names match the workflows they describe", () => {
    * back.
    */
   test("the checks step carries no declared credential at all", () => {
-    const keys = carrierEnvKeys("atomaton-check.yml", "pull-request-checks", "Run the configured checks");
+    const keys = carrierEnvKeys("atomaton-check.yml", "pull-request-checks", "Run this check's commands");
     expect(keys.filter((key) => key.startsWith("ATOMATON_SECRET"))).toEqual([]);
   });
 

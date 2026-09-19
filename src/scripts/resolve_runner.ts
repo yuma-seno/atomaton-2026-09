@@ -17,29 +17,18 @@ import { resolveRunsOn, runsOnOutput } from "../domain/runner-label.ts";
 import { getRunsOn, runsOnPath } from "../lib/config.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
-export interface ResolveRunnerArgs {
-  field: string;
-}
-
-export const ref = defineScript<ResolveRunnerArgs>(import.meta.url);
+export const ref = defineScript(import.meta.url);
 
 function main(): void {
-  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { field: { type: "string" } } });
-  const field = values.field ?? "";
-  if (field !== "checks" && field !== "deploy") {
-    console.error("usage: resolve_runner.ts --field checks|deploy");
-    process.exit(2);
-  }
-
-  const { labels, problems } = resolveRunsOn(getRunsOn(field));
+  const { labels, problems } = resolveRunsOn(getRunsOn());
   // Warnings, not failures. A bad `runs_on` still yields a runner that exists, so
   // the job runs and the project's commands are what report. `validate_deliverable`
   // shows the same problems at pull request time, where a person is reading.
-  for (const problem of problems) console.error(`::warning::${runsOnPath(field)}: ${problem}`);
+  for (const problem of problems) console.error(`::warning::${runsOnPath()}: ${problem}`);
 
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput) appendFileSync(githubOutput, `runs_on=${runsOnOutput(labels)}\n`);
-  console.error(`${runsOnPath(field)} resolved to ${labels.join(", ")}`);
+  console.error(`${runsOnPath()} resolved to ${labels.join(", ")}`);
 }
 
 if (import.meta.main) main();

@@ -16,7 +16,7 @@ line you edit.
 | [switch between the Chat Completions and Responses APIs](#switch-between-the-chat-completions-and-responses-apis) | `provider`, in an agent definition |
 | [reach a provider the table does not list](#reach-a-provider-the-table-does-not-list) | the `OPENAI_BASE_URL` repository variable |
 | [prefer particular upstream providers](#prefer-particular-upstream-providers) | `extra_body`, in an agent definition |
-| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.pull_request_runs` and `deploy.atomaton_runs` |
+| [give a repository a pipeline an agent can write and maintain](#give-a-repository-a-pipeline-an-agent-can-write-and-maintain) | `checks.from_pull_request` and `deploy.atomaton_runs` |
 | [have agents start your own CI and deployment](#have-agents-start-your-own-ci-and-deployment) | `checks.your_workflow` and `deploy.your_workflow` |
 | [make a workflow of your own work when Atomaton starts it](#make-a-workflow-of-your-own-work-when-atomaton-starts-it) | `workflow_dispatch`, in that workflow |
 | [check your config before pushing it](#check-your-config-before-pushing-it) | nothing — one command |

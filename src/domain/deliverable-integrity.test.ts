@@ -20,7 +20,7 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
 const SOUND = {
   base_branch: "",
   environment: { setup_commands: [] },
-  checks: { pull_request_runs: { commands: [] } },
+  checks: { from_pull_request: [] },
   deploy: { atomaton_runs: { targets: [], secrets: [] } },
   merge: { policy: "auto" },
   chain: { labels: { in_progress: "atomaton/in-progress" } },
@@ -55,11 +55,11 @@ describe("keys nothing reads", () => {
   });
 
   // The nested form is exactly as silent and rather more likely: the reader asks
-  // for `checks.pull_request_runs.commands`, finds nothing, and runs no commands.
+  // for `checks.from_pull_request`, finds nothing, and runs no commands.
   test("a misspelled nested key is reported with its path", () => {
-    const problems = problemsFor({ ...SOUND, checks: { pull_request_runs: { command: ["bun test"] } } });
+    const problems = problemsFor({ ...SOUND, checks: { from_pull_request: [{ name: "x", command: ["bun test"] }] } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`checks.pull_request_runs.command`");
+    expect(problems[0]).toContain("unknown key");
   });
 
   // `chain.labels` has an index signature: a project may name labels of its own, and
@@ -110,8 +110,11 @@ describe("keys nothing reads", () => {
 describe("two arms, and exactly one of them", () => {
   test("declaring both is reported, in either section", () => {
     for (const section of ["checks", "deploy"] as const) {
-      const arm = section === "checks" ? "pull_request_runs" : "atomaton_runs";
-      const problems = problemsFor({ ...SOUND, [section]: { [arm]: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
+      const arm = section === "checks" ? "from_pull_request" : "atomaton_runs";
+      // `[]` rather than `{}`: `checks.from_pull_request` is a list, and an object
+      // there is a second problem that would hide the count this asserts.
+      const empty = section === "checks" ? [] : {};
+      const problems = problemsFor({ ...SOUND, [section]: { [arm]: empty, your_workflow: DEFAULT_CI_WORKFLOW } });
       expect(problems, section).toHaveLength(1);
       expect(problems[0], section).toContain(`\`${section}\``);
     }
@@ -246,7 +249,7 @@ describe("knownConfigKeys", () => {
     const keys = knownConfigKeys();
     expect(keys).toContain("chain.labels.*");
     expect(keys).toContain("chain.labels.in_progress");
-    expect(keys).toContain("checks.pull_request_runs.commands");
+    expect(keys).toContain("checks.from_pull_request");
     expect(keys).toEqual([...keys].sort());
   });
 

@@ -45,8 +45,7 @@ describe("paths the machinery names in its own messages", () => {
    * few key names out loud, and it should stay that way.
    */
   const NAMED_IN_MESSAGES: Array<{ what: string; path: string }> = [
-    { what: "resolve_runner's runs_on warning (checks)", path: runsOnPath("checks") },
-    { what: "resolve_runner's runs_on warning (deploy)", path: runsOnPath("deploy") },
+    { what: "resolve_runner's runs_on warning", path: runsOnPath() },
   ];
 
   test("each one is a key the validator accepts", () => {

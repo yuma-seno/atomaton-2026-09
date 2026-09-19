@@ -23,7 +23,7 @@
  * adds no opinion, it moves an existing one earlier.
  *
  * Anything that needs a run to find out is out of scope and stays out. Whether a
- * `checks.pull_request_runs.commands` entry passes, whether a deploy target's shell
+ * `checks.from_pull_request` entry passes, whether a deploy target's shell
  * works, whether a model answers — none of that is knowable from the files, and
  * pretending otherwise would make this a second, worse CI.
  *
@@ -42,7 +42,7 @@
 import { isControlCommand } from "./control-commands.ts";
 import { resolveDeclaredSecrets, SECRET_DESTINATIONS } from "./declared-secrets.ts";
 import { resolveDeployTargets } from "./deploy-targets.ts";
-import { resolveInspectJobs } from "./inspect-jobs.ts";
+import { resolveDeclaredJobs } from "./declared-jobs.ts";
 import { resolveMergeGates } from "./merge-gates.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts";
 
@@ -85,11 +85,13 @@ const CONFIG_SCHEMA: Section = {
     environment: { children: { setup_commands: null, max_reloads: null } },
     checks: {
       children: {
-        // No `secrets` under here, and that absence is the design. These are the
-        // pull request's own commands in its own tree, so a repository secret
-        // declared for them would be a secret the change being judged can read.
-        pull_request_runs: { children: { commands: null, runs_on: null } },
-        default_branch_runs: { children: { jobs: null, runs_on: null } },
+        // Both are lists, and `null` here says only that this file does not describe
+        // their interior. `resolveDeclaredJobs` does, below, including the rule that
+        // `from_pull_request` has nowhere to name a secret: those are the pull
+        // request's own commands in its own tree, so a credential declared beside one
+        // is a credential the change being judged can read.
+        from_pull_request: null,
+        from_default_branch: null,
         your_workflow: null,
       },
     },
@@ -240,7 +242,7 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // differently: a check runs the pull request's, a deployment runs the branch it
   // ships from.
   for (const [section, atomatonArm] of [
-    ["checks", "pull_request_runs"],
+    ["checks", "from_pull_request"],
     ["deploy", "atomaton_runs"],
   ] as const) {
     const value = config[section];
@@ -277,6 +279,25 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // are always Atomaton's.
   const deployRuns = arm(config.deploy, "atomaton_runs");
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
+
+  // Both check arms, read here so a malformed one fails the pull request that wrote
+  // it rather than the planning job that later cannot use it. The import for this
+  // existed and nothing called it, so a `secrets:` typo or an empty `commands:`
+  // reached the default branch and failed there, where the message belongs to a job
+  // nobody was reading.
+  const checks = isRecord(config.checks) ? config.checks : {};
+  problems.push(
+    ...resolveDeclaredJobs(checks.from_pull_request, {
+      where: "checks.from_pull_request",
+      secretsAllowed: false,
+    }).problems,
+  );
+  problems.push(
+    ...resolveDeclaredJobs(checks.from_default_branch, {
+      where: "checks.from_default_branch",
+      secretsAllowed: true,
+    }).problems,
+  );
 
   const tools = isRecord(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);

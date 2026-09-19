@@ -14,7 +14,7 @@ import {
   type SecretsResolution,
 } from "../domain/declared-secrets.ts";
 import { resolveDeployTargets, type DeployTargetsResolution } from "../domain/deploy-targets.ts";
-import { resolveInspectJobs, type InspectJobsResolution } from "../domain/inspect-jobs.ts";
+import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/declared-jobs.ts";
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
 import { CONFIG_FILE } from "../domain/machinery-layout.ts";
@@ -193,13 +193,20 @@ export function getMergeGates(): MergeGatesResolution {
 // downgrading a credential decision to the working tree.
 
 /**
- * Commands that verify a change, in order.
+ * The checks whose commands the pull request itself declares.
  *
  * Empty means this project runs nothing through `atomaton-check.yml`, which is the
  * normal state for a repository pointing `checks.your_workflow` at its own workflow.
+ *
+ * `secretsAllowed: false` is the trust boundary, not a setting: a pull request may
+ * rewrite any command it declares, so a credential named beside one is a credential
+ * the change being judged can read.
  */
-export function getCheckCommands(): readonly string[] {
-  return loadConfig().checks?.pull_request_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
+export function getPullRequestChecks(): DeclaredJobsResolution {
+  return resolveDeclaredJobs(loadConfig().checks?.from_pull_request, {
+    where: "checks.from_pull_request",
+    secretsAllowed: false,
+  });
 }
 
 /**
@@ -209,8 +216,11 @@ export function getCheckCommands(): readonly string[] {
  * planning job at the DEFAULT BRANCH's copy. That is what makes the promise true: a
  * pull request cannot add a job, rename one, or change which secret one receives.
  */
-export function getInspectJobs(): InspectJobsResolution {
-  return resolveInspectJobs(loadConfig().checks?.default_branch_runs?.jobs);
+export function getDefaultBranchChecks(): DeclaredJobsResolution {
+  return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, {
+    where: "checks.from_default_branch",
+    secretsAllowed: true,
+  });
 }
 
 /**
@@ -286,13 +296,12 @@ export function getReloadLimit(): unknown {
  * the domain module owns what a bad value means and owns the default, so one
  * fallback exists rather than two that can disagree.
  */
-export function getRunsOn(field: "checks" | "deploy"): unknown {
-  const config = loadConfig();
-  // Inside the Atomaton arm, because the machine a step runs on is a property of the
-  // step Atomaton runs -- a project naming its own workflow decides that there.
-  return field === "checks"
-    ? config.checks?.pull_request_runs?.runs_on
-    : config.deploy?.atomaton_runs?.runs_on;
+export function getRunsOn(): unknown {
+  // Only `deploy` has one. On the checks side the machine moved onto the job that
+  // runs there -- see `domain/declared-jobs.ts` -- because one runner for every check
+  // is what made a macOS test and a Linux lint the same job. `deploy` follows in
+  // #871, and this goes with it.
+  return loadConfig().deploy?.atomaton_runs?.runs_on;
 }
 
 /**
@@ -305,9 +314,6 @@ export function getRunsOn(field: "checks" | "deploy"): unknown {
  * used cannot notice that the reader moved; one that sits beside the reader can at
  * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.
  */
-export function runsOnPath(field: "checks" | "deploy"): string {
-  // Each section spells its Atomaton arm differently, because the name says whose
-  // commands run there. A path assembled from the field alone named one that does
-  // not exist, which is the failure the comment above records in its earlier form.
-  return field === "checks" ? "checks.pull_request_runs.runs_on" : "deploy.atomaton_runs.runs_on";
+export function runsOnPath(): string {
+  return "deploy.atomaton_runs.runs_on";
 }

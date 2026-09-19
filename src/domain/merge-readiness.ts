@@ -410,7 +410,7 @@ export function decideMergeReadiness(signals: MergeSignals): MergeReadiness {
         // name the place it does live rather than only refusing the merge.
         (signals.governancePaths.some(isGeneratedWorkflow)
           ? ". If the intent was to change what CI or deployment does, that belongs in " +
-            "`.github/atomaton/config.yaml` (`checks.pull_request_runs.commands`, `deploy.atomaton_runs.targets`) rather than in a " +
+            "`.github/atomaton/config.yaml` (`checks.from_pull_request`, `deploy.atomaton_runs.targets`) rather than in a " +
             "workflow file — an agent can write config and cannot write a workflow. If this is an " +
             "upgrade of the generated deliverable, it is exactly what a person should be merging"
           : ""),
