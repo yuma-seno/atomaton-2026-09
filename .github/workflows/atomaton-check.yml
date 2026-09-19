@@ -68,6 +68,7 @@ jobs:
           fi
           bun run "$PLANNER" --arm default-branch
   pull-request-checks:
+    name: pull-request-checks (${{ matrix.name }})
     needs:
       - plan-pull-request-checks
     if: ${{ needs.plan-pull-request-checks.outputs.jobs != '[]' }}
@@ -106,6 +107,7 @@ jobs:
             echo "::endgroup::"
           done
   default-branch-checks:
+    name: default-branch-checks (${{ matrix.name }})
     needs:
       - plan-default-branch-checks
     if: ${{ needs.plan-default-branch-checks.outputs.jobs != '[]' }}
