@@ -464,6 +464,12 @@ function getIssueComments(a: z.infer<typeof ISSUE_COMMENTS_SCHEMA>): string {
       state: issue?.state,
       total_comments: all.length,
       parent: links.parent,
+      // `children` was the one of the three this header did not carry, and nothing
+      // said why: the same `issueLinks` call already has it, so it cost nothing to
+      // leave out and nothing to put back. What it costs to omit is the question a
+      // reviewer asks most often of a parent — "is anything under this still open"
+      // — answered by the comments alone, which cannot answer it.
+      children: links.children,
       pull_requests: links.pullRequests,
       // See `get_issue`: an unread link list is not an empty one, and this
       // header exists precisely so a comment is not read as settled work.
