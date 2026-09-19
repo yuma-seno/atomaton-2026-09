@@ -23,16 +23,22 @@ environment:
   max_reloads: 3
 
 
-# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name
+# How a change is verified. Either let Atomaton run your checks, or name
 # `your_workflow` instead. Both is a configuration error.
+#
+# Atomaton's side has two halves, and which one a check belongs in is decided by
+# whose commands run — not by preference.
 checks:
-  atomaton_runs:
+  # The commands THIS PULL REQUEST declares, run in its own tree. No repository
+  # secret reaches them, and there is nowhere here to name one: a pull request may
+  # rewrite any command below, so a credential would be one the change being judged
+  # can read.
+  pull_request_runs:
     # In order, stopping at the first failure.
     commands:
       - bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/scan_secrets.ts"
-    # Repository secrets this step may reach, by name.
-    secrets: []
     runs_on: ubuntu-latest
+
   # your_workflow: ci.yml
 
 
@@ -73,7 +79,7 @@ chain:
 # core reads. Most projects never edit past this line.
 tools:
   # Repository secrets the servers may reach. Separate from the lists under
-  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own
+  # `checks.pull_request_runs` and `deploy.atomaton_runs`: only these enter an agent's own
   # environment.
   secrets: []
 

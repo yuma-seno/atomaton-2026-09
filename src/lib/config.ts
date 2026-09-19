@@ -198,7 +198,7 @@ export function getMergeGates(): MergeGatesResolution {
  * normal state for a repository pointing `checks.your_workflow` at its own workflow.
  */
 export function getCheckCommands(): readonly string[] {
-  return loadConfig().checks?.atomaton_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
+  return loadConfig().checks?.pull_request_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
 }
 
 /**
@@ -276,21 +276,26 @@ export function getReloadLimit(): unknown {
  */
 export function getRunsOn(field: "checks" | "deploy"): unknown {
   const config = loadConfig();
-  // Inside `atomaton_runs`, because the machine a step runs on is a property of the
+  // Inside the Atomaton arm, because the machine a step runs on is a property of the
   // step Atomaton runs -- a project naming its own workflow decides that there.
-  return field === "checks" ? config.checks?.atomaton_runs?.runs_on : config.deploy?.atomaton_runs?.runs_on;
+  return field === "checks"
+    ? config.checks?.pull_request_runs?.runs_on
+    : config.deploy?.atomaton_runs?.runs_on;
 }
 
 /**
  * The dotted path `getRunsOn` reads, for the messages that name it.
  *
  * Here rather than at the caller. `resolve_runner.ts` built it as `${field}.runs_on`
- * and went on emitting `checks.runs_on` after the key moved under `atomaton_runs` -- so
+ * and went on emitting `checks.runs_on` after the key moved under an arm -- so
  * the warning telling an adopter to fix their configuration named a key the validator
  * rejects, and following it failed their pull request. A path assembled where it is
  * used cannot notice that the reader moved; one that sits beside the reader can at
  * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.
  */
 export function runsOnPath(field: "checks" | "deploy"): string {
-  return `${field}.atomaton_runs.runs_on`;
+  // Each section spells its Atomaton arm differently, because the name says whose
+  // commands run there. A path assembled from the field alone named one that does
+  // not exist, which is the failure the comment above records in its earlier form.
+  return field === "checks" ? "checks.pull_request_runs.runs_on" : "deploy.atomaton_runs.runs_on";
 }

@@ -7,7 +7,7 @@
  * `atomaton-deploy` were simply unusable -- and fixing them meant editing
  * `.github/workflows/**`, the one place `GITHUB_TOKEN` cannot write. So neither an
  * agent nor a workflow could do it, and a hand-edited fork is overwritten by the
- * next upgrade. The same argument that put `checks.atomaton_runs.commands` in
+ * next upgrade. The same argument that put `checks.pull_request_runs.commands` in
  * `config.yaml` applies: a fact a project owns was living where the project cannot
  * reach it.
  *

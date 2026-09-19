@@ -5,7 +5,7 @@
  * ## The failure
  *
  * `resolve_runner.ts` warned an operator that `checks.runs_on` was empty. There has
- * never been a `checks.runs_on`: the key moved under `atomaton_runs` in the config
+ * never been a `checks.runs_on`: the key moved under an Atomaton arm in the config
  * redesign, and the warning was built as `${field}.runs_on` at the point of use, where
  * nothing could notice the reader had moved. An adopter who acted on that warning wrote
  * a key `validate_deliverable.ts` rejects — so the message telling them to fix their

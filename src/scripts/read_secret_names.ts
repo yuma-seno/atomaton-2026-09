@@ -92,7 +92,7 @@ export function declarationIn(configText: string, destination: SecretDestination
   // the step Atomaton runs, and a project naming its own workflow gives that workflow
   // its secrets itself. `tools` has no arms -- the servers are always Atomaton's.
   if (destination === "tools") return config.tools?.secrets;
-  return (destination === "checks" ? config.checks : config.deploy)?.atomaton_runs?.secrets;
+  return config.deploy?.atomaton_runs?.secrets;
 }
 
 function main(): void {

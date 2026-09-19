@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-  CHECK_SECRETS,
   DEPLOY_SECRETS,
   isSecretDestinationName,
   resolveDeclaredSecrets,
@@ -54,11 +53,11 @@ describe("resolveDeclaredSecrets", () => {
   test("what is reserved depends on the destination", () => {
     expect(resolveDeclaredSecrets(["OPENAI_API_KEY"], DEPLOY_SECRETS).names).toEqual(["OPENAI_API_KEY"]);
     expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], DEPLOY_SECRETS).problems).toHaveLength(1);
-    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], CHECK_SECRETS).names).toEqual(["ATOMATON_DEPLOY_TARGET"]);
+    expect(resolveDeclaredSecrets(["ATOMATON_DEPLOY_TARGET"], TOOL_SECRETS).names).toEqual(["ATOMATON_DEPLOY_TARGET"]);
   });
 
   test("every message names the field it came from", () => {
-    expect(resolveDeclaredSecrets(["bad name"], CHECK_SECRETS).problems[0]).toContain("checks.atomaton_runs.secrets");
+    expect(resolveDeclaredSecrets(["bad name"], TOOL_SECRETS).problems[0]).toContain("tools.secrets");
     expect(resolveDeclaredSecrets(["bad name"], DEPLOY_SECRETS).problems[0]).toContain("deploy.atomaton_runs.secrets");
   });
 
@@ -95,8 +94,11 @@ describe("resolveDeclaredSecrets", () => {
 });
 
 describe("isSecretDestinationName", () => {
-  test("accepts the three destinations and nothing else", () => {
-    expect(["tools", "checks", "deploy"].every(isSecretDestinationName)).toBe(true);
+  // Two, since a check has no credential to declare: its commands are the pull
+  // request's own, so a secret named for them would be one the change can read.
+  test("accepts the destinations that exist and nothing else", () => {
+    expect(["tools", "deploy"].every(isSecretDestinationName)).toBe(true);
+    expect(isSecretDestinationName("checks")).toBe(false);
     expect(isSecretDestinationName("agent")).toBe(false);
     expect(isSecretDestinationName("toString")).toBe(false);
   });

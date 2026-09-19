@@ -23,7 +23,7 @@
  * adds no opinion, it moves an existing one earlier.
  *
  * Anything that needs a run to find out is out of scope and stays out. Whether a
- * `checks.atomaton_runs.commands` entry passes, whether a deploy target's shell
+ * `checks.pull_request_runs.commands` entry passes, whether a deploy target's shell
  * works, whether a model answers — none of that is knowable from the files, and
  * pretending otherwise would make this a second, worse CI.
  *
@@ -84,7 +84,10 @@ const CONFIG_SCHEMA: Section = {
     environment: { children: { setup_commands: null, max_reloads: null } },
     checks: {
       children: {
-        atomaton_runs: { children: { commands: null, secrets: null, runs_on: null } },
+        // No `secrets` under here, and that absence is the design. These are the
+        // pull request's own commands in its own tree, so a repository secret
+        // declared for them would be a secret the change being judged can read.
+        pull_request_runs: { children: { commands: null, runs_on: null } },
         your_workflow: null,
       },
     },
@@ -117,15 +120,16 @@ const CONFIG_SCHEMA: Section = {
 };
 
 /**
- * The `atomaton_runs` arm of a `checks` or `deploy` section, or an empty one.
+ * One named arm of a `checks` or `deploy` section, or an empty one.
  *
- * Both sections have two arms and only one can be filled. The other arm names a
- * workflow of the project's own, and nothing inside it is Atomaton's to validate --
- * so an absent `atomaton_runs` is a project that made the other choice, not a fault.
+ * A section's arms are alternatives to `your_workflow`, which names a workflow of
+ * the project's own that nothing here is Atomaton's to validate -- so an absent arm
+ * is a project that made another choice, not a fault.
  */
-function arm(section: unknown): Record<string, unknown> {
+function arm(section: unknown, name: string): Record<string, unknown> {
   if (!isRecord(section)) return {};
-  return isRecord(section.atomaton_runs) ? section.atomaton_runs : {};
+  const value = section[name];
+  return isRecord(value) ? value : {};
 }
 
 /**
@@ -225,20 +229,30 @@ export function configProblems(facts: DeliverableFacts): string[] {
 
   // ── two arms, and exactly one of them ─────────────────────────────────────
   //
-  // `atomaton_runs` and `your_workflow` are alternatives, and the structure says so by
-  // putting them side by side. Saying it again here is what turns "both are set"
+  // An Atomaton arm and `your_workflow` are alternatives, and the structure says so
+  // by putting them side by side. Saying it again here is what turns "both are set"
   // from a precedence puzzle -- which one wins, and does the reader remember? --
   // into a sentence naming the one to delete.
-  for (const section of ["checks", "deploy"] as const) {
+  //
+  // The arm is named for whose commands run, so the two sections spell it
+  // differently: a check runs the pull request's, a deployment runs the branch it
+  // ships from.
+  for (const [section, atomatonArm] of [
+    ["checks", "pull_request_runs"],
+    ["deploy", "atomaton_runs"],
+  ] as const) {
     const value = config[section];
     if (!isRecord(value)) continue;
-    if (value.atomaton_runs !== undefined && value.your_workflow !== undefined) {
+    if (value[atomatonArm] !== undefined && value.your_workflow !== undefined) {
       problems.push(
         "`" +
           section +
-          "` sets both `atomaton_runs` and `your_workflow`. They are alternatives: " +
-          "`your_workflow` dispatches a workflow of your own and nothing reads " +
-          "`atomaton_runs`. Remove whichever you did not mean.",
+          "` sets both `" +
+          atomatonArm +
+          "` and `your_workflow`. They are alternatives: `your_workflow` dispatches a " +
+          "workflow of your own and nothing reads `" +
+          atomatonArm +
+          "`. Remove whichever you did not mean.",
       );
     }
   }
@@ -259,14 +273,13 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // what Atomaton runs also declares what that run may reach. A project naming its own
   // workflow hands that workflow its own secrets. `tools` has no arms: the servers
   // are always Atomaton's.
-  const deployRuns = arm(config.deploy);
+  const deployRuns = arm(config.deploy, "atomaton_runs");
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
 
-  const checkRuns = arm(config.checks);
   const tools = isRecord(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(checkRuns.secrets, SECRET_DESTINATIONS.checks).problems);
   problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
+
 
   // ── a name that resolves to two things ────────────────────────────────────
   //

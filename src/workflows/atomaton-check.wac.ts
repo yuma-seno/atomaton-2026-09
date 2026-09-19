@@ -3,10 +3,11 @@ import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
 import { pickRunnerJob, PICK_RUNNER_JOB } from "./actions/pick-runner.ts";
 import { scriptCommand } from "./actions/script-call.ts";
-import { renameSecretSlots, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
+import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { ref as runChecksRef } from "../scripts/run_checks.ts";
+import { ref as checkLiveToolsRef } from "../scripts/check_live_tools.ts";
 
 // Runs whatever config.yaml's `checks.atomaton_runs.commands` says verifies this project.
 //
@@ -50,16 +51,37 @@ const runStep = new TypedOutputsStep({
     //
     // It grants no more than the job already holds. `contents: read` is what the
     // checkout used, so on a public repository this is what any visitor has, and
-    // on a private one it is what the code being tested was fetched with. Not
-    // shadowable either: `GH_TOKEN` is reserved against `checks.atomaton_runs.secrets`.
+    // on a private one it is what the code being tested was fetched with.
+    //
+    // And it is the ONLY credential here. A repository secret used to reach this
+    // step through `checks.atomaton_runs.secrets`, into a step running commands the
+    // pull request itself declares -- so the trusted side chose which credential to
+    // hand over and the untrusted side chose what to do with it. The section is
+    // `checks.pull_request_runs` now, and it has nowhere to name a secret.
     GH_TOKEN: "${{ github.token }}",
-    // The slots carry `checks.atomaton_runs.secrets` -- a private registry token, say. They are
-    // this job's, not the agent's: nothing here runs an agent, and a credential
-    // declared for checks never enters an agent's process.
-    ...secretSlotEnv(),
   },
-  run: `${renameSecretSlots()}
-${scriptCommand(runChecksRef)}
+  run: `${scriptCommand(runChecksRef)}
+`,
+});
+
+/**
+ * Starts the tool servers this repository's agents would use and asks what they
+ * offer, so a guard that has stopped guarding fails here rather than going unnoticed.
+ *
+ * A built-in step rather than a default in `commands`, because it is not the
+ * project's check: it asks whether Atomaton's own wiring still holds in this tree.
+ * `validate_deliverable.ts` is there for the same reason. A project that could
+ * delete it would be a project that can stop being told.
+ *
+ * It may start what the pull request declares because this job holds nothing worth
+ * taking: its commands are already the pull request's own, and no repository secret
+ * reaches them. The half that holds credentials runs the default branch's commands
+ * instead, and is not built yet.
+ */
+const liveToolsStep = new TypedOutputsStep({
+  name: "Check the tool servers against their guards",
+  shell: "bash",
+  run: `${scriptCommand(checkLiveToolsRef)}
 `,
 });
 
@@ -106,8 +128,9 @@ export const atomaCheck = new Workflow("atomaton-check", {
       new ActionsCheckoutV4({ name: "Checkout repository" }),
       new SetupBunAction({ name: "Setup Bun" }),
       environmentSetupStep(),
-      secretNamesStep("checks"),
       runStep,
+      installAtomaCliStep(ATOMA_DEFAULT_VERSION),
+      liveToolsStep,
     ],
     ),
   ).jobs(),

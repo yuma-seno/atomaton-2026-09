@@ -27,7 +27,10 @@ environment:
 # How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name
 # `your_workflow` instead. Both is a configuration error.
 checks:
-  atomaton_runs:
+  # The commands this pull request declares, run in this pull request's own tree.
+  # No repository secret reaches them: a pull request may rewrite any command here,
+  # so a credential would be one the change being judged can read.
+  pull_request_runs:
     # In order, stopping at the first failure.
     commands:
       # The SOURCE, not the deployed copy. This repository builds the deliverable,
@@ -40,9 +43,8 @@ checks:
       - "bun run typecheck"
       - "bun run synth"
       - "bun run test"
-    # Repository secrets this step may reach, by name.
-    secrets: []
     runs_on: ubuntu-latest
+
   # your_workflow: ci.yml
 
 
