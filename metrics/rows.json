@@ -3789,25 +3789,36 @@
   {
     "path": "sessions/issue-788/reviewer.json",
     "agent": "reviewer",
-    "messages": 160,
-    "calls": 112,
-    "failed": 3,
+    "messages": 312,
+    "calls": 212,
+    "failed": 7,
     "refused": 0,
     "skills": [
-      "review/quick-quality-gate"
+      "review/quick-quality-gate",
+      "engineering/environment"
     ],
     "tools": {
-      "atoma_builtin__load_skill": 1,
-      "github__check_merge_readiness": 1,
-      "github__get_pr_reviews": 1,
-      "github__get_pr": 1,
-      "read": 43,
-      "grep": 53,
+      "atoma_builtin__load_skill": 2,
+      "github__check_merge_readiness": 4,
+      "github__get_pr_reviews": 4,
+      "github__get_pr": 3,
+      "read": 59,
+      "grep": 90,
       "glob": 7,
-      "github__get_check_runs": 1,
-      "github__get_pr_diff": 1,
-      "list": 1,
-      "github__submit_pr_review": 2
+      "github__get_check_runs": 2,
+      "github__get_pr_diff": 3,
+      "list": 5,
+      "github__submit_pr_review": 4,
+      "github__list_pr_review_comments": 1,
+      "github__search_code": 4,
+      "github__get_branch": 2,
+      "github__get_issue": 3,
+      "github__list_prs": 1,
+      "github__get_issue_comments": 3,
+      "search__search_issues": 10,
+      "search__search_code": 1,
+      "github__list_issues": 1,
+      "github__create_issue": 3
     },
     "acts": {},
     "runs": [
@@ -3818,6 +3829,14 @@
         "messages": 160,
         "seconds": 1368,
         "started": "2026-09-18T20:17:17Z"
+      },
+      {
+        "ended": "2026-09-19T05:39:32Z",
+        "ended_because": "completed",
+        "iterations": 46,
+        "messages": 312,
+        "seconds": 1419,
+        "started": "2026-09-19T05:15:53Z"
       }
     ]
   },
