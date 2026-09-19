@@ -12,7 +12,7 @@
  * one that was never created is not.
  */
 import { dispatchWorkflow, gh } from "./gh.ts";
-import { getDeployJobs, getWorkflowName } from "./config.ts";
+import { getDeploySection, getWorkflowName } from "./config.ts";
 import { dispatchRunner } from "./dispatch.ts";
 import { resolveNotify } from "./notify.ts";
 import { isIssueBranch } from "./branch-placement.ts";
@@ -145,7 +145,7 @@ export function dispatchCd(baseRef: string): boolean {
 
   const configured = getWorkflowName("cd");
   if (!configured) {
-    const { jobs, problems } = resolveDeployJobs(getDeployJobs());
+    const { jobs, problems } = resolveDeployJobs(getDeploySection());
     if (problems.length === 0 && !mergeMightDeploy(jobs, baseRef)) {
       log(
         `dispatchCd: nothing in deploy.on_merge covers ${baseRef || "this branch"}, and deploy.your_workflow is unset; nothing to dispatch`,

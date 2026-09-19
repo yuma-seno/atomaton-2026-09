@@ -220,7 +220,7 @@ export function getDefaultBranchChecks(): DeclaredJobsResolution {
  * keeps one reader rather than two that can disagree about what a malformed list
  * means.
  */
-export function getDeployJobs(): unknown {
+export function getDeploySection(): unknown {
   return loadConfig().deploy;
 }
 

@@ -44,7 +44,7 @@
  */
 import { parseArgs } from "node:util";
 import { resolveDeployJobs, selectDeployJobs } from "../domain/deploy-jobs.ts";
-import { getDeployJobs } from "../lib/config.ts";
+import { getDeploySection } from "../lib/config.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -82,7 +82,7 @@ export function main(): void {
     target: (values.target ?? "").trim(),
   };
 
-  const { jobs, problems } = resolveDeployJobs(getDeployJobs());
+  const { jobs, problems } = resolveDeployJobs(getDeploySection());
   if (problems.length > 0) {
     for (const problem of problems) console.error(`::error::.github/atomaton/config.yaml: ${problem}`);
     console.error("::error::`deploy` could not be read, so nothing was deployed.");
