@@ -1280,9 +1280,23 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   }),
 ]);
 
-// GitHub text carries Atomaton's own state markers, which are not part of any answer
-// an agent asked for. See `withoutBookkeeping`.
-const dispatch = withoutBookkeeping(rawDispatch);
+// The tools that hand back an issue, pull request, comment or review body: GitHub
+// prose, carrying Atomaton's own state markers, which are not part of any answer an
+// agent asked for. See `withoutBookkeeping`.
+//
+// `get_pr_diff` and `search_code` are deliberately absent. What they return is the
+// text under review, where a tag-shaped literal is part of the change rather than a
+// note about it -- `src/lib/lib.test.ts` holds one, and stripping it showed a
+// reviewer a diff that was not the diff.
+//
+// `list_issues` and `list_prs` are absent because they return no body at all.
+const dispatch = withoutBookkeeping(rawDispatch, [
+  "get_issue",
+  "get_issue_comments",
+  "get_pr",
+  "get_pr_reviews",
+  "list_pr_review_comments",
+]);
 
 async function main(): Promise<void> {
   // Refused at startup, not per call.

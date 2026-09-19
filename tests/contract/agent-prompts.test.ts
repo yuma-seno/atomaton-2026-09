@@ -87,7 +87,10 @@ describe("agent prompt contracts", () => {
   test("gives the reviewer an ordered procedure that names the merge calls", () => {
     const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
     expect(reviewer).toContain("Do this before deciding");
-    expect(reviewer).toContain("without making them merges nothing");
+    // The outcome is the call, not the sentence that describes it. Was two calls
+    // until `submit_pr_review` was removed -- a review the shared identity can
+    // neither approve nor request changes with said what the final message says.
+    expect(reviewer).toContain("without making it merges");
     // `checks-missing` used to say "call check_merge_readiness again", which no
     // agent can do usefully -- the check it is waiting on outlives the run.
     expect(reviewer).toContain("you cannot wait for it");
