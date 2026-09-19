@@ -49,6 +49,64 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).not.toContain("Nobody was notified");
   });
 
+  /**
+   * The directive names a run that a stop cancelled, so it is a plan rather than a
+   * fact and silences nothing. Without this the comment believed the handoff it
+   * could see over the stop it could not: nothing ran next, and nobody was told.
+   */
+  test("keeps the mention when a stop cancelled the directive's handoff", () => {
+    const body = buildCommentBody({
+      agent: "orchestrator",
+      notify: "octocat",
+      directive: "engineer",
+      stopRequested: "true",
+      runUrl: "http://example.com/run/1",
+      output: "Handing off.",
+      usageLines: [],
+    });
+    expect(body).toContain("@octocat");
+    expect(body).toContain("Stopped on request");
+  });
+
+  test("and when a spent iteration budget cancelled it", () => {
+    const body = buildCommentBody({
+      agent: "orchestrator",
+      notify: "octocat",
+      directive: "engineer",
+      limitReached: "true",
+      runUrl: "http://example.com/run/1",
+      output: "Handing off.",
+      usageLines: [],
+    });
+    expect(body).toContain("@octocat");
+  });
+
+  /**
+   * A stop lands at a turn boundary, so a run reading files when it arrives has said
+   * nothing and there is nothing to salvage either. The comment is then entirely the
+   * machinery's: that it stopped, that the session survived, and how to resume.
+   * Saying so outright matters, because a report-shaped comment with no report in it
+   * otherwise reads as a run that finished with nothing to say.
+   */
+  test("says outright when the run was cut short having said nothing", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      wroteNothing: true,
+      stopRequested: "true",
+      runUrl: "http://example.com/run/1",
+      output: "_This run was stopped before it said anything._",
+      usageLines: [],
+    });
+    expect(body).toContain("ended before it said anything at all");
+    expect(body).toContain("saved session");
+    expect(body).toContain("/resume");
+    expect(body).toContain("@octocat");
+    // Not the salvage warning: that one promises a sentence from the middle of the
+    // work, and there is none.
+    expect(body).not.toContain("Below is the last thing it said");
+  });
+
   test("omits the mention when a directive is present", () => {
     const body = buildCommentBody({
       agent: "orchestrator",
@@ -171,6 +229,41 @@ describe("post_result_comment.ts main", () => {
       );
       expect(r.status, "a missing --output is a failed step, not a silent skip").not.toBe(0);
       expect(r.ghCalls.length).toBe(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The same empty output, and the opposite answer, because the two empties mean
+   * opposite things.
+   *
+   * A session-ending tool call chose to end and posted its own comment. A stop did
+   * not choose anything: it arrives at a turn boundary, so a run reading files when
+   * it lands has said nothing and has nothing to salvage. Measured on #831 -- nine
+   * iterations, every one a tool call, no assistant text at all. Skipping there
+   * drops the machinery's own sentence along with the agent's silence.
+   */
+  test("posts for a stopped run that said nothing, rather than skipping with it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    try {
+      writeFileSync(join(dir, "atomaton_output.txt"), "");
+      const r = runWithFakeGh(
+        scriptPath("post_result_comment.ts"),
+        [
+          "--number", "831", "--type", "issue", "--agent", "engineer", "--notify", "octocat",
+          "--stop-requested", "true", "--run-url", "http://example.com/run/1",
+          "--output", join(dir, "atomaton_output.txt"),
+        ],
+        { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api"], stdout: "{}" }] },
+      );
+      expect(r.status).toBe(0);
+      const posted = r.ghCalls.find((c) => c.some((a) => a.includes("Stopped on request")));
+      expect(posted, "a stopped run has to say that it stopped").toBeDefined();
+      const body = posted?.join(" ") ?? "";
+      expect(body).toContain("ended before it said anything at all");
+      expect(body).toContain("/resume");
+      expect(body).toContain("@octocat");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

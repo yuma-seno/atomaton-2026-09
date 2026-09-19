@@ -223,6 +223,15 @@ export function buildCommentBody(args: {
    */
   salvaged?: boolean;
   /**
+   * Whether the run was cut short having said nothing at all, so `output` is this
+   * file's own sentence rather than anything the agent produced.
+   *
+   * The common shape rather than the odd one: a stop lands at the next turn
+   * boundary, so a run in the middle of reading files when it arrives has no text
+   * and nothing to salvage either.
+   */
+  wroteNothing?: boolean;
+  /**
    * Whether this run pushed a commit, opened a pull request or merged one.
    *
    * Written into the comment because that is where the next run can read it.
@@ -243,6 +252,16 @@ export function buildCommentBody(args: {
       "> from the middle of the work — not a conclusion, and not a summary of what it found.",
       "",
     );
+  } else if (args.wroteNothing === true) {
+    // The run said nothing at all, so there is not even a middle to show. Said
+    // outright, because a comment with no report in it otherwise reads as a run that
+    // finished and had nothing to say.
+    lines.push(
+      "> [!WARNING]",
+      "> This run ended before it said anything at all, so there is no report below —",
+      "> not even a partial one. What it had done is in its saved session.",
+      "",
+    );
   }
   lines.push(args.output, "", ...args.usageLines);
 
@@ -258,6 +277,11 @@ export function buildCommentBody(args: {
       notify: args.notify,
       isSubIssue: args.isSubIssue ?? false,
       issueClosed: args.issueClosed ?? false,
+      // Already here for the footer below, and not forwarded until now. A run that
+      // named its successor and was stopped before it started one had the mention
+      // suppressed by a handoff that never happened.
+      stopRequested: args.stopRequested === "true",
+      limitReached: args.limitReached === "true",
     })
   ) {
     lines.push(
@@ -361,20 +385,41 @@ function main(): void {
   // Measured: a run spent 17 minutes and 154k tokens, and the thread received
   // one notice saying the limit was reached. What it had worked out was in the
   // session and nowhere a person would look.
+  // A run that was cut short did not choose to end, so the two empties are told
+  // apart by how the run ended rather than by what it left behind.
+  const cutShort = values["limit-reached"] === "true" || values["stop-requested"] === "true";
+
   let output = redacted;
   let salvaged = false;
-  if (!output.trim() && (values["limit-reached"] === "true" || values["stop-requested"] === "true")) {
+  let wroteNothing = false;
+  if (!output.trim() && cutShort) {
     const last = lastAgentText(values.session, Number(values["messages-before"]));
     if (last !== undefined) {
       output = redact(last);
       salvaged = true;
-      console.error("salvaged the agent's last message from the session (limit reached)");
+      console.error("salvaged the agent's last message from the session (cut short)");
     }
   }
 
   if (!output.trim()) {
-    console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
-    return;
+    // The skip is right for a session-ending tool call: that tool posted its own
+    // comment and a second content-free one is noise.
+    if (!cutShort) {
+      console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
+      return;
+    }
+    // It is wrong for a run that was cut short, and this is the common shape rather
+    // than the odd one. A stop lands at the next turn boundary, so a run reading
+    // files when it arrives has said nothing at all and there is nothing to salvage
+    // -- measured on #831, which spent nine iterations in tool calls and produced no
+    // assistant text. Skipping there drops the machinery's own sentence along with
+    // the agent's silence: that it stopped, that the session survived, and how to
+    // resume. None of those are the agent's to say, and the footer below says them.
+    wroteNothing = true;
+    output = values["stop-requested"] === "true"
+      ? "_This run was stopped before it said anything._"
+      : "_This run reached its limit before it said anything._";
+    console.error("the run was cut short with nothing to report -- posting the notice rather than nothing.");
   }
 
   // Checked on the way out for the same reason it is redacted on the way out:
@@ -396,6 +441,7 @@ function main(): void {
   const body = buildCommentBody({
     agent: values.agent,
     salvaged,
+    wroteNothing,
     notify: values.notify,
     directive: values.directive,
     chainContinues: values["chain-continues"],
