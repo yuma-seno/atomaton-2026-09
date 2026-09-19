@@ -3,7 +3,6 @@
 
 // src/scripts/plan_deploy.ts
 import { appendFileSync as appendFileSync2 } from "fs";
-import { parseArgs } from "util";
 
 // src/domain/declared-secrets.ts
 var SECRET_SLOTS = 10;
@@ -441,6 +440,34 @@ function readTagNames(repo) {
 `).map((line) => line.trim()).filter((line) => line.startsWith("refs/tags/")).map((line) => line.slice("refs/tags/".length));
 }
 
+// src/scripts/lib/cli.ts
+function parseAcrossReleases(names, argv) {
+  const known = new Set(names);
+  const values = Object.fromEntries(names.map((name) => [name, ""]));
+  const ignored = [];
+  for (let index = 0;index < argv.length; index += 1) {
+    const token = argv[index] ?? "";
+    if (!token.startsWith("--"))
+      continue;
+    const [flag, inline] = splitFlag(token.slice(2));
+    const value = inline ?? argv[index + 1] ?? "";
+    if (inline === undefined)
+      index += 1;
+    if (known.has(flag))
+      values[flag] = value;
+    else
+      ignored.push(flag);
+  }
+  if (ignored.length > 0) {
+    console.error(`::warning::Ignored ${ignored.map((flag) => `\`--${flag}\``).join(", ")}: this script is from an ` + "older release than the workflow that ran it. It will understand them once the upgrade reaches " + "the default branch.");
+  }
+  return values;
+}
+function splitFlag(token) {
+  const at = token.indexOf("=");
+  return at === -1 ? [token, undefined] : [token.slice(0, at), token.slice(at + 1)];
+}
+
 // src/scripts/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
 function publishMatrix(jobs, options) {
@@ -507,17 +534,7 @@ function publishTagsBefore(repo, jobs, selected, request) {
   console.error(`Watching for tags these deployments add; ${tags.length} exist now.`);
 }
 function main() {
-  const { values } = parseArgs({
-    args: Bun.argv.slice(2),
-    options: {
-      ref: { type: "string" },
-      "default-branch": { type: "string" },
-      event: { type: "string" },
-      trigger: { type: "string" },
-      target: { type: "string" },
-      repo: { type: "string" }
-    }
-  });
+  const values = parseAcrossReleases(["ref", "default-branch", "event", "trigger", "target", "repo"], Bun.argv.slice(2));
   const request = {
     ref: values.ref ?? "",
     defaultBranch: (values["default-branch"] ?? "").trim(),

@@ -1,9 +1,6 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/plan_checks.ts
-import { parseArgs } from "util";
-
 // src/domain/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
@@ -246,6 +243,34 @@ function getDefaultBranchChecks() {
   return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH);
 }
 
+// src/scripts/lib/cli.ts
+function parseAcrossReleases(names, argv) {
+  const known = new Set(names);
+  const values = Object.fromEntries(names.map((name) => [name, ""]));
+  const ignored = [];
+  for (let index = 0;index < argv.length; index += 1) {
+    const token = argv[index] ?? "";
+    if (!token.startsWith("--"))
+      continue;
+    const [flag, inline] = splitFlag(token.slice(2));
+    const value = inline ?? argv[index + 1] ?? "";
+    if (inline === undefined)
+      index += 1;
+    if (known.has(flag))
+      values[flag] = value;
+    else
+      ignored.push(flag);
+  }
+  if (ignored.length > 0) {
+    console.error(`::warning::Ignored ${ignored.map((flag) => `\`--${flag}\``).join(", ")}: this script is from an ` + "older release than the workflow that ran it. It will understand them once the upgrade reaches " + "the default branch.");
+  }
+  return values;
+}
+function splitFlag(token) {
+  const at = token.indexOf("=");
+  return at === -1 ? [token, undefined] : [token.slice(0, at), token.slice(at + 1)];
+}
+
 // src/scripts/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
 function publishMatrix(jobs, options) {
@@ -283,7 +308,7 @@ var ARMS = {
   "default-branch": { read: getDefaultBranchChecks, key: CHECKS_FROM_DEFAULT_BRANCH.where, warnWhenEmpty: "" }
 };
 function main() {
-  const { values } = parseArgs({ args: Bun.argv.slice(2), options: { arm: { type: "string" } } });
+  const values = parseAcrossReleases(["arm"], Bun.argv.slice(2));
   const arm = ARMS[values.arm ?? ""];
   if (!arm) {
     console.error(`usage: plan_checks.ts --arm ${Object.keys(ARMS).join("|")}`);
