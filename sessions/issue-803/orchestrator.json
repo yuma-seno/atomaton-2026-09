@@ -1215,7 +1215,7 @@
     },
     {
       "role": "tool",
-      "content": "{\"dispatched\":[\"#807→engineer\",\"#808→engineer\"],\"failed\":[],\"complete\":true,\"note\":\"Every sub-agent is running. This session ends here, and resumes when all sub-issues are closed.\"}",
+      "content": "All sub-issues have been completed.\n\n## Sub-issue Results\n\n### #808: `resolveBranch` must refuse a non-branch: a detached-HEAD description is never a refspec\nStatus: CLOSED\nLinked PRs:\n- PR #812: fix(branch-placement): `resolveBranch` answers only with a real branch (https://github.com/yuma-seno/atomaton/pull/812)\n- PR #817: fix(runner): a `pr` run checks out the pull request's head branch, so `commit_and_push` has a refspec (https://github.com/yuma-seno/atomaton/pull/817)\n\n### #807: runner: a `pr` run must check out the pull request's head branch, so `commit_and_push` has a refspec\nStatus: CLOSED\nLinked PRs:\n- PR #817: fix(runner): a `pr` run checks out the pull request's head branch, so `commit_and_push` has a refspec (https://github.com/yuma-seno/atomaton/pull/817)\n- PR #626: feat: the stored sessions become a report a person reads (https://github.com/yuma-seno/atomaton/pull/626)\n- PR #812: fix(branch-placement): `resolveBranch` answers only with a real branch (https://github.com/yuma-seno/atomaton/pull/812)\n\n---\nAll sub-issues are complete. Please review the results and aggregate them into a final summary.",
       "tool_call_id": "call_00_ykucne5jzr46m0z3t9b694m4"
     }
   ],
