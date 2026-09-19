@@ -10,38 +10,38 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest | median round trips | median seconds each |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Last 7 days | 54 | 31.5% | 254 | 3,392 | 40 | 22.5 |
-| Last 30 days | 54 | 31.5% | 254 | 3,392 | 40 | 22.5 |
-| Last year | 54 | 31.5% | 254 | 3,392 | 40 | 22.5 |
-| All time | 54 | 31.5% | 254 | 3,392 | 40 | 22.5 |
+| Last 7 days | 55 | 30.9% | 178 | 3,392 | 37 | 21.3 |
+| Last 30 days | 55 | 30.9% | 178 | 3,392 | 37 | 21.3 |
+| Last year | 55 | 30.9% | 178 | 3,392 | 37 | 21.3 |
+| All time | 55 | 30.9% | 178 | 3,392 | 37 | 21.3 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 37 |
+| `completed` | 38 |
 | `failed` | 8 |
 | `stopped` | 6 |
 | `runtime` | 3 |
 
 ## Last 7 days
 
-31 sessions.
+32 sessions.
 
-**70,374,061 tokens** over 33 runs that reported them, **96.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**70,402,011 tokens** over 34 runs that reported them, **96.7% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**93.6% of that prompt was served from cache**, over the 8 of 33 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**93.6% of that prompt was served from cache**, over the 9 of 34 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 137,006 | 7,118,379 | 13,911,470 | 13,911,470 | 70,374,061 |
-| messages per session | 168 | 532 | 1,598 | 1,598 | 7,912 |
+| tokens per run | 137,006 | 7,118,379 | 13,911,470 | 13,911,470 | 70,402,011 |
+| messages per session | 168 | 532 | 1,598 | 1,598 | 7,918 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 19 | 61.3% |
-| `reviewer` | 10 | 32.3% |
-| `orchestrator` | 2 | 6.5% |
+| `engineer` | 20 | 62.5% |
+| `reviewer` | 10 | 31.3% |
+| `orchestrator` | 2 | 6.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -68,9 +68,9 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
+| `github__get_issue_comments` | 15 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue_comments` | 13 | 0 | 0 | 0% |
 | `github__get_branch` | 11 | 0 | 0 | 0% |
 | `github__get_check_runs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
@@ -115,22 +115,22 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## Last 30 days
 
-31 sessions.
+32 sessions.
 
-**83,134,567 tokens** over 76 runs that reported them, **97.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**83,162,517 tokens** over 77 runs that reported them, **97.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**93.6% of that prompt was served from cache**, over the 8 of 76 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**93.6% of that prompt was served from cache**, over the 9 of 77 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 61,265 | 5,399,337 | 13,911,470 | 13,911,470 | 83,134,567 |
-| messages per session | 168 | 532 | 1,598 | 1,598 | 7,912 |
+| tokens per run | 54,326 | 5,399,337 | 13,911,470 | 13,911,470 | 83,162,517 |
+| messages per session | 168 | 532 | 1,598 | 1,598 | 7,918 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 19 | 61.3% |
-| `reviewer` | 10 | 32.3% |
-| `orchestrator` | 2 | 6.5% |
+| `engineer` | 20 | 62.5% |
+| `reviewer` | 10 | 31.3% |
+| `orchestrator` | 2 | 6.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -157,9 +157,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
+| `github__get_issue_comments` | 15 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue_comments` | 13 | 0 | 0 | 0% |
 | `github__get_branch` | 11 | 0 | 0 | 0% |
 | `github__get_check_runs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
@@ -204,22 +204,22 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## Last year
 
-31 sessions.
+32 sessions.
 
-**186,411,597 tokens** over 440 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**186,439,547 tokens** over 441 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**93.6% of that prompt was served from cache**, over the 8 of 440 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**93.6% of that prompt was served from cache**, over the 9 of 441 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 26,784 | 382,963 | 9,000,677 | 39,737,697 | 186,411,597 |
-| messages per session | 168 | 532 | 1,598 | 1,598 | 7,912 |
+| tokens per run | 26,784 | 365,748 | 9,000,677 | 39,737,697 | 186,439,547 |
+| messages per session | 168 | 532 | 1,598 | 1,598 | 7,918 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `engineer` | 19 | 61.3% |
-| `reviewer` | 10 | 32.3% |
-| `orchestrator` | 2 | 6.5% |
+| `engineer` | 20 | 62.5% |
+| `reviewer` | 10 | 31.3% |
+| `orchestrator` | 2 | 6.3% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
 
@@ -246,9 +246,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
+| `github__get_issue_comments` | 15 | 0 | 0 | 0% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
-| `github__get_issue_comments` | 13 | 0 | 0 | 0% |
 | `github__get_branch` | 11 | 0 | 0 | 0% |
 | `github__get_check_runs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
@@ -293,21 +293,21 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 ## All time
 
-386 sessions.
+387 sessions.
 
-**186,411,597 tokens** over 440 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**186,439,547 tokens** over 441 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**93.6% of that prompt was served from cache**, over the 8 of 440 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**93.6% of that prompt was served from cache**, over the 9 of 441 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 26,784 | 382,963 | 9,000,677 | 39,737,697 | 186,411,597 |
-| messages per session | 10 | 113 | 601 | 1,598 | 20,711 |
+| tokens per run | 26,784 | 365,748 | 9,000,677 | 39,737,697 | 186,439,547 |
+| messages per session | 10 | 113 | 601 | 1,598 | 20,717 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
-| `reviewer` | 246 | 63.7% |
-| `engineer` | 101 | 26.2% |
+| `reviewer` | 246 | 63.6% |
+| `engineer` | 102 | 26.4% |
 | `orchestrator` | 39 | 10.1% |
 
 **Refused** is the machinery saying no — a denylist, an allowlist, a hook. A guard working is not a tool breaking, and a reader cannot act on the two the same way, so they are counted apart. **Failed** is everything else that came back as an error, by string match, so it is an estimate.
@@ -340,8 +340,8 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__edit_file` | 63 | 6 | 0 | 9.5% |
 | `filesystem_readonly__read_text_file` | 62 | 2 | 29 | 3.2% |
 | `filesystem__read_multiple_files` | 56 | 0 | 0 | 0% |
+| `github__get_issue_comments` | 55 | 8 | 0 | 14.5% |
 | `github__get_pr_diff` | 55 | 4 | 0 | 7.3% |
-| `github__get_issue_comments` | 53 | 8 | 0 | 15.1% |
 | `filesystem__search_files` | 50 | 0 | 43 | 0% |
 | `list` | 49 | 1 | 0 | 2% |
 | `glob` | 45 | 1 | 0 | 2.2% |
