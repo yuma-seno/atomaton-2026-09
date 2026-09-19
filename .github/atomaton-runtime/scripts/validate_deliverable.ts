@@ -46,10 +46,6 @@ var TOOL_SECRETS = {
     "OPENAI_BASE_URL_IN"
   ])
 };
-var CHECK_SECRETS = {
-  field: "checks.atomaton_runs.secrets",
-  reserved: new Set(["GH_TOKEN"])
-};
 var DEPLOY_SECRETS = {
   field: "deploy.atomaton_runs.secrets",
   reserved: new Set([
@@ -62,7 +58,6 @@ var DEPLOY_SECRETS = {
 };
 var SECRET_DESTINATIONS = {
   tools: TOOL_SECRETS,
-  checks: CHECK_SECRETS,
   deploy: DEPLOY_SECRETS
 };
 function resolveDeclaredSecrets(raw, destination) {
@@ -354,7 +349,8 @@ var CONFIG_SCHEMA = {
     environment: { children: { setup_commands: null, max_reloads: null } },
     checks: {
       children: {
-        atomaton_runs: { children: { commands: null, secrets: null, runs_on: null } },
+        pull_request_runs: { children: { commands: null, runs_on: null } },
+        default_branch_runs: { children: { jobs: null, runs_on: null } },
         your_workflow: null
       }
     },
@@ -382,10 +378,11 @@ var CONFIG_SCHEMA = {
     }
   }
 };
-function arm(section) {
+function arm(section, name) {
   if (!isRecord3(section))
     return {};
-  return isRecord3(section.atomaton_runs) ? section.atomaton_runs : {};
+  const value = section[name];
+  return isRecord3(value) ? value : {};
 }
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -420,22 +417,23 @@ function configProblems(facts) {
   for (const key of unknownKeys(config, CONFIG_SCHEMA, "").sort()) {
     problems.push(`\`${key}\` in config.yaml is not a setting Atomaton reads. Check the spelling.`);
   }
-  for (const section of ["checks", "deploy"]) {
+  for (const [section, atomatonArm] of [
+    ["checks", "pull_request_runs"],
+    ["deploy", "atomaton_runs"]
+  ]) {
     const value = config[section];
     if (!isRecord3(value))
       continue;
-    if (value.atomaton_runs !== undefined && value.your_workflow !== undefined) {
-      problems.push("`" + section + "` sets both `atomaton_runs` and `your_workflow`. They are alternatives: " + "`your_workflow` dispatches a workflow of your own and nothing reads " + "`atomaton_runs`. Remove whichever you did not mean.");
+    if (value[atomatonArm] !== undefined && value.your_workflow !== undefined) {
+      problems.push("`" + section + "` sets both `" + atomatonArm + "` and `your_workflow`. They are alternatives: `your_workflow` dispatches a " + "workflow of your own and nothing reads `" + atomatonArm + "`. Remove whichever you did not mean.");
     }
   }
   const merge = isRecord3(config.merge) ? config.merge : {};
   problems.push(...resolveMergeGates(merge.gates).problems);
-  const deployRuns = arm(config.deploy);
+  const deployRuns = arm(config.deploy, "atomaton_runs");
   problems.push(...resolveDeployTargets(deployRuns.targets).problems);
-  const checkRuns = arm(config.checks);
   const tools = isRecord3(config.tools) ? config.tools : {};
   problems.push(...resolveDeclaredSecrets(tools.secrets, SECRET_DESTINATIONS.tools).problems);
-  problems.push(...resolveDeclaredSecrets(checkRuns.secrets, SECRET_DESTINATIONS.checks).problems);
   problems.push(...resolveDeclaredSecrets(deployRuns.secrets, SECRET_DESTINATIONS.deploy).problems);
   for (const name of agentNames.filter(isControlCommand).sort()) {
     problems.push(`agent-definitions/${name}.md is named after the '/${name}' control command, ` + `so '/${name}' will never dispatch it. Rename the agent.`);
