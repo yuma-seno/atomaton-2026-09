@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import {
-  CHECK_SECRETS,
   DEPLOY_SECRETS,
   RUN_CREDENTIALS,
   SECRET_NAMES_VAR,
@@ -56,8 +55,15 @@ describe("reserved names match the workflows they describe", () => {
     expectAllReserved(TOOL_SECRETS, carrierEnvKeys("atomaton-runner.yml", "run", "Run agent"));
   });
 
-  test("the checks step", () => {
-    expectAllReserved(CHECK_SECRETS, carrierEnvKeys("atomaton-check.yml", CHECK_JOB_NAME, "Run the configured checks"));
+  /**
+   * The checks step has no such list to reserve against, and that is the point: its
+   * commands are the pull request's own, so a declared credential would be one the
+   * change being judged could read. What is checked instead is that nothing put one
+   * back.
+   */
+  test("the checks step carries no declared credential at all", () => {
+    const keys = carrierEnvKeys("atomaton-check.yml", "pull-request-checks", "Run the configured checks");
+    expect(keys.filter((key) => key.startsWith("ATOMATON_SECRET"))).toEqual([]);
   });
 
   test("the deploy step", () => {

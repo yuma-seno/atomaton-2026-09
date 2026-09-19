@@ -17625,9 +17625,12 @@ function defineMcpTool(spec) {
     }
   };
 }
-function withoutBookkeeping(dispatch) {
+function withoutBookkeeping(dispatch, tools) {
+  const strip = new Set(tools);
   return async (name, args) => {
     const payload = await dispatch(name, args);
+    if (!strip.has(name))
+      return payload;
     return { ...payload, text: withoutTags(payload.text) };
   };
 }
@@ -18441,7 +18444,7 @@ var { tools, dispatch: rawDispatch } = buildMcpTools([
     handler: searchCode
   })
 ]);
-var dispatch = withoutBookkeeping(rawDispatch);
+var dispatch = withoutBookkeeping(rawDispatch, ["search_issues"]);
 async function main() {
   loadReranker().catch((error) => {
     report("warning", `could not preload the reranker (${error.message}); the first search will try again`);

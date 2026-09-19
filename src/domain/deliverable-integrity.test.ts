@@ -20,7 +20,7 @@ import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts
 const SOUND = {
   base_branch: "",
   environment: { setup_commands: [] },
-  checks: { atomaton_runs: { commands: [], secrets: [] } },
+  checks: { pull_request_runs: { commands: [] } },
   deploy: { atomaton_runs: { targets: [], secrets: [] } },
   merge: { policy: "auto" },
   chain: { labels: { in_progress: "atomaton/in-progress" } },
@@ -55,11 +55,11 @@ describe("keys nothing reads", () => {
   });
 
   // The nested form is exactly as silent and rather more likely: the reader asks
-  // for `checks.atomaton_runs.commands`, finds nothing, and runs no commands.
+  // for `checks.pull_request_runs.commands`, finds nothing, and runs no commands.
   test("a misspelled nested key is reported with its path", () => {
-    const problems = problemsFor({ ...SOUND, checks: { atomaton_runs: { command: ["bun test"] } } });
+    const problems = problemsFor({ ...SOUND, checks: { pull_request_runs: { command: ["bun test"] } } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`checks.atomaton_runs.command`");
+    expect(problems[0]).toContain("`checks.pull_request_runs.command`");
   });
 
   // `chain.labels` has an index signature: a project may name labels of its own, and
@@ -102,7 +102,7 @@ describe("keys nothing reads", () => {
 });
 
 /**
- * `atomaton_runs` and `your_workflow` are alternatives, and the structure says so by
+ * An Atomaton arm and `your_workflow` are alternatives, and the structure says so by
  * putting them side by side. The check says it again in a sentence, because "both
  * are set" is otherwise a precedence puzzle: one of the two is being ignored, and
  * nothing anywhere says which.
@@ -110,7 +110,8 @@ describe("keys nothing reads", () => {
 describe("two arms, and exactly one of them", () => {
   test("declaring both is reported, in either section", () => {
     for (const section of ["checks", "deploy"] as const) {
-      const problems = problemsFor({ ...SOUND, [section]: { atomaton_runs: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
+      const arm = section === "checks" ? "pull_request_runs" : "atomaton_runs";
+      const problems = problemsFor({ ...SOUND, [section]: { [arm]: {}, your_workflow: DEFAULT_CI_WORKFLOW } });
       expect(problems, section).toHaveLength(1);
       expect(problems[0], section).toContain(`\`${section}\``);
     }
@@ -150,7 +151,7 @@ describe("the resolvers, run early", () => {
   test("a reserved credential name is reported for every destination", () => {
     for (const [section, declaration] of [
       ["tools", { secrets: ["GH_TOKEN"] }],
-      ["checks", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
+      ["deploy", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
       ["deploy", { atomaton_runs: { secrets: ["GH_TOKEN"] } }],
     ] as const) {
       const problems = problemsFor({ ...SOUND, [section]: declaration });
@@ -245,7 +246,7 @@ describe("knownConfigKeys", () => {
     const keys = knownConfigKeys();
     expect(keys).toContain("chain.labels.*");
     expect(keys).toContain("chain.labels.in_progress");
-    expect(keys).toContain("checks.atomaton_runs.commands");
+    expect(keys).toContain("checks.pull_request_runs.commands");
     expect(keys).toEqual([...keys].sort());
   });
 

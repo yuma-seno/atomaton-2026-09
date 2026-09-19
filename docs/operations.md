@@ -326,7 +326,7 @@ Every pull request an agent opens is checked for one thing before your CI is ask
 to run at all: whether the `.github/atomaton/` it would merge can still start a run.
 
 This is not your pipeline and it is not configurable. It runs whether or not
-`checks.atomaton_runs.commands` is set, and it reads nothing from `checks` or `deploy`
+`checks.pull_request_runs.commands` is set, and it reads nothing from `checks` or `deploy`
 to decide what to check — those describe what YOU verify. This one answers a
 narrower question that only has one right answer.
 
@@ -350,6 +350,17 @@ What it checks:
 What it does not check is anything that needs a run to find out. Whether your
 commands pass, whether a deployment works, whether a model answers — that is CI's
 job, and this deliberately does not duplicate it.
+
+**And it starts nothing.** `tools.servers` lets any pull request name any
+`command`, so a check that started the servers a pull request declares would
+execute that pull request inside the job that decides whether it may merge. This
+one reads the pull request's `.github/atomaton/` as data and runs nothing under
+`--root`. The half that needs live servers — whether an allowlist pattern still
+names a tool that exists, whether a server starts at all — belongs on the other end
+of the pipeline instead, in a release. Atomaton runs it in its own; your release
+does not until you put it there, because `deploy.atomaton_runs.targets` ships
+empty. See [Checks, deployment, and the jobs you
+will see](#checks-deployment-and-the-jobs-you-will-see).
 
 **Why this exists.** Atoma resolves every `mcp_servers` name against the tools
 file it is handed, and aborts before a single tool server starts if one is
@@ -392,13 +403,31 @@ is, so it cannot be on it.
 `environment.setup_commands`: an agent can change the runner and prove the change in
 the same pull request rather than waiting for a merge to find out.
 
-Two shipped workflows run what `checks.atomaton_runs` and `deploy.atomaton_runs` declare
+Two shipped workflows run what `checks.pull_request_runs` and `deploy.atomaton_runs` declare
 — `atomaton-check.yml` and `atomaton-deploy.yml`. Neither changes per project, which is
 the whole point: **an agent can write configuration and cannot write a workflow.**
 GitHub refuses `GITHUB_TOKEN` on `.github/workflows/**` by identity, on every path
 and every branch, and no permission grants it. So a repository whose pipeline lives
 in `config.yaml` is one an agent can set up, extend and repair; one whose pipeline
 lives in workflow YAML always needs a person.
+
+**Atomaton's release starts the servers it would ship, and stops before publishing
+if they disagree with it.** `scripts/release.sh` runs `scripts/check-live-tools.sh`
+between building `dist/` and creating the release. Both are Atomaton's own and
+neither ships, so this is a description of how Atomaton is released rather than of
+what your pipeline does: `deploy.atomaton_runs.targets` ships empty, and wiring the
+same check into your release is yours to do. That script starts every tool server
+the artifact declares and asks `atoma validate --with-live-tools` what each one
+actually advertises, which is what decides whether every `tool_allowlist` /
+`tool_denylist` pattern still names a tool that exists, whether two `unprefixed`
+servers claim one name, and whether a server starts at all.
+
+It runs there — on the default branch, against `dist/` — and never on the pull
+request, for one reason: it starts processes, and `tools.servers` lets a pull
+request name any `command`. The pull request check reads a pull request's
+`.github/atomaton/` as data and runs nothing under `--root`, and that guarantee
+is not tradeable. What this costs is a guard that has stopped guarding being found
+after the merge that broke it rather than as a red check on its pull request.
 
 ## What a tool can and cannot be protected from
 
@@ -452,7 +481,7 @@ credential you give a third-party server is readable by the shell tool.
 
 If that matters for a particular credential, the options are to give it only to a
 server shipped here, or not to route it at all and let the tool that needs it be a
-step in `checks.atomaton_runs.commands`, which runs in its own job.
+step in `checks.pull_request_runs.commands`, which runs in its own job.
 
 ### What the filesystem does
 

@@ -76,10 +76,10 @@ function loadConfig() {
 }
 function getRunsOn(field) {
   const config = loadConfig();
-  return field === "checks" ? config.checks?.atomaton_runs?.runs_on : config.deploy?.atomaton_runs?.runs_on;
+  return field === "checks" ? config.checks?.pull_request_runs?.runs_on : config.deploy?.atomaton_runs?.runs_on;
 }
 function runsOnPath(field) {
-  return `${field}.atomaton_runs.runs_on`;
+  return field === "checks" ? "checks.pull_request_runs.runs_on" : "deploy.atomaton_runs.runs_on";
 }
 
 // src/scripts/lib/script-ref.ts

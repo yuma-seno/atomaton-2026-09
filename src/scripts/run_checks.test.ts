@@ -14,13 +14,13 @@ function run(config: Record<string, unknown>) {
 
 describe("run_checks.ts", () => {
   test("runs the configured commands in order", () => {
-    const r = run({ checks: { atomaton_runs: { commands: ["echo one", "echo two"] } } });
+    const r = run({ checks: { pull_request_runs: { commands: ["echo one", "echo two"] } } });
     expect(r.status).toBe(0);
     expect(r.stdout.indexOf("one")).toBeLessThan(r.stdout.indexOf("two"));
   });
 
   test("stops at the first failure and exits with its code", () => {
-    const r = run({ checks: { atomaton_runs: { commands: ["echo before", "exit 3", "echo after"] } } });
+    const r = run({ checks: { pull_request_runs: { commands: ["echo before", "exit 3", "echo after"] } } });
     expect(r.status).toBe(3);
     expect(r.stdout).toContain("before");
     expect(r.stdout).not.toContain("after");
@@ -38,7 +38,7 @@ describe("run_checks.ts", () => {
   });
 
   test("an all-whitespace command is not treated as a command", () => {
-    const r = run({ checks: { atomaton_runs: { commands: ["  ", ""] } } });
+    const r = run({ checks: { pull_request_runs: { commands: ["  ", ""] } } });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("verified nothing");
   });

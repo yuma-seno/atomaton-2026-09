@@ -304,7 +304,7 @@ describe("generated workflows", () => {
    * Three properties, and each one is a way the check could be present and useless.
    *
    * It must be unconditional. The validation has to run independently of
-   * `config.yaml`'s `checks.atomaton_runs.commands` — an adopter's `atomaton-check.yml` runs nothing
+   * `config.yaml`'s `checks.pull_request_runs.commands` — an adopter's `atomaton-check.yml` runs nothing
    * at all until they configure it, and whatever they put there is their pipeline.
    * An `if:` on this step would put our own integrity check back under their
    * control.
@@ -785,7 +785,6 @@ describe("generated workflows", () => {
     // the whole point.
     const carriers = [
       { file: "atomaton-runner.yml", job: "run", step: "Collect this run's credentials into a file" },
-      { file: "atomaton-check.yml", job: CHECK_JOB_NAME, step: "Run the configured checks" },
       { file: "atomaton-deploy.yml", job: "deploy", step: "Deploy the targets this run is for" },
     ];
 
@@ -820,7 +819,10 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
 
     const directory = "dist/.github/workflows";
-    const carriers = ["atomaton-runner.yml", "atomaton-check.yml", "atomaton-deploy.yml"];
+    // Not atomaton-check.yml: a check carries no declared credential, because its
+    // commands are the pull request's own and a secret named for them would be one
+    // the change being judged can read.
+    const carriers = ["atomaton-runner.yml", "atomaton-deploy.yml"];
 
     for (const file of carriers) {
       const workflow = Bun.YAML.parse(readFileSync(join(directory, file), "utf8")) as WorkflowDocument;
@@ -871,7 +873,7 @@ describe("generated workflows", () => {
 
     // A check that cannot talk to GitHub is the only thing in the system that
     // cannot, and the failure reads as a broken command rather than no token.
-    const runChecks = check.jobs?.[CHECK_JOB_NAME]?.steps?.find((s) => s.name === "Run the configured checks");
+    const runChecks = check.jobs?.["pull-request-checks"]?.steps?.find((s) => s.name === "Run the configured checks");
     expect(runChecks?.env?.GH_TOKEN).toBe("${{ github.token }}");
 
     const deploy = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-deploy.yml", "utf8")) as WorkflowDocument;
@@ -1080,7 +1082,7 @@ describe("generated workflows", () => {
     type WorkflowDocument = { jobs?: Record<string, { "runs-on"?: unknown; needs?: unknown }> };
 
     for (const [file, workJob] of [
-      ["atomaton-check", CHECK_JOB_NAME],
+      ["atomaton-check", "pull-request-checks"],
       ["atomaton-deploy", "deploy"],
     ] as const) {
       const workflow = Bun.YAML.parse(readFileSync(`dist/.github/workflows/${file}.yml`, "utf8")) as WorkflowDocument;

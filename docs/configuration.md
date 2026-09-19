@@ -143,11 +143,11 @@ elsewhere — `develop` → `main`, say. Without it every agent pull request aim
 `setup_commands` run before checks, before deployments, and before an agent starts
 — all three, on a cold runner every time. They run through `bash -c`, in order,
 and stop on first failure: before the agent starts, before
-`checks.atomaton_runs.commands`, and before `deploy.atomaton_runs.targets`. One
+`checks.pull_request_runs.commands`, and before `deploy.atomaton_runs.targets`. One
 declaration, three jobs.
 
 That is the reason to use this field rather than putting `npm ci` at the front of
-`checks.atomaton_runs.commands`, which works and drifts: the agent's shell and CI
+`checks.pull_request_runs.commands`, which works and drifts: the agent's shell and CI
 then install their dependencies from two places, and a test that passes for the
 agent and fails in CI reaches an engineer as a defect that does not reproduce on
 the machine they can see.
@@ -195,15 +195,58 @@ Under `atomaton_runs`:
   to it, and the commands that put it there. Empty means this project deploys
   nothing yet, which is the state a template has to ship in.
 - `secrets` — repository secrets that step may reach, by name. The values stay
-  in GitHub; only the names are here. Written in full they are
-  `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets` — the nesting is
-  load-bearing, and `tools.secrets` below says why the three lists are separate.
+  in GitHub; only the names are here. Written in full it is
+  `deploy.atomaton_runs.secrets` — the nesting is load-bearing, and `tools.secrets`
+  below says why the lists are separate.
+
+  **`checks.pull_request_runs` has no such list, and cannot.** The commands there
+  are the pull request's own, run in its own tree, so a credential named for them
+  would be a credential the change being judged can read — a pull request may
+  rewrite any command it declares. A check that needs one goes in the other half.
+
+### A check that needs a credential
+
+`checks.default_branch_runs.jobs` is a list, and each entry becomes its own job:
+
+```yaml
+checks:
+  default_branch_runs:
+    jobs:
+      - name: cloud-names
+        secrets: [AWS_ROLE_ARN]
+        commands:
+          - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
+```
+
+Three things differ from the half above, and they are why a credential is safe
+here.
+
+**The commands come from the default branch.** A pull request cannot change what
+runs, add a job, or widen which secret a job receives — the list is read from the
+default branch's `config.yaml`, not from the pull request's.
+
+**The pull request arrives as data.** `$ATOMATON_PR_TREE` is a path to a checkout
+of it. Read it; do not execute it. That is the same rule the deliverable check
+states about `--root`, and nothing mechanical enforces it — an interpreter reads a
+file rather than executing it, so no filesystem flag will stop `bash
+"$ATOMATON_PR_TREE/x.sh"`. It rests on review, which is why this list is meant to
+stay short.
+
+**Each job names its own secrets.** A job is handed the ones its own entry named
+and no others, so a staging credential does not sit in the job that checks
+something else.
+
+What you cannot write is a pull request's own command holding a credential. There
+is no spelling for it: one half has no `secrets` key and the other takes no
+commands from the pull request. A check that genuinely needs both — integration
+tests against a real environment, say — belongs after the merge, or wants a
+credential you would not mind losing.
 - `runs_on` — the GitHub runner label the job asks for. `ubuntu-latest` unless
   the project needs a larger or self-hosted one.
 
 ### The default check
 
-A secret scan ships in `checks.atomaton_runs.commands`, and it is the only default.
+A secret scan ships in `checks.pull_request_runs.commands`, and it is the only default.
 A credential is a credential in every language, so it is the one verification a
 template can hand a project it knows nothing about — everything else belongs to
 the project.
@@ -262,8 +305,10 @@ explicit dispatch, not an event — but your own merges will not, and
 `deploy.your_workflow` is the way to cover them.
 
 **Credentials** go in the list belonging to whatever needs them —
-`checks.atomaton_runs.secrets` or `deploy.atomaton_runs.secrets`, alongside
-`tools.secrets`. Add the secret to the repository first; these name it, they do
+`deploy.atomaton_runs.secrets`, alongside `tools.secrets`. There is no such list
+under `checks.pull_request_runs`: see above for why a check that runs a pull
+request's own commands cannot be given one. Add the secret to the repository
+first; these name it, they do
 not create it. Inside a deployment, `$ATOMATON_DEPLOY_TARGET` holds the target's
 name. `atomaton-deploy.yml` declares `id-token: write`, so a cloud provider's OIDC
 login works and is worth preferring over storing a long-lived key at all.
@@ -604,7 +649,7 @@ first.
 
 Repository secrets the servers may reach, by name.
 
-Separate from `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets` because the nesting **is** the
+Separate from `deploy.atomaton_runs.secrets` because the nesting **is** the
 boundary: only these enter an agent's own environment, so a prompt injection
 carried in an issue body reaches them and no deployment credential. Collapsing the
 three into one list would put every credential in every destination while still
@@ -645,7 +690,7 @@ what the run may hold, a server's `env` says which server sees it, and the secon
 is what keeps the first out of the shell. Authorising a credential does not
 deliver it. `checks` and `deploy` need no third step at all, because their
 commands run in a workflow of their own rather than beside an agent — a secret
-named in `checks.atomaton_runs.secrets` is in that job's environment and there is no
+named in `deploy.atomaton_runs.secrets` is in that job's environment and there is no
 server to route it to.
 
 The bottom row reads the same whether the server is one of yours or one Atomaton

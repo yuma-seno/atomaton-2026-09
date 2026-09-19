@@ -45,6 +45,30 @@ if [ ! -d dist/.github ]; then
   exit 1
 fi
 
+# Before the artifact is packaged and published, ask the servers it would ship
+# what they advertise, and hold that against the guards and the names its
+# configuration declares. A `tool_allowlist` pattern matching none of its server's
+# tools, two `unprefixed` servers claiming one name, and a server that will not
+# start are all invisible to a file check and all fatal to a run.
+#
+# HERE rather than on the pull request, and that is the whole decision: this
+# starts processes, and `tools.servers` lets a pull request name any `command`.
+# The deliverable check reads a pull request's `.github/atomaton/` as data and runs
+# nothing under `--root`; giving it this would make it execute the thing it is
+# judging. So the live half runs on the default branch, against `dist/` -- the
+# artifact built by the lines above and about to be published by the lines below.
+#
+# Below the early exit above, so it runs when a release is being CUT rather than on
+# every merge. That is not a detail of ordering: the early exit is above `bun
+# install` and `bun run synth`, so a check placed above it would have no `dist/` to
+# check without building the whole artifact on every merge -- including the merges
+# that change nothing about a release. The sharper edge of that is stated rather
+# than hidden: a merge that breaks a guard without bumping the version is caught at
+# the release that ships it, not on the merge itself.
+#
+# See the script's header for what it can and cannot see.
+bash scripts/check-live-tools.sh
+
 # `zip` from inside dist/ so the archive holds `.github/...` and not
 # `dist/.github/...`, and an adopter extracts it at their repository root.
 # Naming `.github` explicitly is what includes it; a bare `zip -r .` would skip

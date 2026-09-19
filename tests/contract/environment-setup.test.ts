@@ -26,7 +26,9 @@ const JOBS = [
   },
   {
     workflow: "atomaton-check",
-    job: "atomaton-check",
+    // The job that runs the project's commands, which is no longer the one a ruleset
+    // names: that name moved to the job which only collects the verdicts.
+    job: "pull-request-checks",
     projectCommands: "Run the configured checks",
     why: "the verdict a pull request merges on",
   },
