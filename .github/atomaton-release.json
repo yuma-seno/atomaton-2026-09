@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.142",
+  "version": "v0.1.143",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -11,6 +11,7 @@
     ".github/atomaton-runtime/scripts/extract_notify_tag.ts",
     ".github/atomaton-runtime/scripts/fetch_events.ts",
     ".github/atomaton-runtime/scripts/get_config_value.ts",
+    ".github/atomaton-runtime/scripts/guard_command_on_closed.ts",
     ".github/atomaton-runtime/scripts/guard_comment_during_run.ts",
     ".github/atomaton-runtime/scripts/inject_uncommitted_notice.ts",
     ".github/atomaton-runtime/scripts/manage_dispatch_loop.ts",
@@ -42,6 +43,7 @@
     ".github/atomaton-runtime/scripts/save_agent_session.ts",
     ".github/atomaton-runtime/scripts/save_workspace.ts",
     ".github/atomaton-runtime/scripts/scan_secrets.ts",
+    ".github/atomaton-runtime/scripts/stop_on_close.ts",
     ".github/atomaton-runtime/scripts/validate_deliverable.ts",
     ".github/atomaton-runtime/scripts/validate_pull_request.ts",
     ".github/atomaton-runtime/scripts/watch_for_stop.ts",

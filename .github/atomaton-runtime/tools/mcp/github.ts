@@ -6616,6 +6616,23 @@ function run(cmd) {
 function gh(...args) {
   return run(["gh", ...args]);
 }
+function ghRead(...args) {
+  let result = gh(...args);
+  for (const delay of [2000, 6000]) {
+    if (result.code === 0 || !looksTransient(result))
+      return result;
+    console.error(`::warning::gh ${args.slice(0, 2).join(" ")} failed transiently, retrying: ${result.stderr || result.stdout}`);
+    Bun.sleepSync(delay);
+    result = gh(...args);
+  }
+  return result;
+}
+function looksTransient(result) {
+  const text = `${result.stderr} ${result.stdout}`;
+  if (/HTTP (429|5[0-9][0-9])(?![0-9])/.test(text))
+    return true;
+  return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
+}
 function ghGraphql(query, variables = {}) {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const [key, value] of Object.entries(variables)) {
@@ -7276,11 +7293,80 @@ function logDispatch(target, agent, extra = {}) {
   logOp("dispatch", { target, agent, ...extra });
 }
 
+// src/lib/target-state.ts
+function readTargetState(number, repo) {
+  const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;
+  const { code, stdout, stderr } = ghRead("api", path);
+  if (code !== 0) {
+    return { kind: "unknown", why: (stderr || stdout || `gh exited ${code}`).trim().split(`
+`)[0] ?? "" };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    return { kind: "unknown", why: "the response was not JSON" };
+  }
+  if (parsed.state === "open")
+    return { kind: "open" };
+  if (parsed.state === "closed")
+    return { kind: "closed", merged: Boolean(parsed.pull_request?.merged_at) };
+  return { kind: "unknown", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
+}
+
+// src/domain/closed-issue.ts
+function mayStartWorkOn(state) {
+  return state.kind === "open";
+}
+function recoveryAdvice(state, number, command) {
+  if (state.kind === "closed" && state.merged) {
+    return `#${number} is merged, and GitHub cannot reopen a merged pull request. ` + `Open an issue for the follow-up instead.`;
+  }
+  return `Reopen #${number} and comment \`${command}\` to run it.`;
+}
+function mentionPrefix(logins) {
+  return logins.length > 0 ? `${logins.map((l) => `@${l}`).join(" ")} ` : "";
+}
+function dispatchRefusedNotice(refused) {
+  const { agent, number, context, state, notify } = refused;
+  const why = state.kind === "unknown" ? `the state of #${number} could not be read (${state.why})` : `#${number} is closed`;
+  return [
+    `${mentionPrefix(notify ? [notify] : [])}Atomaton: \`${agent}\` was not started on #${number}, because ${why}.`,
+    "",
+    `What was about to happen: ${context}.`,
+    "",
+    "Nothing will retry this.",
+    "",
+    state.kind === "unknown" ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.` : recoveryAdvice(state, number, `/${agent}`)
+  ].join(`
+`);
+}
+
 // src/lib/dispatch.ts
 function runnerWorkflow() {
   return process.env.ATOMATON_DISPATCH_WORKFLOW || "atomaton-runner.yml";
 }
+function refuseClosedTarget(d, state) {
+  const log = d.log ?? ((message) => console.error(message));
+  const body = dispatchRefusedNotice({
+    agent: d.agent,
+    number: Number(d.number),
+    context: d.context,
+    state,
+    notify: d.notify ?? ""
+  });
+  const { code, stdout, stderr } = gh("issue", "comment", String(d.number), ...d.repo ? ["--repo", d.repo] : [], "--body", body);
+  if (code !== 0) {
+    log(`${d.context}: refused to dispatch onto #${d.number} (not open), and could not post the notice: ${stderr || stdout}`);
+  } else {
+    log(`${d.context}: refused to dispatch onto #${d.number} (not open); notice posted`);
+  }
+  return "refused-closed";
+}
 function dispatchRunner(d) {
+  const state = readTargetState(d.number, d.repo);
+  if (!mayStartWorkOn(state))
+    return refuseClosedTarget(d, state);
   const args = [
     ...d.repo ? ["--repo", d.repo] : [],
     "--field",
@@ -7295,9 +7381,9 @@ function dispatchRunner(d) {
     `reload_count=${d.reloadCount ?? 0}`
   ];
   if (!dispatchWorkflow(d.context, runnerWorkflow(), args, d.log))
-    return false;
+    return "failed";
   logDispatch(d.type, d.agent, { number: Number(d.number) });
-  return true;
+  return "dispatched";
 }
 
 // src/lib/aggregation.ts
@@ -7305,7 +7391,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function needsAttention(result) {
-  return result.kind === "dispatch-failed" || result.kind === "undetermined";
+  return result.kind === "dispatch-failed" || result.kind === "undetermined" || result.kind === "parent-closed";
 }
 function describeGateResult(result, closedNum, parent) {
   const which = parent === undefined ? "the parent issue" : `#${parent}`;
@@ -7320,6 +7406,8 @@ function describeGateResult(result, closedNum, parent) {
       return `All sub-tasks of ${which} complete. Orchestrator re-invoked.`;
     case "dispatch-failed":
       return `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the orchestrator by hand.`;
+    case "parent-closed":
+      return `All sub-tasks of ${which} complete, but ${which} is closed, so no orchestrator was started. ` + `The aggregation marker is already written, so no other caller will retry: ` + `reopen it and run the orchestrator by hand. Whoever asked for the run has been told on the issue.`;
     case "undetermined":
       return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
   }
@@ -7367,15 +7455,17 @@ Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orches
     console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
     return { kind: "undetermined", why };
   }
-  const dispatched = dispatchRunner({
-    context: `dispatchOrchestratorIfReady: re-invoking orchestrator on #${opts.parent}`,
+  const outcome = dispatchRunner({
+    context: `all sub-issues of #${opts.parent} are complete, so its orchestrator was to be re-invoked`,
     agent: "orchestrator",
     type: "issue",
     number: opts.parent,
     notify: resolveNotify(opts.repo, opts.parent),
     repo: opts.repo
   });
-  return dispatched ? { kind: "dispatched" } : { kind: "dispatch-failed" };
+  if (outcome === "dispatched")
+    return { kind: "dispatched" };
+  return outcome === "refused-closed" ? { kind: "parent-closed" } : { kind: "dispatch-failed" };
 }
 async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
   const { code, stdout } = gh("issue", "view", String(subIssueNum), "--repo", repo, "--json", "body", "--jq", ".body");
@@ -18798,14 +18888,14 @@ function dispatchPostMergeAgent(repo, subIssueNum, agent) {
     return false;
   }
   return dispatchRunner({
-    context: `dispatchPostMergeAgent: re-invoking ${agent} on #${subIssueNum} to confirm and close`,
+    context: `the pull request for #${subIssueNum} was merged, so ${agent} was to confirm and close it`,
     agent,
     type: "issue",
     number: subIssueNum,
     notify,
     repo,
     log: log5
-  });
+  }) === "dispatched";
 }
 function dispatchCi(branch) {
   return dispatchWorkflow("dispatchCi", getWorkflowName("ci", DEFAULT_CI_WORKFLOW), ["--ref", branch], log5);
