@@ -10,16 +10,16 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest | median round trips | median seconds each |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Last 7 days | 57 | 31.6% | 178 | 3,392 | 37 | 21.3 |
-| Last 30 days | 58 | 31% | 178 | 3,392 | 37 | 21.3 |
-| Last year | 58 | 31% | 178 | 3,392 | 37 | 21.3 |
-| All time | 58 | 31% | 178 | 3,392 | 37 | 21.3 |
+| Last 7 days | 58 | 31% | 208 | 3,392 | 30 | 21.2 |
+| Last 30 days | 59 | 30.5% | 178 | 3,392 | 30 | 21.2 |
+| Last year | 59 | 30.5% | 178 | 3,392 | 30 | 21.2 |
+| All time | 59 | 30.5% | 178 | 3,392 | 30 | 21.2 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 40 |
+| `completed` | 41 |
 | `failed` | 8 |
 | `stopped` | 6 |
 | `runtime` | 4 |
@@ -35,7 +35,7 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 137,006 | 7,118,379 | 13,911,470 | 13,911,470 | 70,321,612 |
-| messages per session | 168 | 532 | 1,598 | 1,598 | 8,135 |
+| messages per session | 168 | 532 | 1,598 | 1,598 | 8,178 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -48,34 +48,34 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,291 | 14 | 25 | 0.6% |
-| `read` | 650 | 2 | 0 | 0.3% |
-| `grep` | 593 | 11 | 0 | 1.9% |
+| `read` | 657 | 2 | 0 | 0.3% |
+| `grep` | 600 | 11 | 0 | 1.8% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 52 | 2 | 0 | 3.8% |
 | `list` | 52 | 1 | 0 | 1.9% |
-| `search__search_issues` | 48 | 0 | 0 | 0% |
-| `glob` | 47 | 1 | 0 | 2.1% |
+| `glob` | 50 | 1 | 0 | 2% |
+| `search__search_issues` | 50 | 0 | 0 | 0% |
 | `search__search_code` | 46 | 0 | 0 | 0% |
-| `github__get_issue` | 41 | 0 | 0 | 0% |
+| `github__get_issue` | 45 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `write` | 29 | 0 | 0 | 0% |
-| `github__get_pr` | 26 | 1 | 0 | 3.8% |
+| `github__get_pr` | 28 | 1 | 0 | 3.6% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `github__get_issue_comments` | 22 | 0 | 0 | 0% |
 | `github__search_code` | 20 | 2 | 0 | 10% |
 | `github__create_pr` | 18 | 5 | 0 | 27.8% |
+| `github__get_branch` | 18 | 0 | 0 | 0% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `github__get_branch` | 16 | 0 | 0 | 0% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_check_runs` | 12 | 2 | 0 | 16.7% |
+| `github__list_prs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `github__get_pr_reviews` | 10 | 1 | 0 | 10% |
-| `github__list_prs` | 10 | 1 | 0 | 10% |
 | `github__get_pr_diff` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
@@ -85,11 +85,11 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
 | `github__merge_pr` | 6 | 0 | 0 | 0% |
+| `atomaton__launch_sub_agent` | 3 | 0 | 0 | 0% |
 | `github__list_pr_review_comments` | 3 | 0 | 0 | 0% |
-| `atomaton__launch_sub_agent` | 2 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
+| `github__list_issues` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `github__list_issues` | 1 | 0 | 0 | 0% |
 | `read_text_file` | 1 | 1 | 0 | 100% |
 | `shell_execute` | 1 | 1 | 0 | 100% |
 
@@ -124,7 +124,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 68,071 | 5,399,337 | 13,911,470 | 13,911,470 | 83,048,729 |
-| messages per session | 107 | 532 | 1,598 | 1,598 | 8,141 |
+| messages per session | 107 | 532 | 1,598 | 1,598 | 8,184 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -137,34 +137,34 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,291 | 14 | 25 | 0.6% |
-| `read` | 650 | 2 | 0 | 0.3% |
-| `grep` | 593 | 11 | 0 | 1.9% |
+| `read` | 657 | 2 | 0 | 0.3% |
+| `grep` | 600 | 11 | 0 | 1.8% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 52 | 2 | 0 | 3.8% |
 | `list` | 52 | 1 | 0 | 1.9% |
-| `search__search_issues` | 49 | 0 | 0 | 0% |
-| `glob` | 47 | 1 | 0 | 2.1% |
+| `search__search_issues` | 51 | 0 | 0 | 0% |
+| `glob` | 50 | 1 | 0 | 2% |
 | `search__search_code` | 46 | 0 | 0 | 0% |
-| `github__get_issue` | 41 | 0 | 0 | 0% |
+| `github__get_issue` | 45 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `write` | 29 | 0 | 0 | 0% |
-| `github__get_pr` | 26 | 1 | 0 | 3.8% |
+| `github__get_pr` | 28 | 1 | 0 | 3.6% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `github__get_issue_comments` | 22 | 0 | 0 | 0% |
 | `github__search_code` | 20 | 2 | 0 | 10% |
 | `github__create_pr` | 18 | 5 | 0 | 27.8% |
+| `github__get_branch` | 18 | 0 | 0 | 0% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `github__get_branch` | 16 | 0 | 0 | 0% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_check_runs` | 12 | 2 | 0 | 16.7% |
+| `github__list_prs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `github__get_pr_reviews` | 10 | 1 | 0 | 10% |
-| `github__list_prs` | 10 | 1 | 0 | 10% |
 | `github__get_pr_diff` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
@@ -174,11 +174,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
 | `github__merge_pr` | 6 | 0 | 0 | 0% |
+| `atomaton__launch_sub_agent` | 3 | 0 | 0 | 0% |
 | `github__list_pr_review_comments` | 3 | 0 | 0 | 0% |
-| `atomaton__launch_sub_agent` | 2 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
+| `github__list_issues` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `github__list_issues` | 1 | 0 | 0 | 0% |
 | `read_text_file` | 1 | 1 | 0 | 100% |
 | `shell_execute` | 1 | 1 | 0 | 100% |
 
@@ -213,7 +213,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 26,784 | 365,748 | 9,000,677 | 39,737,697 | 186,464,839 |
-| messages per session | 107 | 532 | 1,598 | 1,598 | 8,141 |
+| messages per session | 107 | 532 | 1,598 | 1,598 | 8,184 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -226,34 +226,34 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 2,291 | 14 | 25 | 0.6% |
-| `read` | 650 | 2 | 0 | 0.3% |
-| `grep` | 593 | 11 | 0 | 1.9% |
+| `read` | 657 | 2 | 0 | 0.3% |
+| `grep` | 600 | 11 | 0 | 1.8% |
 | `web__fetch` | 145 | 12 | 0 | 8.3% |
 | `edit` | 95 | 1 | 0 | 1.1% |
 | `filesystem__read_text_file` | 77 | 1 | 0 | 1.3% |
 | `atoma_builtin__load_skill` | 52 | 2 | 0 | 3.8% |
 | `list` | 52 | 1 | 0 | 1.9% |
-| `search__search_issues` | 49 | 0 | 0 | 0% |
-| `glob` | 47 | 1 | 0 | 2.1% |
+| `search__search_issues` | 51 | 0 | 0 | 0% |
+| `glob` | 50 | 1 | 0 | 2% |
 | `search__search_code` | 46 | 0 | 0 | 0% |
-| `github__get_issue` | 41 | 0 | 0 | 0% |
+| `github__get_issue` | 45 | 0 | 0 | 0% |
 | `filesystem_readonly__read_text_file` | 33 | 2 | 0 | 6.1% |
 | `write` | 29 | 0 | 0 | 0% |
-| `github__get_pr` | 26 | 1 | 0 | 3.8% |
+| `github__get_pr` | 28 | 1 | 0 | 3.6% |
 | `filesystem__read_file` | 23 | 0 | 0 | 0% |
 | `github__get_issue_comments` | 22 | 0 | 0 | 0% |
 | `github__search_code` | 20 | 2 | 0 | 10% |
 | `github__create_pr` | 18 | 5 | 0 | 27.8% |
+| `github__get_branch` | 18 | 0 | 0 | 0% |
 | `filesystem_readonly__search_files` | 17 | 1 | 0 | 5.9% |
 | `filesystem__list_directory` | 16 | 1 | 0 | 6.3% |
-| `github__get_branch` | 16 | 0 | 0 | 0% |
 | `github__commit_and_push` | 15 | 2 | 0 | 13.3% |
 | `github__check_merge_readiness` | 14 | 2 | 0 | 14.3% |
 | `filesystem_readonly__list_directory` | 13 | 0 | 0 | 0% |
 | `github__get_check_runs` | 12 | 2 | 0 | 16.7% |
+| `github__list_prs` | 11 | 1 | 0 | 9.1% |
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `github__get_pr_reviews` | 10 | 1 | 0 | 10% |
-| `github__list_prs` | 10 | 1 | 0 | 10% |
 | `github__get_pr_diff` | 9 | 0 | 0 | 0% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
@@ -263,11 +263,11 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
 | `github__merge_pr` | 6 | 0 | 0 | 0% |
+| `atomaton__launch_sub_agent` | 3 | 0 | 0 | 0% |
 | `github__list_pr_review_comments` | 3 | 0 | 0 | 0% |
-| `atomaton__launch_sub_agent` | 2 | 0 | 0 | 0% |
 | `filesystem_readonly__read_multiple_files` | 2 | 0 | 0 | 0% |
+| `github__list_issues` | 2 | 0 | 0 | 0% |
 | `engineering/environment` | 1 | 1 | 0 | 100% |
-| `github__list_issues` | 1 | 0 | 0 | 0% |
 | `read_text_file` | 1 | 1 | 0 | 100% |
 | `shell_execute` | 1 | 1 | 0 | 100% |
 
@@ -302,7 +302,7 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | tokens per run | 26,784 | 365,748 | 9,000,677 | 39,737,697 | 186,464,839 |
-| messages per session | 10 | 117 | 601 | 1,598 | 20,940 |
+| messages per session | 10 | 117 | 601 | 1,598 | 20,983 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -315,15 +315,15 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | tool | calls | failed | refused | failure rate |
 | --- | ---: | ---: | ---: | ---: |
 | `shell__shell_execute` | 4,556 | 633 | 157 | 13.9% |
-| `read` | 650 | 2 | 0 | 0.3% |
+| `read` | 657 | 2 | 0 | 0.3% |
+| `grep` | 600 | 11 | 0 | 1.8% |
 | `filesystem__read_text_file` | 593 | 43 | 24 | 7.3% |
-| `grep` | 593 | 11 | 0 | 1.9% |
 | `shell__terminal_operate` | 587 | 313 | 20 | 53.3% |
 | `filesystem_readonly__read_file` | 358 | 12 | 5 | 3.4% |
 | `filesystem__list_directory` | 264 | 6 | 0 | 2.3% |
 | `github__check_merge_readiness` | 235 | 3 | 0 | 1.3% |
+| `github__get_issue` | 224 | 22 | 2 | 9.8% |
 | `atoma_builtin__load_skill` | 221 | 77 | 0 | 34.8% |
-| `github__get_issue` | 220 | 22 | 2 | 10% |
 | `filesystem__write_file` | 194 | 4 | 0 | 2.1% |
 | `filesystem_readonly__list_directory` | 184 | 0 | 0 | 0% |
 | `web__fetch` | 174 | 13 | 0 | 7.5% |
@@ -332,8 +332,8 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__search_code` | 104 | 33 | 0 | 31.7% |
 | `github__commit_and_push` | 99 | 54 | 0 | 54.5% |
 | `edit` | 95 | 1 | 0 | 1.1% |
-| `github__get_pr` | 93 | 11 | 0 | 11.8% |
-| `search__search_issues` | 78 | 4 | 0 | 5.1% |
+| `github__get_pr` | 95 | 11 | 0 | 11.6% |
+| `search__search_issues` | 80 | 4 | 0 | 5% |
 | `github__create_pr` | 69 | 29 | 0 | 42% |
 | `filesystem__create_directory` | 66 | 12 | 0 | 18.2% |
 | `github__get_check_runs` | 65 | 8 | 0 | 12.3% |
@@ -344,16 +344,16 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__get_pr_diff` | 56 | 4 | 0 | 7.1% |
 | `list` | 52 | 1 | 0 | 1.9% |
 | `filesystem__search_files` | 50 | 0 | 43 | 0% |
-| `glob` | 47 | 1 | 0 | 2.1% |
-| `github__get_branch` | 44 | 13 | 0 | 29.5% |
+| `glob` | 50 | 1 | 0 | 2% |
+| `github__get_branch` | 46 | 13 | 0 | 28.3% |
 | `github__create_issue` | 41 | 4 | 0 | 9.8% |
-| `github__list_prs` | 39 | 1 | 0 | 2.6% |
+| `github__list_prs` | 40 | 1 | 0 | 2.5% |
 | `filesystem_readonly__search_files` | 38 | 1 | 21 | 2.6% |
 | `github__close_issue` | 38 | 1 | 18 | 2.6% |
 | `github__get_pr_reviews` | 38 | 2 | 0 | 5.3% |
 | `github__merge_pr` | 38 | 1 | 0 | 2.6% |
 | `filesystem__read_file` | 35 | 0 | 1 | 0% |
-| `github__list_issues` | 32 | 3 | 0 | 9.4% |
+| `github__list_issues` | 33 | 3 | 0 | 9.1% |
 | `write` | 29 | 0 | 0 | 0% |
 | `filesystem__directory_tree` | 26 | 0 | 26 | 0% |
 | `shell__terminal_list` | 26 | 21 | 0 | 80.8% |
@@ -369,10 +369,10 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `shell__shell_set_default_workdir` | 11 | 2 | 0 | 18.2% |
 | `github__list_pr_review_comments` | 7 | 0 | 0 | 0% |
 | `shell__command_history_query` | 4 | 2 | 0 | 50% |
+| `atomaton__launch_sub_agent` | 3 | 0 | 0 | 0% |
 | `filesystem_readonly__edit_file` | 3 | 0 | 3 | 0% |
 | `filesystem_readonly__write_file` | 3 | 0 | 3 | 0% |
 | `shell__terminal_get_info` | 3 | 0 | 0 | 0% |
-| `atomaton__launch_sub_agent` | 2 | 0 | 0 | 0% |
 | `filesystem_readonly__get_file_info` | 2 | 0 | 0 | 0% |
 | `search_files` | 2 | 2 | 0 | 100% |
 | `shell__execute` | 2 | 2 | 0 | 100% |
