@@ -16,8 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const FAKE_GH_BIN_DIR = join(HERE, "bin");
+import { fakeGhEnv } from "./fake-gh-env.ts";
 
 export interface FakeGhRule {
   /** Every one of these substrings must appear in at least one argv element for this rule to match. */
@@ -86,9 +85,7 @@ export function runWithFakeGh(
       env: {
         ...hermeticEnv(),
         ...opts.env,
-        PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH}`,
-        FAKE_GH_RESPONSES: JSON.stringify(opts.rules ?? []),
-        FAKE_GH_LOG: logPath,
+        ...fakeGhEnv(dir, opts.rules, logPath),
       },
     });
     const ghCalls = readFileSync(logPath, "utf8")
