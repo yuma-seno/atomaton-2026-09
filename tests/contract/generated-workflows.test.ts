@@ -183,6 +183,12 @@ describe("generated workflows", () => {
   // reports or closes something would otherwise leave a branch behind, which is
   // how the repository accumulated 72 of them. Creation belongs to the first
   // commit, in `commit_and_push`.
+  //
+  // A `pr` run is the one case that is not "resuming" and is still not creating:
+  // the branch it is put on already exists on `origin` -- it is the pull request's
+  // head branch -- and the step re-labels the commit the run already has with that
+  // name. Nothing new reaches the remote, and `checkout -B` (which this tolerates)
+  // is what says so; `-b`/`-c` would be a branch appearing from nowhere.
   test("checks out the branch a run starts from without creating one", () => {
     type WorkflowStep = { name?: string; run?: string };
     type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
@@ -196,6 +202,80 @@ describe("generated workflows", () => {
     // Falls back to the adopter's configured base branch, not to a new branch.
     expect(step?.run).toContain("base_branch");
     expect(steps.some((candidate) => /git (checkout|switch) -[bc]\b/.test(candidate.run ?? ""))).toBe(false);
+  });
+
+  /**
+   * A `pr` run has to end up on the pull request's head branch, or its tools have
+   * nothing to push to.
+   *
+   * `actions/checkout` checks `refs/pull/N/head` out DETACHED -- the ref is not a
+   * branch, so `git rev-parse --abbrev-ref HEAD` answers `HEAD` -- and the step
+   * that used to sit here wrote exactly that into `BRANCH`. `commit_and_push` then
+   * built a refspec out of git's description of the state and died on
+   * `fatal: invalid refspec '(HEAD detached at pull/802/head)'`, so the run
+   * `atomaton-validate-pr.yml` dispatches to fix red CI was the one that could not
+   * push its fix. Observed twice: #247, #803.
+   *
+   * Four things have to hold in the generated YAML, and each is asserted here
+   * because each is a way for the step to look right and not be: it runs only for
+   * `pr` (an issue run's branch is decided by the step above it), it asks the
+   * pull request for its head branch rather than reading git, it re-labels the
+   * commit the run already has rather than moving HEAD, and it names that branch
+   * in `BRANCH` for `resolveBranch()`'s first route to answer with.
+   */
+  test("a pr run is put on the pull request's head branch", () => {
+    type WorkflowStep = { name?: string; run?: string; if?: string; env?: Record<string, string> };
+    type WorkflowDocument = { jobs?: Record<string, { steps?: WorkflowStep[] }> };
+
+    const workflow = Bun.YAML.parse(readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8")) as WorkflowDocument;
+    const steps = workflow.jobs?.run?.steps ?? [];
+
+    const resolve = steps.find((candidate) => candidate.name === "Resolve the pull request's head branch");
+    expect(resolve, "the step that names the pull request's head branch").toBeDefined();
+    expect(resolve?.if, "an issue run's branch is decided by its own step").toBe("inputs.type == 'pr'");
+    expect(resolve?.run).toContain("resolve_pr_branch.ts");
+    expect(resolve?.run).toContain('--number "${{ inputs.number }}"');
+    // The credential the neighbouring steps already carry, and no other.
+    expect(resolve?.env).toEqual({ GH_TOKEN: "${{ github.token }}" });
+
+    const checkout = steps.find((candidate) => candidate.name === "Check out the pull request's head branch");
+    expect(checkout, "the step that puts the run on that branch").toBeDefined();
+    expect(checkout?.if).toBe("inputs.type == 'pr'");
+    // Fed by the resolution, not by git -- and unset means stay detached.
+    expect(checkout?.env?.BRANCH_NAME).toContain("steps.pr-branch.outputs.branch");
+    expect(checkout?.run).toContain("refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}");
+    // The re-labelling: HEAD, never GITHUB_SHA. The run is dispatched with no
+    // `--ref`, so GITHUB_SHA is the default branch's tip while the checkout is the
+    // pull request's head -- and a shallow checkout of a pull request need not
+    // even contain that commit. Comments are stripped first, because the step's own
+    // comment explains exactly this and would otherwise trip the check.
+    expect(checkout?.run).toContain('git checkout -B "${BRANCH_NAME}" HEAD');
+    const checkoutCommands = (checkout?.run ?? "")
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("#"))
+      .join("\n");
+    expect(checkoutCommands).not.toContain("GITHUB_SHA");
+    expect(checkout?.run).toContain('echo "BRANCH=${BRANCH_NAME}" >> $GITHUB_ENV');
+    // Every path that cannot resolve exits 0: the run stays detached and says so
+    // rather than stopping before the agent has reported anything.
+    expect(checkout?.run).toContain("exit 0");
+
+    // And the whole point: it runs BEFORE the agent, or the agent's tools would
+    // resolve BRANCH from the environment that was set without it.
+    const resolveAt = steps.findIndex((candidate) => candidate.name === "Resolve the pull request's head branch");
+    const checkoutAt = steps.findIndex((candidate) => candidate.name === "Check out the pull request's head branch");
+    const agentAt = steps.findIndex((candidate) => candidate.name === "Run agent");
+    expect(agentAt, "the agent step").toBeGreaterThanOrEqual(0);
+    expect(resolveAt).toBeLessThan(checkoutAt);
+    expect(checkoutAt).toBeLessThan(agentAt);
+
+    // Nothing anywhere still writes git's answer for a detached checkout into
+    // BRANCH -- `git rev-parse --abbrev-ref HEAD` is `HEAD` on a `pr` run, which
+    // is the value `resolveBranch()` must never be handed.
+    expect(
+      steps.some((candidate) => (candidate.run ?? "").includes("rev-parse --abbrev-ref HEAD")),
+      "no step may set BRANCH from git's description of a detached HEAD",
+    ).toBe(false);
   });
 
   // Guards a failure that is otherwise silent until a tool call is denied: Atoma
