@@ -24,7 +24,7 @@
  *
  * ## One mechanism, three destinations
  *
- * `tools.secrets`, `checks.atomaton_runs.secrets` and `deploy.atomaton_runs.secrets`
+ * `tools.secrets` and `deploy.atomaton_runs.secrets`
  * are separate lists because they arrive in separate workflows, in separate jobs,
  * in separate processes. The nesting is the boundary and not a filing convention:
  * only `tools.secrets` enters the agent's own environment, so a prompt injection
@@ -174,11 +174,6 @@ export const TOOL_SECRETS: SecretDestination = {
  * declare, and refusing it bought nothing.
  */
 
-/** Mirrors the `env:` of the command step in `atomaton-check.wac.ts`. */
-export const CHECK_SECRETS: SecretDestination = {
-  field: "checks.atomaton_runs.secrets",
-  reserved: new Set(["GH_TOKEN"]),
-};
 
 /**
  * The deploy job's own variables, from two places.
@@ -206,7 +201,6 @@ export const DEPLOY_SECRETS: SecretDestination = {
 /** Every destination, for the callers that need to name one from a string. */
 export const SECRET_DESTINATIONS = {
   tools: TOOL_SECRETS,
-  checks: CHECK_SECRETS,
   deploy: DEPLOY_SECRETS,
 } as const;
 

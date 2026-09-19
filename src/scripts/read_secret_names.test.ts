@@ -48,7 +48,6 @@ deploy:
     secrets: [C]
 `;
     expect(declarationIn(config, "tools")).toEqual(["A"]);
-    expect(declarationIn(config, "checks")).toEqual(["B"]);
     expect(declarationIn(config, "deploy")).toEqual(["C"]);
   });
 
@@ -59,7 +58,7 @@ deploy:
   // The other arm: a project that names its own workflow gives that workflow its
   // secrets itself, so there is nothing here for Atomaton's step to be handed.
   test("a section on the your_workflow arm declares nothing", () => {
-    expect(declarationIn("checks:\n  your_workflow: ci.yml\n", "checks")).toBeUndefined();
+    expect(declarationIn("deploy:\n  your_workflow: cd.yml\n", "deploy")).toBeUndefined();
   });
 });
 

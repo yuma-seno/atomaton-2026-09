@@ -34,11 +34,20 @@ export interface AtomaConfig {
     max_reloads?: unknown;
   };
 
-  /** How a change is verified. Exactly one arm; declaring both is a configuration error. */
+  /**
+   * How a change is verified. Exactly one arm; declaring both is a configuration error.
+   *
+   * `pull_request_runs` is named for whose code runs: the commands the pull request
+   * itself declares, in its own tree. It reaches no repository secret, and there is
+   * nowhere here to name one -- a pull request may rewrite any command it lists, so a
+   * credential would be one the change being judged can read.
+   *
+   * A check that needs a credential therefore has nowhere to go yet. That half is the
+   * default branch's commands given the pull request as data, and it is not built.
+   */
   checks?: {
-    atomaton_runs?: {
+    pull_request_runs?: {
       commands?: string[];
-      secrets?: string[];
       runs_on?: string | string[];
     };
     your_workflow?: string;
