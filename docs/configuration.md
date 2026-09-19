@@ -202,8 +202,45 @@ Under `atomaton_runs`:
   **`checks.pull_request_runs` has no such list, and cannot.** The commands there
   are the pull request's own, run in its own tree, so a credential named for them
   would be a credential the change being judged can read — a pull request may
-  rewrite any command it declares. A check that needs one has nowhere to go yet;
-  the half that runs the default branch's commands is not built.
+  rewrite any command it declares. A check that needs one goes in the other half.
+
+### A check that needs a credential
+
+`checks.default_branch_runs.jobs` is a list, and each entry becomes its own job:
+
+```yaml
+checks:
+  default_branch_runs:
+    jobs:
+      - name: cloud-names
+        secrets: [AWS_ROLE_ARN]
+        commands:
+          - ./scripts/check-env-names.sh "$ATOMATON_PR_TREE"
+```
+
+Three things differ from the half above, and they are why a credential is safe
+here.
+
+**The commands come from the default branch.** A pull request cannot change what
+runs, add a job, or widen which secret a job receives — the list is read from the
+default branch's `config.yaml`, not from the pull request's.
+
+**The pull request arrives as data.** `$ATOMATON_PR_TREE` is a path to a checkout
+of it. Read it; do not execute it. That is the same rule the deliverable check
+states about `--root`, and nothing mechanical enforces it — an interpreter reads a
+file rather than executing it, so no filesystem flag will stop `bash
+"$ATOMATON_PR_TREE/x.sh"`. It rests on review, which is why this list is meant to
+stay short.
+
+**Each job names its own secrets.** A job is handed the ones its own entry named
+and no others, so a staging credential does not sit in the job that checks
+something else.
+
+What you cannot write is a pull request's own command holding a credential. There
+is no spelling for it: one half has no `secrets` key and the other takes no
+commands from the pull request. A check that genuinely needs both — integration
+tests against a real environment, say — belongs after the merge, or wants a
+credential you would not mind losing.
 - `runs_on` — the GitHub runner label the job asks for. `ubuntu-latest` unless
   the project needs a larger or self-hosted one.
 

@@ -45,6 +45,11 @@ checks:
       - "bun run test"
     runs_on: ubuntu-latest
 
+  # Nothing here needs a credential yet. A check that did would go here, with the
+  # commands read from the default branch and the pull request handed over as a path.
+  default_branch_runs:
+    jobs: []
+
   # your_workflow: ci.yml
 
 

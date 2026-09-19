@@ -14,6 +14,7 @@ import {
   type SecretsResolution,
 } from "../domain/declared-secrets.ts";
 import { resolveDeployTargets, type DeployTargetsResolution } from "../domain/deploy-targets.ts";
+import { resolveInspectJobs, type InspectJobsResolution } from "../domain/inspect-jobs.ts";
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
 import { CONFIG_FILE } from "../domain/machinery-layout.ts";
@@ -199,6 +200,17 @@ export function getMergeGates(): MergeGatesResolution {
  */
 export function getCheckCommands(): readonly string[] {
   return loadConfig().checks?.pull_request_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
+}
+
+/**
+ * The checks that run the default branch's commands and may hold credentials.
+ *
+ * Read from whichever config the caller was pointed at, and the workflow points the
+ * planning job at the DEFAULT BRANCH's copy. That is what makes the promise true: a
+ * pull request cannot add a job, rename one, or change which secret one receives.
+ */
+export function getInspectJobs(): InspectJobsResolution {
+  return resolveInspectJobs(loadConfig().checks?.default_branch_runs?.jobs);
 }
 
 /**

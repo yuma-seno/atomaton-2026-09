@@ -42,6 +42,7 @@
 import { isControlCommand } from "./control-commands.ts";
 import { resolveDeclaredSecrets, SECRET_DESTINATIONS } from "./declared-secrets.ts";
 import { resolveDeployTargets } from "./deploy-targets.ts";
+import { resolveInspectJobs } from "./inspect-jobs.ts";
 import { resolveMergeGates } from "./merge-gates.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "./shipped-workflows.ts";
 
@@ -88,6 +89,7 @@ const CONFIG_SCHEMA: Section = {
         // pull request's own commands in its own tree, so a repository secret
         // declared for them would be a secret the change being judged can read.
         pull_request_runs: { children: { commands: null, runs_on: null } },
+        default_branch_runs: { children: { jobs: null, runs_on: null } },
         your_workflow: null,
       },
     },

@@ -46,6 +46,11 @@ export interface AtomaConfig {
    * default branch's commands given the pull request as data, and it is not built.
    */
   checks?: {
+    default_branch_runs?: {
+      /** Each is its own job, so a credential reaches the one check that named it. */
+      jobs?: unknown;
+      runs_on?: string | string[];
+    };
     pull_request_runs?: {
       commands?: string[];
       runs_on?: string | string[];
