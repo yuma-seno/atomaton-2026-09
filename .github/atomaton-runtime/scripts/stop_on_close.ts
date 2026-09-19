@@ -125,26 +125,13 @@ function runningChildren(repo, parent) {
 }
 
 // src/domain/closed-issue.ts
-function mentionsForClose(closer, author, authorIsBot) {
-  const mentions = [];
-  if (closer)
-    mentions.push(closer);
-  if (author && !authorIsBot && author !== closer)
-    mentions.push(author);
-  return mentions;
-}
-function mentionPrefix(logins) {
-  return logins.length > 0 ? `${logins.map((l) => `@${l}`).join(" ")} ` : "";
-}
-function stopOnCloseNotice(mentions, number) {
+function stopOnCloseNotice(number) {
   return [
-    `${mentionPrefix(mentions)}Atomaton: this issue was closed while an agent was working on it, so the run has been asked to stop.`,
+    "Atomaton: this issue was closed while an agent was working on it, so the run has been asked to stop.",
     "",
     "Closing does not stop a run by itself \u2014 it kept going until this request reached it. The run stops after its current step, so it may take a minute.",
     "",
-    "Nothing is lost: the session is saved.",
-    "",
-    `#${number} stays closed. To pick the work back up, reopen it and comment \`/resume\`.`
+    `#${number} stays closed, and the run will report here when it has stopped.`
   ].join(`
 `);
 }
@@ -158,8 +145,8 @@ function defineScript(importMetaUrl) {
 
 // src/scripts/stop_on_close.ts
 var ref = defineScript(import.meta.url);
-function stopOnCloseBody(mentions, number, children) {
-  const lines = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopOnCloseNotice(mentions, number)];
+function stopOnCloseBody(number, children) {
+  const lines = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopOnCloseNotice(number)];
   if (children.length > 0) {
     lines.push("", `Work is also running on ${children.map((n) => `#${n}`).join(", ")}. ` + "Closing this issue does not reach those \u2014 comment `/stop` on each one you want stopped.");
   }
@@ -204,11 +191,8 @@ function main() {
     console.error(`#${number} carries no '${label}' label, so no run is working on it. Nothing to stop.`);
     return;
   }
-  const author = (issue.user?.login ?? "").trim();
-  const authorIsBot = (issue.user?.type ?? "") === "Bot";
-  const mentions = mentionsForClose(closer, author, authorIsBot);
   const children = runningChildren(repo, Number(number));
-  const posted = gh("issue", "comment", number, "--repo", repo, "--body", stopOnCloseBody(mentions, Number(number), children));
+  const posted = gh("issue", "comment", number, "--repo", repo, "--body", stopOnCloseBody(Number(number), children));
   if (posted.code !== 0) {
     console.error(`::error::Could not post the stop request on #${number}: ${posted.stderr || posted.stdout}`);
     process.exit(1);
