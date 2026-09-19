@@ -107,6 +107,51 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).not.toContain("Below is the last thing it said");
   });
 
+  /**
+   * Observed in production on #839, on the first run that reached this line after a
+   * stop: the comment told the person who had just stopped the run that it had
+   * completed. It had said nothing at all.
+   */
+  test("does not tell someone who stopped a run that it completed", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      wroteNothing: true,
+      stopRequested: "true",
+      runUrl: "http://example.com/run/1",
+      output: "_This run was stopped before it said anything._",
+      usageLines: [],
+    });
+    expect(body).toContain("@octocat");
+    expect(body).toContain("was stopped before it finished");
+    expect(body).not.toContain("task completed");
+  });
+
+  test("nor that one which ran out of iterations completed", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      limitReached: "true",
+      runUrl: "http://example.com/run/1",
+      output: "Got partway.",
+      usageLines: [],
+    });
+    expect(body).toContain("ran out of iterations before it finished");
+    expect(body).not.toContain("task completed");
+  });
+
+  /** The ordinary ending keeps the sentence it always had. */
+  test("a run that finished still says so", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      runUrl: "http://example.com/run/1",
+      output: "All done.",
+      usageLines: [],
+    });
+    expect(body).toContain("task completed");
+  });
+
   test("omits the mention when a directive is present", () => {
     const body = buildCommentBody({
       agent: "orchestrator",
