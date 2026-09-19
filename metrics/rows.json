@@ -3891,6 +3891,45 @@
     ]
   },
   {
+    "path": "sessions/issue-803/reviewer.json",
+    "agent": "reviewer",
+    "messages": 185,
+    "calls": 129,
+    "failed": 3,
+    "refused": 0,
+    "skills": [
+      "review/quick-quality-gate"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 1,
+      "github__check_merge_readiness": 1,
+      "github__get_pr": 1,
+      "github__get_pr_diff": 1,
+      "github__get_pr_reviews": 1,
+      "github__list_pr_review_comments": 1,
+      "github__get_check_runs": 1,
+      "read": 27,
+      "github__get_branch": 2,
+      "github__list_prs": 1,
+      "web__fetch": 42,
+      "grep": 44,
+      "list": 2,
+      "glob": 2,
+      "github__get_issue": 2
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-19T10:53:24Z",
+        "ended_because": "completed",
+        "iterations": 37,
+        "messages": 185,
+        "seconds": 1867,
+        "started": "2026-09-19T10:22:17Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-807/engineer.json",
     "agent": "engineer",
     "messages": 505,
