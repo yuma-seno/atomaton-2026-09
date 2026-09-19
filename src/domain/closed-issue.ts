@@ -87,6 +87,35 @@ export function stopOnCloseNotice(number: number): string {
 }
 
 /**
+ * What a person reads after closing an issue that had work under it.
+ *
+ * Closing is the end of a line of work, not of one node — see `domain/work-tree.ts`.
+ * So the sub-issues and pull requests below go with it, and this says which, because a
+ * close that quietly reached further than the person looked is the kind they find out
+ * about later.
+ *
+ * `closed` and `stopped` are listed apart because they are different claims. A node
+ * was closed; a run on it was asked to stop, which takes a moment longer and is the
+ * part that is not done yet when this is posted.
+ */
+export function closedTheTreeNotice(closed: readonly number[], stopped: readonly number[]): string {
+  const lines: string[] = [];
+  if (closed.length > 0) {
+    lines.push(
+      "",
+      `The work under it is closed too: ${closed.map((n) => `#${n}`).join(", ")}.`,
+    );
+  }
+  if (stopped.length > 0) {
+    lines.push(
+      "",
+      `Runs were going on ${stopped.map((n) => `#${n}`).join(", ")}, and each has been asked to stop.`,
+    );
+  }
+  return lines.join("\n");
+}
+
+/**
  * The reply to a slash command on a closed issue or pull request.
  *
  * The comment itself is left alone, unlike the in-progress guard, which deletes. That

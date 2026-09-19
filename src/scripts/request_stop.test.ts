@@ -44,16 +44,19 @@ describe("request_stop.ts", () => {
     expect(notice).not.toContain("/resume");
   });
 
-  // A parent keeps the in-progress label while its chain runs on a sub-issue, so a
-  // `/stop` aimed at the parent can be aimed at the wrong number without anyone
-  // doing anything wrong.
-  test("names the sub-issues a stop here does not reach", () => {
+  // A stop reaches the work under the issue it was typed on, so the notice names
+  // what it reached. It used to name the opposite -- the work it could NOT reach,
+  // with instructions to go and stop each piece by hand.
+  test("names the work under this issue that the stop also reached", () => {
     const notice = stopRequestedNotice("octocat", true, [12, 13]);
     expect(notice).toContain("#12, #13");
-    expect(notice).toContain("does not reach");
+    expect(notice).toContain("also reached");
+    expect(notice).not.toContain("does not reach");
+    // One command brings all of it back, which is the half that makes the reach fair.
+    expect(notice).toContain("/resume");
   });
 
-  test("says nothing about children when there are none", () => {
-    expect(stopRequestedNotice("octocat", true, [])).not.toContain("does not reach");
+  test("says nothing about other work when the stop reached none", () => {
+    expect(stopRequestedNotice("octocat", true, [])).not.toContain("also reached");
   });
 });

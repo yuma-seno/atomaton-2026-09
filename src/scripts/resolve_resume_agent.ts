@@ -45,6 +45,26 @@ export function mostRecentAgent(bodies: string[]): string {
   return "";
 }
 
+/**
+ * The same question, asked about another node.
+ *
+ * Exported because `/resume` reaches a whole subtree now, and every node in it needs
+ * the agent that ran there — a chain is not resumed by starting one agent on every
+ * issue. The reader stays here rather than being copied, so "which agent ran on this
+ * node" has one answer wherever it is asked.
+ */
+export function mostRecentAgentOn(repo: string, number: number): string {
+  const { code, stdout } = gh(
+    "api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]",
+  );
+  if (code !== 0) return "";
+  try {
+    return mostRecentAgent(JSON.parse(stdout || "[]") as string[]);
+  } catch {
+    return "";
+  }
+}
+
 function main(): void {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { number: { type: "string" } } });
   if (!values.number) {

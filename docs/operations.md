@@ -301,11 +301,15 @@ To continue:
 remember. It takes no instruction of its own — the ordinary agent command already
 does that, and having two ways to say it would only make one of them wrong.
 
-**On a parent issue.** An orchestrator keeps the in-progress label while its chain
-runs on sub-issues, so a `/stop` on the parent may be aimed at a number where nothing
-is executing. It still posts the request, and it also lists the sub-issues that are
-running so you can stop those. It does not stop them for you: their sessions are
-separate, and stopping work nobody asked to stop is the worse mistake.
+**On a parent issue.** It reaches the work underneath. An orchestrator's sub-issues
+and the pull requests opened for them are all under the issue you named, so one
+`/stop` holds the whole chain, and the reply lists what it reached. `/resume` on the
+same issue brings all of it back.
+
+That is the model rather than a convenience: **work here is a tree of issues, and
+both stop and close act on the node you name and everything under it.** What
+separates them is finality, not reach — see
+[The work tree](#the-work-tree) below.
 
 ### Closing an issue a run is working on
 
@@ -316,6 +320,12 @@ closing now posts the same stop request `/stop` does, and Atomaton replies sayin
 The issue stays closed. Nothing reopens it for you — closing is your decision, and
 a machine that undid it would be arguing rather than reporting. To pick the work
 back up, reopen the issue and comment `/resume`.
+
+**And it reaches the work underneath.** The sub-issues and pull requests under the
+one you closed are closed with it, and any run on them is asked to stop. Closing is
+the end of a line of work, not of one node; a closed issue with an open pull request
+still claiming to deliver it is the state this avoids. The reply names what it
+closed.
 
 Everything true of `/stop` is true here: it takes up to a minute or two, the session
 is saved, and sub-issues running under a closed parent are named in the reply but
@@ -367,6 +377,38 @@ login the chain has been carrying all along.
 A target whose state cannot be read is treated as closed rather than as open. Work
 that should not have started is harder to undo than work that has to be started
 again.
+
+## The work tree
+
+**Work is a tree of issues.** An orchestrator files sub-issues under the issue it was
+given; an engineer opens a pull request under the issue it delivers. Each of those is
+a node, each has at most one parent, and a pull request is a leaf.
+
+You act on a node and mean the work under it, so both commands reach the whole
+subtree:
+
+| | reach | ending | undone by |
+| --- | --- | --- | --- |
+| `/stop` | the node and everything under it | held | `/resume` over the same subtree |
+| close | the node and everything under it | over | nothing; reopening is not undo |
+
+**They differ in finality, not in reach.** Stop holds the work; close ends it.
+
+There used to be an asymmetry here, and it showed up as a checklist: a `/stop` on a
+parent listed the sub-issues it had not reached and asked you to go and stop each one.
+That was the machinery turning the narrowness of its own vocabulary into your manual
+work.
+
+**Nothing is stored.** A node is resumable when it is open, nothing is running on it,
+and its last run ended on a stop — all readable from the tree and the thread. So
+`/resume` does not replay a record of what a `/stop` covered; it asks the same
+question again. There is still no paused state to get stuck in.
+
+**A merged pull request has left the tree.** GitHub cannot reopen one, so there is
+nothing there to stop and nothing to close, and a close passes over it.
+
+See `domain/work-tree.ts` for the model and `lib/work-tree.ts` for how it is read out
+of GitHub.
 
 ## Dispatch, handoff, aggregation, idempotency
 

@@ -34,11 +34,10 @@
  *   stop_on_close.ts --number N --closer LOGIN [--closer-type Bot|User]
  */
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
-import { getLabel } from "../lib/config.ts";
 import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
-import { runningChildren } from "../lib/running-children.ts";
-import { stopOnCloseNotice } from "../domain/closed-issue.ts";
+import { closedTheTreeNotice, stopOnCloseNotice } from "../domain/closed-issue.ts";
+import { descendants, nodesToClose, nodesToStop, subtree } from "../domain/work-tree.ts";
+import { closeSubtreeUnder, readWorkTree } from "../lib/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface StopOnCloseArgs {
@@ -56,20 +55,17 @@ export const ref = defineScript<StopOnCloseArgs>(import.meta.url);
  * session, for the same reason `/stop`'s own notice is excluded — it is addressed to
  * a person, and an agent reading it would take it as something it was told.
  */
-export function stopOnCloseBody(number: number, children: readonly number[]): string {
-  const lines = [LLM_CONTEXT_TAG.write("exclude"), STOP_TAG.write("requested"), stopOnCloseNotice(number)];
-  if (children.length > 0) {
-    lines.push(
-      "",
-      `Work is also running on ${children.map((n) => `#${n}`).join(", ")}. ` +
-        "Closing this issue does not reach those — comment `/stop` on each one you want stopped.",
-    );
-  }
-  return lines.join("\n");
-}
-
-interface IssueForClose {
-  labels?: { name?: string }[];
+export function stopOnCloseBody(
+  number: number,
+  closed: readonly number[],
+  stopped: readonly number[],
+): string {
+  return [
+    LLM_CONTEXT_TAG.write("exclude"),
+    STOP_TAG.write("requested"),
+    stopOnCloseNotice(number),
+    closedTheTreeNotice(closed, stopped),
+  ].join("\n");
 }
 
 function main(): void {
@@ -96,47 +92,50 @@ function main(): void {
     return;
   }
 
-  const { code, stdout, stderr } = gh("api", `repos/${repo}/issues/${number}`);
-  // A failed lookup is not "no label". This decides whether a run is still going, and
-  // the answer it could not determine must not be the one that stays quiet — the same
-  // rule `guard_comment_during_run.ts` follows for the same reason.
-  if (code !== 0) {
-    console.error(`::error::Could not read #${number}, so this cannot tell whether a run is in progress: ${stderr || stdout}`);
+  // Closing ends a line of work rather than one node, so the sub-issues and pull
+  // requests under it go with it. See `domain/work-tree.ts`.
+  //
+  // The tree is read before anything is decided, and that ordering is the fix for what
+  // this used to do: it read the root's label, found none, and returned — which is
+  // right about the root and wrong about the work, because an issue can be closed with
+  // nothing running on it and a live chain underneath.
+  const root = Number(number);
+  const { nodes, problems: readProblems } = readWorkTree(repo, root);
+  // A failed read is not "nothing to do". The answer this could not determine must not
+  // be the one that stays quiet — the rule `guard_comment_during_run.ts` follows, for
+  // the same reason.
+  if (nodes.length === 0) {
+    console.error(`::error::Could not read the work under #${root}: ${readProblems.join("; ")}`);
     process.exit(1);
   }
 
-  let issue: IssueForClose;
-  try {
-    issue = JSON.parse(stdout) as IssueForClose;
-  } catch {
-    console.error(`::error::Could not parse the response for #${number}.`);
-    process.exit(1);
-  }
-
-  const label = getLabel("in_progress");
-  const inProgress = (issue.labels ?? []).some((l) => l.name === label);
-  if (!inProgress) {
-    console.error(`#${number} carries no '${label}' label, so no run is working on it. Nothing to stop.`);
+  const all = subtree(nodes, root);
+  const under = descendants(all, root);
+  const toStop = nodesToStop(all);
+  const toClose = nodesToClose(under);
+  if (toStop.length === 0 && toClose.length === 0) {
+    console.error(`Nothing is running under #${root} and nothing under it is open. Nothing to do.`);
     return;
   }
 
-  const children = runningChildren(repo, Number(number));
-
-  const posted = gh(
-    "issue", "comment", number, "--repo", repo,
-    "--body", stopOnCloseBody(Number(number), children),
+  const result = closeSubtreeUnder(
+    repo,
+    root,
+    stopOnCloseBody(root, toClose.map((n) => n.number), nodesToStop(under).map((n) => n.number)),
   );
-  // Fatal, like `/stop`'s own request. This comment IS the stop: without it the run
+  result.problems.push(...readProblems);
+
+  const rootFailed = result.problems.some((problem) => problem.includes(`#${root}`));
+  for (const problem of result.problems) console.error(`::warning::${problem}`);
+  // Fatal only when the root got nothing. That comment IS the stop: without it the run
   // polls, finds nothing, and keeps going — while the person who closed the issue has
   // every reason to believe it is winding down.
-  if (posted.code !== 0) {
-    console.error(`::error::Could not post the stop request on #${number}: ${posted.stderr || posted.stdout}`);
-    process.exit(1);
-  }
+  if (rootFailed) process.exit(1);
 
   console.error(
-    `#${number} was closed by ${closer || "(unknown)"} while a run held '${label}'. Stop requested` +
-      `${children.length ? `; children still running: ${children.join(", ")}` : ""}.`,
+    `#${root} was closed by ${closer || "(unknown)"}. ` +
+      `Stopped: ${result.stopped.map((n) => `#${n}`).join(", ") || "none"}. ` +
+      `Closed under it: ${result.closed.map((n) => `#${n}`).join(", ") || "none"}.`,
   );
 }
 
