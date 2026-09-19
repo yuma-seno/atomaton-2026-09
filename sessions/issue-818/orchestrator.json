@@ -1,0 +1,8 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "All sub-issues have been completed.\n\n## Sub-issue Results\n\n### #871: deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\nStatus: OPEN\nLinked PRs:\n- PR #874: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)\n\n### #873: 保護されていないブランチがデプロイを起動できる — ルールセット被覆を検査する\nStatus: OPEN\nNo linked PRs found.\n\n### #872: 機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\nStatus: OPEN\nNo linked PRs found.\n\n### #870: checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\nStatus: CLOSED\nLinked PRs:\n- PR #874: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)\n- PR #318: refactor: github.ts からブランチ配置とワークフロー起動を切り出す (#289) (https://github.com/yuma-seno/atomaton/pull/318)\n\n---\nAll sub-issues are complete. Please review the results and aggregate them into a final summary."
+    }
+  ]
+}
