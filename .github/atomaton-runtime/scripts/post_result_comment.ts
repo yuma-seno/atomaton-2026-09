@@ -260,7 +260,7 @@ function buildCommentBody(args) {
     stopRequested: args.stopRequested === "true",
     limitReached: args.limitReached === "true"
   })) {
-    lines.push(`@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
+    lines.push(args.stopRequested === "true" || args.limitReached === "true" ? `@${args.notify} \u2014 **${args.agent}** ${args.stopRequested === "true" ? "was stopped" : "ran out of iterations"} ` + `before it finished, and no agent will run next. Resume it, or say what to do instead.` : `@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
   }
   const metrics = args.repo ? ` \xB7 [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)` : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
