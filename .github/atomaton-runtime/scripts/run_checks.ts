@@ -43,7 +43,7 @@ function loadConfig() {
   return cached;
 }
 function getCheckCommands() {
-  return loadConfig().checks?.atomaton_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
+  return loadConfig().checks?.pull_request_runs?.commands?.filter((command) => command.trim() !== "") ?? [];
 }
 
 // src/scripts/lib/script-ref.ts
@@ -58,7 +58,7 @@ var ref = defineScript(import.meta.url);
 function main() {
   const commands = getCheckCommands();
   if (commands.length === 0) {
-    console.log("::warning::This check verified nothing: `checks.atomaton_runs.commands` in .github/atomaton/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.");
+    console.log("::warning::This check verified nothing: `checks.pull_request_runs.commands` in .github/atomaton/config.yaml is empty, so a pull request satisfying it has not been tested. Add the commands that check this project, or point `checks.your_workflow` at a workflow of your own.");
     return;
   }
   console.log(`Running ${commands.length} check command(s).`);
