@@ -13,8 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-export const FAKE_GH_BIN_DIR = join(HERE, "..", "..", "src", "scripts", "testing", "bin");
+import { fakeGhEnv } from "../../src/scripts/testing/fake-gh-env.ts";
 
 export interface FakeGhRule {
   /** Every one of these substrings must appear in at least one argv element for this rule to match. */
@@ -34,11 +33,7 @@ export function setupFakeGh(rules: FakeGhRule[]): FakeGh {
   const logPath = join(dir, "gh-calls.jsonl");
   writeFileSync(logPath, "");
   return {
-    env: {
-      PATH: `${FAKE_GH_BIN_DIR}:${process.env.PATH}`,
-      FAKE_GH_RESPONSES: JSON.stringify(rules),
-      FAKE_GH_LOG: logPath,
-    },
+    env: fakeGhEnv(dir, rules, logPath),
     calls: () =>
       readFileSync(logPath, "utf8")
         .split("\n")

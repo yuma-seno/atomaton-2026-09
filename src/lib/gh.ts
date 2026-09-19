@@ -25,9 +25,38 @@ function run(cmd: string[]): RunResult {
   };
 }
 
+/**
+ * What to invoke for `gh`, as an argv prefix.
+ *
+ * `gh` everywhere except a test, which points this at its fake. It is an env var
+ * rather than a directory on PATH because PATH does not work for this on Windows: a
+ * bare command resolves through PATHEXT, so the fake has to carry an extension, and
+ * the only extensions Windows will run are a compiled `.exe` or a `.cmd` — which
+ * Bun and Node refuse to pass arguments containing `"` or `|` to, on purpose, since
+ * cmd.exe would re-parse them. Half this repository's `gh` calls carry a jq
+ * expression, so a `.cmd` shim rejects them.
+ *
+ * The fake was on PATH, and on Windows it was silently never used: what ran was the
+ * real `gh`, with the developer's own credentials, against this repository. This
+ * removes the resolution step that made that possible rather than fixing it, because
+ * the failure mode of getting it wrong is writing to a live repository.
+ *
+ * Named for what it is. This is a test seam and nothing else: it takes a script, run by
+ * the runtime already running, so it cannot be mistaken for configuration naming where
+ * a real installation keeps its CLI.
+ */
+function ghCommand(): string[] {
+  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
+  // `process.execPath`, not `"bun"`. Resolving the name has the same problem one layer
+  // down: a Bun installed through npm is reached by `bun.cmd`, so spawning `bun` hits
+  // the same refusal for the same arguments. The absolute path of the runtime already
+  // running this cannot be a shim.
+  return fake ? [process.execPath, fake] : ["gh"];
+}
+
 /** Run the `gh` CLI. Inherits GH_TOKEN from the parent environment. */
 export function gh(...args: string[]): RunResult {
-  return run(["gh", ...args]);
+  return run([...ghCommand(), ...args]);
 }
 
 /**
@@ -84,7 +113,7 @@ export function looksTransient(result: RunResult): boolean {
  * downloaded asset — has to come through here instead.
  */
 export function ghBytes(...args: string[]): { code: number; bytes: Uint8Array } {
-  const proc = Bun.spawnSync({ cmd: ["gh", ...args], stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawnSync({ cmd: [...ghCommand(), ...args], stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode ?? 1, bytes: proc.stdout ?? new Uint8Array() };
 }
 

@@ -387,6 +387,14 @@ describe("generated workflows", () => {
      */
     const NOT_PASSED = new Map([
       ["ATOMATON_DISPATCH_WORKFLOW", "an override nothing sets; the reader has a default"],
+      [
+        // A test seam, and the one variable whose absence in a run is the point. Set, it
+        // sends every `gh` call to a fake; that is what a test wants and what a run must
+        // never have. Passing it would put the means of silently faking GitHub into the
+        // environment the agent's own tools read.
+        "ATOMATON_FAKE_GH",
+        "the fake-gh seam; a run must never have it set, so it is deliberately not carried",
+      ],
     ]);
 
     const runner = readFileSync("dist/.github/workflows/atomaton-runner.yml", "utf8");
