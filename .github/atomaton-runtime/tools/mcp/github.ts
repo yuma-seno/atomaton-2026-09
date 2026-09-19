@@ -7184,7 +7184,8 @@ function makeTag(key, valuePattern, parse, render) {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
     },
-    has: (text) => re.test(text)
+    has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`
   };
 }
 function numericTag(key) {
@@ -7269,7 +7270,7 @@ function resolveNotify(repo, number) {
 function countOpenSiblings(opts) {
   const label = opts.label || getLabel("sub_issue");
   const launchedLabel = opts.launchedLabel || getLabel("launched");
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `atomaton:parent=${opts.parent} in:body`, "--json", "number");
+  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `${PARENT_TAG.search(opts.parent)} in:body`, "--json", "number");
   if (code !== 0) {
     throw new Error(`countOpenSiblings: gh issue list failed: ${stderr}`);
   }

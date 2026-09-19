@@ -55,7 +55,8 @@ function makeTag(key, valuePattern, parse, render) {
       const m = re.exec(text);
       return m ? parse(m[1]) : undefined;
     },
-    has: (text) => re.test(text)
+    has: (text) => re.test(text),
+    search: (value) => `${TAG_PREFIX}${key}=${render(value)}`
   };
 }
 function numericTag(key) {
@@ -222,7 +223,7 @@ function readChildren(repo, parent) {
   const label = getLabel("in_progress");
   const nodes = [];
   const problems = [];
-  const issues = ghRead("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_TAG.write(parent)} in:body`, "--json", "number,body,state,labels");
+  const issues = ghRead("issue", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_TAG.search(parent)} in:body`, "--json", "number,body,state,labels");
   if (issues.code !== 0)
     problems.push(`could not list the sub-issues of #${parent}`);
   for (const found of parseListed(issues.stdout)) {
@@ -236,7 +237,7 @@ function readChildren(repo, parent) {
       running: labelNames(found.labels).includes(label)
     });
   }
-  const prs = ghRead("pr", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_ISSUE_TAG.write(parent)} in:body`, "--json", "number,body,state,labels");
+  const prs = ghRead("pr", "list", "--repo", repo, "--state", "all", "--limit", "200", "--search", `${PARENT_ISSUE_TAG.search(parent)} in:body`, "--json", "number,body,state,labels");
   if (prs.code !== 0)
     problems.push(`could not list the pull requests for #${parent}`);
   for (const found of parseListed(prs.stdout)) {
