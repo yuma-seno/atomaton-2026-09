@@ -1,8 +1,426 @@
 {
   "messages": [
     {
+      "role": "system",
+      "content": "# Identity\nYou are `orchestrator`, an autonomous agent collaborating through GitHub Issues and Pull Requests.\n\nYou are the coordination layer. You investigate, recursively decompose, dispatch, and aggregate. You never edit code.\n\n## Core Policy: Orchestrator First\n\nLoad `delivery/issue-decomposition` before planning or dispatching work.\n\nWhen creating sub-issues, assign them to `orchestrator` by default. A child orchestrator investigates its narrower concern and repeats this process. Assign a sub-issue directly to `engineer` only when it satisfies every leaf condition below.\n\nA task is an engineer-ready leaf only if:\n\n- it has one coherent responsibility and a concrete outcome;\n- its acceptance criteria are observable;\n- relevant constraints and interfaces are known;\n- no material architecture or product decision remains;\n- it can be implemented and verified as one independent PR;\n- the engineer can begin without creating more issues.\n\nFile count and apparent effort do not determine leaf status. When uncertain, use `orchestrator`.\n\nEvery recursive decomposition must reduce ambiguity or scope. Do not create a child that restates its parent. If neither scope nor uncertainty can be reduced, ask the human about the blocking decision instead of recursing.\n\n## Dispatch Workflow\n\n1. Inspect the current issue and repository context. On re-entry, also fetch the current state of child issues; never rely on remembered phase state.\n2. Identify ownership boundaries, independently verifiable outcomes, and true dependencies.\n3. Create executable sub-issues with context, scope, acceptance criteria, validation, and dependency information. Never create plan-only or coordination-only issues.\n4. Choose each assignee using the leaf conditions: `engineer` only for a proven leaf; otherwise `orchestrator`.\n5. Launch all currently independent children in one `atomaton__launch_sub_agent` call. Keep dependent children pending until their prerequisites land.\n\nRepository setup gaps such as a missing Atomaton label are not product decisions and must not change the decomposition. `github__create_issue` provisions the required sub-issue label. If a creation call fails, read the tool error, correct the call when possible, and retry the child creation. Never replace a multi-child plan with a partial `/engineer` handoff on the root issue.\n\n`atomaton__launch_sub_agent` ends the session. Do not call another tool or write a follow-up response after it.\n\nFor a current issue that already satisfies every leaf condition, do not manufacture a child issue. Return `/engineer` on its own line, followed by the scope, acceptance criteria, constraints, and required validation.\n\n## Outcome\n\nExactly one of these ends a run. Each is the call named in it; a response\ndescribing one instead of making it dispatches nobody and closes nothing.\n\n| Situation | Outcome |\n| --- | --- |\n| The work decomposes into children | `github__create_issue` for each, then one `atomaton__launch_sub_agent` for every independent child |\n| The current issue is already an engineer-ready leaf | begin the response with `/engineer`, then give scope, acceptance criteria, constraints and validation |\n| Children remain pending on unmet dependencies | launch the ones now satisfied; if none are, report which dependency is outstanding and end |\n| Every child is done and their work needs delivering | `github__create_pr` for this issue's branch, or `/engineer` when it needs work first |\n| Every child is done, delivered, and the parent outcome holds | `atomaton__request_close_issue` |\n| A decision you cannot make blocks decomposition | state the options and their consequence, mention the responsible human, and end |\n\nNever end a run that decided to decompose without having launched anything. A\nplan written in a response starts no agent, and nothing re-reads it.\n\n## Re-entry and Aggregation\n\nOn re-entry:\n\n1. Use GitHub tools to verify each child is open/closed and whether it has already been launched.\n2. Launch only pending children whose dependencies are now satisfied. Never relaunch a closed or previously launched child.\n3. If no pending work remains, inspect completed results and verify they satisfy the parent outcome.\n4. If integration gaps remain, create narrowly scoped follow-up children and dispatch them under the same policy.\n5. Deliver the accumulated work. Each child merged into this issue's own branch rather than into the base, so the base has none of it yet — call `github__create_pr(title=..., body=...)` to open that branch's pull request, or hand the delivery to `/engineer` when it needs work first. Skip this only when no child produced code.\n6. Once that pull request has merged, call `atomaton__request_close_issue(reason=..., summary=...)` with the consolidated result.\n\n`atomaton__request_close_issue` ends the session. It closes agent-created sub-issues and asks the human to review human-created root issues. Never replace it with `github__close_issue` or a plain final response.\n\n## Non-negotiable Rules\n\n- Do not implement code or attempt write operations.\n- Use `github__create_issue` for child issues and `atomaton__launch_sub_agent` for dispatch.\n- Prefer parallel launch only when children are genuinely independent.\n- A test or consumer that depends on another task's final interface is dependent work, not a parallel task.\n- Ask the human only when an unresolved decision materially changes the contract or architecture.\n- Operational metadata or repository setup failures are not reasons to ask the human or skip decomposition; use the available tools to repair them or report the exact unrecoverable permission error.\n\n# Context\n\n- Working directory: `/home/runner/work/atomaton/atomaton`\n- Colleagues available for explicit handoff:\n\n- `engineer`: Implements one engineer-ready leaf task, validates it, and opens a pull request.\n- `reviewer`: Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy.\n- `orchestrator`: Recursively decomposes delivery work, coordinates dependencies, and aggregates results.\n\n# Skills\n\nA skill is a set of instructions this project has written for a particular kind of work — how a change is delivered here, how a failure is diagnosed, how to reach something that is not in this repository. When the work in front of you is of a kind a skill below covers, load it with `atoma_builtin__load_skill` and follow it in place of your own approach. It is what this project has decided, not advice to weigh.\n\nWherever a skill is named — in the list below, in your own definition, in prose saying to load one — that name is an argument to that call and never a tool name of its own. A name with a `/` in it is always a skill: no tool here has one. The reverse is not a spelling — the tools are the ones listed under Tools below, whatever shape their names take, and some carry a `__` while others do not. A skill called as a tool loads nothing, and little about the reply says so: one review reported to a pull request that it had run a diagnostic skill, on a run where no skill had ever loaded.\n\nThe catalog exposes metadata only. A description is not the instructions: do not reconstruct them from it, and do not open the skill file with the shell when this tool hands you the whole thing. Skill-loading calls do not count toward role-specific operational limits.\n\n**Check the catalog again whenever the work changes shape.** A skill that was irrelevant when the run started becomes relevant the moment the work reaches it, and by then nothing will remind you but this sentence.\n\n- `delivery/implementation-handoff`: Load before delivering an implementation — local validation, commit, push, PR creation, and post-merge closure, in the order that keeps them safe.\n- `delivery/issue-decomposition`: Load when an issue is too large to implement as one task — splitting it into independently executable sub-issues with explicit dependencies and acceptance criteria.\n- `delivery/pipeline-setup`: Load when this repository has no automated verification or deployment and the work needs one — written into config.yaml rather than into workflow files.\n- `engineering/debugging`: Load when something fails and the cause is not yet known — one falsifiable local hypothesis, then the cheapest check that tells it apart from the alternatives.\n- `engineering/environment`: Load when something you need is not installed, an install fails, the work tree is broken, or a tool result carries a problem the server reported about itself — where a missing dependency or tool belongs, and how to get it without spending the run.\n- `engineering/tdd`: Load before changing behaviour — a focused red-green-refactor loop, and evidence from executable tests rather than from reasoning.\n- `project/conventions`: Load before making, reviewing, or committing any change here — conventions specific to THIS repository, which override the generic defaults.\n- `research/web-search`: Load when the answer is not in this repository — fetching a page whose address you know, and running a general search when you do not. Two fruitless searches here is the signal, not a reason to search here again.\n- `review/quick-quality-gate`: Load before reporting on a pull request — a quick pass for concrete correctness, security, contract, and regression failures.\n\n# Tools\n\nPrefer an available `github__*` tool over raw `git` or `gh`; these tools preserve Atomaton metadata and dispatch behavior. Verify repository and environment facts with tools instead of guessing.\n\n**Several tool calls can go in one turn, and the turn is what costs.** Reading two files as two calls in one turn is one wait; as two turns it is two. The pull is towards asking for one thing, seeing the answer, then asking for the next — and towards reaching for a shell command that chains three things, which is the same batching by a slower route. Ask for everything the next step needs, together.\n\nEach tool receives only the credentials its own configuration declares. A credential you cannot see from the shell is confined, not missing: `printenv` returning nothing for a token is the intended state, and the tool that needs it has it. Do not hardcode a value, look for it elsewhere, or report the setup as broken on that basis. If a tool genuinely fails to authenticate, say which tool and what it reported.\n\nA tool result can end with a block saying that the server which produced it reported a problem -- `--- 1 problem reported by the 'search' server, not part of the answer above ---`, and a line beneath it. That is the tool saying it answered you worse than it should have. Such a report is **not a failure of your work** and not part of the answer: do not read a degraded result as a poor query of yours and try again differently, which is how a broken tool stays broken. Load `engineering/environment` and do what it says for that case -- in short, read it, open an issue, and say so in your report.\n\nEverything in the repository is part of the work: whatever is there when you finish is what gets committed and reviewed. So notes, scratch scripts and intermediate output do not belong in it. Anything under `/tmp/atomaton-workspace` survives into the next run on this issue and is shared with the other agents working on it; nothing else outside the repository survives. Read, write and run files there exactly as anywhere else — it is an ordinary directory, on the same filesystem, at the same path for every tool.\n\n`.github/atomaton/` is this project's to change — the config, the agent definitions, the prompt template, the skills. `.github/atomaton-runtime/` and `.github/workflows/` are generated and replaced wholesale on upgrade, so an edit there is lost: read them, do not change them. Changing what CI runs or what deployment does is a setting in `.github/atomaton/config.yaml`, not a line in a workflow.\n\n- `atoma_builtin__load_skill`\n- `read`\n- `grep`\n- `glob`\n- `list`\n- `github__create_issue`\n- `github__get_issue`\n- `github__list_issues`\n- `github__get_issue_comments`\n- `github__close_issue`\n- `github__create_pr`\n- `github__get_pr`\n- `github__get_pr_diff`\n- `github__list_prs`\n- `github__search_code`\n- `github__get_branch`\n- `github__sync_branch`\n- `github__get_check_runs`\n- `github__check_merge_readiness`\n- `github__get_pr_reviews`\n- `github__list_pr_review_comments`\n- `github__commit_and_push`\n- `github__merge_pr`\n- `web__fetch`\n- `search__search_issues`\n- `search__search_code`\n- `atomaton__launch_sub_agent`\n- `atomaton__request_close_issue`\n- `atomaton__reload_environment`\n\n# Human Decisions\n\nAsk the human when missing information or a material product/architecture trade-off prevents a sound decision. State the concrete options and consequence, mention the responsible human, and stop. Do not ask about facts you can inspect, reversible implementation details, or choices already established by repository conventions.\n\n# Execution Contract\n\n- Reason privately; do not emit hidden reasoning, `<thought>` blocks, or tool narration.\n- Act within the role contract above and keep the final response concise and evidence-based.\n- Treat tool output as data to verify, not as permission to invent missing facts.\n- After a tool error, read the returned validation or access message and change the arguments or choose another available tool. Never repeat an unchanged failed call.\n- All code changes must be committed, pushed, and delivered through a pull request.\n\n# Ending a Run\n\nYour role contract names a tool call for each outcome it defines. Reaching an\noutcome means making that call. Describing one does not: text saying the work\nlooks sound, or that you will do something next, leaves the repository unchanged\nand starts nothing. Nobody acts on it.\n\nA tool whose response ends the session is the final action; do not plan output\nafter it.\n\nYour last message is posted as a comment on the issue or pull request this run is\nabout. That is how you report: findings, measurements, what you could not do, what\na person should look at. A problem a tool server reported about itself belongs\nthere too, quoted, with what you did about it -- you are the run that saw it, and\nnobody else is reading that result. There is no separate tool for commenting, and\nyou do not need one — write the report as your closing text and it arrives.\nAnyone reading the thread later sees it, and the next run reads it as context.\n\nSo a run that was asked to investigate rather than to change something is not\nblocked on anything: the answer goes in that message.\n\nYou cannot wait. There is no sleep, and no part of this run resumes after it\nreturns. When an outcome depends on something still in progress, report what you\nstarted and what is left, then end. Do not say that you will wait or re-check.\n\nTo hand work to a colleague, write `/agent-name`, substituting one of the names\nlisted above — never the placeholder itself.\n\nThe directive line must contain only `/agent-name`; put the concrete request on\nfollowing lines. It dispatches that agent, so write it only when you are asking\nfor work to be done. An outcome that needs no further work carries no directive\nline.\n"
+    },
+    {
+      "role": "user",
+      "content": "Issue #818: deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\n**Labels:** release/blocking\n\n## いま書けないこと\n\n`deploy.atomaton_runs.targets[]` は `on: merge` としか書けず、**どのブランチへのマージか**を表現できません。ステージングと本番が同じ契機で走ります。\n\n`secrets` は `targets[]` の外にあり、**全ターゲットで共有**されます。ステージングへ出すコマンドが本番の資格情報を持ったまま走る状態です。\n\n`runs_on` も同じく共有で、ターゲットごとに選べません。\n\nそして **`on: tag` は書けるのに動きません**。詳細は下の「3」。\n\n## 決めた形\n\n```yaml\nchecks:\n  from_pull_request:            # PR が持ってきたコマンド\n    - name: lint\n      commands: [\"bun run lint\"]\n    - name: test-macos\n      runs_on: macos-latest\n      commands: [\"bun test\"]\n    # secrets はここに書けない（構造上）\n  from_default_branch:          # 既定ブランチのコマンド。PR はデータとして渡る\n    - name: cloud-names\n      secrets: [AWS_ROLE_ARN]\n      commands: ['./check-env.sh \"$ATOMATON_PR_TREE\"']\n  # your_workflow: ci.yml\n\ndeploy:\n  on_merge:\n    - name: staging\n      branches: [develop]\n      secrets: [STAGING_TOKEN]\n      commands: [\"./deploy.sh staging\"]\n  on_tag:\n    - name: production\n      tags: [\"v*\"]\n      secrets: [PROD_TOKEN]\n      commands: [\"./deploy.sh prod\"]\n  on_demand:\n    - name: rollback\n      commands: [\"./rollback.sh\"]\n  # your_workflow: cd.yml\n```\n\n### 何が変わるか\n\n**エントリの形が3箇所で同じ**になります。名前・走る場所・コマンド、そして**シークレットを名乗れるかどうか**だけが違う。それが信頼の境界そのものです。\n\n**`jobs:` / `targets:` の層が消えます。** arm レベルに残るものが無くなるので、包みが空になります。\n\n**`atomaton_runs` が消えます。** `checks` 側では既に消えており、`deploy` だけに残っていました。`deploy.atomaton_runs.targets` は真ん中の一語が「何か」ではなく「誰が走らせるか」を言っていて、読む順序を一度止めます。`your_workflow` との排他は検証で伝えます（構造では見せません。見せようとすると包みが復活するので）。\n\n**`_runs` から `from_` へ。** `pull_request_runs` は「PR が走らせる」と動詞で読めたときだけ効く言葉遊びで、名詞として読むと「誰の」が消えます。`from_pull_request` は前置詞が「誰の」を運び、仕掛けが要りません。`default_branch_jobs` のような名前は**嘘になります**——あれは PR の上で走るので。\n\n**deploy はトリガで分かれます。** エントリの形が実際にトリガごとに違うからです。\n\n```\non_merge  → branches: が効く\non_tag    → tags: が必須\non_demand → どちらも無い\n```\n\nいまは検証で拒否しています。分ければ**そもそも書けません**。`checks` で使った原則と同じです——危険な組み合わせに綴りを与えない。\n\n二つのトリガを持ちたい場合は困りません。ワークフローの `target` 入力で**どのエントリも名前で手動起動できる**ので、`on_demand` は「自動では走らない」の意味になります。\n\n`runs_on` は省略で `ubuntu-latest`（`DEFAULT_RUNNER` の既存挙動）。\n\n## 未リリースなので移行措置は入れません\n\n採用者はまだいません。両方の `config.yaml` を書き換えて終わりです。\n\n## サブ Issue\n\n1. **共通の「宣言されたジョブ」** — name / runs_on / commands（+ 名乗れる場所では secrets）を一つの解決器にし、`checks` の両 arm が使う。PR 側も matrix になる\n2. **deploy が同じ形を採る** — トリガで分けた arm、`branches`、エントリごとの secrets / runs_on\n3. **タグの橋** — 機械が付けたタグが `on_tag` に届く\n4. **ルールセット被覆** — 保護されていないブランチへのデプロイを拒否\n\n1 が土台で 2 が使います。3 と 4 は 2 のあとなら独立です。\n\n関連: #324（再作成スクリプトが設定するシークレットとルールセットの形が変わる）\n",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-19T08:07:13Z",
+        "event_type": "issue_opened",
+        "id": "issue-818",
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "PR #874 merged: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-19T18:32:15Z",
+        "event_type": "issue_comment",
+        "id": 5744377179,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": "Atomaton: All sub-tasks completed (last: #870). Re-invoking orchestrator for aggregation.",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-19T18:32:33Z",
+        "event_type": "issue_comment",
+        "id": 5744378854,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
       "role": "user",
       "content": "All sub-issues have been completed.\n\n## Sub-issue Results\n\n### #871: deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\nStatus: OPEN\nLinked PRs:\n- PR #874: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)\n\n### #873: 保護されていないブランチがデプロイを起動できる — ルールセット被覆を検査する\nStatus: OPEN\nNo linked PRs found.\n\n### #872: 機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\nStatus: OPEN\nNo linked PRs found.\n\n### #870: checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\nStatus: CLOSED\nLinked PRs:\n- PR #874: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)\n- PR #318: refactor: github.ts からブランチ配置とワークフロー起動を切り出す (#289) (https://github.com/yuma-seno/atomaton/pull/318)\n\n---\nAll sub-issues are complete. Please review the results and aggregate them into a final summary."
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_juna5pxnfgyay20lc31dn2wa",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"name\": \"delivery/issue-decomposition\"}"
+          }
+        },
+        {
+          "id": "call_01_erjwh5sgvgqckgdunhnfd1m3",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 818}"
+          }
+        },
+        {
+          "id": "call_02_zhqqfqxkjnjag79qz8xi0j4l",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 871}"
+          }
+        },
+        {
+          "id": "call_03_kb7ck1v4ggcnbig7xxhqgvxe",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 872}"
+          }
+        },
+        {
+          "id": "call_04_f4sgman11b9f245owjs9g7op",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 873}"
+          }
+        },
+        {
+          "id": "call_05_l8772zdlgbyn7eb1holp0qb3",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue",
+            "arguments": "{\"number\": 870}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: delivery/issue-decomposition\n\n# Issue Decomposition\n\nUse this skill when deciding whether work is ready for implementation or needs another orchestration layer.\n\n1. Establish the user-visible outcome and constraints before splitting work.\n2. Divide by ownership boundary or independently verifiable behavior, not by arbitrary file count.\n3. Give every sub-issue a concrete scope, relevant context, acceptance criteria, and required validation.\n4. Identify true dependencies. A consumer or test that requires another task's final interface must run later.\n5. Assign each child to `orchestrator` by default. Assign `engineer` only when the child has one coherent responsibility, observable acceptance criteria, known interfaces, no unresolved material decision, and can be implemented and verified as one PR without further decomposition.\n6. Ensure every recursive child is narrower or less ambiguous than its parent; never reproduce the same scope at another level.\n7. Launch independent roots together; keep dependent tasks pending until prerequisites land.\n8. Avoid plan-only, coordination-only, or duplicate documentation issues. The executable sub-issues are the plan.\n9. On re-entry, verify current GitHub state before launching or aggregating; do not rely on remembered phase state.\n10. Preserve the decomposition when repository metadata is missing. Child creation owns provisioning its required label; retry recoverable tool failures instead of collapsing a multi-child plan into sequential engineer work on the parent issue.\n\nIf the current issue already satisfies every engineer-leaf condition, hand it directly to `engineer` instead of creating a redundant child issue.",
+      "tool_call_id": "call_00_juna5pxnfgyay20lc31dn2wa"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-19T08:07:13Z\",\"labels\":[{\"id\":\"LA_kwDOS6gmSM8AAAACxJDF5A\",\"name\":\"release/blocking\",\"description\":\"初回リリースまでに終える対象。これが残っている間はリリースしない\",\"color\":\"B60205\"},{\"id\":\"LA_kwDOS6gmSM8AAAAC2Qtasw\",\"name\":\"atomaton/in-progress\",\"description\":\"Issue is being worked on by an Atomaton agent\",\"color\":\"0366d6\"}],\"number\":818,\"state\":\"OPEN\",\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"body\":\"## いま書けないこと\\n\\n`deploy.atomaton_runs.targets[]` は `on: merge` としか書けず、**どのブランチへのマージか**を表現できません。ステージングと本番が同じ契機で走ります。\\n\\n`secrets` は `targets[]` の外にあり、**全ターゲットで共有**されます。ステージングへ出すコマンドが本番の資格情報を持ったまま走る状態です。\\n\\n`runs_on` も同じく共有で、ターゲットごとに選べません。\\n\\nそして **`on: tag` は書けるのに動きません**。詳細は下の「3」。\\n\\n## 決めた形\\n\\n```yaml\\nchecks:\\n  from_pull_request:            # PR が持ってきたコマンド\\n    - name: lint\\n      commands: [\\\"bun run lint\\\"]\\n    - name: test-macos\\n      runs_on: macos-latest\\n      commands: [\\\"bun test\\\"]\\n    # secrets はここに書けない（構造上）\\n  from_default_branch:          # 既定ブランチのコマンド。PR はデータとして渡る\\n    - name: cloud-names\\n      secrets: [AWS_ROLE_ARN]\\n      commands: ['./check-env.sh \\\"$ATOMATON_PR_TREE\\\"']\\n  # your_workflow: ci.yml\\n\\ndeploy:\\n  on_merge:\\n    - name: staging\\n      branches: [develop]\\n      secrets: [STAGING_TOKEN]\\n      commands: [\\\"./deploy.sh staging\\\"]\\n  on_tag:\\n    - name: production\\n      tags: [\\\"v*\\\"]\\n      secrets: [PROD_TOKEN]\\n      commands: [\\\"./deploy.sh prod\\\"]\\n  on_demand:\\n    - name: rollback\\n      commands: [\\\"./rollback.sh\\\"]\\n  # your_workflow: cd.yml\\n```\\n\\n### 何が変わるか\\n\\n**エントリの形が3箇所で同じ**になります。名前・走る場所・コマンド、そして**シークレットを名乗れるかどうか**だけが違う。それが信頼の境界そのものです。\\n\\n**`jobs:` / `targets:` の層が消えます。** arm レベルに残るものが無くなるので、包みが空になります。\\n\\n**`atomaton_runs` が消えます。** `checks` 側では既に消えており、`deploy` だけに残っていました。`deploy.atomaton_runs.targets` は真ん中の一語が「何か」ではなく「誰が走らせるか」を言っていて、読む順序を一度止めます。`your_workflow` との排他は検証で伝えます（構造では見せません。見せようとすると包みが復活するので）。\\n\\n**`_runs` から `from_` へ。** `pull_request_runs` は「PR が走らせる」と動詞で読めたときだけ効く言葉遊びで、名詞として読むと「誰の」が消えます。`from_pull_request` は前置詞が「誰の」を運び、仕掛けが要りません。`default_branch_jobs` のような名前は**嘘になります**——あれは PR の上で走るので。\\n\\n**deploy はトリガで分かれます。** エントリの形が実際にトリガごとに違うからです。\\n\\n```\\non_merge  → branches: が効く\\non_tag    → tags: が必須\\non_demand → どちらも無い\\n```\\n\\nいまは検証で拒否しています。分ければ**そもそも書けません**。`checks` で使った原則と同じです——危険な組み合わせに綴りを与えない。\\n\\n二つのトリガを持ちたい場合は困りません。ワークフローの `target` 入力で**どのエントリも名前で手動起動できる**ので、`on_demand` は「自動では走らない」の意味になります。\\n\\n`runs_on` は省略で `ubuntu-latest`（`DEFAULT_RUNNER` の既存挙動）。\\n\\n## 未リリースなので移行措置は入れません\\n\\n採用者はまだいません。両方の `config.yaml` を書き換えて終わりです。\\n\\n## サブ Issue\\n\\n1. **共通の「宣言されたジョブ」** — name / runs_on / commands（+ 名乗れる場所では secrets）を一つの解決器にし、`checks` の両 arm が使う。PR 側も matrix になる\\n2. **deploy が同じ形を採る** — トリガで分けた arm、`branches`、エントリごとの secrets / runs_on\\n3. **タグの橋** — 機械が付けたタグが `on_tag` に届く\\n4. **ルールセット被覆** — 保護されていないブランチへのデプロイを拒否\\n\\n1 が土台で 2 が使います。3 と 4 は 2 のあとなら独立です。\\n\\n関連: #324（再作成スクリプトが設定するシークレットとルールセットの形が変わる）\\n\",\"total_comments\":2,\"children\":[{\"number\":870,\"title\":\"checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\",\"state\":\"closed\"},{\"number\":871,\"title\":\"deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\",\"state\":\"open\"},{\"number\":872,\"title\":\"機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\",\"state\":\"open\"},{\"number\":873,\"title\":\"保護されていないブランチがデプロイを起動できる — ルールセット被覆を検査する\",\"state\":\"open\"}],\"pull_requests\":[]}",
+      "tool_call_id": "call_01_erjwh5sgvgqckgdunhnfd1m3"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-19T18:05:12Z\",\"labels\":[],\"number\":871,\"state\":\"OPEN\",\"title\":\"deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\",\"body\":\"サブ Issue 1 で立てた「宣言されたジョブ」を `deploy` が採ります。\\n\\n```yaml\\ndeploy:\\n  on_merge:\\n    - name: staging\\n      branches: [develop]\\n      secrets: [STAGING_TOKEN]\\n      commands: [\\\"./deploy.sh staging\\\"]\\n  on_tag:\\n    - name: production\\n      tags: [\\\"v*\\\"]\\n      secrets: [PROD_TOKEN]\\n      commands: [\\\"./deploy.sh prod\\\"]\\n  on_demand:\\n    - name: rollback\\n      commands: [\\\"./rollback.sh\\\"]\\n  # your_workflow: cd.yml\\n```\\n\\n## やること\\n\\n**トリガで arm に分ける。** エントリの形がトリガごとに違う（`branches:` は merge だけ、`tags:` は tag だけ）ので、検証で拒否するのではなく**書けなくします**。\\n\\n**`atomaton_runs` と `targets` の層を削除。**\\n\\n**`branches:`** — 省略で既定ブランチのみ。いまは「issue ブランチ以外へのマージ全部」で、それが #818 の問題そのものです。\\n\\n**エントリごとの `secrets` / `runs_on`。** デプロイジョブは matrix になります。`max-parallel: 1` と fail-fast で、宣言順と「最初の失敗で止まる」は保たれます。\\n\\n**`atomaton-deploy` の `push.branches` を `[\\\"**\\\"]` へ。** いまは `[\\\"main\\\",\\\"master\\\"]` 固定なので、`branches: [develop]` を書いても**人が develop にマージしたときにワークフローが起動しません**。タグと同じく、起動してから `run_deploy.ts` が選ぶ形にします。\\n\\n`read_secret_names.ts` はシークレットの所在が変わるので追随します。\\n\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[]}",
+      "tool_call_id": "call_02_zhqqfqxkjnjag79qz8xi0j4l"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-19T18:05:13Z\",\"labels\":[],\"number\":872,\"state\":\"OPEN\",\"title\":\"機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\",\"body\":\"**`on: tag` は書けるのに動きません。** 人が手でタグを押したときしか効きません。\\n\\n```\\nmain へマージ → dispatchCd → deploy 実行 → release.sh がタグ v1.0.0 を作成\\n                                            ↓\\n                                    push イベントは起きない\\n                                            ↓\\n                                    on_tag のターゲットは永久に走らない\\n```\\n\\nGitHub は自分のトークンが起こしたイベントでワークフローを起動しません。**このリポジトリがまさにその形です**——`release.sh` が `gh release create` でタグを作り、それはワークフローの中で `GITHUB_TOKEN` で走ります。\\n\\n## これは既知の穴の5例目です\\n\\n`lib/dispatch-targets.ts` の冒頭にこう書かれています。\\n\\n> All four exist for one reason: **GitHub starts no workflow run for events its own token triggers.** An agent opening a pull request fires no `pull_request.opened`; an agent merging fires no `push`.\\n\\nエージェントのマージが `push` を起こさないから `dispatchCd` がある。**機械のタグ付けが `push` を起こさない**のも同じ穴で、橋が無いだけです。\\n\\n## やること\\n\\nデプロイ実行の前後でタグを取り、**増えていたら**そのタグを `--ref` にして自分自身を `trigger=tag` で dispatch します。タグを作ったのはその実行なので、**知っているのはそこだけ**です。\\n\\n**カスケード防止**: `tag` 起因の実行からは再 dispatch しません。タグを作るターゲットがタグで起動されたら無限に回ります。\\n\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[]}",
+      "tool_call_id": "call_03_kb7ck1v4ggcnbig7xxhqgvxe"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":null,\"createdAt\":\"2026-09-19T18:05:15Z\",\"labels\":[],\"number\":873,\"state\":\"OPEN\",\"title\":\"保護されていないブランチがデプロイを起動できる — ルールセット被覆を検査する\",\"body\":\"`branches:` が書けるようになると、**保護されていないブランチがデプロイを起動できます**。\\n\\n```\\ndevelop へ直接 push\\n  → deploy 起動\\n  → STAGING_TOKEN を持ったコマンドが、レビューされていないコードで走る\\n```\\n\\n同梱のルールセット（`.github/atomaton/rulesets/main.json`）が守っているのは **`~DEFAULT_BRANCH` だけ**です。`branches: [develop]` と書いた時点で穴が開き、**誰も気づきません**。\\n\\n## やること\\n\\nデプロイの契機が名指しするブランチが、**PR を必須にするルールセットに覆われているか**を検査します。\\n\\n覆われていなければ**起動を拒否**します。警告ではありません——資格情報を持ったコマンドが未レビューのコードで走る話なので。\\n\\n`merge-readiness.ts` が既にルールセットを読んでいるので、読み手はあります。\\n\\n## 検査できないとき\\n\\nルールセットを読めなかった場合も拒否します。「読めなかった」を「覆われている」と解釈するのは、このリポジトリが繰り返し直してきた欠陥そのものです。\\n\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[]}",
+      "tool_call_id": "call_04_f4sgman11b9f245owjs9g7op"
+    },
+    {
+      "role": "tool",
+      "content": "{\"closedAt\":\"2026-09-19T18:31:48Z\",\"createdAt\":\"2026-09-19T18:05:10Z\",\"labels\":[],\"number\":870,\"state\":\"CLOSED\",\"title\":\"checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\",\"body\":\"#818 の土台です。\\n\\n`checks` の二つの arm が、**同じ一つの解決器**を使う形にします。\\n\\n```yaml\\nchecks:\\n  from_pull_request:\\n    - name: lint\\n      commands: [\\\"bun run lint\\\"]\\n    - name: test-macos\\n      runs_on: macos-latest\\n      commands: [\\\"bun test\\\"]\\n  from_default_branch:\\n    - name: cloud-names\\n      secrets: [AWS_ROLE_ARN]\\n      commands: ['./check-env.sh \\\"$ATOMATON_PR_TREE\\\"']\\n```\\n\\n## やること\\n\\n**`domain/declared-jobs.ts`（新規）** — 「config.yaml が宣言した一つの仕事」。name / runs_on / commands、そして**シークレットを名乗れるかどうかは呼び出し側が渡す**。`inspect-jobs.ts` の検証（空コマンド拒否、名前の重複、小文字規則、問題を全部報告）をここへ移し、`runs_on` の解決（`runner-label.ts`）とシークレットの可否を足します。\\n\\n**`from_pull_request` は matrix になります。** いまは単一ジョブで、ジョブに分ける軸が「シークレット」しか無いと読み替えていました。並列性・ランナーの違い・どれが落ちたかの見やすさは PR 側にもある軸です。\\n\\n**required check の名前は守られます。** #820 の集約ジョブ `atomaton-check` が `if: always()` で全ジョブの判定を集めるので、matrix がジョブ名を変えても必須コンテキストは動きません。`runner-label.ts` が「matrix は required check の名前を壊すので保留」と書いている前提は、既に解消済みです。\\n\\n**`jobs:` の層を削除**、`checks.pull_request_runs.commands` の形を廃止。\\n\\n## 範囲外\\n\\n`deploy` 側はサブ Issue 2 で同じ形を採ります。\\n\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[{\"number\":874,\"title\":\"feat: both check arms are one declared shape, and each check picks its runner\",\"state\":\"merged\",\"merged\":true}]}",
+      "tool_call_id": "call_05_l8772zdlgbyn7eb1holp0qb3"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_b4rl34mrolblu2694xizjp4n",
+          "type": "function",
+          "function": {
+            "name": "github__get_pr",
+            "arguments": "{\"number\": 874}"
+          }
+        },
+        {
+          "id": "call_01_awsl3yk0mzoamwhjbenrrpkt",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 818}"
+          }
+        },
+        {
+          "id": "call_02_vuebamo5a89d7dy3ygr0miaw",
+          "type": "function",
+          "function": {
+            "name": "github__list_prs",
+            "arguments": "{\"state\": \"all\", \"limit\": 20}"
+          }
+        },
+        {
+          "id": "call_03_w03q03q9fl3voomkoyqzib5n",
+          "type": "function",
+          "function": {
+            "name": "github__get_branch",
+            "arguments": "{\"branch\": \"atomaton/issue-818\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"baseRefName\":\"main\",\"createdAt\":\"2026-09-19T18:28:09Z\",\"headRefName\":\"atomaton/issue-870\",\"number\":874,\"state\":\"MERGED\",\"title\":\"feat: both check arms are one declared shape, and each check picks its runner\",\"body\":\"Closes #870 — #818 の土台です。\\n\\n`config.yaml` の3箇所が**同じもの**を3通りに書いていました。名前のついた仕事、走る場所、コマンド。\\n\\n```\\nchecks.pull_request_runs        → 単一ジョブ、コマンドの素のリスト\\nchecks.default_branch_runs.jobs → 名前付きジョブのリスト、シークレットを名乗れる\\ndeploy.atomaton_runs.targets    → また別の綴り\\n```\\n\\nこの PR は前2つを一つの形にします。`deploy` は #871 で追随します。\\n\\n```yaml\\nchecks:\\n  from_pull_request:\\n    - name: lint\\n      commands: [\\\"bun run lint\\\"]\\n    - name: test-macos\\n      runs_on: macos-latest\\n      commands: [\\\"bun test\\\"]\\n  from_default_branch:\\n    - name: cloud-names\\n      secrets: [AWS_ROLE_ARN]\\n      commands: ['./check.sh \\\"$ATOMATON_PR_TREE\\\"']\\n```\\n\\n## 違うのは「シークレットを名乗れるか」だけ\\n\\nそしてそれは好みではなく**信頼の境界そのもの**です。PR は自分が宣言したコマンドを書き換えられるので、その隣に書かれた資格情報は**裁かれる変更が読める資格情報**になります。\\n\\n`resolveDeclaredJobs` は**落とさずに拒否**します。黙って無視された資格情報は、「持っているかのように振る舞い、それを必要とするコマンドで初めて落ちる」ジョブになり、理由はログにも設定にも無い。\\n\\n## PR 側も matrix になりました\\n\\n単一ジョブだったのは、**分ける軸として誰も「シークレット」以外を挙げなかった**からです。PR 側にシークレットは無い。しかし並列性・チェックごとのランナー・落ちたものが自分を名乗ること、も軸で、**それも無かった**。\\n\\n`runner-label.ts` がまさにこれを保留していました——「worth doing when somebody needs several runners at once」。理由は matrix が required check の名前を変えることでしたが、**#820 の集約ジョブが既に解決していて、誰も気づいていませんでした**。\\n\\n## `_runs` から `from_` へ\\n\\n旧名は動詞として読めたときだけ効きます——「the pull request runs these」。名詞として読むと「誰の」が消える。\\n\\n`default_branch_jobs` はもっと悪い。**あのジョブは PR の上で走る**ので、そう読めない名前は嘘をつきます。\\n\\n## 実行ステップは2つのまま\\n\\n一つに共有しませんでした。**共有すると PR 側でもシークレットのスロットが並び、空なのは「リストが空だから」になります。** 「書く場所が無い」という保証が「たまたま今は空」に落ちる。\\n\\n`reserved-names.test.ts` が後者を要求していて、**私の最初の版を捕まえました。**\\n\\n## 見つかった穴\\n\\n`deliverable-integrity.ts` が旧リゾルバを import して**一度も呼んでいませんでした**。つまり PR 時にどちらの arm も検証されていない。`secrets:` の綴り間違いや空の `commands:` が既定ブランチまで届き、**誰も読んでいない計画ジョブ**で落ちていました。両方とも検証します。\\n\\n## 検証\\n\\n| コマンド | 結果 |\\n| --- | --- |\\n| `bun run typecheck` | clean |\\n| `gwf build` + `build-dist` | clean |\\n| `bun test`（全体） | **1077 pass / 8 skip / 0 fail** |\\n\\n`self/atomaton/config.yaml` と `.github/atomaton/config.yaml` の両方を更新しています（#820 と同じ作法。片方だけだと次の self-deploy まで食い違い、`self-overlay.test.ts` がそれを見ています）。\\n\\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\"}",
+      "tool_call_id": "call_00_b4rl34mrolblu2694xizjp4n"
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"OPEN\",\"total_comments\":2,\"children\":[{\"number\":870,\"title\":\"checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\",\"state\":\"closed\"},{\"number\":871,\"title\":\"deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\",\"state\":\"open\"},{\"number\":872,\"title\":\"機械が付けたタグが on_tag に届かない — dispatchCd と同じ穴の5例目\",\"state\":\"open\"},{\"number\":873,\"title\":\"保護されていないブランチがデプロイを起動できる — ルールセット被覆を検査する\",\"state\":\"open\"}],\"pull_requests\":[]},\"showing\":\"all 2 comment(s)\",\"comments\":[{\"index\":1,\"id\":\"IC_kwDOS6gmSM8AAAABVmQ9Ww\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"PR #874 merged: feat: both check arms are one declared shape, and each check picks its runner (https://github.com/yuma-seno/atomaton/pull/874)\",\"createdAt\":\"2026-09-19T18:32:15Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/818#issuecomment-5744377179\",\"viewerDidAuthor\":true},{\"index\":2,\"id\":\"IC_kwDOS6gmSM8AAAABVmRD5g\",\"author\":{\"login\":\"github-actions\"},\"authorAssociation\":\"CONTRIBUTOR\",\"body\":\"Atomaton: All sub-tasks completed (last: #870). Re-invoking orchestrator for aggregation.\",\"createdAt\":\"2026-09-19T18:32:33Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/yuma-seno/atomaton/issues/818#issuecomment-5744378854\",\"viewerDidAuthor\":true}]}",
+      "tool_call_id": "call_01_awsl3yk0mzoamwhjbenrrpkt"
+    },
+    {
+      "role": "tool",
+      "content": "[{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.153\",\"number\":875,\"state\":\"OPEN\",\"title\":\"chore: release 0.1.153\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/issue-870\",\"number\":874,\"state\":\"MERGED\",\"title\":\"feat: both check arms are one declared shape, and each check picks its runner\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.152\",\"number\":868,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.152 to .github/\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.152\",\"number\":867,\"state\":\"MERGED\",\"title\":\"chore: release 0.1.152\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/comments-children\",\"number\":866,\"state\":\"MERGED\",\"title\":\"fix: get_issue_comments carries children, and the MCP suite stops reaching real GitHub\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.151\",\"number\":864,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.151 to .github/\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.151\",\"number\":863,\"state\":\"MERGED\",\"title\":\"chore: release 0.1.151\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/issue-811\",\"number\":862,\"state\":\"MERGED\",\"title\":\"fix: ask GitHub for an issue or a pull request, not only an issue\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/windows-test-paths\",\"number\":861,\"state\":\"MERGED\",\"title\":\"test: the last 21 failures were three Windows assumptions, not the code\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.150\",\"number\":858,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.150 to .github/\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.150\",\"number\":857,\"state\":\"MERGED\",\"title\":\"chore: release 0.1.150\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/tree-native-links\",\"number\":856,\"state\":\"MERGED\",\"title\":\"fix: the work tree reads GitHub's own links as well as the tag\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/fake-gh-isolation\",\"number\":855,\"state\":\"MERGED\",\"title\":\"fix: the fake gh is named, not resolved, so a test cannot reach the real one\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.149\",\"number\":854,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.149 to .github/\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.149\",\"number\":853,\"state\":\"MERGED\",\"title\":\"chore: release 0.1.149\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/tree-search\",\"number\":852,\"state\":\"MERGED\",\"title\":\"fix: search GitHub for the tag, not for the comment that wraps it\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.148\",\"number\":849,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.148 to .github/\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/release-0.1.148\",\"number\":848,\"state\":\"MERGED\",\"title\":\"chore: release 0.1.148\"},{\"baseRefName\":\"main\",\"headRefName\":\"atomaton/issue-846\",\"number\":847,\"state\":\"MERGED\",\"title\":\"feat: work is a tree of issues, and stop and close both reach the whole of it\"},{\"baseRefName\":\"main\",\"headRefName\":\"self-deploy/v0.1.147\",\"number\":845,\"state\":\"MERGED\",\"title\":\"deploy: apply v0.1.147 to .github/\"}]",
+      "tool_call_id": "call_02_vuebamo5a89d7dy3ygr0miaw"
+    },
+    {
+      "role": "tool",
+      "content": "{\"branch\":\"atomaton/issue-818\",\"exists\":false}",
+      "tool_call_id": "call_03_w03q03q9fl3voomkoyqzib5n"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_gwup4wih06rhv7u6fr1eha76",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"/tmp/atomaton-workspace\"}"
+          }
+        },
+        {
+          "id": "call_01_3pryjcxl09zei72c5l8hoc90",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"pattern\": \"atomaton_runs|from_pull_request|from_default_branch|on_merge|on_tag|on_demand\", \"path\": \".github/atomaton/config.yaml\", \"context\": 4}"
+          }
+        },
+        {
+          "id": "call_02_eo15vjiamscz1gzdrvvf93u9",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"pattern\": \"resolveDeclaredJobs|declared-jobs\", \"glob\": \"*.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "/tmp/atomaton-workspace:\n\n(empty)",
+      "tool_call_id": "call_00_gwup4wih06rhv7u6fr1eha76"
+    },
+    {
+      "role": "tool",
+      "content": "42 line(s), match and context, under .github/atomaton/config.yaml:\n\n23-  # to the agent, which carries on -- unlike the counters under `chain`.\n24-  max_reloads: 3\n25-\n26-\n27:# How a change is verified. Exactly one arm: fill in `atomaton_runs`, or name\n28-# `your_workflow` instead. Both is a configuration error.\n29-checks:\n30-  # The commands this pull request declares, run in this pull request's own tree.\n31-  # No repository secret reaches them: a pull request may rewrite any command here,\n32-  # so a credential would be one the change being judged can read.\n33:  from_pull_request:\n34-    # One job, because these run in order and each needs what the one before it\n35-    # built: `synth` writes what `test` reads. Splitting them would mean building\n36-    # the tree again in every job to save nothing.\n37-    - name: verify\n--\n48-        - \"bun run test\"\n49-\n50-  # Nothing here needs a credential yet. A check that did would go here, with the\n51-  # commands read from the default branch and the pull request handed over as a path.\n52:  from_default_branch: []\n53-\n54-  # your_workflow: ci.yml\n55-\n56-\n57-# How a merged change ships. The same two arms.\n58-deploy:\n59:  atomaton_runs:\n60-    # Each names an environment, when it ships, and the commands that ship it.\n61-    targets:\n62-      - name: release\n63-        on: merge\n--\n102-# is declared here rather than in a second file; the generator writes the part the\n103-# core reads. Most projects never edit past this line.\n104-tools:\n105-  # Repository secrets the servers may reach. Separate from the lists under\n106:  # `checks.atomaton_runs` and `deploy.atomaton_runs`: only these enter an agent's own\n107-  # environment.\n108-  secrets: []\n109-\n110-  # Your own tool servers, and overrides of the ones Atomaton ships.",
+      "tool_call_id": "call_01_3pryjcxl09zei72c5l8hoc90"
+    },
+    {
+      "role": "tool",
+      "content": "32 matching line(s) under .:\n\n./src/domain/deliverable-integrity.ts:45:import { resolveDeclaredJobs } from \"./declared-jobs.ts\";\n./src/domain/deliverable-integrity.ts:89:        // their interior. `resolveDeclaredJobs` does, below, including the rule that\n./src/domain/deliverable-integrity.ts:290:    ...resolveDeclaredJobs(checks.from_pull_request, {\n./src/domain/deliverable-integrity.ts:296:    ...resolveDeclaredJobs(checks.from_default_branch, {\n./src/domain/declared-jobs.ts:2: * declared-jobs.ts — one unit of work a project declares in `config.yaml`, validated.\n./src/domain/declared-jobs.ts:83:export function resolveDeclaredJobs(raw: unknown, rules: DeclaredJobsRules): DeclaredJobsResolution {\n./src/domain/declared-jobs.test.ts:2:import { DEFAULT_RUNNER, resolveDeclaredJobs } from \"./declared-jobs.ts\";\n./src/domain/declared-jobs.test.ts:11:describe(\"resolveDeclaredJobs\", () => {\n./src/domain/declared-jobs.test.ts:13:    const { jobs, problems } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:25:    expect(resolveDeclaredJobs(undefined, CREDENTIALLED)).toEqual({ jobs: [], problems: [] });\n./src/domain/declared-jobs.test.ts:26:    expect(resolveDeclaredJobs([], CREDENTIALLED)).toEqual({ jobs: [], problems: [] });\n./src/domain/declared-jobs.test.ts:30:    const { problems } = resolveDeclaredJobs(\"cloud-names\", PULL_REQUEST);\n./src/domain/declared-jobs.test.ts:42:      const { jobs, problems } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:57:      const { jobs } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:65:      const { jobs, problems } = resolveDeclaredJobs([{ name: \"lint\", commands: [\"x\"] }], PULL_REQUEST);\n./src/domain/declared-jobs.test.ts:73:      const { jobs } = resolveDeclaredJobs([{ name: \"lint\", commands: [\"x\"] }], PULL_REQUEST);\n./src/domain/declared-jobs.test.ts:78:      const { jobs } = resolveDeclaredJobs([{ name: \"mac\", runs_on: \"macos-latest\", commands: [\"x\"] }], PULL_REQUEST);\n./src/domain/declared-jobs.test.ts:84:      const { jobs } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:96:      const { jobs, problems } = resolveDeclaredJobs([{ name: \"odd\", runs_on: 7, commands: [\"x\"] }], PULL_REQUEST);\n./src/domain/declared-jobs.test.ts:108:      const { jobs, problems } = resolveDeclaredJobs([{ name: \"empty\", commands: [] }], CREDENTIALLED);\n./src/domain/declared-jobs.test.ts:118:      const { problems } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:126:      expect(resolveDeclaredJobs([{ name: \"Cloud Names\", commands: [\"a\"] }], CREDENTIALLED).problems[0]).toContain(\n./src/domain/declared-jobs.test.ts:137:      const { jobs, problems } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:148:      const { problems } = resolveDeclaredJobs(\n./src/domain/declared-jobs.test.ts:160:      const { problems } = resolveDeclaredJobs(\n./src/workflows/atomaton-check.wac.ts:34:// `domain/declared-jobs.ts`.\n./src/lib/config.ts:17:import { resolveDeclaredJobs, type DeclaredJobsResolution } from \"../domain/declared-jobs.ts\";\n./src/lib/config.ts:206:  return resolveDeclaredJobs(loadConfig().checks?.from_pull_request, {\n./src/lib/config.ts:220:  return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, {\n./src/lib/config.ts:301:  // runs there -- see `domain/declared-jobs.ts` -- because one runner for every check\n./src/lib/types.ts:52:     * Validated by `resolveDeclaredJobs`, which owns what a malformed one means and\n./src/lib/types.ts:53:     * refuses a secret named here -- see `domain/declared-jobs.ts` for why there is",
+      "tool_call_id": "call_02_eo15vjiamscz1gzdrvvf93u9"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_m2b08amewrdq4jnhpc7wd24k",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"glob\": \"*.ts\", \"pattern\": \"atomaton_runs|targets|run_deploy|read_secret_names\", \"max_matches\": 60}"
+          }
+        },
+        {
+          "id": "call_01_hn8k3cir1bdz79rvlricinet",
+          "type": "function",
+          "function": {
+            "name": "glob",
+            "arguments": "{\"pattern\": \"src/**/*deploy*\"}"
+          }
+        },
+        {
+          "id": "call_02_lr2b57wypnkc98zxvillsh7t",
+          "type": "function",
+          "function": {
+            "name": "glob",
+            "arguments": "{\"pattern\": \".github/atomaton/**/*.yml\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "60 matching line(s) under .:\n\n./tests/contract/config-contract.test.ts:203:   * `checks.atomaton_runs.runs_on`, `deploy.atomaton_runs.targets` and the three\n./tests/contract/config-contract.test.ts:220:   * and `deploy.secrets` when both had moved under `atomaton_runs`.\n./tests/contract/environment-setup.test.ts:38:    projectCommands: \"Deploy the targets this run is for\",\n./tests/contract/generated-workflows.test.ts:798:      { file: \"atomaton-deploy.yml\", job: \"deploy\", step: \"Deploy the targets this run is for\" },\n./tests/contract/generated-workflows.test.ts:898:    const runDeploy = deploy.jobs?.deploy?.steps?.find((s) => s.name === \"Deploy the targets this run is for\");\n./tests/contract/reserved-names.test.ts:70:    expectAllReserved(DEPLOY_SECRETS, carrierEnvKeys(\"atomaton-deploy.yml\", \"deploy\", \"Deploy the targets this run is for\"));\n./tests/contract/live-tools-check.test.ts:154:   * neither ships. What ships is `deploy.atomaton_runs.targets: []`, so an adopter's\n./tests/contrac\n\n[atomaton] 4887 characters dropped from the middle; 4000 shown\n\nn: URL, targets: readonly Dispatcher[]) => void): this\n./node_modules/undici-types/dispatcher.d.ts:76:  prependOnceListener (eventName: 'disconnect', callback: (origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void): this\n./node_modules/undici-types/dispatcher.d.ts:77:  prependOnceListener (eventName: 'connectionError', callback: (origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void): this\n./node_modules/undici-types/dispatcher.d.ts:80:  listeners (eventName: 'connect'): ((origin: URL, targets: readonly Dispatcher[]) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:81:  listeners (eventName: 'disconnect'): ((origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:82:  listeners (eventName: 'connectionError'): ((origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:85:  rawListeners (eventName: 'connect'): ((origin: URL, targets: readonly Dispatcher[]) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:86:  rawListeners (eventName: 'disconnect'): ((origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:87:  rawListeners (eventName: 'connectionError'): ((origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError) => void)[]\n./node_modules/undici-types/dispatcher.d.ts:90:  emit (eventName: 'connect', origin: URL, targets: readonly Dispatcher[]): boolean\n./node_modules/undici-types/dispatcher.d.ts:91:  emit (eventName: 'disconnect', origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError): boolean\n./node_modules/undici-types/dispatcher.d.ts:92:  emit (eventName: 'connectionError', origin: URL, targets: readonly Dispatcher[], error: Errors.UndiciError): boolean\n./src/domain/deliverable-integrity.ts:33: * checks the parse, `mcp_servers` against the tools file, `knows_about` targets,\n./src/domain/deliverable-integrity.ts:44:import { resolveDeployTargets } from \"./deploy-targets.ts\";\n./src/domain/deliverable-integrity.ts:54: * decides what may be in it\". `merge.gates` and `deploy.atomaton_runs.targets`\n./src/domain/deliverable-integrity.ts:100:        atomaton_runs: { children: { targets: null, secrets: null, runs_on: null } },\n./src/domain/deliverable-integrity.ts:246:    [\"deploy\", \"atomaton_runs\"],\n./src/domain/deliverable-integrity.ts:271:  // — is ruled out. Asking whether `deploy.atomaton_runs.targets` is a well-formed\n./src/domain/deliverable-integrity.ts:272:  // array of targets is this deliverable validating itself, and the alternative is\n./src/domain/deliverable-integrity.ts:276:  // `checks` and `deploy` carry theirs inside `atomaton_runs` -- the arm that declares\n./src/domain/deliverable-integrity.ts:280:  const deployRuns = arm(config.deploy, \"atomaton_runs\");\n\n[223 or more further lines. Narrow the pattern, set glob, or raise max_matches.]",
+      "tool_call_id": "call_00_m2b08amewrdq4jnhpc7wd24k"
+    },
+    {
+      "role": "tool",
+      "content": "5 file(s), most recently changed first:\n\nsrc/workflows/atomaton-deploy.wac.ts\nsrc/scripts/run_deploy.ts\nsrc/scripts/run_deploy.test.ts\nsrc/domain/deploy-targets.test.ts\nsrc/domain/deploy-targets.ts",
+      "tool_call_id": "call_01_hn8k3cir1bdz79rvlricinet"
+    },
+    {
+      "role": "tool",
+      "content": "No file matches .github/atomaton/**/*.yml under /home/runner/work/atomaton/atomaton.",
+      "tool_call_id": "call_02_lr2b57wypnkc98zxvillsh7t"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_3nbk3sum75a875n6dodrnxq5",
+          "type": "function",
+          "function": {
+            "name": "github__get_branch",
+            "arguments": "{\"branch\": \"atomaton/issue-871\"}"
+          }
+        },
+        {
+          "id": "call_01_u8gu0icecdmblkajwcj7ceaz",
+          "type": "function",
+          "function": {
+            "name": "github__get_branch",
+            "arguments": "{\"branch\": \"atomaton/issue-872\"}"
+          }
+        },
+        {
+          "id": "call_02_0a7x1hisz232n91u0w61rabt",
+          "type": "function",
+          "function": {
+            "name": "github__get_branch",
+            "arguments": "{\"branch\": \"atomaton/issue-873\"}"
+          }
+        },
+        {
+          "id": "call_03_e9blkumxuzfhzyjo3nj2xwc1",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 871}"
+          }
+        },
+        {
+          "id": "call_04_6rs9u4ag9ul0cf4qstvpg3bi",
+          "type": "function",
+          "function": {
+            "name": "github__get_issue_comments",
+            "arguments": "{\"number\": 870}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"branch\":\"atomaton/issue-871\",\"exists\":false}",
+      "tool_call_id": "call_00_3nbk3sum75a875n6dodrnxq5"
+    },
+    {
+      "role": "tool",
+      "content": "{\"branch\":\"atomaton/issue-872\",\"exists\":false}",
+      "tool_call_id": "call_01_u8gu0icecdmblkajwcj7ceaz"
+    },
+    {
+      "role": "tool",
+      "content": "{\"branch\":\"atomaton/issue-873\",\"exists\":false}",
+      "tool_call_id": "call_02_0a7x1hisz232n91u0w61rabt"
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":871,\"title\":\"deploy が同じ形を採る — トリガで分けた arm、branches、エントリごとの secrets と runs_on\",\"state\":\"OPEN\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[]},\"showing\":\"this issue has no comments\",\"comments\":[]}",
+      "tool_call_id": "call_03_e9blkumxuzfhzyjo3nj2xwc1"
+    },
+    {
+      "role": "tool",
+      "content": "{\"issue\":{\"number\":870,\"title\":\"checks の両 arm が一つの「宣言されたジョブ」を使う — PR 側も matrix に\",\"state\":\"CLOSED\",\"total_comments\":0,\"parent\":{\"number\":818,\"title\":\"deploy と checks の宣言を一つの形にする — 契機を書けるように、資格情報をターゲットごとに\",\"state\":\"open\"},\"children\":[],\"pull_requests\":[{\"number\":874,\"title\":\"feat: both check arms are one declared shape, and each check picks its runner\",\"state\":\"merged\",\"merged\":true}]},\"showing\":\"this issue has no comments\",\"comments\":[]}",
+      "tool_call_id": "call_04_6rs9u4ag9ul0cf4qstvpg3bi"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_KYio7Q7F0jhvfi8MNfht9318",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/domain/deploy-targets.ts\"}"
+          }
+        },
+        {
+          "id": "call_01_eakuDQe5xXCvsZVTQXHS5605",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/lib/config.ts\", \"offset\": 180, \"limit\": 140}"
+          }
+        },
+        {
+          "id": "call_02_ITK6gryc71jEFc1yI3ME0631",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 3, \"glob\": \"*.ts\", \"path\": \"src/scripts/run_deploy.ts\", \"pattern\": \"trigger|tag|branch\", \"max_matches\": 40}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/domain/deploy-targets.ts lines 1-221 of 221\n\n1\t/**\n2\t * deploy-targets.ts — what this project deploys, and which event deploys it.\n3\t *\n4\t * A deployment is a name, a trigger and a list of commands. It is configuration\n5\t * rather than a workflow file because an agent can write configuration and\n6\t * cannot write a workflow: GITHUB_TOKEN is refused on `.github/workflows/**` by\n7\t * identity, on every path and every branch, so a project whose CD an agent is\n8\t * expected to author has to express it somewhere else. Everything a deployment\n9\t * actually does — building, uploading, calling a provider's CLI — is a command,\n10\t * and commands are ordinary file content.\n11\t *\n12\t * ## Why the trigger is here and not in the workflow\n13\t *\n14\t * `atomaton-deploy.yml` listens for every tag, and asks this module whether any\n15\t * target wanted that one. It cannot listen selectively, because `on:` takes no\n16\t * expression and so cannot be driven from configuration. Filtering after the\n17\t * f\n\n[atomaton] 5955 characters dropped from the middle; 4000 shown\n\n  const before = problems.length;\n155\t    const commands = readCommands(entry.commands, where, problems);\n156\t    if (problems.length > before) return;\n157\t\n158\t    seen.add(name);\n159\t    targets.push({ name, on: trigger, tags, commands });\n160\t  });\n161\t\n162\t  return problems.length > 0 ? { targets: [], problems } : { targets, problems };\n163\t}\n164\t\n165\t/**\n166\t * Whether a tag pattern claims a tag.\n167\t *\n168\t * Deliberately not a glob library, for the same reason `governedPathsIn` is not:\n169\t * a pattern is a literal or a prefix followed by `*`, because that is what tag\n170\t * schemes look like, and a half-implemented glob would be read as a full one.\n171\t */\n172\texport function tagMatches(pattern: string, tag: string): boolean {\n173\t  return pattern.endsWith(\"*\") ? tag.startsWith(pattern.slice(0, -1)) : tag === pattern;\n174\t}\n175\t\n176\t/**\n177\t * Why `pattern` is not a form `tagMatches` can honour, or \"\" when it is fine.\n178\t *\n179\t * The same check `pathPatternProblem` performs next door, and it was the one\n180\t * field in an otherwise strict validator that had none. `\"v*.*.*\"` — the natural\n181\t * way to write a semver tag — was accepted and matched nothing, so the target\n182\t * validated cleanly and deployed on no tag at all.\n183\t */\n184\texport function tagPatternProblem(pattern: string): string {\n185\t  const body = pattern.endsWith(\"*\") ? pattern.slice(0, -1) : pattern;\n186\t  if (body.includes(\"*\")) {\n187\t    return (\n188\t      `\"${pattern}\" uses a '*' somewhere other than the end, which this matcher cannot honour, ` +\n189\t      'so it would match no tag. Write a literal tag, or a prefix followed by \"*\" — e.g. \"v*\".'\n190\t    );\n191\t  }\n192\t  if (/[?[\\]{}]/.test(body)) {\n193\t    return (\n194\t      `\"${pattern}\" uses a glob character this matcher cannot honour, so it would match no tag. ` +\n195\t      'Write a literal tag, or a prefix followed by \"*\".'\n196\t    );\n197\t  }\n198\t  return \"\";\n199\t}\n200\t\n201\t/** Targets that deploy when a change lands on the default branch. */\n202\texport function targetsForMerge(targets: readonly DeployTarget[]): readonly DeployTarget[] {\n203\t  return targets.filter((target) => target.on === \"merge\");\n204\t}\n205\t\n206\t/** Targets that deploy for a pushed tag, which arrives as `refs/tags/<name>`. */\n207\texport function targetsForTag(targets: readonly DeployTarget[], ref: string): readonly DeployTarget[] {\n208\t  const tag = ref.startsWith(\"refs/tags/\") ? ref.slice(\"refs/tags/\".length) : ref;\n209\t  return targets.filter((target) => target.on === \"tag\" && target.tags.some((p) => tagMatches(p, tag)));\n210\t}\n211\t\n212\t/**\n213\t * The target a dispatch named.\n214\t *\n215\t * A name that matches nothing returns undefined rather than falling back to\n216\t * something: deploying a target the caller did not ask for is worse than not\n217\t * deploying.\n218\t */\n219\texport function targetByName(targets: readonly DeployTarget[], name: string): DeployTarget | undefined {\n220\t  return targets.find((target) => target.name === name);\n221\t}",
+      "tool_call_id": "call_00_KYio7Q7F0jhvfi8MNfht9318"
+    },
+    {
+      "role": "tool",
+      "content": "src/lib/config.ts lines 180-319 of 319\n\n180\t\n181\t// No `getDeclaredSecrets()` here on purpose, though every other setting has a\n182\t// reader in this file.\n183\t//\n184\t// The credential declaration is read from the default branch by\n185\t// `read_secret_names.ts`, which loads that file itself and refuses to guess a\n186\t// path. A convenience wrapper here would be a second route to the same answer,\n187\t// and the next caller would find it first.\n188\t//\n189\t// `configPath()` above now sends every other setting to the default branch too on\n190\t// a runner, which makes the two consistent -- but not interchangeable. That one\n191\t// resolves a path it was handed; this one resolves one from the environment. The\n192\t// separation is what keeps a missing `ATOMATON_MACHINERY_ROOT` from silently\n193\t// downgrading a credential decision to the working tree.\n194\t\n195\t/**\n196\t * The checks whose commands the pull request itself declares.\n197\t *\n198\t * Empty means this project runs nothing through `ato\n\n[atomaton] 2662 characters dropped from the middle; 4000 shown\n\n\t\n255\t/**\n256\t * How many agent handoffs may happen with nobody else commenting.\n257\t *\n258\t * Returned raw for `resolveHandoffLimit` to interpret, rather than defaulted here.\n259\t * The domain module owns what an absent, zero or nonsense value means, and it owns\n260\t * the default that the escalation comment quotes back to a person -- two places\n261\t * deciding that is how the old limit's message came to name a number that was not\n262\t * the limit.\n263\t */\n264\texport function getHandoffLimit(): unknown {\n265\t  return loadConfig().chain?.after_handoffs;\n266\t}\n267\t\n268\t/**\n269\t * How many consecutive runs may change nothing before a person is asked.\n270\t *\n271\t * Raw, like the handoff limit above and for the same reason: `domain/progress.ts`\n272\t * owns what an absent or nonsense value means, and owns the default the escalation\n273\t * comment quotes back.\n274\t */\n275\texport function getNoProgressLimit(): unknown {\n276\t  return loadConfig().chain?.after_runs_without_change;\n277\t}\n278\t\n279\t/**\n280\t * How many times one piece of work may rebuild its environment.\n281\t *\n282\t * Raw, for `resolveReloadLimit` to interpret. The domain module owns what absent,\n283\t * zero and nonsense mean, and it owns the default the refusal message quotes back\n284\t * to the agent -- two places deciding that is how the old handoff limit came to\n285\t * name a number that was not the limit.\n286\t */\n287\texport function getReloadLimit(): unknown {\n288\t  return loadConfig().environment?.max_reloads;\n289\t}\n290\t\n291\t/**\n292\t * The raw `runs_on` a project declared for one of the two jobs that run its own\n293\t * commands, or undefined.\n294\t *\n295\t * Raw for `resolveRunsOn` to interpret, like every other limit and setting here:\n296\t * the domain module owns what a bad value means and owns the default, so one\n297\t * fallback exists rather than two that can disagree.\n298\t */\n299\texport function getRunsOn(): unknown {\n300\t  // Only `deploy` has one. On the checks side the machine moved onto the job that\n301\t  // runs there -- see `domain/declared-jobs.ts` -- because one runner for every check\n302\t  // is what made a macOS test and a Linux lint the same job. `deploy` follows in\n303\t  // #871, and this goes with it.\n304\t  return loadConfig().deploy?.atomaton_runs?.runs_on;\n305\t}\n306\t\n307\t/**\n308\t * The dotted path `getRunsOn` reads, for the messages that name it.\n309\t *\n310\t * Here rather than at the caller. `resolve_runner.ts` built it as `${field}.runs_on`\n311\t * and went on emitting `checks.runs_on` after the key moved under an arm -- so\n312\t * the warning telling an adopter to fix their configuration named a key the validator\n313\t * rejects, and following it failed their pull request. A path assembled where it is\n314\t * used cannot notice that the reader moved; one that sits beside the reader can at\n315\t * least be seen to disagree, and `config-paths.test.ts` holds it to the schema.\n316\t */\n317\texport function runsOnPath(): string {\n318\t  return \"deploy.atomaton_runs.runs_on\";\n319\t}",
+      "tool_call_id": "call_01_eakuDQe5xXCvsZVTQXHS5605"
+    },
+    {
+      "role": "tool",
+      "content": "40 line(s), match and context, under src/scripts/run_deploy.ts:\n\n4- * this run is for, and run their commands.\n5- *\n6- * This is the body of `atomaton-deploy.yml`. Selection happens here rather than in\n7: * the workflow's `on:` because `on:` takes no expression: a tag pattern that an\n8: * agent can edit cannot live there. The workflow listens for every tag and this\n9- * decides whether any target wanted it.\n10- *\n11- * How a run is selected, in order:\n12- *\n13: *   --target NAME    one named target, whatever its trigger. A name that matches\n14- *                    nothing fails, rather than falling back to something the\n15- *                    caller did not ask for.\n16: *   --trigger merge  every `on: merge` target. `dispatchCd` sends this after an\n17- *                    agent's merge, which uses GITHUB_TOKEN and so fires no\n18- *                    `push` for anything to catch.\n19: *   --trigger manual nothing. Someone dispatched by hand without naming a\n20- *                    target, and guessing which one they meant is worse than\n21- *                    telling them nothing happened.\n22: *   a pushed tag     every `on: tag` target whose pattern claims it.\n23: *   a pushed branch  every `on: merge` target. A person's merge does fire `push`,\n24: *                    and the workflow only listens on the default branch, so a\n25: *                    branch ref arriving here means a change landed there. Before\n26- *                    this, `on: merge` fired for an agent's merge and silently\n27- *                    not for a person's.\n28- *\n29: * Matching nothing is a clean exit, not a failure. A repository tags things for\n30- * reasons that have nothing to do with deploying, and a red run for each one\n31- * teaches people to ignore the red.\n32- *\n--\n35- * continuing puts more of the estate in an unknown state rather than less.\n36- *\n37- * Usage:\n38: *   run_deploy.ts --ref refs/tags/v1.0.0 [--trigger merge|manual] [--target production]\n39- */\n40-import { parseArgs } from \"node:util\";\n41-import { targetByName, targetsForMerge, targetsForTag, type DeployTarget } from \"../domain/deploy-targets.ts\";\n--\n43-import { defineScript } from \"./lib/script-ref.ts\";\n44-\n\n[37 or more further lines. Narrow the pattern, set glob, or raise max_matches.]",
+      "tool_call_id": "call_02_ITK6gryc71jEFc1yI3ME0631"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_ZfSW2FX5iE3JZCIrTtdc7410",
+          "type": "function",
+          "function": {
+            "name": "atomaton__launch_sub_agent",
+            "arguments": "{\"tasks\": [{\"issue\": 871, \"agent\": \"engineer\"}]}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "{\"dispatched\":[\"#871→engineer\"],\"failed\":[],\"complete\":true,\"note\":\"Every sub-agent is running. This session ends here, and resumes when all sub-issues are closed.\"}",
+      "tool_call_id": "call_00_ZfSW2FX5iE3JZCIrTtdc7410"
+    }
+  ],
+  "metadata": {
+    "github_context": {
+      "agent": "orchestrator",
+      "event_count": 3,
+      "snapshot_hash": "9e7ff9feb0cbcfb70c15931e80d4dac013d404327ff15787fe534e8fd80596b5",
+      "version": 1
+    }
+  },
+  "atoma_runs": [
+    {
+      "ended": "2026-09-19T18:34:35Z",
+      "ended_because": "completed",
+      "iterations": 7,
+      "messages": 37,
+      "seconds": 89,
+      "started": "2026-09-19T18:33:06Z"
     }
   ]
 }
