@@ -45,23 +45,38 @@ export interface RequestStopArgs {
 
 export const ref = defineScript<RequestStopArgs>(import.meta.url);
 
-/** The notice, as the person who typed `/stop` will read it. */
+/**
+ * The receipt, as the person who typed `/stop` will read it.
+ *
+ * A receipt, and deliberately not a record. The run posts its own result comment
+ * seconds later, and the two used to say the same thing twice and mention the same
+ * person twice. So this says only what is true when it is posted: the command was
+ * received, what became of the comment, and that the stop is not instant. Whether
+ * the run stopped, whether the session survived, and that `/resume` works are the
+ * run's to say — it is the one that does them.
+ *
+ * No mention either. A mention means "your turn", and the person who just typed
+ * `/stop` has taken theirs; the turn comes back when the run reports, and that
+ * comment mentions them. The login is still named, because whose comment was removed
+ * is a fact worth recording — written without the `@`, which is what would turn a
+ * record into a second notification.
+ */
 export function stopRequestedNotice(commenter: string, deleted: boolean, children: number[]): string {
-  const mention = commenter ? `@${commenter} ` : "";
+  const whose = commenter ? `${commenter}'s` : "The";
   const lines = [
     LLM_CONTEXT_TAG.write("exclude"),
     STOP_TAG.write("requested"),
-    `${mention}Atomaton: stop requested.`,
+    "Atomaton: stop requested.",
     "",
     deleted
-      ? "Your `/stop` comment was removed so it does not become part of the agent's context."
-      : "Your `/stop` comment could not be removed, so it may end up in the agent's context.",
+      ? `${whose} \`/stop\` comment was removed so it does not become part of the agent's context.`
+      : `${whose} \`/stop\` comment could not be removed, so it may end up in the agent's context.`,
     "",
     // The lag is real and it is the thing people will misread. A stop is picked up on
     // the next poll and taken at the next turn, so the agent can finish a tool call
     // and start another one after the request. Without this line that reads as the
     // command having done nothing.
-    "The run will stop after its current step, so it may take a minute. Nothing is lost when it does: the session is saved and can be continued.",
+    "The run will stop after its current step, so it may take a minute, and it will report here when it has.",
   ];
   if (children.length > 0) {
     lines.push(

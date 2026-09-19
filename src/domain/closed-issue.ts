@@ -54,43 +54,35 @@ export function recoveryAdvice(state: TargetState, number: number, command: stri
   return `Reopen #${number} and comment \`${command}\` to run it.`;
 }
 
-/**
- * Who to pull in when a person closes an issue that a run is working on.
- *
- * The closer always, because they are the one who just did something whose effect is
- * not what it looks like. The author only when they are a person and not already the
- * closer: most issues in a repository running this template are filed by an agent, and
- * mentioning a bot is noise that trains people to skim these notices.
- */
-export function mentionsForClose(closer: string, author: string, authorIsBot: boolean): string[] {
-  const mentions = [];
-  if (closer) mentions.push(closer);
-  if (author && !authorIsBot && author !== closer) mentions.push(author);
-  return mentions;
-}
-
 function mentionPrefix(logins: readonly string[]): string {
   return logins.length > 0 ? `${logins.map((l) => `@${l}`).join(" ")} ` : "";
 }
 
 /**
- * The notice a person reads after closing an issue a run was working on.
+ * The receipt a person reads after closing an issue a run was working on.
  *
- * It has to say three things, because each of them is something the person has no way
- * to know from what they can see. The run did not stop when they closed it. It is
- * stopping now, but not instantly. And the issue is staying closed — this is the line
- * that separates a stop from a reopen, and leaving it out would have people watching
- * for the issue to come back.
+ * A receipt, and deliberately not a record. Two things speak about one close: this,
+ * from the workflow the close triggered, and the run's own result comment ten to
+ * thirty seconds later. They used to say the same thing twice, mention the same
+ * person twice, and one of them was lying: this claimed "the session is saved" when
+ * the run that saves it had not stopped yet.
+ *
+ * So each says only what it actually knows when it speaks. This one knows the close
+ * happened, that a run holds the issue, and that a stop has been asked for. It does
+ * not know whether the run stops, whether the session survives, or that `/resume`
+ * will work — the run knows those, and says them.
+ *
+ * No mention, for the same reason. A mention means "your turn"; the person who just
+ * closed the issue has taken theirs, and what they have to do now is wait. The turn
+ * comes back to them when the run reports, and that comment mentions them.
  */
-export function stopOnCloseNotice(mentions: readonly string[], number: number): string {
+export function stopOnCloseNotice(number: number): string {
   return [
-    `${mentionPrefix(mentions)}Atomaton: this issue was closed while an agent was working on it, so the run has been asked to stop.`,
+    "Atomaton: this issue was closed while an agent was working on it, so the run has been asked to stop.",
     "",
     "Closing does not stop a run by itself — it kept going until this request reached it. The run stops after its current step, so it may take a minute.",
     "",
-    "Nothing is lost: the session is saved.",
-    "",
-    `#${number} stays closed. To pick the work back up, reopen it and comment \`/resume\`.`,
+    `#${number} stays closed, and the run will report here when it has stopped.`,
   ].join("\n");
 }
 
