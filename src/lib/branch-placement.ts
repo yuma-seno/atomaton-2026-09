@@ -189,7 +189,16 @@ export function branchForCommit(repo: string): string {
   if (issue === undefined) return resolveBranch();
 
   const from = stackedBaseFor(repo, issue);
-  const name = nextBranchName(collectIssueBranches(repo, issue), issue);
+  // Refused rather than guessed. An unread list makes `nextBranchName` answer with the
+  // FIRST name, which is the one most likely to exist already -- and the run then fails
+  // at the push, reporting a non-fast-forward instead of the read that caused it.
+  const listed = collectIssueBranches(repo, issue);
+  if (!listed.known) {
+    throw new Error(
+      `${listed.why}, so a new branch for #${issue} cannot be named without risking one that already exists.`,
+    );
+  }
+  const name = nextBranchName(listed.branches, issue);
   const created = from
     ? gitRun("checkout", "-b", name, `origin/${from}`)
     : gitRun("checkout", "-b", name);
