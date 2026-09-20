@@ -24,13 +24,72 @@ import { gh } from "./gh.ts";
  * a truncated first page would report the tags beyond it as new on the next run.
  */
 export function readTagNames(repo: string): string[] | null {
-  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", ".[].ref");
+  const tags = readTags(repo);
+  return tags === null ? null : tags.map((tag) => tag.name);
+}
+
+/** One tag, and the commit it points at. */
+export interface RepositoryTag {
+  readonly name: string;
+  readonly sha: string;
+}
+
+/**
+ * Every tag with the commit it points at, or null when they could not be read.
+ *
+ * The sha is what decides whether a tag is deployable: a tag is a name for a commit,
+ * and the question every deployment asks is about that commit, not about the name.
+ *
+ * An annotated tag's ref points at the tag OBJECT rather than at the commit, so
+ * `object.sha` is not always a commit sha. `compare` resolves either, which is why
+ * the sha travels raw rather than being dereferenced here — dereferencing would be a
+ * second API call per tag to learn something the caller's one call already handles.
+ */
+export function readTags(repo: string): RepositoryTag[] | null {
+  const { code, stdout } = gh(
+    "api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", '.[] | "\\(.ref) \\(.object.sha)"',
+  );
   if (code) return null;
   return stdout
     .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("refs/tags/"))
-    .map((line) => line.slice("refs/tags/".length));
+    .map((line) => line.trim().split(" "))
+    .filter(([ref, sha]) => ref?.startsWith("refs/tags/") && sha)
+    .map(([ref, sha]) => ({ name: (ref as string).slice("refs/tags/".length), sha: sha as string }));
+}
+
+/**
+ * The commits `after` has that `before` did not, or null when they could not be read.
+ *
+ * A push event carries both ends, so "what arrived with this push" needs no memory of
+ * previous runs — the event is the delta. That is what lets a tag deploy at the
+ * moment a merge makes its commit reviewed, without anything anywhere holding a list
+ * of tags waiting to become eligible.
+ *
+ * An empty `before` — a branch created by this push — has no delta to compute and
+ * answers with nothing rather than with every commit in history.
+ */
+export function commitsAdded(repo: string, before: string, after: string): string[] | null {
+  if (!before || !after || /^0+$/.test(before)) return [];
+  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/compare/${before}...${after}`, "--jq", ".commits[].sha");
+  if (code) return null;
+  return stdout.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+/**
+ * Whether `commit` is contained in `branch` — null when the question could not be
+ * answered.
+ *
+ * `behind` means the head is an ancestor of the base, `identical` that they are the
+ * same commit; both mean the commit is inside the branch. Measured against this
+ * repository: `main...v0.1.157` answers `behind`, and a squash-merged pull request's
+ * own head answers `diverged`, because a squash writes a new commit and leaves the
+ * branch's commits outside.
+ */
+export function isContained(repo: string, branch: string, commit: string): boolean | null {
+  const { code, stdout } = gh("api", `repos/${repo}/compare/${branch}...${commit}`, "--jq", ".status");
+  if (code) return null;
+  const status = stdout.trim();
+  return status === "behind" || status === "identical";
 }
 
 /**

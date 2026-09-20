@@ -285,6 +285,7 @@ deploy:
   on_tag:
     - name: production
       tags: ["v*"]
+      branches: [main]
       secrets: [PROD_TOKEN]
       commands: ["./scripts/deploy.sh prod"]
   on_demand:
@@ -305,14 +306,22 @@ and no combination to remember:
   `*`, so `release/*` covers the lot.
 - `on_tag` ships when a matching tag is pushed. `tags` is required — an entry
   claiming every tag is never what anyone meant — and takes the same patterns.
-- `on_demand` ships only when someone runs the workflow. Dispatching without
-  naming a target runs all of these; naming one runs exactly that, from any of
-  the three lists. That is what makes a rollback worth declaring.
+  It has `branches` too, and that one is the guard: a tag names a **commit**, not
+  a branch, so `branches` says which branch that commit has to be inside.
+- `on_demand` never ships by itself. Run one by name, from the Actions tab or with
+  `gh workflow run atomaton-deploy.yml -f target=rollback` — which works for any
+  entry in any of the three lists. The list exists so a rollback has somewhere
+  honest to live: it answers to no event, and putting it in `on_merge` would run
+  it on every merge.
 
-`branches` exists in `on_merge` and nowhere else, `tags` in `on_tag` and nowhere
-else. A tag pattern on a merge deployment is a deployment that never happens, and
-under one list with an `on:` key that would have been a rule to read after writing
-it; here there is nowhere to write it.
+`tags` exists in `on_tag` and nowhere else. A tag pattern on a merge deployment is
+a deployment that never happens, and under one list with an `on:` key that would
+have been a rule to read after writing it; here there is nowhere to write it.
+
+`branches` means the same thing in both lists that have it: **which branch's
+reviewed content this deployment ships.** `on_merge` ships what landed on that
+branch; `on_tag` ships what a tag points at inside it. The list says which event
+releases it, `branches` says whose content it is, and the two are independent.
 
 A push nothing claimed deploys nothing and stays green, so tagging and pushing
 for other reasons costs you a few seconds and no red run. Schedules are not
@@ -347,8 +356,8 @@ branch a person approved.
 
 **And the branch has to require a pull request.** A branch anyone can push to is
 a deployment anyone can run, with its credentials, on a commit nobody read. So
-before an `on_merge` deployment starts, the branch it named is checked against
-the rulesets in effect on it, and the run is **refused** — not warned — when no
+before a deployment starts, the branch its entry named is checked against the
+rulesets in effect on it, and the run is **refused** — not warned — when no
 ruleset requires a pull request there. The shipped ruleset covers
 `~DEFAULT_BRANCH` and nothing else, so `branches: [develop]` needs one of your
 own covering `develop`.
@@ -356,9 +365,30 @@ own covering `develop`.
 A refusal is also what you get when the rules could not be read at all, and on a
 repository where rulesets are unavailable — a private repository on a free plan.
 "Could not be checked" is not "is protected", and a deployment is not the place
-to guess. `on_tag` and `on_demand` are not checked this way: a tag has no branch
-rules to read, and a dispatch is already someone with write access asking for it
-by hand.
+to guess.
+
+`on_merge` and `on_tag` are both checked this way, because both name a branch.
+`on_demand` is not: it answers to no event, so reaching it already took someone
+with write access naming it by hand.
+
+**A tag is checked twice, and the second one is the point.** Its entry's
+`branches` must require a pull request, *and* the tag's commit must actually be
+inside one of them. Measured: `compare/main...v1.0.0` answers `behind` when the
+commit is in `main` and `diverged` when it is not.
+
+A tag that matches your pattern but sits outside the branch deploys nothing, and
+says so in the log — it is not an error, because tagging something that is not
+ready is an ordinary thing to do. What it is not is silent.
+
+**And a merge deploys the tags it just made reachable.** Tag a commit on a
+branch, merge the branch, and the tag now points inside the protected one though
+no tag was ever pushed. The merge's own event carries both ends of what arrived,
+so that tag deploys at the moment its commit becomes reviewed — with nothing
+anywhere holding a list of tags waiting their turn.
+
+Note that a **squash** merge writes a new commit, so a tag on the branch's own
+commits never becomes reachable that way. Tag what you merged, or merge without
+squashing.
 
 **What commands cannot express**, and where you still need a workflow of your own
 through `deploy.your_workflow`:

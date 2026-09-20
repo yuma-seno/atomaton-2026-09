@@ -102,6 +102,12 @@ const planJob = new DefinedJob<{ jobs: string; tags_before: string }>(
         ATOMATON_DEPLOY_TARGET_INPUT: "${{ inputs.target }}",
         ATOMATON_DEFAULT_BRANCH: "${{ github.event.repository.default_branch }}",
         ATOMATON_REPO: "${{ github.repository }}",
+        // The other end of this push. A tag can become deployable without any event
+        // naming it -- tag a commit on a branch, merge the branch, and the tag now
+        // points inside the protected branch -- and `before...after` is exactly the
+        // commits that arrived, so nothing has to be remembered between runs. Empty
+        // for a dispatch, which added no commits.
+        ATOMATON_PUSH_BEFORE: "${{ github.event.before }}",
         // To read the branch's rules, which is how this job finds out whether the
         // commit being deployed had to pass through a pull request. Nothing declared
         // reaches this job, so there is no credential here to shadow.
@@ -131,6 +137,7 @@ const planJob = new DefinedJob<{ jobs: string; tags_before: string }>(
           trigger: "${ATOMATON_DEPLOY_TRIGGER}",
           target: "${ATOMATON_DEPLOY_TARGET_INPUT}",
           repo: "${ATOMATON_REPO}",
+          before: "${ATOMATON_PUSH_BEFORE}",
         }),
         "",
       ].join("\n"),
@@ -187,7 +194,14 @@ const deployJob = matrixJob(
     },
   },
   [
-    new ActionsCheckoutV4({ name: "Checkout the ref being deployed" }),
+    // Each entry says which tree it operates on, because they can differ within one
+    // run: a merge that makes a tag reachable deploys both that branch's entries and
+    // that tag's, and the tag's commands must see the TAG. Empty means the ref that
+    // started the run, which is what `actions/checkout` does when given no `ref`.
+    new ActionsCheckoutV4({
+      name: "Checkout the tree this deployment ships",
+      with: { ref: "${{ matrix.ref }}" },
+    }),
     new SetupBunAction({ name: "Setup Bun" }),
     environmentSetupStep(),
     runStep,
@@ -251,13 +265,18 @@ export const atomaDeploy = new Workflow("atomaton-deploy", {
     workflow_dispatch: {
       inputs: {
         target: {
-          description: "Deploy this one entry by name. Leave empty to deploy what the trigger selects.",
+          description:
+            "Name of the deployment to run, as written under `deploy` in config.yaml. " +
+            "Leaving it empty deploys nothing.",
           required: false,
           type: "string",
           default: "",
         },
         trigger: {
-          description: "Set to 'merge' by dispatchCd after a pull request lands. Leave as 'demand' by hand.",
+          // Shown to a person, because `workflow_dispatch` shows every input. Its
+          // default is the safe one, so a human who leaves it alone gets what leaving
+          // it alone should mean.
+          description: "Leave this alone. Atomaton sets it when it starts this workflow itself.",
           required: false,
           type: "string",
           default: "demand",

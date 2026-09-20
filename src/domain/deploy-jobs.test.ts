@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   mayDispatchNewTags,
   mergeMightDeploy,
+  needsReachableTags,
   refMatches,
   refPatternProblem,
   resolveDeployJobs,
@@ -18,8 +19,17 @@ function jobsOf(deploy: unknown) {
 }
 
 function request(over: Partial<DeployRequest>): DeployRequest {
-  return { ref: "", defaultBranch: "main", event: "push", trigger: "", target: "", ...over };
+  return { ref: "", defaultBranch: "main", event: "push", trigger: "", target: "", reachableTags: [], ...over };
 }
+
+/** Every entry this selection would deploy, ready or pending containment. */
+const names = (selected: ReturnType<typeof selectDeployJobs>) =>
+  selected === null
+    ? null
+    : [...selected.ready.map((plan) => plan.job.name), ...selected.tagCandidates.map((c) => c.job.name)];
+
+/** The tree each ready deployment operates on. */
+const refs = (selected: ReturnType<typeof selectDeployJobs>) => selected?.ready.map((plan) => plan.ref);
 
 describe("resolveDeployJobs", () => {
   test("an entry keeps its name, commands, secrets and the refs its list owns", () => {
@@ -30,7 +40,8 @@ describe("resolveDeployJobs", () => {
         runsOn: ["ubuntu-latest"],
         commands: ["./ship.sh"],
         secrets: ["PROD_TOKEN"],
-        refs: ["v*"],
+        tags: ["v*"],
+        branches: [],
         trigger: "tag",
       },
     ]);
@@ -53,10 +64,15 @@ describe("resolveDeployJobs", () => {
       expect(problems[0]).toContain("`tags`");
     });
 
-    test("`branches` is not a key an `on_tag` entry has", () => {
-      const { problems } = resolveDeployJobs({ on_tag: [{ ...SHIP, tags: ["v*"], branches: ["main"] }] });
-      expect(problems[0]).toContain("unknown key");
-      expect(problems[0]).toContain("`branches`");
+    /**
+     * `on_tag` has both, and they answer different halves of one question: `tags`
+     * says which tags, `branches` says which branch those tags must point inside.
+     * Without the second a tag deployment would accept a commit from anywhere.
+     */
+    test("`on_tag` owns both `tags` and `branches`", () => {
+      const jobs = jobsOf({ on_tag: [{ ...SHIP, tags: ["v*"], branches: ["main"] }] });
+      expect(jobs[0]?.tags).toEqual(["v*"]);
+      expect(jobs[0]?.branches).toEqual(["main"]);
     });
 
     test("`on_demand` has neither", () => {
@@ -73,7 +89,7 @@ describe("resolveDeployJobs", () => {
 
   /** A merge entry with no branch is the ordinary case: the default branch. */
   test("a merge entry need not say which branches", () => {
-    expect(jobsOf({ on_merge: [SHIP] })[0]?.refs).toEqual([]);
+    expect(jobsOf({ on_merge: [SHIP] })[0]?.branches).toEqual([]);
   });
 
   /**
@@ -138,15 +154,28 @@ describe("selectDeployJobs", () => {
     on_tag: [{ name: "production", tags: ["v*"], commands: ["./prod.sh"] }],
     on_demand: [{ name: "rollback", commands: ["./rollback.sh"] }],
   });
-  const names = (selected: ReturnType<typeof selectDeployJobs>) => selected?.map((job) => job.name);
+  const nothing = { ready: [], tagCandidates: [] };
 
   describe("a pushed ref", () => {
-    test("a tag deploys the entries whose patterns claim it", () => {
-      expect(names(selectDeployJobs(jobs, request({ ref: "refs/tags/v1.0.0" })))).toEqual(["production"]);
+    /**
+     * A candidate rather than a decision: whether the tag's commit is inside the
+     * entry's branches is a fact about history, which the planner asks GitHub.
+     */
+    test("a tag offers the entries whose patterns claim it", () => {
+      const selected = selectDeployJobs(jobs, request({ ref: "refs/tags/v1.0.0" }));
+      expect(names(selected)).toEqual(["production"]);
+      expect(selected?.ready).toEqual([]);
+      expect(selected?.tagCandidates[0]?.tag).toBe("v1.0.0");
+    });
+
+    /** Naming no branches means the default branch here too, resolved for the caller. */
+    test("and says which branches that entry accepts", () => {
+      const selected = selectDeployJobs(jobs, request({ ref: "refs/tags/v1.0.0" }));
+      expect(selected?.tagCandidates[0]?.branches).toEqual(["main"]);
     });
 
     test("a tag nobody asked for deploys nothing, and that is not a failure", () => {
-      expect(selectDeployJobs(jobs, request({ ref: "refs/tags/nightly-1" }))).toEqual([]);
+      expect(selectDeployJobs(jobs, request({ ref: "refs/tags/nightly-1" }))).toEqual(nothing);
     });
 
     /**
@@ -160,12 +189,33 @@ describe("selectDeployJobs", () => {
 
     test("naming no branches means the default branch, and only that one", () => {
       expect(names(selectDeployJobs(jobs, request({ ref: "refs/heads/main" })))).toEqual(["release"]);
-      expect(selectDeployJobs(jobs, request({ ref: "refs/heads/some-feature" }))).toEqual([]);
+      expect(selectDeployJobs(jobs, request({ ref: "refs/heads/some-feature" }))).toEqual(nothing);
     });
 
     /** A repository whose default branch is not `main` deploys from its own. */
     test("the default branch is the repository's, not a guess", () => {
       const req = request({ ref: "refs/heads/trunk", defaultBranch: "trunk" });
+      expect(names(selectDeployJobs(jobs, req))).toEqual(["release"]);
+    });
+
+    /**
+     * A tag can become deployable with no event naming it: tag a commit on a branch,
+     * merge the branch, and the tag now points inside the protected one. The merge's
+     * own push carries the delta, so both arms are decided by one event.
+     */
+    test("a merge also offers the tags it made reachable", () => {
+      const req = request({ ref: "refs/heads/main", reachableTags: ["v1.0.0"] });
+      const selected = selectDeployJobs(jobs, req);
+      expect(refs(selected)).toEqual(["refs/heads/main"]);
+      expect(names(selected)).toEqual(["release", "production"]);
+    });
+
+    /**
+     * And the tag's deployment ships the TAG, not the branch that revealed it —
+     * otherwise the job checks out main and reports the tag's name over it.
+     */
+    test("a reachable tag that no pattern claims is not offered", () => {
+      const req = request({ ref: "refs/heads/main", reachableTags: ["nightly-1"] });
       expect(names(selectDeployJobs(jobs, req))).toEqual(["release"]);
     });
   });
@@ -180,38 +230,84 @@ describe("selectDeployJobs", () => {
     });
 
     test("naming a target deploys exactly that one, from any list", () => {
-      for (const target of ["release", "production", "rollback"]) {
+      for (const target of ["release", "rollback"]) {
         expect(names(selectDeployJobs(jobs, dispatch({ target })))).toEqual([target]);
       }
     });
 
+    /** Named or not, a tag entry still has to answer for where its tag points. */
+    test("naming a tag entry still offers it as a candidate", () => {
+      const req = dispatch({ target: "production", ref: "refs/tags/v1.0.0" });
+      const selected = selectDeployJobs(jobs, req);
+      expect(selected?.ready).toEqual([]);
+      expect(selected?.tagCandidates[0]?.tag).toBe("v1.0.0");
+    });
+
     /**
-     * Null rather than an empty list. Somebody asked for a specific deployment and it
-     * is not there; deploying something else instead is worse than deploying nothing,
-     * and reporting nothing at all hides a typo in a target's name.
+     * Null rather than an empty selection. Somebody asked for a specific deployment
+     * and it is not there; deploying something else instead is worse than deploying
+     * nothing, and reporting nothing at all hides a typo in a target's name.
      */
     test("a target that does not exist is an error, not an empty selection", () => {
       expect(selectDeployJobs(jobs, dispatch({ target: "prodcution" }))).toBeNull();
     });
 
-    /** Naming no target is what `on_demand` means: the whole list, in declared order. */
-    test("naming nothing runs the on_demand list", () => {
-      expect(names(selectDeployJobs(jobs, dispatch({ trigger: "demand" })))).toEqual(["rollback"]);
-      expect(names(selectDeployJobs(jobs, dispatch({})))).toEqual(["rollback"]);
+    /**
+     * `on_demand` entries are reachable only by name. Running every one of them
+     * because a form was left blank is not something anyone asked for, and a rollback
+     * is the usual inhabitant of that list.
+     */
+    test("naming nothing deploys nothing", () => {
+      expect(selectDeployJobs(jobs, dispatch({ trigger: "demand" }))).toEqual(nothing);
+      expect(selectDeployJobs(jobs, dispatch({}))).toEqual(nothing);
     });
 
     /**
      * `dispatch_new_tags.ts` sends this after a deployment created a tag: the tag was
      * made with GITHUB_TOKEN, so no `push` arrived for anything to catch.
      */
-    test("`trigger=tag` selects the tag entries for that tag", () => {
+    test("`trigger=tag` offers the tag entries for that tag", () => {
       const req = dispatch({ trigger: "tag", ref: "refs/tags/v2.0.0" });
       expect(names(selectDeployJobs(jobs, req))).toEqual(["production"]);
     });
 
     test("and matches nothing when no pattern claims the tag", () => {
-      expect(selectDeployJobs(jobs, dispatch({ trigger: "tag", ref: "refs/tags/nightly" }))).toEqual([]);
+      expect(selectDeployJobs(jobs, dispatch({ trigger: "tag", ref: "refs/tags/nightly" }))).toEqual(nothing);
     });
+  });
+});
+
+/**
+ * Asked before the planner spends an API call on a tag listing. A repository that
+ * deploys no tags never pays for a question about them.
+ */
+describe("needsReachableTags", () => {
+  const withTags = jobsOf({
+    on_merge: [{ name: "release", commands: ["a"] }],
+    on_tag: [{ name: "production", tags: ["v*"], commands: ["a"] }],
+  });
+
+  test("a branch push, when a tag entry ships that branch's content", () => {
+    expect(needsReachableTags(withTags, request({ ref: "refs/heads/main" }))).toBe(true);
+  });
+
+  test("not when the tag entry ships another branch's", () => {
+    const elsewhere = jobsOf({ on_tag: [{ name: "p", tags: ["v*"], branches: ["develop"], commands: ["a"] }] });
+    expect(needsReachableTags(elsewhere, request({ ref: "refs/heads/main" }))).toBe(false);
+    expect(needsReachableTags(elsewhere, request({ ref: "refs/heads/develop" }))).toBe(true);
+  });
+
+  test("not for a project that deploys no tags", () => {
+    const merges = jobsOf({ on_merge: [{ name: "release", commands: ["a"] }] });
+    expect(needsReachableTags(merges, request({ ref: "refs/heads/main" }))).toBe(false);
+  });
+
+  /** A tag push names its tag; nothing became reachable that was not already. */
+  test("not for a tag push, and not for a dispatch", () => {
+    expect(needsReachableTags(withTags, request({ ref: "refs/tags/v1.0.0" }))).toBe(false);
+    expect(needsReachableTags(withTags, request({ event: "workflow_dispatch", ref: "refs/heads/main" }))).toBe(
+      false,
+    );
   });
 });
 
@@ -221,7 +317,7 @@ describe("selectDeployJobs", () => {
  */
 describe("mayDispatchNewTags", () => {
   const req = (over: Partial<DeployRequest>): DeployRequest =>
-    ({ ref: "refs/heads/main", defaultBranch: "main", event: "push", trigger: "", target: "", ...over });
+    ({ ref: "refs/heads/main", defaultBranch: "main", event: "push", trigger: "", target: "", reachableTags: [], ...over });
 
   test("a merge run may, because that is where a release tag comes from", () => {
     expect(mayDispatchNewTags(req({}))).toBe(true);
