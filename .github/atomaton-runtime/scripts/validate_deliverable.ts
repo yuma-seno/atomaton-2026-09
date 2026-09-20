@@ -233,12 +233,14 @@ function readPatterns(raw, key, required, where, problems) {
   }
   return patterns;
 }
-function refsFrom(key, required) {
+function refsFrom(keys) {
+  const owned = [...keys.tags ? ["tags"] : [], ...keys.branches ? ["branches"] : []];
   return {
-    keys: [key],
+    keys: owned,
     read: (entry, where, problems) => {
-      const refs = readPatterns(entry[key], key, required, where, problems);
-      return refs === null ? null : { refs };
+      const tags = keys.tags ? readPatterns(entry.tags, "tags", true, where, problems) : [];
+      const branches = keys.branches ? readPatterns(entry.branches, "branches", false, where, problems) : [];
+      return tags === null || branches === null ? null : { tags, branches };
     }
   };
 }
@@ -248,7 +250,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_merge",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("branches", false)
+      extra: refsFrom({ branches: true })
     }
   },
   tag: {
@@ -256,7 +258,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_tag",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("tags", true)
+      extra: refsFrom({ branches: true, tags: true })
     }
   },
   demand: {
@@ -264,7 +266,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_demand",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: { keys: [], read: () => ({ refs: [] }) }
+      extra: { keys: [], read: () => ({ branches: [], tags: [] }) }
     }
   }
 };

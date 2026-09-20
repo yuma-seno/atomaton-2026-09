@@ -217,12 +217,14 @@ function readPatterns(raw, key, required, where, problems) {
   }
   return patterns;
 }
-function refsFrom(key, required) {
+function refsFrom(keys) {
+  const owned = [...keys.tags ? ["tags"] : [], ...keys.branches ? ["branches"] : []];
   return {
-    keys: [key],
+    keys: owned,
     read: (entry, where, problems) => {
-      const refs = readPatterns(entry[key], key, required, where, problems);
-      return refs === null ? null : { refs };
+      const tags = keys.tags ? readPatterns(entry.tags, "tags", true, where, problems) : [];
+      const branches = keys.branches ? readPatterns(entry.branches, "branches", false, where, problems) : [];
+      return tags === null || branches === null ? null : { tags, branches };
     }
   };
 }
@@ -232,7 +234,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_merge",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("branches", false)
+      extra: refsFrom({ branches: true })
     }
   },
   tag: {
@@ -240,7 +242,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_tag",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("tags", true)
+      extra: refsFrom({ branches: true, tags: true })
     }
   },
   demand: {
@@ -248,7 +250,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_demand",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: { keys: [], read: () => ({ refs: [] }) }
+      extra: { keys: [], read: () => ({ branches: [], tags: [] }) }
     }
   }
 };
@@ -285,32 +287,60 @@ function tagOf(ref) {
 function mergeJobsFor(jobs, branch, defaultBranch) {
   if (!branch)
     return [];
-  return jobs.filter((job) => job.trigger === "merge" && (job.refs.length === 0 ? branch === defaultBranch : job.refs.some((pattern) => refMatches(pattern, branch))));
+  return jobs.filter((job) => job.trigger === "merge" && coversBranch(job, branch, defaultBranch));
 }
 function tagJobsFor(jobs, tag) {
   if (!tag)
     return [];
-  return jobs.filter((job) => job.trigger === "tag" && job.refs.some((pattern) => refMatches(pattern, tag)));
+  return jobs.filter((job) => job.trigger === "tag" && job.tags.some((pattern) => refMatches(pattern, tag)));
 }
 function mayDispatchNewTags(request) {
   return !request.ref.startsWith("refs/tags/") && request.trigger !== "tag";
 }
+function needsReachableTags(jobs, request) {
+  if (request.target || request.event !== "push")
+    return false;
+  const branch = branchOf(request.ref);
+  if (!branch)
+    return false;
+  return jobs.some((job) => job.trigger === "tag" && coversBranch(job, branch, request.defaultBranch));
+}
+function coversBranch(job, branch, defaultBranch) {
+  return job.branches.length === 0 ? branch === defaultBranch : job.branches.some((pattern) => refMatches(pattern, branch));
+}
+function branchesOf(job, defaultBranch) {
+  return job.branches.length === 0 ? [defaultBranch] : job.branches;
+}
+function planned(jobs, ref) {
+  return jobs.map((job) => ({ job, ref }));
+}
+function candidatesFor(jobs, tags, defaultBranch) {
+  return tags.flatMap((tag) => tagJobsFor(jobs, tag).map((job) => ({ job, tag, branches: branchesOf(job, defaultBranch) })));
+}
 function selectDeployJobs(jobs, request) {
+  const nothing = { ready: [], tagCandidates: [] };
   if (request.target) {
     const named = jobs.find((job) => job.name === request.target);
-    return named ? [named] : null;
+    if (!named)
+      return null;
+    return named.trigger === "tag" && tagOf(request.ref) ? { ready: [], tagCandidates: candidatesFor([named], [tagOf(request.ref)], request.defaultBranch) } : { ready: planned([named], request.ref), tagCandidates: [] };
   }
-  if (request.event === "push") {
-    const tag = tagOf(request.ref);
-    if (tag)
-      return tagJobsFor(jobs, tag);
-    return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+  const pushedTag = request.event === "push" ? tagOf(request.ref) : "";
+  const dispatchedTag = request.trigger === "tag" ? tagOf(request.ref) : "";
+  const tag = pushedTag || dispatchedTag;
+  if (tag) {
+    return { ready: [], tagCandidates: candidatesFor(jobs, [tag], request.defaultBranch) };
   }
-  if (request.trigger === "merge")
-    return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
-  if (request.trigger === "tag")
-    return tagJobsFor(jobs, tagOf(request.ref));
-  return jobs.filter((job) => job.trigger === "demand");
+  const branch = branchOf(request.ref);
+  if (request.event === "push" || request.trigger === "merge") {
+    if (!branch)
+      return nothing;
+    return {
+      ready: planned(mergeJobsFor(jobs, branch, request.defaultBranch), request.ref),
+      tagCandidates: candidatesFor(jobs, request.reachableTags, request.defaultBranch)
+    };
+  }
+  return nothing;
 }
 
 // src/lib/gh.ts
@@ -432,12 +462,28 @@ function getDeploySection() {
 }
 
 // src/lib/git-tags.ts
-function readTagNames(repo) {
-  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", ".[].ref");
+function readTags(repo) {
+  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", '.[] | "\\(.ref) \\(.object.sha)"');
   if (code)
     return null;
   return stdout.split(`
-`).map((line) => line.trim()).filter((line) => line.startsWith("refs/tags/")).map((line) => line.slice("refs/tags/".length));
+`).map((line) => line.trim().split(" ")).filter(([ref, sha]) => ref?.startsWith("refs/tags/") && sha).map(([ref, sha]) => ({ name: ref.slice("refs/tags/".length), sha }));
+}
+function commitsAdded(repo, before, after) {
+  if (!before || !after || /^0+$/.test(before))
+    return [];
+  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/compare/${before}...${after}`, "--jq", ".commits[].sha");
+  if (code)
+    return null;
+  return stdout.split(`
+`).map((line) => line.trim()).filter(Boolean);
+}
+function isContained(repo, branch, commit) {
+  const { code, stdout } = gh("api", `repos/${repo}/compare/${branch}...${commit}`, "--jq", ".status");
+  if (code)
+    return null;
+  const status = stdout.trim();
+  return status === "behind" || status === "identical";
 }
 
 // src/scripts/lib/cli.ts
@@ -470,12 +516,16 @@ function splitFlag(token) {
 
 // src/scripts/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
+function partsOf(entry) {
+  return "job" in entry ? entry : { job: entry, ref: "" };
+}
 function publishMatrix(jobs, options) {
-  const include = jobs.map((job) => ({
+  const include = jobs.map(partsOf).map(({ job, ref }) => ({
     name: job.name,
     runs_on: runsOnOutput(job.runsOn),
     commands: job.commands,
-    secrets: job.secrets
+    secrets: job.secrets,
+    ref
   }));
   const output = process.env.GITHUB_OUTPUT;
   const line = `jobs=${JSON.stringify(include)}
@@ -500,12 +550,30 @@ function defineScript(importMetaUrl) {
 
 // src/scripts/plan_deploy.ts
 var ref = defineScript(import.meta.url);
-function branchBeingDeployed(request) {
-  if (request.ref.startsWith("refs/tags/"))
-    return "";
-  if (request.event !== "push" && request.trigger !== "merge")
-    return "";
-  return request.ref.startsWith("refs/heads/") ? request.ref.slice("refs/heads/".length) : "";
+function branchesToVerify(selected, request) {
+  if (request.target)
+    return [];
+  const branches = new Set;
+  for (const { job } of selected) {
+    if (job.trigger === "demand")
+      continue;
+    for (const branch of job.branches.length === 0 ? [request.defaultBranch] : job.branches) {
+      if (branch)
+        branches.add(branch);
+    }
+  }
+  return [...branches];
+}
+function reachableTags(repo, before, ref, tags) {
+  if (tags.length === 0)
+    return [];
+  const added = commitsAdded(repo, before.trim(), ref);
+  if (added === null) {
+    console.error("::error::Could not read which commits arrived with this push, so a tag it made reachable " + "would not be deployed. Refused rather than skipped.");
+    process.exit(1);
+  }
+  const arrived = new Set(added);
+  return tags.filter((tag) => arrived.has(tag.sha)).map((tag) => tag.name);
 }
 function branchRefusal(repo, branch) {
   if (!branch)
@@ -515,33 +583,52 @@ function branchRefusal(repo, branch) {
   }
   return deploymentRefusal(branch, readBranchRules(repo, branch));
 }
-function publishTagsBefore(repo, jobs, selected, request) {
+function publishTagsBefore(jobs, selected, request, tagsNow) {
   const watching = selected.length > 0 && jobs.some((job) => job.trigger === "tag") && mayDispatchNewTags(request);
   if (!watching)
     return;
-  const tags = repo ? readTagNames(repo) : null;
-  if (tags === null) {
-    console.error("::error::The repository's tags could not be read, so a tag these deployments create would " + "never be deployed. `on_tag` is declared, so this is refused rather than skipped.");
-    process.exit(1);
-  }
+  const names = tagsNow().map((tag) => tag.name);
   const output = process.env.GITHUB_OUTPUT;
-  const line = `tags_before=${JSON.stringify(tags)}
+  const line = `tags_before=${JSON.stringify(names)}
 `;
   if (output)
     appendFileSync2(output, line);
   else
     process.stdout.write(line);
-  console.error(`Watching for tags these deployments add; ${tags.length} exist now.`);
+  console.error(`Watching for tags these deployments add; ${names.length} exist now.`);
+}
+function shaLookup(tags) {
+  const byName = new Map(tags.map((tag) => [tag.name, tag.sha]));
+  return (tag) => byName.get(tag) ?? tag;
+}
+function keepTagsInsideTheirBranches(repo, candidates, tagSha) {
+  const answers = new Map;
+  const contained = (branch, tag) => {
+    const key = `${branch}\x00${tag}`;
+    const known = answers.get(key);
+    if (known !== undefined)
+      return known;
+    const answer = isContained(repo, branch, tagSha(tag));
+    if (answer === null) {
+      console.error(`::error::Could not determine whether '${tag}' is on '${branch}', so this cannot tell ` + "whether the commit it points at was ever reviewed. Refused rather than assumed.");
+      process.exit(1);
+    }
+    answers.set(key, answer);
+    return answer;
+  };
+  const kept = [];
+  for (const candidate of candidates) {
+    const branch = candidate.branches.find((name) => contained(name, candidate.tag));
+    if (!branch) {
+      console.error(`'${candidate.tag}' matches \`${candidate.job.name}\`, but is not on ` + `${candidate.branches.map((name) => `'${name}'`).join(" or ")}; not deploying it.`);
+      continue;
+    }
+    kept.push({ job: candidate.job, ref: `refs/tags/${candidate.tag}` });
+  }
+  return kept;
 }
 function main() {
-  const values = parseAcrossReleases(["ref", "default-branch", "event", "trigger", "target", "repo"], Bun.argv.slice(2));
-  const request = {
-    ref: values.ref ?? "",
-    defaultBranch: (values["default-branch"] ?? "").trim(),
-    event: (values.event ?? "").trim(),
-    trigger: (values.trigger ?? "").trim(),
-    target: (values.target ?? "").trim()
-  };
+  const values = parseAcrossReleases(["ref", "default-branch", "event", "trigger", "target", "repo", "before"], Bun.argv.slice(2));
   const repo = (values.repo ?? "").trim();
   const { jobs, problems } = resolveDeployJobs(getDeploySection());
   if (problems.length > 0) {
@@ -550,22 +637,47 @@ function main() {
     console.error("::error::`deploy` could not be read, so nothing was deployed.");
     process.exit(1);
   }
-  const selected = selectDeployJobs(jobs, request);
-  if (selected === null) {
+  const base = {
+    ref: values.ref ?? "",
+    defaultBranch: (values["default-branch"] ?? "").trim(),
+    event: (values.event ?? "").trim(),
+    trigger: (values.trigger ?? "").trim(),
+    target: (values.target ?? "").trim()
+  };
+  let cached;
+  const tagsNow = () => {
+    if (cached === undefined)
+      cached = repo ? readTags(repo) : null;
+    if (cached === null) {
+      console.error("::error::The repository's tags could not be read, so a tag that should deploy would not. " + "A tag deployment is declared, so this is refused rather than skipped.");
+      process.exit(1);
+    }
+    return cached;
+  };
+  const tags = needsReachableTags(jobs, { ...base, reachableTags: [] }) ? tagsNow() : [];
+  const request = { ...base, reachableTags: reachableTags(repo, values.before ?? "", base.ref, tags) };
+  const selection = selectDeployJobs(jobs, request);
+  if (selection === null) {
     const known = jobs.map((job) => job.name).join(", ") || "none are configured";
     console.error(`::error::No deployment named '${request.target}'. Configured: ${known}.`);
     process.exit(1);
   }
+  const selected = selection.tagCandidates.length === 0 ? selection.ready : [
+    ...selection.ready,
+    ...keepTagsInsideTheirBranches(repo, selection.tagCandidates, shaLookup(tagsNow()))
+  ];
   if (selected.length > 0) {
-    const refusal = branchRefusal(repo, branchBeingDeployed(request));
-    if (refusal) {
-      console.error(`::error::${refusal}`);
-      console.error(`::error::Refused to deploy: ${selected.map((job) => job.name).join(", ")}.`);
-      process.exit(1);
+    for (const branch of branchesToVerify(selected, request)) {
+      const refusal = branchRefusal(repo, branch);
+      if (refusal) {
+        console.error(`::error::${refusal}`);
+        console.error(`::error::Refused to deploy: ${selected.map((plan) => plan.job.name).join(", ")}.`);
+        process.exit(1);
+      }
     }
   }
   publishMatrix(selected, { what: "deployment" });
-  publishTagsBefore(repo, jobs, selected, request);
+  publishTagsBefore(jobs, selected, request, tagsNow);
 }
 if (import.meta.main)
   main();

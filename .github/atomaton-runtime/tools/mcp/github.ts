@@ -18998,12 +18998,14 @@ function readPatterns2(raw, key, required, where, problems) {
   }
   return patterns;
 }
-function refsFrom(key, required) {
+function refsFrom(keys) {
+  const owned = [...keys.tags ? ["tags"] : [], ...keys.branches ? ["branches"] : []];
   return {
-    keys: [key],
+    keys: owned,
     read: (entry, where, problems) => {
-      const refs = readPatterns2(entry[key], key, required, where, problems);
-      return refs === null ? null : { refs };
+      const tags = keys.tags ? readPatterns2(entry.tags, "tags", true, where, problems) : [];
+      const branches = keys.branches ? readPatterns2(entry.branches, "branches", false, where, problems) : [];
+      return tags === null || branches === null ? null : { tags, branches };
     }
   };
 }
@@ -19013,7 +19015,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_merge",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("branches", false)
+      extra: refsFrom({ branches: true })
     }
   },
   tag: {
@@ -19021,7 +19023,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_tag",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("tags", true)
+      extra: refsFrom({ branches: true, tags: true })
     }
   },
   demand: {
@@ -19029,7 +19031,7 @@ var DEPLOY_ARMS = {
     rules: {
       where: "deploy.on_demand",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: { keys: [], read: () => ({ refs: [] }) }
+      extra: { keys: [], read: () => ({ branches: [], tags: [] }) }
     }
   }
 };
@@ -19058,7 +19060,7 @@ function resolveDeployJobs(deploy) {
   return problems.length > 0 ? { jobs: [], problems } : { jobs, problems };
 }
 function mergeMightDeploy(jobs, branch) {
-  return jobs.some((job) => job.trigger === "merge" && (job.refs.length === 0 || !branch || job.refs.some((pattern) => refMatches(pattern, branch))));
+  return jobs.some((job) => job.trigger === "merge" && (job.branches.length === 0 || !branch || job.branches.some((pattern) => refMatches(pattern, branch))));
 }
 
 // src/domain/shipped-workflows.ts

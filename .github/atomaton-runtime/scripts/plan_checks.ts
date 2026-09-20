@@ -273,12 +273,16 @@ function splitFlag(token) {
 
 // src/scripts/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
+function partsOf(entry) {
+  return "job" in entry ? entry : { job: entry, ref: "" };
+}
 function publishMatrix(jobs, options) {
-  const include = jobs.map((job) => ({
+  const include = jobs.map(partsOf).map(({ job, ref }) => ({
     name: job.name,
     runs_on: runsOnOutput(job.runsOn),
     commands: job.commands,
-    secrets: job.secrets
+    secrets: job.secrets,
+    ref
   }));
   const output = process.env.GITHUB_OUTPUT;
   const line = `jobs=${JSON.stringify(include)}
