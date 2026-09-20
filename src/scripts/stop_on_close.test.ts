@@ -6,38 +6,50 @@ import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
  * Closing ends a line of work, not one node. What these assert is the reach: the right
  * closes stop and close everything under them, and the wrong ones touch nothing.
  *
- * Every list rule names the tag it is searching for, and that is not decoration. The
+ * The pull request rule names the tag it searches for, and that is not decoration. The
  * fake `gh` matches a rule when each string appears somewhere in the argv, and the
- * pull request search carries `atomaton:parent-issue=` — which contains "issue". A rule
- * of `["issue", "list"]` therefore swallows the `gh pr list` call as well, and the pull
- * request half of the tree comes back empty while every assertion about it still reads
- * as if it had been looked for. Two tests passed that way before this comment existed.
+ * pull request search carries `atomaton:parent-issue=` — which contains "issue". A bare
+ * `["issue", "list"]` rule therefore swallowed the `gh pr list` call as well, and the
+ * pull request half of the tree came back empty while every assertion about it still
+ * read as if it had been looked for. Two tests passed that way before this was written.
  */
 describe("stop_on_close.ts", () => {
   const RUNNING_ROOT = JSON.stringify({ state: "open", labels: [{ name: "atomaton/in-progress" }] });
   const CLOSED_ARGS = ["--number", "803", "--closer", "octocat", "--closer-type", "User"];
 
   /**
-   * The tree asks GitHub for its own sub-issue links as well as searching for the tag,
-   * because the tag only exists where an agent has been. These fixtures are about the
-   * tagged half, so the native half answers empty -- described rather than left
-   * unmatched, which the fake reports as a failure and the walk reports as a problem.
+   * The sub-issues under a node, as GitHub's own links report them.
+   *
+   * They used to come from an `atomaton:parent=N in:body` search, and these fixtures
+   * were about that half with the native half answering empty. The tag is gone and
+   * the link is the record — see `lib/parent-issue.ts`. Pull requests are still found
+   * by their own tag, because GitHub does not keep its PR-to-issue link in this
+   * design.
    */
-  const NO_NATIVE_LINKS = {
+  const subIssues = (...children: { number: number; running?: boolean; state?: string }[]) => ({
     match: ["api", "graphql"],
     stdout: JSON.stringify({
       data: {
         repository: {
-          issue: {
+          issueOrPullRequest: {
+            __typename: "Issue",
             parent: null,
-            subIssues: { nodes: [] },
+            subIssues: {
+              nodes: children.map((child) => ({
+                number: child.number,
+                title: `#${child.number}`,
+                state: child.state ?? "OPEN",
+                labels: { nodes: child.running ? [{ name: "atomaton/in-progress" }] : [] },
+              })),
+            },
             closedByPullRequestsReferences: { nodes: [] },
             timelineItems: { nodes: [] },
           },
         },
       },
     }),
-  };
+  });
+  const NO_NATIVE_LINKS = subIssues();
 
   function run(args: string[], rules: { match: string[]; stdout?: string; code?: number }[]) {
     const configDir = makeConfigDir({});
@@ -55,7 +67,6 @@ describe("stop_on_close.ts", () => {
   test("asks the run to stop, and says so where the run is looking", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list", "parent="], stdout: "[]" },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
       NO_NATIVE_LINKS,
       { match: ["issue", "comment"] },
@@ -90,14 +101,8 @@ describe("stop_on_close.ts", () => {
   test("closes the work under an issue even when nothing was running on it", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
-      {
-        match: ["issue", "list", "parent="],
-        stdout: JSON.stringify([
-          { number: 807, body: "<!-- atomaton:parent=803 -->", state: "OPEN", labels: [] },
-        ]),
-      },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
-      NO_NATIVE_LINKS,
+      subIssues({ number: 807 }),
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -108,7 +113,6 @@ describe("stop_on_close.ts", () => {
   test("nothing running and nothing open under it is nothing to do", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: JSON.stringify({ state: "closed", labels: [] }) },
-      { match: ["issue", "list", "parent="], stdout: "[]" },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
       NO_NATIVE_LINKS,
     ]);
@@ -136,19 +140,8 @@ describe("stop_on_close.ts", () => {
   test("a running sub-issue is stopped and told why", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      {
-        match: ["issue", "list", "parent="],
-        stdout: JSON.stringify([
-          {
-            number: 807,
-            body: "<!-- atomaton:parent=803 -->",
-            state: "OPEN",
-            labels: [{ name: "atomaton/in-progress" }],
-          },
-        ]),
-      },
       { match: ["pr", "list", "parent-issue="], stdout: "[]" },
-      NO_NATIVE_LINKS,
+      subIssues({ number: 807, running: true }),
       { match: ["issue", "comment"] },
       { match: ["issue", "close"] },
     ]);
@@ -165,7 +158,6 @@ describe("stop_on_close.ts", () => {
   test("a merged pull request under the issue is left alone", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list", "parent="], stdout: "[]" },
       {
         match: ["pr", "list", "parent-issue="],
         stdout: JSON.stringify([
@@ -183,7 +175,6 @@ describe("stop_on_close.ts", () => {
   test("an open pull request under the issue is closed with it", () => {
     const r = run(CLOSED_ARGS, [
       { match: ["api", "issues/803"], stdout: RUNNING_ROOT },
-      { match: ["issue", "list", "parent="], stdout: "[]" },
       {
         match: ["pr", "list", "parent-issue="],
         stdout: JSON.stringify([

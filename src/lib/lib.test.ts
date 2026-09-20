@@ -37,52 +37,83 @@ function makeShim(code: string): { file: string; dir: string } {
   return { file, dir };
 }
 
+/**
+ * The siblings come from GitHub's own sub-issue links now, with their labels in the
+ * same request — the `atomaton:parent=N in:body` search is gone, along with the tag
+ * it read. See `lib/parent-issue.ts`.
+ */
 describe("sibling-check.ts countOpenSiblings", () => {
-  test("counts open siblings via gh issue list", () => {
+  const LAUNCHED = ["atomaton/sub-issue", "atomaton/launched"];
+  /** One `subIssues` node, as the GraphQL reader asks for it. */
+  const child = (number: number, state: string, labels: string[] = LAUNCHED) => ({
+    number,
+    title: `#${number}`,
+    state,
+    labels: { nodes: labels.map((name) => ({ name })) },
+  });
+  const links = (...children: ReturnType<typeof child>[]): FakeGhRule => ({
+    match: ["graphql"],
+    stdout: JSON.stringify({
+      data: {
+        repository: {
+          issueOrPullRequest: { __typename: "Issue", subIssues: { nodes: children } },
+        },
+      },
+    }),
+  });
+
+  function count(options: string, rule: FakeGhRule): string {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
       import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
-      console.log(countOpenSiblings({ repo: "owner/repo", parent: 5 }));
+      console.log(countOpenSiblings(${options}));
     `);
     try {
-      const r = runWithFakeGh(file, [], {
-        cwd: configDir,
-        rules: [{ match: ["issue", "list"], stdout: JSON.stringify([{ number: 10 }, { number: 11 }]) }],
-      });
-      expect(r.stdout.trim()).toBe("2");
+      return runWithFakeGh(file, [], { cwd: configDir, rules: [rule] }).stdout.trim();
     } finally {
       rmSync(configDir, { recursive: true, force: true });
       rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  test("counts the open, launched sub-issues", () => {
+    expect(count(`{ repo: "owner/repo", parent: 5 }`, links(child(10, "OPEN"), child(11, "OPEN")))).toBe("2");
   });
 
   test("prints 0 when no siblings are open", () => {
+    expect(count(`{ repo: "owner/repo", parent: 5 }`, links(child(10, "CLOSED"), child(11, "CLOSED")))).toBe("0");
+  });
+
+  /**
+   * The narrowness is deliberate and predates this change: a sub-issue nobody has
+   * dispatched yet -- a later phase in a dependency-ordered plan -- must not block the
+   * orchestrator, or the count never reaches zero.
+   */
+  test("a sub-issue that was never launched does not block the count", () => {
+    expect(count(`{ repo: "owner/repo", parent: 5 }`, links(child(10, "OPEN", ["atomaton/sub-issue"])))).toBe("0");
+  });
+
+  test("exclude drops a specific issue number regardless of its live open state", () => {
+    expect(count(`{ repo: "owner/repo", parent: 5, exclude: 10 }`, links(child(10, "OPEN"), child(11, "OPEN")))).toBe("1");
+  });
+
+  /**
+   * This number decides whether the orchestrator is re-invoked. A list nobody could
+   * read counted as zero would dispatch it while its children are still working.
+   */
+  test("links that could not be read throw rather than counting zero", () => {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
       import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings({ repo: "owner/repo", parent: 5 }));
     `);
     try {
-      const r = runWithFakeGh(file, [], { cwd: configDir, rules: [{ match: ["issue", "list"], stdout: "[]" }] });
-      expect(r.stdout.trim()).toBe("0");
-    } finally {
-      rmSync(configDir, { recursive: true, force: true });
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  test("--exclude drops a specific issue number regardless of its live open state", () => {
-    const configDir = makeConfigDir({});
-    const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
-      console.log(countOpenSiblings({ repo: "owner/repo", parent: 5, exclude: 10 }));
-    `);
-    try {
       const r = runWithFakeGh(file, [], {
         cwd: configDir,
-        rules: [{ match: ["issue", "list"], stdout: JSON.stringify([{ number: 10 }, { number: 11 }]) }],
+        rules: [{ match: ["graphql"], code: 1, stdout: "boom" }],
       });
-      expect(r.stdout.trim()).toBe("1");
+      expect(r.status).not.toBe(0);
+      expect(r.stdout.trim()).toBe("");
     } finally {
       rmSync(configDir, { recursive: true, force: true });
       rmSync(dir, { recursive: true, force: true });
@@ -155,20 +186,23 @@ describe("agent-name.ts", () => {
 
 describe("tags.ts", () => {
   // Pure, no `gh` involved -- safe to test in-process directly.
-  test("PARENT_TAG round-trips with the canonical numeric format", async () => {
-    const { PARENT_TAG } = await import("./tags.ts");
-    const written = PARENT_TAG.write(42);
-    expect(written).toBe("<!-- atomaton:parent=42 -->");
-    expect(PARENT_TAG.read(`intro\n${written}\nmore text`)).toBe(42);
-    expect(PARENT_TAG.read("<!-- atomaton:parent=#42 -->")).toBeUndefined();
+  test("PARENT_ISSUE_TAG round-trips with the canonical numeric format", async () => {
+    const { PARENT_ISSUE_TAG } = await import("./tags.ts");
+    const written = PARENT_ISSUE_TAG.write(42);
+    expect(written).toBe("<!-- atomaton:parent-issue=42 -->");
+    expect(PARENT_ISSUE_TAG.read(`intro\n${written}\nmore text`)).toBe(42);
+    expect(PARENT_ISSUE_TAG.read("<!-- atomaton:parent-issue=#42 -->")).toBeUndefined();
   });
 
-  test("PARENT_ISSUE_TAG and readAnyParentTag", async () => {
-    const { PARENT_ISSUE_TAG, readAnyParentTag } = await import("./tags.ts");
-    expect(PARENT_ISSUE_TAG.write(7)).toBe("<!-- atomaton:parent-issue=7 -->");
-    expect(readAnyParentTag("<!-- atomaton:parent-issue=7 -->")).toBe(7);
-    expect(readAnyParentTag("<!-- atomaton:parent=8 -->")).toBe(8);
-    expect(readAnyParentTag("no tags here")).toBeUndefined();
+  /**
+   * The issue-to-issue half of this edge is not a tag any more — GitHub's own
+   * sub-issue link is, and `lib/parent-issue.ts` is the reader. `readAnyParentTag`
+   * went with it: with one tag left there is nothing to choose between.
+   */
+  test("the issue-to-issue parent tag is gone", async () => {
+    const tags = (await import("./tags.ts")) as Record<string, unknown>;
+    expect(tags.PARENT_TAG).toBeUndefined();
+    expect(tags.readAnyParentTag).toBeUndefined();
   });
 
   test("AGGREGATED_TAG idempotency marker", async () => {

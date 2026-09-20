@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PARENT_TAG } from "./tags.ts";
+import { PARENT_ISSUE_TAG } from "./tags.ts";
 import { withoutBookkeeping, type McpDispatch } from "./mcp-tool.ts";
 
 /**
@@ -12,7 +12,7 @@ import { withoutBookkeeping, type McpDispatch } from "./mcp-tool.ts";
  * tag came back as a diff that was not the diff.
  */
 describe("withoutBookkeeping", () => {
-  const body = `${PARENT_TAG.write(42)}\nSome prose.`;
+  const body = `${PARENT_ISSUE_TAG.write(42)}\nSome prose.`;
   const echo: McpDispatch = async (name) => ({ text: name === "get_pr_diff" ? `+  ${body}` : body });
 
   test("a named tool's result loses the markers", async () => {
@@ -28,7 +28,7 @@ describe("withoutBookkeeping", () => {
   test("a diff is shown as it came back, tag-shaped lines included", async () => {
     const dispatch = withoutBookkeeping(echo, ["get_pr"]);
     const diff = (await dispatch("get_pr_diff", {})).text;
-    expect(diff).toContain("atomaton:parent=42");
+    expect(diff).toContain("atomaton:parent-issue=42");
   });
 
   /**
@@ -38,7 +38,7 @@ describe("withoutBookkeeping", () => {
    */
   test("a tool nobody named keeps what it returned", async () => {
     const dispatch = withoutBookkeeping(echo, []);
-    expect((await dispatch("get_pr", {})).text).toContain("atomaton:parent=42");
+    expect((await dispatch("get_pr", {})).text).toContain("atomaton:parent-issue=42");
   });
 
   test("everything else about the result is passed through", async () => {

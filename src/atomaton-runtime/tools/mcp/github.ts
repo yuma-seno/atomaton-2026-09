@@ -27,7 +27,7 @@ import { logOp } from "../../../lib/ops-log.ts";
 import { report } from "../../../lib/mcp-report.ts";
 import { knownParticipants } from "../../../lib/participants.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/mention.ts";
-import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG, PARENT_TAG } from "../../../lib/tags.ts";
+import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG } from "../../../lib/tags.ts";
 import { closingKeywordRefusal, closingReferences } from "../../../domain/issue-links.ts";
 import type { GhIssueAuthor } from "../../../lib/types.ts";
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
@@ -37,6 +37,7 @@ import { isAttended, unattendedNotice } from "../../../domain/unattended-pull-re
 import { branchForCommit, resolveBranch, stackedPrBase } from "../../../lib/branch-placement.ts";
 import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../lib/dispatch-targets.ts";
 import { issueLinks } from "../../../lib/issue-links.ts";
+import type { LinkedChild, LinkedIssue } from "../../../domain/issue-links.ts";
 import { decideMergeReadiness, formatBlockers } from "../../../domain/merge-readiness.ts";
 import { gatherMergeSignals } from "../../../lib/merge-signals.ts";
 import { selectCommentRange } from "../../../domain/comment-range.ts";
@@ -310,7 +311,6 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
 
   body = notifyTagPrefix(body, "Issue") + withCheckedMentions(body);
   if (sub) {
-    if (parentNum) body = `${PARENT_TAG.write(Number(parentNum))}\n${body}`;
     const subIssueLabel = getLabel("sub_issue");
     const ensured = gh(
       "label", "create", subIssueLabel,
@@ -332,6 +332,16 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
   const num = Number(stdout.trim().split("/").pop());
   if (!Number.isFinite(num)) mcpFail(`gh issue create: unexpected output: ${stdout.slice(0, 300)}`);
 
+  // The link IS the record now, so a failure here is a failure of `create_issue`.
+  //
+  // This used to be best-effort, logged without a severity word, because the
+  // `atomaton:parent` tag in the body was what aggregation read and the link was "the
+  // cosmetic half". The tag is gone — it recorded the parent at creation and nothing
+  // ever rewrote it, so a person re-parenting a sub-issue in the web UI left two
+  // answers in the system. See `lib/parent-issue.ts`.
+  //
+  // The issue exists by this point and cannot be un-created, so the failure names it:
+  // an agent that is told only "create_issue failed" would file it again.
   if (sub && parentNum) {
     try {
       const pid = await resolveIssueId(Number(parentNum));
@@ -342,24 +352,23 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
       );
       log(`Linked sub-issue #${num} to parent #${parentNum} via official sub-issues API`);
     } catch (e) {
-      // Not a report: the `atomaton:parent` tag is what aggregation reads and it was
-      // written; this call is the cosmetic half, as the comment below says. No
-      // severity word, for the reason `search.ts` gives at its own remaining log
-      // line.
-      log(`the native sub-issue link did not take for #${num} → #${parentNum}: ${e}`);
+      mcpFail(
+        `Issue #${num} was created, but could not be linked under #${parentNum} as a sub-issue: ${e}. ` +
+          `Nothing records that edge except the link, so #${num} is currently a root issue and no aggregation ` +
+          `will pick it up. Do not create it again — add it under #${parentNum} in the web UI, or retry the link.`,
+      );
     }
   }
 
   logOp("create_issue", { number: num, title, sub_issue: sub });
-  // `parent` is returned because asking for a sub-issue does not guarantee
-  // getting one. With `sub_issue: true` and no `ISSUE_NUMBER` -- a run that is
-  // not working on an issue -- the label goes on and no `atomaton:parent` tag is
-  // written, producing an issue that looks like a child and that no aggregation
-  // will ever pick up. `{number, url}` reported that as plain success.
+  // `parent` is returned because asking for a sub-issue does not guarantee getting
+  // one. With `sub_issue: true` and no `ISSUE_NUMBER` -- a run that is not working on
+  // an issue -- the label goes on and there is no parent to link it under, producing
+  // an issue that looks like a child and that no aggregation will ever pick up.
+  // `{number, url}` reported that as plain success.
   //
-  // The tag is what matters, not the native link: `lib/aggregation.ts` counts
-  // siblings with `atomaton:parent=N in:body`, and the `addSubIssue` call above is
-  // best-effort precisely because it is the cosmetic half.
+  // The other way of ending up here is gone: a failed link is now a failed call, so
+  // reaching this line with `parent` set means the link exists.
   const parent = sub && parentNum ? Number(parentNum) : null;
   return JSON.stringify({
     number: num,
@@ -374,6 +383,19 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
         }
       : {}),
   });
+}
+
+/**
+ * A sub-issue as a reader wants it: without the labels the gates judge it by.
+ *
+ * `issueLinks` fetches those in the same request, because `sibling-check.ts` and the
+ * work tree need them and a second read per child would be the alternative. Nothing a
+ * model is shown asks "which labels does each child carry", so they are dropped here
+ * rather than not fetched — the cost of carrying them is one array per child in a
+ * response, and the cost of not fetching them is a round trip each.
+ */
+function shownChildren(children: readonly LinkedChild[]): LinkedIssue[] {
+  return children.map(({ labels: _judgedBy, ...shown }) => shown);
 }
 
 /**
@@ -401,7 +423,7 @@ function getIssue(a: z.infer<typeof ISSUE_CONTEXT_NUMBER_ARG_SCHEMA>): string {
     body: typeof body === "string" ? capText(body).text : body,
     total_comments: comments?.length ?? 0,
     parent: links.parent,
-    children: links.children,
+    children: shownChildren(links.children),
     pull_requests: links.pullRequests,
     // Empty because there are none, or empty because nobody could look? The
     // three fields above cannot say, and the difference decides whether
@@ -469,7 +491,7 @@ function getIssueComments(a: z.infer<typeof ISSUE_COMMENTS_SCHEMA>): string {
       // leave out and nothing to put back. What it costs to omit is the question a
       // reviewer asks most often of a parent — "is anything under this still open"
       // — answered by the comments alone, which cannot answer it.
-      children: links.children,
+      children: shownChildren(links.children),
       pull_requests: links.pullRequests,
       // See `get_issue`: an unread link list is not an empty one, and this
       // header exists precisely so a comment is not read as settled work.
@@ -506,8 +528,8 @@ function closeIssue(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
  * via the normal merge_pr path or via an origin-agent re-invocation
  * confirming its own work -- checks phase-gating/aggregation for its
  * parent, so it fires regardless of which path closed the issue.
- * dispatchOrchestratorIfSubIssueReady no-ops harmlessly if #num has no
- * atomaton:parent tag. Awaited by every caller (matching the original
+ * dispatchOrchestratorIfSubIssueReady no-ops harmlessly if GitHub has #num under
+ * nothing. Awaited by every caller (matching the original
  * Bun.spawnSync-based blocking behavior) so the tool response isn't
  * returned before phase-gating has actually run.
  */

@@ -21,6 +21,22 @@ export interface LinkedIssue {
   state: string;
 }
 
+/**
+ * A sub-issue, with what a gate needs to judge it.
+ *
+ * `labels` is here and not on [`LinkedIssue`] because only the children are judged:
+ * `sibling-check.ts` counts the ones Atomaton dispatched, and `work-tree.ts` needs to
+ * know which are running before it stops a subtree. A parent or a pull request is
+ * shown, not judged.
+ *
+ * It is also why the tool surface projects it away. These arrive in the same request
+ * as the rest — one query, no extra round trip — but a label array per child in every
+ * `get_issue` response is tokens spent on something no reader asked for.
+ */
+export interface LinkedChild extends LinkedIssue {
+  readonly labels: readonly string[];
+}
+
 export interface LinkedPr extends LinkedIssue {
   /**
    * Whether it landed.
@@ -34,7 +50,7 @@ export interface LinkedPr extends LinkedIssue {
 
 export interface IssueLinks {
   parent?: LinkedIssue;
-  children: LinkedIssue[];
+  children: LinkedChild[];
   pullRequests: LinkedPr[];
   /**
    * Why the links could not be read, when they could not.

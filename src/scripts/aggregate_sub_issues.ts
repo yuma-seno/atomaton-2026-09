@@ -19,7 +19,7 @@ import { defineScript } from "./lib/script-ref.ts";
 import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../lib/aggregation.ts";
 import { gatherSubResults, injectSummary } from "../lib/inject-sub-results.ts";
 import type { Session } from "../lib/session.ts";
-import { PARENT_TAG } from "../lib/tags.ts";
+import { issueLinks } from "../lib/issue-links.ts";
 import { restoreSession, saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 
 export interface AggregateSubIssuesArgs {
@@ -33,29 +33,24 @@ export const ref = defineScript<AggregateSubIssuesArgs>(import.meta.url);
 /**
  * Every sub-issue linked to `parent`, open or closed.
  *
- * The `--search` narrows server-side, but GitHub's issue search tokenizes, so it
- * is a prefilter and not the predicate: the same query returns `atomaton:parent=50`
- * for a query of `5`. `PARENT_TAG.read` is the predicate, because it is anchored
- * on the tag's real wire format. The previous version filtered with jq
- * `contains("atomaton:parent=<n>")`, an unanchored substring test, so aggregating
- * a parent collected every sub-issue of a numeric range and fed their results
- * into the parent's orchestrator session.
+ * GitHub's own sub-issue links, which is where every other reader of this
+ * relationship now looks. It used to search for `atomaton:parent=N in:body` and then
+ * re-check each hit with `PARENT_TAG.read`, because GitHub's issue search tokenizes
+ * and returned `atomaton:parent=50` for a query of `5` — a prefilter that needed a
+ * predicate behind it, and before that predicate existed this collected every
+ * sub-issue of a numeric range and fed their results into the wrong orchestrator's
+ * session. A link has no such failure mode: it is an edge, not a string.
  *
- * `--limit` is explicit because `gh issue list` defaults to 30 and truncates
- * silently, which for a plan with more sub-tasks than that would look like
- * results simply going missing.
+ * Throws when the links could not be read. Aggregation injects these results into
+ * the orchestrator's session, and an empty list read as "no sub-issues" would
+ * re-invoke it with none of the work it is supposed to be summarising.
  */
 function linkedSubIssues(repo: string, parent: number): number[] {
-  const { code, stdout, stderr } = gh(
-    "issue", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `${PARENT_TAG.search(parent)} in:body`,
-    "--json", "number,body",
-  );
-  if (code !== 0) {
-    throw new Error(`could not list sub-issues of #${parent}: ${stderr || stdout}`);
+  const links = issueLinks(repo, parent);
+  if (links.unavailable) {
+    throw new Error(`could not list sub-issues of #${parent}: ${links.unavailable}`);
   }
-  const issues = (stdout ? JSON.parse(stdout) : []) as { number: number; body?: string }[];
-  return issues.filter((issue) => PARENT_TAG.read(issue.body ?? "") === parent).map((issue) => issue.number);
+  return links.children.map((child) => child.number);
 }
 
 /**

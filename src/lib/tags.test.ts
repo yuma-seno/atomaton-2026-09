@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PARENT_ISSUE_TAG, AGENT_TAG, CHANGED_TAG, LLM_CONTEXT_TAG, NOTIFY_TAG, PARENT_TAG, withoutTags } from "./tags.ts";
+import { AGGREGATED_TAG, AGENT_TAG, CHANGED_TAG, LLM_CONTEXT_TAG, NOTIFY_TAG, PARENT_ISSUE_TAG, withoutTags } from "./tags.ts";
 
 /**
  * These markers carry state between workflow runs through GitHub, so they live in the
@@ -17,7 +17,7 @@ describe("withoutTags", () => {
   test("a tag in the middle of a body goes too", () => {
     // One space, not two: removing a tag reads as removing a word, not as leaving
     // the gap where one used to be.
-    expect(withoutTags(`before ${PARENT_TAG.write(4)} after`)).toBe("before after");
+    expect(withoutTags(`before ${PARENT_ISSUE_TAG.write(4)} after`)).toBe("before after");
   });
 
   /**
@@ -28,7 +28,7 @@ describe("withoutTags", () => {
    * touched.
    */
   test("a body a person edited in the browser is left as clean as one we wrote", () => {
-    const crlf = [PARENT_TAG.write(4), "Body text."].join("\r\n");
+    const crlf = [PARENT_ISSUE_TAG.write(4), "Body text."].join("\r\n");
     expect(withoutTags(crlf)).toBe("Body text.");
   });
 
@@ -72,7 +72,7 @@ describe("withoutTags", () => {
    * those behind as escapes, so the body read as starting with blank lines.
    */
   test("a body handed back inside JSON is stripped as cleanly as a raw one", () => {
-    const body = [PARENT_TAG.write(788), "Closes #788."].join("\n");
+    const body = [PARENT_ISSUE_TAG.write(788), "Closes #788."].join("\n");
     const payload = JSON.stringify({ number: 802, state: "OPEN", body });
     expect(withoutTags(payload)).toBe(JSON.stringify({ number: 802, state: "OPEN", body: "Closes #788." }));
   });
@@ -90,7 +90,7 @@ describe("withoutTags", () => {
     const everyTag = [
       AGENT_TAG.write("reviewer"),
       CHANGED_TAG.write("no"),
-      PARENT_TAG.write(9),
+      PARENT_ISSUE_TAG.write(9),
       NOTIFY_TAG.write("someone"),
       LLM_CONTEXT_TAG.write("include"),
     ].join("\n");
@@ -109,21 +109,22 @@ describe("withoutTags", () => {
  */
 describe("search", () => {
   test("is the tag text without the comment wrapper", () => {
-    expect(PARENT_TAG.search(803)).toBe("atomaton:parent=803");
+    expect(PARENT_ISSUE_TAG.search(803)).toBe("atomaton:parent-issue=803");
   });
 
   test("and is therefore not what write produces", () => {
-    expect(PARENT_TAG.search(803)).not.toBe(PARENT_TAG.write(803));
-    expect(PARENT_TAG.search(803)).not.toContain("<!--");
+    expect(PARENT_ISSUE_TAG.search(803)).not.toBe(PARENT_ISSUE_TAG.write(803));
+    expect(PARENT_ISSUE_TAG.search(803)).not.toContain("<!--");
   });
 
   /**
-   * The sibling tag differs by more than a suffix in search: a query for the issue
-   * edge must not be a prefix of the pull request one, or a search for one returns the
-   * other. It is not, and this says so.
+   * Two tags must not search as one another: a query for one that is a prefix of
+   * another's returns both, and the caller cannot tell. This pair used to be
+   * `atomaton:parent` and `atomaton:parent-issue`, where the first IS a prefix of the
+   * second up to the `=` — the reason `search` puts the value straight after the name.
    */
-  test("the two parent edges do not search as one another", () => {
-    expect(PARENT_ISSUE_TAG.search(803)).not.toBe(PARENT_TAG.search(803));
-    expect(PARENT_ISSUE_TAG.search(803)).not.toContain(PARENT_TAG.search(803));
+  test("two tags do not search as one another", () => {
+    expect(AGGREGATED_TAG.search(803)).not.toBe(PARENT_ISSUE_TAG.search(803));
+    expect(PARENT_ISSUE_TAG.search(803)).not.toContain(AGGREGATED_TAG.search(803));
   });
 });

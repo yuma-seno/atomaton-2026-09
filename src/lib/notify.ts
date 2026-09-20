@@ -27,8 +27,9 @@
  * mcp/github.ts at creation time, carrying the requester the creating run knew.
  *
  * Falls back to the issue/PR's own author when no tag is present and the author is
- * a human. If neither is available, walks up the `atomaton:parent`/`atomaton:parent-issue`
- * chain and retries on the parent. Measured over all 255 issues in this repository,
+ * a human. If neither is available, walks up one edge -- GitHub's own sub-issue link
+ * for an issue, the `atomaton:parent-issue` tag for a pull request -- and retries on
+ * the parent. Measured over all 255 issues in this repository,
  * no issue would need that walk: every one resolves by its own tag or its own
  * author. It is kept for a repository whose history is not this one.
  *
@@ -41,7 +42,8 @@
  * "nobody to notify".
  */
 import { gh } from "./gh.ts";
-import { NOTIFY_TAG, readAnyParentTag } from "./tags.ts";
+import { NOTIFY_TAG, PARENT_ISSUE_TAG } from "./tags.ts";
+import { parentIssueOf } from "./parent-issue.ts";
 
 function log(message: string): void {
   console.error(`[atomaton-notify] ${message}`);
@@ -53,6 +55,8 @@ interface IssueLookup {
   body?: string;
   login?: string;
   type?: string;
+  /** Whether this number is a pull request rather than an issue. */
+  is_pr?: boolean;
 }
 
 /**
@@ -91,7 +95,9 @@ function repositoryOwner(repo: string): string {
 function fetchIssueLookup(repo: string, number: number): IssueLookup {
   const { code, stderr, stdout } = gh(
     "api", `repos/${repo}/issues/${number}`,
-    "--jq", "{body: .body, login: .user.login, type: .user.type}",
+    // `is_pr` decides which way the walk goes up, and this endpoint answers for both
+    // kinds, which is why it is asked here rather than guessed from the number.
+    "--jq", "{body: .body, login: .user.login, type: .user.type, is_pr: (.pull_request != null)}",
   );
   if (code !== 0 || !stdout.trim()) {
     log(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
@@ -103,6 +109,17 @@ function fetchIssueLookup(repo: string, number: number): IssueLookup {
     log(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
     return {};
   }
+}
+
+/**
+ * The issue this one is under, or undefined — including when nobody could tell.
+ *
+ * The walk stops either way, which is this module's stance everywhere: a dispatch is
+ * never failed over a mention, and `parentIssueOf` has already logged the reason.
+ */
+function nativeParentOf(repo: string, issue: number): number | undefined {
+  const found = parentIssueOf(repo, issue);
+  return found.known && found.parent ? found.parent : undefined;
 }
 
 export function resolveNotify(repo: string, number: number): string {
@@ -122,7 +139,11 @@ export function resolveNotify(repo: string, number: number): string {
       return d.login;
     }
 
-    const parent = readAnyParentTag(body);
+    // Up one edge, and which edge depends on what this is. A pull request's link to
+    // its issue is `atomaton:parent-issue`, which has no native equivalent that
+    // survives — measured, and written down in `lib/tags.ts`. An issue's link to its
+    // parent is GitHub's own, and the tag that used to answer here is gone.
+    const parent = d.is_pr ? PARENT_ISSUE_TAG.read(body) : nativeParentOf(repo, current);
     if (parent === undefined) break;
     current = parent;
   }

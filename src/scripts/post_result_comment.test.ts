@@ -373,7 +373,13 @@ describe("post_result_comment.ts main", () => {
           cwd: dir,
           env: { GITHUB_REPOSITORY: "owner/repo" },
           rules: [
-            { match: ["issue", "view", "5"], stdout: JSON.stringify({ state: "CLOSED", body: "<!-- atomaton:parent=4 -->" }) },
+            { match: ["issue", "view", "5"], stdout: JSON.stringify({ state: "CLOSED" }) },
+            // Whether it is a sub-issue comes from GitHub's own link now, not from a
+            // marker in the body. See `lib/parent-issue.ts`.
+            {
+              match: ["graphql", "parent{number}"],
+              stdout: JSON.stringify({ data: { repository: { issue: { parent: { number: 4 } } } } }),
+            },
             { match: ["api", "comments"], stdout: "42" },
           ],
         },

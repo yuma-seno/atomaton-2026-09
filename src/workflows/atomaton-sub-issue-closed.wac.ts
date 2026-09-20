@@ -77,7 +77,7 @@ const stopOnCloseStep = new TypedOutputsStep(
 
 const checkStep = new TypedOutputsStep(
   {
-    name: "Check sub-issue closure (parent tag + already-handled-via-PR?)",
+    name: "Check sub-issue closure (native parent link + already-handled-via-PR?)",
     id: "check",
     shell: "bash",
     env: {
