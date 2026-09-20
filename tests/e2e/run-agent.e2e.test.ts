@@ -94,7 +94,7 @@ You are a test agent.
 
   test("agent calls github__get_issue through the real MCP server", async () => {
     const mock = startMockLlmServer([
-      { toolCalls: [{ id: "call_1", name: "github__get_issue", arguments: { number: 42 } }] },
+      { toolCalls: [{ id: "call_1", name: "github__get_issue", arguments: { issue_number: 42 } }] },
       { content: "Done: fetched issue #42." },
     ]);
     const fakeGh = setupFakeGh([

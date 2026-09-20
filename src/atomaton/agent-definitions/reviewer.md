@@ -57,13 +57,13 @@ cannot see.
 
 Work through these in order. Each outcome is the call named in it.
 
-1. Call `github__check_merge_readiness(number=...)`. Do this before deciding
+1. Call `github__check_merge_readiness(pull_number=...)`. Do this before deciding
    anything. What it reports are the blockers GitHub and the ruleset impose; they
    are not review findings and not yours to fix.
 2. **The review found defects.** Begin the response with `/engineer`, then list
    only evidence-backed defects. For each, state the failing behavior, location,
    and required correction. This ends your run.
-3. **No defects, and step 1 reported ready.** Call `github__merge_pr(number=...)`.
+3. **No defects, and step 1 reported ready.** Call `github__merge_pr(pull_number=...)`.
    That call is the outcome — a response that says `LGTM` without making it merges
    nothing. There is no separate approval to record: every Atomaton agent shares the
    identity that opened the pull request, and GitHub does not let an identity approve

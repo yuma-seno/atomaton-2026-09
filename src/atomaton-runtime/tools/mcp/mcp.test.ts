@@ -556,11 +556,10 @@ describe("mcp/github.ts", () => {
         protection: { enabled: true },
         protection_url: "u",
       };
-      // Called with `name`, which is no longer what this tool declares: the schema says
-      // `branch`, to match `sync_branch` beside it, and `name` is folded in as the
-      // synonym it is. Left this way deliberately -- it is the only place that path is
-      // exercised end to end.
-      const r = await call("get_branch", { name: "main" }, [
+      // `branch`, the one name this tool declares. It used to be called with `name`
+      // here, exercising a synonym table that folded that in before the schema saw it;
+      // the table is gone -- see `lib/mcp-tool.ts`.
+      const r = await call("get_branch", { branch: "main" }, [
         { match: ["branches/main"], stdout: JSON.stringify(payload) },
       ]);
       expect(JSON.parse(r.result.content[0].text)).toEqual({
@@ -681,7 +680,7 @@ describe("mcp/github.ts", () => {
           },
         ],
       };
-      const r = await call("get_pr_reviews", { number: 1 }, [
+      const r = await call("get_pr_reviews", { pull_number: 1 }, [
         { match: ["--json", "reviews"], stdout: JSON.stringify(payload) },
       ]);
       expect(JSON.parse(r.result.content[0].text)).toEqual({
@@ -707,7 +706,7 @@ describe("mcp/github.ts", () => {
           author_association: "COLLABORATOR",
         },
       ];
-      const r = await call("list_pr_review_comments", { number: 1 }, [
+      const r = await call("list_pr_review_comments", { pull_number: 1 }, [
         { match: ["pulls/1/comments"], stdout: JSON.stringify(payload) },
       ]);
       expect(JSON.parse(r.result.content[0].text)).toEqual({
@@ -722,7 +721,7 @@ describe("mcp/github.ts", () => {
     test("get_issue_comments caps one oversized comment", async () => {
       const body = "y".repeat(40_000);
       const payload = { title: "t", state: "OPEN", comments: [{ author: { login: "a" }, body }] };
-      const r = await call("get_issue_comments", { number: 1, from: 1, to: 1 }, [
+      const r = await call("get_issue_comments", { issue_number: 1, from: 1, to: 1 }, [
         { match: ["--json", "comments"], stdout: JSON.stringify(payload) },
       ]);
       const parsed = JSON.parse(r.result.content[0].text);
@@ -756,7 +755,7 @@ describe("mcp/github.ts", () => {
           },
         },
       };
-      const r = await call("get_issue_comments", { number: 803 }, [
+      const r = await call("get_issue_comments", { issue_number: 803 }, [
         { match: ["api", "graphql"], stdout: JSON.stringify(links) },
         { match: ["--json", "comments"], stdout: JSON.stringify(payload) },
       ]);
@@ -779,13 +778,19 @@ describe("mcp/github.ts", () => {
 
     // `.int()` makes zod-to-json-schema emit "integer" rather than "number".
     const getIssue = byName.get("get_issue").inputSchema;
-    expect(getIssue.properties.number.type).toBe("integer");
-    expect(getIssue.required ?? []).not.toContain("number");
+    expect(getIssue.properties.issue_number.type).toBe("integer");
+    expect(getIssue.required ?? []).not.toContain("issue_number");
 
-    // Mutations must keep `number` mandatory — no inferring an irreversible target.
+    // Mutations keep it mandatory — no inferring an irreversible target.
     const closeIssue = byName.get("close_issue").inputSchema;
-    expect(closeIssue.properties.number.type).toBe("integer");
-    expect(closeIssue.required).toContain("number");
+    expect(closeIssue.properties.issue_number.type).toBe("integer");
+    expect(closeIssue.required).toContain("issue_number");
+
+    // And a pull request tool names it the way GitHub does, not the way an issue tool
+    // does. One argument each, spelled once — the synonym table is gone.
+    const mergePr = byName.get("merge_pr").inputSchema;
+    expect(mergePr.properties.pull_number.type).toBe("integer");
+    expect(mergePr.required).toContain("pull_number");
 
     // `labels` stays an array in the contract even though a bare string parses.
     const listIssues = byName.get("list_issues").inputSchema;
@@ -799,7 +804,7 @@ describe("mcp/github.ts", () => {
       "github.ts",
       {
         jsonrpc: "2.0", id: 21, method: "tools/call",
-        params: { name: "get_issue", arguments: { number: "185" } },
+        params: { name: "get_issue", arguments: { issue_number: "185" } },
       },
       {
         ...fakeGhSeam(),
