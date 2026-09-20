@@ -15,12 +15,12 @@ name: Atomaton Deploy
   workflow_dispatch:
     inputs:
       target:
-        description: Deploy this one entry by name. Leave empty to deploy what the trigger selects.
+        description: Name of the deployment to run, as written under `deploy` in config.yaml. Leaving it empty deploys nothing.
         required: false
         type: string
         default: ''
       trigger:
-        description: Set to 'merge' by dispatchCd after a pull request lands. Leave as 'demand' by hand.
+        description: Leave this alone. Atomaton sets it when it starts this workflow itself.
         required: false
         type: string
         default: demand
@@ -62,6 +62,7 @@ jobs:
           ATOMATON_DEPLOY_TARGET_INPUT: ${{ inputs.target }}
           ATOMATON_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           ATOMATON_REPO: ${{ github.repository }}
+          ATOMATON_PUSH_BEFORE: ${{ github.event.before }}
           GH_TOKEN: ${{ github.token }}
         run: |
           PLANNER="${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts"
@@ -70,7 +71,7 @@ jobs:
             echo "jobs=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts" --ref "${ATOMATON_DEPLOY_REF}" --default-branch "${ATOMATON_DEFAULT_BRANCH}" --event "${ATOMATON_DEPLOY_EVENT}" --trigger "${ATOMATON_DEPLOY_TRIGGER}" --target "${ATOMATON_DEPLOY_TARGET_INPUT}" --repo "${ATOMATON_REPO}"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts" --ref "${ATOMATON_DEPLOY_REF}" --default-branch "${ATOMATON_DEFAULT_BRANCH}" --event "${ATOMATON_DEPLOY_EVENT}" --trigger "${ATOMATON_DEPLOY_TRIGGER}" --target "${ATOMATON_DEPLOY_TARGET_INPUT}" --repo "${ATOMATON_REPO}" --before "${ATOMATON_PUSH_BEFORE}"
   deploy:
     name: deploy (${{ matrix.name }})
     needs:
@@ -87,8 +88,10 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.plan-deploy.outputs.jobs) }}
     steps:
-      - name: Checkout the ref being deployed
+      - name: Checkout the tree this deployment ships
         uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
       - name: Setup Bun
         with:
           bun-version: latest

@@ -30,11 +30,15 @@ function gh(...args) {
 
 // src/lib/git-tags.ts
 function readTagNames(repo) {
-  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", ".[].ref");
+  const tags = readTags(repo);
+  return tags === null ? null : tags.map((tag) => tag.name);
+}
+function readTags(repo) {
+  const { code, stdout } = gh("api", "--paginate", `repos/${repo}/git/matching-refs/tags`, "--jq", '.[] | "\\(.ref) \\(.object.sha)"');
   if (code)
     return null;
   return stdout.split(`
-`).map((line) => line.trim()).filter((line) => line.startsWith("refs/tags/")).map((line) => line.slice("refs/tags/".length));
+`).map((line) => line.trim().split(" ")).filter(([ref, sha]) => ref?.startsWith("refs/tags/") && sha).map(([ref, sha]) => ({ name: ref.slice("refs/tags/".length), sha }));
 }
 function tagsAdded(before, after) {
   const known = new Set(before);
