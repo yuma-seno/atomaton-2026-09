@@ -20,18 +20,39 @@ const PROTECTED = JSON.stringify([{ type: "pull_request" }, { type: "required_st
 /** Measured: a branch nothing covers answers `[]`, and so does one that does not exist. */
 const UNPROTECTED = "[]";
 
-function plan(args: string[], rulesStdout: string | { code: number } = PROTECTED) {
+/** The tag listing, as `readTags` asks for it: one `<ref> <sha>` line each. */
+const TAGS = "refs/tags/v1.0.0 aaaa111\nrefs/tags/nightly-1 bbbb222";
+/** `compare` answers `behind` for a commit inside the branch — measured. */
+const INSIDE = "behind";
+const OUTSIDE = "diverged";
+
+/**
+ * The two `compare` questions are told apart by their `--jq`, which is what each one
+ * actually asks for: `.status` is containment, `.commits[].sha` is the push's delta.
+ */
+function plan(
+  args: string[],
+  opts: { rules?: string | { code: number }; contained?: string | { code: number }; added?: string } = {},
+) {
   const dir = makeConfigDir(DEPLOY);
   const outDir = mkdtempSync(join(tmpdir(), "atomaton-plan-"));
   const outputPath = join(outDir, "github_output");
   writeFileSync(outputPath, "");
   try {
+    const rulesStdout = opts.rules ?? PROTECTED;
     const rule =
       typeof rulesStdout === "string"
         ? { match: ["api", "rules/branches"], stdout: rulesStdout }
         : { match: ["api", "rules/branches"], code: rulesStdout.code, stdout: "" };
     const r = runWithFakeGh(scriptPath("plan_deploy.ts"), ["--repo", "o/r", ...args], {
-      rules: [rule, { match: ["api", "matching-refs/tags"], stdout: "refs/tags/v1.0.0" }],
+      rules: [
+        rule,
+        { match: ["api", "matching-refs/tags"], stdout: TAGS },
+        typeof opts.contained === "object"
+          ? { match: ["api", "compare", ".status"], code: opts.contained.code, stdout: "" }
+          : { match: ["api", "compare", ".status"], stdout: opts.contained ?? INSIDE },
+        { match: ["api", "compare", ".commits[].sha"], stdout: opts.added ?? "" },
+      ],
       cwd: dir,
       env: { GITHUB_OUTPUT: outputPath },
     });
@@ -60,7 +81,13 @@ describe("plan_deploy.ts", () => {
     const r = plan(PUSH_DEVELOP);
     expect(r.status).toBe(0);
     expect(JSON.parse(r.outputs.jobs ?? "[]")).toEqual([
-      { name: "staging", runs_on: '["ubuntu-latest"]', commands: ["./stage.sh"], secrets: ["STAGING_TOKEN"] },
+      {
+        name: "staging",
+        runs_on: '["ubuntu-latest"]',
+        commands: ["./stage.sh"],
+        secrets: ["STAGING_TOKEN"],
+        ref: "refs/heads/develop",
+      },
     ]);
   });
 
@@ -104,7 +131,7 @@ describe("plan_deploy.ts", () => {
    */
   describe("the branch has to be one a pull request is required on", () => {
     test("a branch nothing protects is refused", () => {
-      const r = plan(PUSH_DEVELOP, UNPROTECTED);
+      const r = plan(PUSH_DEVELOP, { rules: UNPROTECTED });
       expect(r.status).toBe(1);
       expect(r.stderr).toContain("not covered by a ruleset requiring a pull request");
       expect(r.stderr).toContain("Refused to deploy: staging");
@@ -112,7 +139,7 @@ describe("plan_deploy.ts", () => {
     });
 
     test("rules that could not be read are refused too, not assumed to be there", () => {
-      const r = plan(PUSH_DEVELOP, { code: 1 });
+      const r = plan(PUSH_DEVELOP, { rules: { code: 1 } });
       expect(r.status).toBe(1);
       expect(r.stderr).toContain("could not be read");
     });
@@ -123,24 +150,94 @@ describe("plan_deploy.ts", () => {
      * nobody was deploying from is noise that teaches people to ignore it.
      */
     test("a push that deploys nothing does not ask, and does not refuse", () => {
-      const r = plan(["--ref", "refs/heads/feature-x", "--default-branch", "main", "--event", "push"], UNPROTECTED);
+      const r = plan(["--ref", "refs/heads/feature-x", "--default-branch", "main", "--event", "push"], {
+        rules: UNPROTECTED,
+      });
       expect(r.status).toBe(0);
       expect(r.ghCalls).toEqual([]);
     });
 
     /**
-     * A tag is not a branch and has none of these rules to read. Refusing every tag
-     * deployment for the want of a branch rule would answer a question nobody asked.
+     * A tag deployment is judged by the branch its entry NAMES, which is the whole
+     * point of `on_tag` having `branches`. It used to be exempt, and that left the
+     * only unreviewed route into a deployment wide open: anyone who can push a tag
+     * could point one at any commit.
      */
-    test("a tag deployment is not judged by a branch's rules", () => {
-      const r = plan(["--ref", "refs/tags/v1.0.0", "--default-branch", "main", "--event", "push"], UNPROTECTED);
-      expect(r.status).toBe(0);
-      expect(r.ghCalls).toEqual([]);
+    test("a tag deployment is judged by the branch its entry names", () => {
+      const r = plan(["--ref", "refs/tags/v1.0.0", "--default-branch", "main", "--event", "push"], {
+        rules: UNPROTECTED,
+      });
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain("not covered by a ruleset requiring a pull request");
+      expect(r.stderr).toContain("Refused to deploy: production");
     });
 
     test("the branch it asks about is the one being deployed", () => {
       const r = plan(PUSH_DEVELOP);
       expect(r.ghCalls.map((call) => call.join(" "))).toContain("api repos/o/r/rules/branches/develop");
+    });
+  });
+
+  /**
+   * A tag names a commit, not a branch, so the question a tag deployment answers is
+   * containment: is the commit this tag points at inside the branch whose reviewed
+   * content this deployment ships?
+   */
+  describe("a tag has to be inside the branch its entry names", () => {
+    const PUSH_TAG = ["--ref", "refs/tags/v1.0.0", "--default-branch", "main", "--event", "push"];
+
+    test("a tag on the branch deploys, and ships the tag's tree", () => {
+      const r = plan(PUSH_TAG);
+      expect(r.status).toBe(0);
+      expect(JSON.parse(r.outputs.jobs ?? "[]")).toEqual([
+        {
+          name: "production",
+          runs_on: '["ubuntu-latest"]',
+          commands: ["./prod.sh"],
+          secrets: [],
+          ref: "refs/tags/v1.0.0",
+        },
+      ]);
+    });
+
+    /**
+     * Dropped, not refused. Tagging a commit that is not on your release branch is an
+     * ordinary thing to do, and a red run for it would teach people to ignore the red
+     * — but it is said out loud, because somebody would otherwise sit and wait.
+     */
+    test("a tag off the branch deploys nothing, says why, and stays green", () => {
+      const r = plan(PUSH_TAG, { contained: OUTSIDE });
+      expect(r.status).toBe(0);
+      expect(names(r.outputs.jobs)).toEqual([]);
+      expect(r.stderr).toContain("is not on 'main'");
+      expect(r.stderr).toContain("production");
+    });
+
+    /** "Not on main" and "GitHub did not say" must not look alike. */
+    test("a containment question that could not be answered fails", () => {
+      const r = plan(PUSH_TAG, { contained: { code: 1 } });
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain("Could not determine whether");
+    });
+
+    /**
+     * The ordering the whole design turns on: tag a commit, merge it, and the tag
+     * deploys at the moment the merge makes it reviewed — with no event naming the
+     * tag, and nothing remembering it between runs.
+     */
+    test("a merge deploys the tags it made reachable, each on its own tree", () => {
+      const r = plan([...PUSH_MAIN, "--before", "oldsha"], { added: "aaaa111" });
+      expect(r.status).toBe(0);
+      const jobs = JSON.parse(r.outputs.jobs ?? "[]") as { name: string; ref: string }[];
+      expect(jobs.map((job) => `${job.name}@${job.ref}`)).toEqual([
+        "release@refs/heads/main",
+        "production@refs/tags/v1.0.0",
+      ]);
+    });
+
+    test("and ignores a reachable tag no pattern claims", () => {
+      const r = plan([...PUSH_MAIN, "--before", "oldsha"], { added: "bbbb222" });
+      expect(names(r.outputs.jobs)).toEqual(["release"]);
     });
   });
 
@@ -152,7 +249,7 @@ describe("plan_deploy.ts", () => {
   describe("the tags that existed before", () => {
     test("a deployment on a project declaring `on_tag` takes one", () => {
       const r = plan(PUSH_MAIN);
-      expect(JSON.parse(r.outputs.tags_before ?? "null")).toEqual(["v1.0.0"]);
+      expect(JSON.parse(r.outputs.tags_before ?? "null")).toEqual(["v1.0.0", "nightly-1"]);
     });
 
     /** Nothing to watch for, so nothing is published and the dispatch job is skipped. */

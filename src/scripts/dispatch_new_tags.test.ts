@@ -2,8 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { parseBefore, TAGS_BEFORE_VAR } from "./dispatch_new_tags.ts";
 import { runWithFakeGh, scriptPath } from "./testing/harness.ts";
 
-/** The endpoint's shape, as `readTagNames` reads it. */
-const refs = (...tags: string[]) => tags.map((tag) => `refs/tags/${tag}`).join("\n");
+/**
+ * The endpoint's shape, as `readTags` asks for it: the ref and the commit it names.
+ * The sha is what a containment check needs, so it travels with every tag.
+ */
+const refs = (...tags: string[]) => tags.map((tag) => `refs/tags/${tag} sha-${tag}`).join("\n");
 
 function dispatch(before: string, tagsNow: string | { code: number }) {
   const listing =

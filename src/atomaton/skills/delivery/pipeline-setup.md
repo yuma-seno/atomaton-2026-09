@@ -81,26 +81,33 @@ deploy:
   on_tag:
     - name: production
       tags: ["v*"]
+      branches: [main]
       commands: ["./scripts/deploy.sh prod"]
   on_demand:
     - name: rollback
       commands: ["./scripts/rollback.sh"]
 ```
 
-`branches` exists in `on_merge` and nowhere else; omit it and it means the default
-branch. `tags` exists in `on_tag` and is required there. A pattern is a literal or a
-prefix followed by `*`. Any entry can also be dispatched by name whatever its list,
-which is what makes an `on_demand` rollback useful.
+`tags` exists in `on_tag` and is required there. `branches` exists in both `on_merge`
+and `on_tag`, meaning the same thing in each — which branch's reviewed content this
+deployment ships — and omitting it means the default branch. A pattern is a literal
+or a prefix followed by `*`.
+
+A tag names a COMMIT, not a branch, so `on_tag`'s `branches` is what keeps a tag on
+an unreviewed commit from deploying. `on_demand` entries answer to no event and run
+only when named: `gh workflow run atomaton-deploy.yml -f target=rollback`.
 
 Deployments run one at a time, in declared order, and the first failure stops the
 rest. `$ATOMATON_DEPLOY_TARGET` holds the entry's name inside its commands.
 
-**A branch named in `branches` must require a pull request**, through a ruleset
-covering it. The run is refused otherwise — a branch anyone can push to is a
-deployment anyone can run, with its credentials, on a commit nobody read. The
-shipped ruleset covers the default branch and nothing else, so writing
-`branches: [develop]` means adding a ruleset for `develop` as well; that is a
-repository setting, not a file, so say so rather than trying to write it.
+**A branch named in `branches` must require a pull request**, in either list,
+through a ruleset covering it. The run is refused otherwise: a branch anyone can
+push to is a deployment anyone can run, with its credentials, on a commit nobody
+read.
+
+The shipped ruleset covers the default branch and nothing else, so writing
+`branches: [develop]` means adding a ruleset for `develop` as well. That is a
+repository setting rather than a file, so say so rather than trying to write it.
 
 ## Credentials
 

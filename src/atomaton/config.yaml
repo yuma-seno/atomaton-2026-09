@@ -77,15 +77,20 @@ deploy:
   #     commands: ["./deploy.sh staging"]
 
   # Ships when a matching tag is pushed. A literal tag, or a prefix and a `*`.
+  #
+  # `branches` here says which branch the tag has to point INTO — a tag names a
+  # commit, not a branch, and a commit that is not on your release branch is one
+  # nobody reviewed. Leave it out and it means the default branch, as above.
   on_tag: []
   # on_tag:
   #   - name: production
   #     tags: ["v*"]
+  #     branches: [main]
   #     secrets: [PROD_TOKEN]
   #     commands: ["./deploy.sh production"]
 
-  # Ships only when someone runs the workflow by hand. Dispatching without naming a
-  # target runs all of these; naming one runs just that, from any list above.
+  # Never ships by itself. Run one of these by name from the Actions tab, or with
+  # `gh workflow run atomaton-deploy.yml -f target=rollback`.
   on_demand: []
   # on_demand:
   #   - name: rollback

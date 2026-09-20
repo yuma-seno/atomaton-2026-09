@@ -18,11 +18,16 @@
  * rule, which is the weaker arrangement twice over: the author writes it, reads a
  * refusal, and has to be told what the shape should have been.
  *
- * Under three lists the key is simply not there to write. `branches:` exists in
- * `on_merge` and nowhere else; `tags:` exists in `on_tag` and nowhere else. The
- * combination nobody should write has no spelling — the same move
- * `domain/declared-jobs.ts` makes for a credential beside a pull request's own
- * commands.
+ * Under three lists the key is simply not there to write. `tags:` exists in `on_tag`
+ * and nowhere else, so a tag pattern on a merge deployment — a deployment that would
+ * never happen — has no spelling. The same move `domain/declared-jobs.ts` makes for a
+ * credential beside a pull request's own commands.
+ *
+ * `branches:` is in two of the three, and that is not the same thing as a key meaning
+ * two things. It means "which branch's reviewed content this deployment ships" in
+ * both: `on_merge` ships what landed on the branch, `on_tag` ships what a tag points
+ * at inside it. The list says which event releases it; `branches` says whose content
+ * it is. Orthogonal, so neither reading has to be remembered.
  *
  * ## Why the selection is here and not in the workflow
  *
@@ -47,24 +52,26 @@ import { DEPLOY_JOB_RESERVED } from "./declared-secrets.ts";
 /** Which event deploys an entry, which is also which list it is written in. */
 export type DeployTrigger = "merge" | "tag" | "demand";
 
-/** `on_merge`: refs whose push deploys this. Empty means the default branch. */
-export interface MergeKeys {
+/** The keys the ref lists arrive under, shared so a message and a reader agree. */
+export interface DeployRefs {
+  /**
+   * Which branch's reviewed content this deployment ships. Empty means the default
+   * branch — the ordinary case, and the one an entry should not have to spell out.
+   *
+   * It means the same thing in both lists that have it, and that is why it has one
+   * name. `on_merge` ships what landed on the branch; `on_tag` ships what a tag
+   * points at INSIDE the branch. The list says which event releases it; this says
+   * whose reviewed content it is.
+   *
+   * Never "any branch". A deployment that would accept a commit from anywhere has no
+   * spelling, because there is nothing to write that means it.
+   */
   readonly branches: readonly string[];
-}
-
-/** `on_tag`: tag patterns this deploys for. Never empty — see `readPatterns`. */
-export interface TagKeys {
+  /** `on_tag` only: which tags this answers to. Never empty there; empty elsewhere. */
   readonly tags: readonly string[];
 }
 
-export type DeployJob = DeclaredJob & {
-  readonly trigger: DeployTrigger;
-  /**
-   * The refs this entry answers to, from `branches` or `tags` as its list allows.
-   * Empty is meaningful only for `merge`, where it means the default branch.
-   */
-  readonly refs: readonly string[];
-};
+export type DeployJob = DeclaredJob & DeployRefs & { readonly trigger: DeployTrigger };
 
 export interface DeployJobsResolution {
   readonly jobs: readonly DeployJob[];
@@ -137,32 +144,38 @@ function readPatterns(
   return patterns;
 }
 
-function refsFrom(key: string, required: boolean): ExtraKeys<{ refs: readonly string[] }> {
+/** The ref keys one list owns. `on_tag` owns both; `on_demand` owns neither. */
+function refsFrom(keys: { branches?: boolean; tags?: boolean }): ExtraKeys<DeployRefs> {
+  const owned = [...(keys.tags ? ["tags"] : []), ...(keys.branches ? ["branches"] : [])];
   return {
-    keys: [key],
+    keys: owned,
     read: (entry, where, problems) => {
-      const refs = readPatterns(entry[key], key, required, where, problems);
-      return refs === null ? null : { refs };
+      // `tags` is required wherever it exists: an entry claiming every tag in the
+      // repository is never what anyone meant. `branches` is the opposite — omitting
+      // it is the ordinary way to say "the default branch".
+      const tags = keys.tags ? readPatterns(entry.tags, "tags", true, where, problems) : [];
+      const branches = keys.branches ? readPatterns(entry.branches, "branches", false, where, problems) : [];
+      return tags === null || branches === null ? null : { tags, branches };
     },
   };
 }
 
 /**
- * The three lists, each with the key it owns.
+ * The three lists, and the ref keys each one owns.
  *
  * Every one may name credentials. A deployment runs commands read from a branch a
  * person approved, after the change has landed — the condition that makes a secret
  * safe to name at all, and the one `checks.from_pull_request` cannot meet.
  */
 export const DEPLOY_ARMS: Readonly<
-  Record<DeployTrigger, { readonly key: string; readonly rules: DeclaredJobsRules<{ refs: readonly string[] }> }>
+  Record<DeployTrigger, { readonly key: string; readonly rules: DeclaredJobsRules<DeployRefs> }>
 > = {
   merge: {
     key: "on_merge",
     rules: {
       where: "deploy.on_merge",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("branches", false),
+      extra: refsFrom({ branches: true }),
     },
   },
   tag: {
@@ -170,7 +183,10 @@ export const DEPLOY_ARMS: Readonly<
     rules: {
       where: "deploy.on_tag",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      extra: refsFrom("tags", true),
+      // Both. `tags` says which tags; `branches` says which branch those tags must
+      // point into. Without the second, a tag deployment would accept a commit from
+      // anywhere -- a feature branch nobody reviewed, tagged by anyone who can push.
+      extra: refsFrom({ branches: true, tags: true }),
     },
   },
   demand: {
@@ -178,8 +194,10 @@ export const DEPLOY_ARMS: Readonly<
     rules: {
       where: "deploy.on_demand",
       secrets: { reserved: DEPLOY_JOB_RESERVED },
-      // No refs at all: nothing about a ref decides whether somebody asked.
-      extra: { keys: [], read: () => ({ refs: [] }) },
+      // Neither: nothing about a ref decides whether somebody asked. The empty lists
+      // on the resulting entry are never read -- the selector reaches them only for
+      // the two arms an event can choose.
+      extra: { keys: [], read: () => ({ branches: [], tags: [] }) },
     },
   },
 };
@@ -238,6 +256,15 @@ export interface DeployRequest {
   readonly trigger: string;
   /** A dispatch's `target` input: one entry by name, from any list. */
   readonly target: string;
+  /**
+   * Tags this push made reachable — the tags pointing at commits that arrived with
+   * it.
+   *
+   * Gathered by the planner, and only when `needsReachableTags` says so, because it
+   * costs an API call and most repositories deploy no tags at all. Empty everywhere
+   * else, which is the honest value: nothing became reachable.
+   */
+  readonly reachableTags: readonly string[];
 }
 
 /** The branch a ref names, or "" when it is not a branch. */
@@ -255,17 +282,13 @@ function mergeJobsFor(jobs: readonly DeployJob[], branch: string, defaultBranch:
   if (!branch) return [];
   // Naming no branches means the default branch: the ordinary case, and the one an
   // entry should not have to spell out to get.
-  return jobs.filter(
-    (job) =>
-      job.trigger === "merge" &&
-      (job.refs.length === 0 ? branch === defaultBranch : job.refs.some((pattern) => refMatches(pattern, branch))),
-  );
+  return jobs.filter((job) => job.trigger === "merge" && coversBranch(job, branch, defaultBranch));
 }
 
 /** Entries that deploy for `tag`. */
 function tagJobsFor(jobs: readonly DeployJob[], tag: string): readonly DeployJob[] {
   if (!tag) return [];
-  return jobs.filter((job) => job.trigger === "tag" && job.refs.some((pattern) => refMatches(pattern, tag)));
+  return jobs.filter((job) => job.trigger === "tag" && job.tags.some((pattern) => refMatches(pattern, tag)));
 }
 
 /**
@@ -301,40 +324,139 @@ export function mergeMightDeploy(jobs: readonly DeployJob[], branch: string): bo
   return jobs.some(
     (job) =>
       job.trigger === "merge" &&
-      (job.refs.length === 0 || !branch || job.refs.some((pattern) => refMatches(pattern, branch))),
+      (job.branches.length === 0 || !branch || job.branches.some((pattern) => refMatches(pattern, branch))),
+  );
+}
+
+/** One deployment this run will perform, and the tree its commands operate on. */
+export interface PlannedDeploy {
+  readonly job: DeployJob;
+  /** `refs/heads/main`, `refs/tags/v1.0.0` — whatever this deployment ships. */
+  readonly ref: string;
+}
+
+/**
+ * A tag entry that matched a tag, pending the one question this module cannot answer.
+ *
+ * Whether the tag's commit is inside `branches` is a fact about the repository's
+ * history, not about the configuration, so the planner asks GitHub and filters. The
+ * decision of WHICH question to ask stays here, with the rest of the policy.
+ */
+export interface TagCandidate {
+  readonly job: DeployJob;
+  readonly tag: string;
+  /** Resolved, so the caller never has to know that empty means the default branch. */
+  readonly branches: readonly string[];
+}
+
+export interface DeploySelection {
+  /** Decided. Nothing further to ask. */
+  readonly ready: readonly PlannedDeploy[];
+  /** Deploys only if the tag is inside one of `branches`. */
+  readonly tagCandidates: readonly TagCandidate[];
+}
+
+/**
+ * Whether the planner must work out which tags this push made reachable.
+ *
+ * Only a branch push, and only when some tag entry ships that branch's content. A
+ * repository with no `on_tag` entry never asks, and pays nothing.
+ *
+ * The question exists because a tag can become deployable without any event naming
+ * it: tag a commit on a feature branch, merge the branch, and the tag now points
+ * inside the protected branch though no tag was pushed. The merge's own event carries
+ * the answer — `before` and `after` bound exactly the commits that just arrived — so
+ * nothing has to be remembered between runs.
+ */
+export function needsReachableTags(jobs: readonly DeployJob[], request: DeployRequest): boolean {
+  if (request.target || request.event !== "push") return false;
+  const branch = branchOf(request.ref);
+  if (!branch) return false;
+  return jobs.some((job) => job.trigger === "tag" && coversBranch(job, branch, request.defaultBranch));
+}
+
+/** Whether this entry ships `branch`'s content. Naming none means the default branch. */
+function coversBranch(job: DeployJob, branch: string, defaultBranch: string): boolean {
+  return job.branches.length === 0
+    ? branch === defaultBranch
+    : job.branches.some((pattern) => refMatches(pattern, branch));
+}
+
+/** The branches an entry accepts, with the default filled in. */
+function branchesOf(job: DeployJob, defaultBranch: string): readonly string[] {
+  return job.branches.length === 0 ? [defaultBranch] : job.branches;
+}
+
+function planned(jobs: readonly DeployJob[], ref: string): PlannedDeploy[] {
+  return jobs.map((job) => ({ job, ref }));
+}
+
+function candidatesFor(
+  jobs: readonly DeployJob[],
+  tags: readonly string[],
+  defaultBranch: string,
+): TagCandidate[] {
+  return tags.flatMap((tag) =>
+    tagJobsFor(jobs, tag).map((job) => ({ job, tag, branches: branchesOf(job, defaultBranch) })),
   );
 }
 
 /**
- * The entries this run should deploy, or null when the request named a target that
- * does not exist.
+ * What this run should deploy, or null when the request named a target that does not
+ * exist.
  *
- * Matching nothing is a clean empty list, not a failure. A repository tags things for
- * reasons that have nothing to do with deploying, and a red run for each one teaches
- * people to ignore the red. A NAME that matches nothing is different: somebody asked
- * for a specific deployment and it is not there, and deploying something else instead
- * is worse than deploying nothing.
+ * Matching nothing is a clean empty selection, not a failure. A repository tags and
+ * pushes for reasons that have nothing to do with deploying, and a red run for each
+ * one teaches people to ignore the red. A NAME that matches nothing is different:
+ * somebody asked for a specific deployment and it is not there, and deploying
+ * something else instead is worse than deploying nothing.
+ *
+ * ## Two entrances, one judgement
+ *
+ * A tag reaches a deployment two ways — pushed, or made reachable by a merge — and
+ * both produce candidates judged by the same rule. What differs is only where the
+ * candidate came from, which is two lines rather than two implementations.
+ *
+ * Each planned deployment carries its own `ref`, so a tag deployment selected by a
+ * branch push still operates on the TAG's tree. Without that the matrix job would
+ * check out whatever was pushed and ship the wrong thing while reporting the right
+ * name.
  */
-export function selectDeployJobs(
-  jobs: readonly DeployJob[],
-  request: DeployRequest,
-): readonly DeployJob[] | null {
+export function selectDeployJobs(jobs: readonly DeployJob[], request: DeployRequest): DeploySelection | null {
+  const nothing: DeploySelection = { ready: [], tagCandidates: [] };
+
+  // Named by hand, from any list. The ref is the one the dispatch chose, because a
+  // person asking for a deployment by name has already said which tree they meant.
   if (request.target) {
     const named = jobs.find((job) => job.name === request.target);
-    return named ? [named] : null;
+    if (!named) return null;
+    return named.trigger === "tag" && tagOf(request.ref)
+      ? { ready: [], tagCandidates: candidatesFor([named], [tagOf(request.ref)], request.defaultBranch) }
+      : { ready: planned([named], request.ref), tagCandidates: [] };
   }
-  if (request.event === "push") {
-    const tag = tagOf(request.ref);
-    if (tag) return tagJobsFor(jobs, tag);
-    return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
+
+  const pushedTag = request.event === "push" ? tagOf(request.ref) : "";
+  const dispatchedTag = request.trigger === "tag" ? tagOf(request.ref) : "";
+  const tag = pushedTag || dispatchedTag;
+  if (tag) {
+    // `dispatch_new_tags.ts` sends the second kind: a tag a deployment created, which
+    // GitHub announces with no event of its own.
+    return { ready: [], tagCandidates: candidatesFor(jobs, [tag], request.defaultBranch) };
   }
-  // A dispatch. `dispatchCd` sends `merge` after an agent's merge, which uses
-  // GITHUB_TOKEN and so fires no `push` for anything to catch; `dispatch_new_tags.ts`
-  // sends `tag` for the same reason, after a deployment created one.
-  if (request.trigger === "merge") return mergeJobsFor(jobs, branchOf(request.ref), request.defaultBranch);
-  if (request.trigger === "tag") return tagJobsFor(jobs, tagOf(request.ref));
-  // Nobody named a target and nothing says this is a merge, so it is somebody asking.
-  // That is exactly what `on_demand` is, and running the arm whose name is the trigger
-  // is the same rule the other two follow.
-  return jobs.filter((job) => job.trigger === "demand");
+
+  const branch = branchOf(request.ref);
+  // A branch push, or `dispatchCd` standing in for one: an agent's merge uses
+  // GITHUB_TOKEN and so fires no `push` for anything to catch.
+  if (request.event === "push" || request.trigger === "merge") {
+    if (!branch) return nothing;
+    return {
+      ready: planned(mergeJobsFor(jobs, branch, request.defaultBranch), request.ref),
+      tagCandidates: candidatesFor(jobs, request.reachableTags, request.defaultBranch),
+    };
+  }
+
+  // Somebody pressed the button and named nothing. `on_demand` entries are reachable
+  // only by name -- running every one of them because a form was left blank is not a
+  // thing anyone asked for, and a rollback is the usual inhabitant of that list.
+  return nothing;
 }
