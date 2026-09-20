@@ -55,14 +55,27 @@ checks:
 
 
 # How a merged change ships. One list per event that ships it.
+#
+# In two halves on purpose. The merge puts the tag on; the TAG publishes. One
+# script did both, which meant this repository shipped `on_tag` and never used it
+# — and the path that carries a tag into a deployment had no traffic on it to
+# show that it was broken. Now every release goes through it.
 deploy:
-  # Lands on the default branch, so `branches` is left out — that is what naming
-  # none means. `on_tag` and `on_demand` are absent rather than empty: this
-  # repository ships one thing, and an empty list would read as one it forgot.
+  # Bump the version, merge, and this tags. Idempotent: it runs after every merge
+  # and stops at once when the version already has a release.
   on_merge:
-    - name: release
+    - name: tag-release
       commands:
-        - "./scripts/release.sh"
+        - "./scripts/tag-release.sh"
+
+  # `branches` is left out, which means the default branch — so a tag publishes
+  # only when it points at a commit on main. A tag names a commit, not a branch,
+  # and a commit that is not on main is one nobody reviewed.
+  on_tag:
+    - name: publish
+      tags: ["v*"]
+      commands:
+        - "./scripts/publish-release.sh"
   # your_workflow: cd.yml
 
 

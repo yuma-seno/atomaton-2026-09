@@ -12,15 +12,15 @@
  * there would turn "a check that runs nothing" into "a check that runs the pull
  * request", inside the job that decides whether that pull request may merge.
  *
- * So it is wired at the other end: `scripts/release.sh`, on the default branch,
- * against `dist/` — the artifact about to be published. These tests hold both
+ * So it is wired at the other end: `scripts/publish-release.sh`, which runs from a
+ * release tag, against `dist/` — the artifact about to be published. These tests hold both
  * ends, because either one alone is half a rule: the check existing is useless if
  * nothing calls it, and the check being called is dangerous if it is called from
  * the pull request path.
  *
  * ## Why ordering is asserted rather than described
  *
- * `release.sh` builds the artifact with `bun run synth` and publishes it with
+ * `publish-release.sh` builds the artifact with `bun run synth` and publishes it with
  * `gh release create`. The check has to sit between them: before the build there
  * is no `dist/` to check (it is gitignored, so a fresh checkout has none), and
  * after the publish a failure would arrive too late to withhold anything. Both
@@ -33,7 +33,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolveDeployJobs } from "../../src/domain/deploy-jobs.ts";
 
 const CHECK = "scripts/check-live-tools.sh";
-const RELEASE = "scripts/release.sh";
+const RELEASE = "scripts/publish-release.sh";
 const DELIVERABLE_VALIDATOR = "src/scripts/validate_deliverable.ts";
 
 function body(path: string): string {
@@ -121,15 +121,15 @@ describe("where it is wired", () => {
    * cannot withhold anything), and the check present at all (otherwise the flag
    * exists and nothing runs it — which is the state this whole change is about).
    */
-  test("release.sh runs it after building the artifact and before publishing it", () => {
+  test("publish-release.sh runs it after building the artifact and before publishing it", () => {
     const source = body(RELEASE);
     const check = source.indexOf("check-live-tools.sh");
     const build = source.indexOf("bun run synth");
     const publish = source.indexOf("gh release create");
 
-    expect(check, "release.sh does not run the live tool check, so nothing does").toBeGreaterThan(-1);
-    expect(build, "release.sh no longer builds the artifact").toBeGreaterThan(-1);
-    expect(publish, "release.sh no longer publishes a release").toBeGreaterThan(-1);
+    expect(check, "publish-release.sh does not run the live tool check, so nothing does").toBeGreaterThan(-1);
+    expect(build, "publish-release.sh no longer builds the artifact").toBeGreaterThan(-1);
+    expect(publish, "publish-release.sh no longer publishes a release").toBeGreaterThan(-1);
 
     expect(build, "the check would run before there is a dist/ to check").toBeLessThan(check);
     expect(check, "a failure after the publish withholds nothing").toBeLessThan(publish);
@@ -140,7 +140,7 @@ describe("where it is wired", () => {
     // ships it. Moving the check above this exit would start servers on every
     // merge, which is a different decision and should not be an accidental one.
     const alreadyReleased = source.indexOf("is already released; nothing to do");
-    expect(alreadyReleased, "release.sh no longer stops early for an existing release").toBeGreaterThan(-1);
+    expect(alreadyReleased, "publish-release.sh no longer stops early for an existing release").toBeGreaterThan(-1);
     expect(
       alreadyReleased,
       "the live tool check now runs on every merge; keeping it below the early exit runs it when a " +
@@ -167,7 +167,7 @@ describe("where it is wired", () => {
       "a shipped file must not say the reader's release checks this: theirs ships with " +
         "deploy ships empty and runs nothing",
     ).toBe(false);
-    expect(shipped).toContain("scripts/release.sh");
+    expect(shipped).toContain("scripts/publish-release.sh");
   });
 
   /** The same claim, in the guide an adopter operates from. */

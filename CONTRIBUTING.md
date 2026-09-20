@@ -13,7 +13,7 @@ The deliverable:
 - `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters
   receive. **Not tracked in git** — it is a pure function of `src/`, and the
   release deployment publishes it as a release asset rather than committing it.
-- `scripts/`: this project's own pipeline. `release.sh` is what `deploy.on_merge`
+- `scripts/`: this project's own pipeline. `tag-release.sh` is what `deploy.on_merge`
   names, and they are the reason there are no hand-written workflows left.
   Governed, like `.github/`. The secret scan used to live here too and now ships to
   every adopter as `.github/atomaton-runtime/scripts/scan_secrets.ts`; this repository
@@ -88,21 +88,36 @@ keeping the two together is a discipline rather than something enforced.
 
 Bump `version` in `package.json` and merge it. That is the whole procedure.
 
-The version is the single declaration, and `scripts/release.sh` derives the tag
-from it, so there is no tag to push and nothing that can disagree. Releasing is an
-ordinary reviewed change rather than a separate act of remembering.
+The version is the single declaration, and `scripts/tag-release.sh` derives the
+tag from it, so there is no tag to push and nothing that can disagree. Releasing is
+an ordinary reviewed change rather than a separate act of remembering.
 
-That script is this project's one `deploy.on_merge` entry, declared in
-`.github/atomaton/config.yaml`. It runs after every merge and is idempotent: it reads
-the declared version, finds a release already exists for it, and stops before
-installing anything. Only a merge that changes the version reaches the build,
-where it packages `dist/` as `atomaton-delivery.zip` with `.github/` at the archive
-root and creates the release — the tag included, via `--target`, so a tag never
-exists without a release behind it.
+It happens in two halves, and the second is triggered by the first:
+
+1. **`deploy.on_merge` → `scripts/tag-release.sh`.** Runs after every merge and is
+   idempotent: it reads the declared version, finds a release already exists for
+   it, and stops. Only a merge that changes the version creates the tag.
+2. **`deploy.on_tag` → `scripts/publish-release.sh`.** Runs off that tag. It
+   builds, runs the live tool check, packages `dist/` as `atomaton-delivery.zip`
+   with `.github/` at the archive root, and creates the release.
+
+**Why two, when one script did both.** A tag used to be only an output here, so
+this repository shipped `on_tag` and never once used it — and the path that carries
+a tag into a deployment had no traffic on it to show it was broken. Now every
+release goes through it, and a human pushing `v1.2.3` at a commit on `main` gets
+the same publish.
+
+The cost is a window: between the tag and a successful publish, a tag exists with
+no release. `tag-release.sh` will not create it twice, so that state is reported
+rather than papered over, and the publish is idempotent:
+
+```sh
+gh workflow run atomaton-deploy.yml --ref v1.2.3 -f target=publish
+```
 
 Nothing writes to main, so none of this needs a ruleset bypass.
 
-**`release.sh` also runs `scripts/check-live-tools.sh`**, between building `dist/`
+**`publish-release.sh` also runs `scripts/check-live-tools.sh`**, between building `dist/`
 and creating the release. That script starts every tool server the artifact would
 ship and asks `atoma validate --with-live-tools` what each server actually
 advertises — which is what says whether a `tool_allowlist` pattern still names a
