@@ -7,16 +7,29 @@
  * GraphQL query for GitHub's native sub-issue `parent` field and fell back to the
  * tag. Nothing recorded why one of the three had the richer rule.
  *
- * The richer rule is the right one and is now everyone's. GitHub's own parent
- * link is authoritative when it exists, and the tag is what Atomaton writes itself
- * -- an issue created by `create_issue` carries the tag whether or not the native
- * link was established, and `addSubIssue` is best-effort.
+ * ## Why the tag is gone
+ *
+ * It answered the same question as GitHub's own sub-issue link, and the two could
+ * disagree with nothing to say so. `create_issue` wrote the tag once, at creation,
+ * and nothing ever rewrote it; the native link is a person's to change in the web UI
+ * at any time. Re-parent a sub-issue there and `parentIssueOf` followed the new
+ * parent while `sibling-check.ts` and `work-tree.ts` went on counting under the old
+ * one — two answers, both confident.
+ *
+ * Measured on this repository before choosing: of the eight issues carrying the tag,
+ * six agreed with the native link and two had no link at all — one typed in by hand,
+ * one an issue merely filed DURING a run on #42 rather than a child of it, which is
+ * the other thing the tag had come to mean. Nothing disagreed. So the link is what
+ * survives, and `addSubIssue` is no longer best-effort: `create_issue` fails if it
+ * cannot establish one, because there is now nothing else recording the edge.
+ *
+ * The pull request half of the edge — `atomaton:parent-issue` — stays, and that
+ * asymmetry is measured too. See `lib/tags.ts`.
  *
  * Not `issueLinks`, which answers a much larger question: it pulls fifty children
  * and fifty pull requests, and every caller here wants one number.
  */
-import { gh, ghGraphql } from "./gh.ts";
-import { PARENT_TAG } from "./tags.ts";
+import { ghGraphqlRead } from "./gh.ts";
 
 /**
  * What an issue's parentage turned out to be.
@@ -34,40 +47,35 @@ function log(message: string): void {
   console.error(`[atomaton-parent] ${message}`);
 }
 
-/** GitHub's native sub-issue parent, or undefined when there is none or it could not be asked. */
-function nativeParent(repo: string, issue: number): number | undefined {
-  const [owner, name] = repo.split("/", 2);
-  if (!owner || !name) return undefined;
-  try {
-    const data = ghGraphql<{ repository: { issue: { parent: { number: number } | null } } }>(
-      "query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}",
-      { owner, repo: name, num: issue },
-    );
-    return data.repository.issue.parent?.number;
-  } catch {
-    // Not an answer either way: the field is unavailable on some plans and the
-    // query fails on a transient error. The tag below is the fallback, and it is
-    // the one Atomaton writes for itself.
-    return undefined;
-  }
-}
-
 /**
  * The parent issue this one was split out of.
  *
- * GitHub's native link first, then the `atomaton:parent` tag `create_issue` writes.
- * A failure to read the body is `known: false`; a body with no tag and no native
- * parent is a root issue.
+ * GitHub's own sub-issue link, and nothing else. No parent is `parent: 0` — a root
+ * issue — and a query that could not be answered is `known: false`, which is the
+ * distinction this type exists for.
+ *
+ * A failure used to fall through to the tag, so a transient error read as "no
+ * native parent" and the tag answered. With the tag gone there is nothing to fall
+ * through to, which is why the read retries: see `ghGraphqlRead`. Only a failure
+ * that outlasts the retries is `known: false`.
  */
 export function parentIssueOf(repo: string, issue: number): ParentIssue {
-  const native = nativeParent(repo, issue);
-  if (native) return { known: true, parent: native };
-
-  const { code, stderr, stdout } = gh("issue", "view", String(issue), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code) {
-    const why = `could not read issue #${issue}: ${stderr.trim() || `gh exited ${code}`}`;
+  const [owner, name] = repo.split("/", 2);
+  if (!owner || !name) {
+    const why = `'${repo}' is not an owner/name repository, so #${issue}'s parent could not be asked for`;
     log(`WARN ${why}`);
     return { known: false, why };
   }
-  return { known: true, parent: PARENT_TAG.read(stdout) ?? 0 };
+
+  try {
+    const data = ghGraphqlRead<{ repository: { issue: { parent: { number: number } | null } } }>(
+      "query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}",
+      { owner, repo: name, num: issue },
+    );
+    return { known: true, parent: data.repository.issue.parent?.number ?? 0 };
+  } catch (error) {
+    const why = `could not read the parent of #${issue}: ${(error as Error).message}`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
 }

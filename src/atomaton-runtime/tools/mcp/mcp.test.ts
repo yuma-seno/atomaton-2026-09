@@ -285,6 +285,11 @@ describe("mcp/github.ts", () => {
         FAKE_GH_RESPONSES: JSON.stringify([
           { match: ["matching-refs"], stdout: "[]" },
           { match: ["issue", "view", "1"], stdout: "" },
+          // Whether #1 is a sub-issue, which decides what its pull request targets.
+          // GitHub's own link, not a body tag -- see `lib/parent-issue.ts`. A read
+          // that fails here is a tool error rather than a guessed base branch, so
+          // the rule has to be here for the happy path to be the happy path.
+          { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
           { match: ["pr", "list"], stdout: "[]" },
           { match: ["pr", "create"], stdout: "https://github.com/owner/repo/pull/123" },
           { match: ["workflow", "run"], stdout: "" },

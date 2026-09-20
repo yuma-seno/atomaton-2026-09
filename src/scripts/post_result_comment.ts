@@ -16,7 +16,8 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
-import { AGENT_TAG, CHANGED_TAG, ENDED_TAG, PARENT_TAG } from "../lib/tags.ts";
+import { AGENT_TAG, CHANGED_TAG, ENDED_TAG } from "../lib/tags.ts";
+import { parentIssueOf } from "../lib/parent-issue.ts";
 import { shouldMentionOnCompletion } from "../domain/completion-mention.ts";
 import { redact } from "../domain/redaction.ts";
 import { renderTokenLine } from "../domain/token-line.ts";
@@ -124,19 +125,21 @@ function tokenUsageLines(logsFile: string): string[] {
  */
 function subIssueState(number: string, type?: string): { isSubIssue: boolean; issueClosed: boolean } {
   if (type !== "issue") return { isSubIssue: false, issueClosed: false };
-  const { code, stdout } = gh(
-    "issue", "view", number, "--repo", process.env.GITHUB_REPOSITORY ?? "", "--json", "state,body",
-  );
+  const repo = process.env.GITHUB_REPOSITORY ?? "";
+  const { code, stdout } = gh("issue", "view", number, "--repo", repo, "--json", "state");
   if (code !== 0) return { isSubIssue: false, issueClosed: false };
+  let issueClosed = false;
   try {
-    const issue = JSON.parse(stdout) as { state?: string; body?: string };
-    return {
-      isSubIssue: PARENT_TAG.read(issue.body ?? "") !== undefined,
-      issueClosed: issue.state === "CLOSED",
-    };
+    issueClosed = (JSON.parse(stdout) as { state?: string }).state === "CLOSED";
   } catch {
     return { isSubIssue: false, issueClosed: false };
   }
+  // GitHub's own link, like every other reader of this relationship. The body's
+  // `atomaton:parent` tag is gone -- it recorded the parent at creation and nothing
+  // rewrote it. `known: false` falls in with the rest of this function's failures:
+  // the two facts here only decide whether one extra sentence appears in a comment.
+  const found = parentIssueOf(repo, Number(number));
+  return { isSubIssue: found.known && found.parent > 0, issueClosed };
 }
 
 /**

@@ -16,7 +16,35 @@ describe("aggregate_sub_issues.ts", () => {
       const r = runWithFakeGh(
         scriptPath("aggregate_sub_issues.ts"),
         ["--repo", "owner/repo", "--parent", "5", "--closed-num", "9"],
-        { cwd: dir, rules: [{ match: ["issue", "list"], stdout: JSON.stringify([{ number: 1 }]) }] },
+        {
+          cwd: dir,
+          // The siblings come from GitHub's own sub-issue links now, with their
+          // labels in the same request. See `lib/parent-issue.ts`.
+          rules: [
+            {
+              match: ["graphql"],
+              stdout: JSON.stringify({
+                data: {
+                  repository: {
+                    issueOrPullRequest: {
+                      __typename: "Issue",
+                      subIssues: {
+                        nodes: [
+                          {
+                            number: 1,
+                            title: "#1",
+                            state: "OPEN",
+                            labels: { nodes: [{ name: "atomaton/sub-issue" }, { name: "atomaton/launched" }] },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              }),
+            },
+          ],
+        },
       );
       expect(r.status).toBe(0);
       // stderr, not stdout: every diagnostic in this script goes to stderr so

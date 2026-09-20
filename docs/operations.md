@@ -226,7 +226,7 @@ Three labels are applied, and only the first is about the guard:
 | label | what it means |
 | --- | --- |
 | `atomaton/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |
-| `atomaton/sub-issue` | this issue is a child delivery task Atomaton created, with an `atomaton:parent=N` tag in its body saying whose |
+| `atomaton/sub-issue` | this issue is a child delivery task Atomaton created. Which issue it is under is GitHub's own sub-issue link, not a marker in the body |
 | `atomaton/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |
 
 The last two are read together, and that is why there are two. A parent is

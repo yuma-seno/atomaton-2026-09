@@ -40,7 +40,32 @@ const dispatched = (calls: string[][]) => calls.some((c) => c.includes("workflow
 const wroteMarker = (calls: string[][]) =>
   calls.some((c) => c.includes("comment") && c.some((a) => a.includes("atomaton:aggregated")));
 
-const NO_SIBLINGS: FakeGhRule = { match: ["issue", "list"], stdout: "[]" };
+/**
+ * The sub-issue links, which is where siblings come from now -- `atomaton:parent=N
+ * in:body` and the tag behind it are gone. See `lib/parent-issue.ts`.
+ */
+const subIssues = (...numbers: number[]): FakeGhRule => ({
+  match: ["graphql"],
+  stdout: JSON.stringify({
+    data: {
+      repository: {
+        issueOrPullRequest: {
+          __typename: "Issue",
+          subIssues: {
+            nodes: numbers.map((number) => ({
+              number,
+              title: `#`,
+              state: "OPEN",
+              labels: { nodes: [{ name: "atomaton/sub-issue" }, { name: "atomaton/launched" }] },
+            })),
+          },
+        },
+      },
+    },
+  }),
+});
+
+const NO_SIBLINGS: FakeGhRule = subIssues();
 const NO_MARKER: FakeGhRule = { match: ["issue", "view"], stdout: "some unrelated comment" };
 
 // The fake `gh` exits 1 for any call no rule matches, which is the right
@@ -89,7 +114,7 @@ describe("aggregation.ts dispatch gate", () => {
 
   test("siblings still open is `waiting`, and nothing is claimed", () => {
     const { kind, ghCalls } = runGate([
-      { match: ["issue", "list"], stdout: JSON.stringify([{ number: 11 }]) },
+      subIssues(11),
     ]);
     expect(kind).toBe("waiting");
     expect(wroteMarker(ghCalls)).toBe(false);
@@ -137,7 +162,7 @@ describe("aggregation.ts dispatch gate", () => {
   // escape the gate entirely -- one call site wrapped it in try/catch and the
   // other did not, which was not a policy.
   test("an unreadable sibling list is undetermined, not an escaping exception", () => {
-    const { kind, ghCalls } = runGate([{ match: ["issue", "list"], code: 1, stdout: "gh: not found" }]);
+    const { kind, ghCalls } = runGate([{ match: ["graphql"], code: 1, stdout: "gh: not found" }]);
     expect(kind).toBe("undetermined");
     expect(dispatched(ghCalls)).toBe(false);
   });

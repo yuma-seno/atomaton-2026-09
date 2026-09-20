@@ -8,28 +8,27 @@
  * descending one level at a time. The trees this builds are shallow — an issue, its
  * sub-issues, their pull requests.
  *
- * ## Two sources for one edge, and why neither alone will do
+ * ## One source per kind of edge, and why they differ
  *
- * The tag, because `addSubIssue` is best-effort: a sub-issue an agent created can
- * carry `atomaton:parent=<n>` and no native link at all. `parent-issue.ts` reached the
- * same conclusion walking upward, and reads both for the same reason.
+ * A sub-issue comes from GitHub's own link, which is the only record of that edge —
+ * `create_issue` fails rather than leave one unmade. It also covers what no agent
+ * made: an issue a person opened, decomposed with the sub-issue control and closed is
+ * a tree this would otherwise see as a single node, and closing it would leave its
+ * children open. That argument is `issue-links.ts`'s.
  *
- * GitHub's own links, because the tag only exists where an agent has been. An issue a
- * person opened, decomposed with the sub-issue control and closed is a tree this would
- * otherwise see as a single node — and closing it would leave its children open. That
- * argument is `issue-links.ts`'s, written before this file existed, and this file was
- * built tag-only anyway by copying the narrower reader next to it.
+ * A pull request comes from its `atomaton:parent-issue` tag, because GitHub's own
+ * PR-to-issue link does not survive here. Measured: of nine pull requests this
+ * repository tagged, two carried a `closingIssuesReferences` entry. GitHub drops the
+ * link once anything but that pull request's merge closes the issue, and this design
+ * does that twice — a sub-issue's pull request merges into its PARENT's branch, so
+ * the auto-close never fires, and the post-merge agent closes the sub-issue itself.
  *
- * So: the union. The tag search carries labels and answers in one call per level; the
- * native links are asked once per level and cost a second read only for what they alone
- * found, which is by construction the node no agent made.
+ * ## The pull request search is a prefilter, never the answer
  *
- * ## The search is a prefilter, never the answer
- *
- * GitHub tokenizes, so a query for `atomaton:parent=5` also returns the sub-issues of
- * #50. Every result is checked against the tag reader before it is believed — the same
- * trap `aggregate_sub_issues.ts` documents, and the reason it re-reads the body it
- * just searched on.
+ * GitHub tokenizes, so a query for `atomaton:parent-issue=5` also returns the pull
+ * requests of #50. Every result is checked against the tag reader before it is
+ * believed — the same trap `aggregate_sub_issues.ts` used to document, and the reason
+ * it re-read the body it had just searched on.
  *
  * ## What a failed read means here
  *
@@ -41,7 +40,7 @@
 import { gh, ghRead } from "./gh.ts";
 import { getLabel } from "./config.ts";
 import { issueLinks } from "./issue-links.ts";
-import { ENDED_TAG, LLM_CONTEXT_TAG, PARENT_ISSUE_TAG, PARENT_TAG, STOP_TAG } from "./tags.ts";
+import { ENDED_TAG, LLM_CONTEXT_TAG, PARENT_ISSUE_TAG, STOP_TAG } from "./tags.ts";
 import {
   closeReachedNotice,
   descendants,
@@ -115,36 +114,40 @@ function readNode(repo: string, number: number): { node?: WorkNode; problem?: st
       number,
       kind: isPr ? "pull-request" : "issue",
       state,
-      parent: PARENT_TAG.read(raw.body ?? "") ?? PARENT_ISSUE_TAG.read(raw.body ?? ""),
+      // A pull request's parent is its `atomaton:parent-issue` tag; an issue's is
+      // GitHub's own sub-issue link, read by the caller that walks downward. This
+      // used to be `PARENT_TAG.read(body) ?? PARENT_ISSUE_TAG.read(body)` — two
+      // spellings tried in turn, three lines after `isPr` had already settled which
+      // one this is, so an issue carrying a pull request's tag was accepted without
+      // a word.
+      parent: isPr ? PARENT_ISSUE_TAG.read(raw.body ?? "") : undefined,
       running: labelNames(raw.labels).includes(getLabel("in_progress")),
     },
   };
 }
 
-/** The issues filed under `parent`, and the pull requests opened for it. */
+/**
+ * The issues filed under `parent`, and the pull requests opened for it.
+ *
+ * The issues come from GitHub's own sub-issue links, through `issueLinks`, which is
+ * the single record of that edge — see `lib/parent-issue.ts`. There used to be a
+ * search for `atomaton:parent=N in:body` beside it and a union afterwards, because
+ * `addSubIssue` was best-effort and a sub-issue could carry the tag and no link. It
+ * is not best-effort any more: `create_issue` fails if the link cannot be made, so
+ * the link is what there is.
+ *
+ * Pull requests still come from their own tag. GitHub's PR-to-issue link is not
+ * usable here and the reason is measured rather than assumed: of nine pull requests
+ * this repository tagged, two carried a `closingIssuesReferences` entry. GitHub drops
+ * the link once something other than that pull request's merge closes the issue, and
+ * two things in this design do exactly that — a sub-issue's pull request merges into
+ * its PARENT's branch rather than the default one, so the auto-close never fires, and
+ * the post-merge agent closes the sub-issue itself. See `lib/tags.ts`.
+ */
 function readChildren(repo: string, parent: number): { nodes: WorkNode[]; problems: string[] } {
   const label = getLabel("in_progress");
   const nodes: WorkNode[] = [];
   const problems: string[] = [];
-
-  const issues = ghRead(
-    "issue", "list", "--repo", repo, "--state", "all", "--limit", "200",
-    "--search", `${PARENT_TAG.search(parent)} in:body`,
-    "--json", "number,body,state,labels",
-  );
-  if (issues.code !== 0) problems.push(`could not list the sub-issues of #${parent}`);
-  const listedIssues = parseListed(issues.stdout);
-  if (listedIssues === null) problems.push(`the sub-issue listing for #${parent} was not readable`);
-  for (const found of listedIssues ?? []) {
-    if (PARENT_TAG.read(found.body ?? "") !== parent) continue;
-    nodes.push({
-      number: found.number,
-      kind: "issue",
-      state: found.state === "OPEN" ? "open" : "closed",
-      parent,
-      running: labelNames(found.labels).includes(label),
-    });
-  }
 
   const prs = ghRead(
     "pr", "list", "--repo", repo, "--state", "all", "--limit", "200",
@@ -166,25 +169,32 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     });
   }
 
-  // What no agent tagged. `issueLinks` reads GitHub's own sub-issue links and the pull
-  // requests that say they close this issue, and its docstring is the argument for
-  // asking it at all: "the relationships have to survive an issue a person opened,
-  // decomposed and closed without an agent ever touching it, and markers only exist
-  // where an agent has been."
+  // The sub-issues, and the pull requests GitHub itself knows about. `issueLinks`'s
+  // docstring is the argument for asking it: "the relationships have to survive an
+  // issue a person opened, decomposed and closed without an agent ever touching it,
+  // and markers only exist where an agent has been."
   //
-  // A union rather than a replacement, because the tag survives what the native link
-  // does not: `addSubIssue` is best-effort, so a sub-issue can carry the tag and no
-  // link. `parent-issue.ts` reaches the same conclusion walking the other way.
+  // Children arrive with their labels, in the same request, so `running` needs no
+  // second read for them. A pull request GitHub knows about and the tag search above
+  // missed still does — rare by construction, since it is one no agent opened.
   const links = issueLinks(repo, parent);
   if (links.unavailable) {
     problems.push(`could not read GitHub's own links for #${parent}: ${links.unavailable}`);
   }
   const already = new Set(nodes.map((node) => node.number));
-  for (const linked of [...links.children, ...links.pullRequests]) {
+  for (const child of links.children) {
+    if (already.has(child.number)) continue;
+    already.add(child.number);
+    nodes.push({
+      number: child.number,
+      kind: "issue",
+      state: child.state === "open" ? "open" : "closed",
+      parent,
+      running: child.labels.includes(label),
+    });
+  }
+  for (const linked of links.pullRequests) {
     if (already.has(linked.number)) continue;
-    // Only these need a second read. The search above returns labels; this one does
-    // not, and `running` is what decides whether a stop has anywhere to go. Rare by
-    // construction — it is the node an agent did not create.
     const { node, problem } = readNode(repo, linked.number);
     if (!node) {
       problems.push(problem ?? `could not read #${linked.number}`);

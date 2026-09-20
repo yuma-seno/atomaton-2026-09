@@ -37,13 +37,17 @@
  * stop, and all three are readable from the tree and the thread. So `/resume` needs no
  * record of what a `/stop` covered; it asks the same question again.
  *
- * ## One edge, two spellings
+ * ## One edge, two records
  *
- * `atomaton:parent` links a sub-issue to its parent and `atomaton:parent-issue` links a
- * pull request to the issue it delivers. They are the same edge — "what is this under"
- * — and `readAnyParentTag` has quietly agreed since it was written, in the one place
- * that walks upward. The model here has a single `parent`, and the wire keeps both
- * spellings because rewriting them would orphan every issue already filed.
+ * "What is this under" is one edge, and the model here has a single `parent`. On the
+ * wire it is two records, and they are two because GitHub can only keep one of them:
+ * an issue's parent is GitHub's own sub-issue link, and a pull request's is the
+ * `atomaton:parent-issue` tag, because GitHub drops its own PR-to-issue link as soon
+ * as anything but that pull request's merge closes the issue — which this design does
+ * twice over. `lib/tags.ts` carries the measurement.
+ *
+ * It used to be two TAGS, `atomaton:parent` and `atomaton:parent-issue`, read in turn
+ * with `??` even where the kind was already known. The first is gone.
  *
  * Pure: a caller reads the nodes from GitHub, and everything below is arithmetic on
  * them.

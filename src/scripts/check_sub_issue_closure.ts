@@ -1,35 +1,47 @@
 #!/usr/bin/env bun
 /**
  * check_sub_issue_closure.ts — Determine whether a just-closed issue is an
- * Atomaton sub-issue (has an `<!-- atomaton:parent=N -->` tag) and, if so,
- * whether it was already closed via a merged PR (in which case
- * atomaton-pr-merged.wac.ts already handled aggregation, and this fallback
- * path must skip to avoid dispatching the orchestrator twice).
+ * Atomaton sub-issue and, if so, whether it was already closed via a merged PR
+ * (in which case atomaton-pr-merged.wac.ts already handled aggregation, and this
+ * fallback path must skip to avoid dispatching the orchestrator twice).
  *
- * Env: CLOSED_NUM, GITHUB_EVENT_PATH, OWNER, REPO
+ * ## Why it asks GitHub rather than reading the event
+ *
+ * It used to take the parent from the `<!-- atomaton:parent=N -->` tag in the closed
+ * issue's body, which the webhook payload already carries — free, and wrong for the
+ * same reason the tag is gone everywhere else: it recorded the parent at creation and
+ * nothing rewrote it, so a sub-issue re-parented in the web UI aggregated under the
+ * issue it used to be under. One request buys the answer the rest of the system uses.
+ *
+ * A parent that could not be READ is not a parent that is absent. Saying
+ * `is_sub_issue=false` there would skip the aggregation silently, and nothing else
+ * would notice a parent that is never re-invoked — so this fails instead.
+ *
+ * Env: CLOSED_NUM, OWNER, REPO
  * Writes to $GITHUB_OUTPUT: is_sub_issue, parent_number, closed_via_pr
  */
-import { readFileSync, appendFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { ghGraphql } from "../lib/gh.ts";
+import { parentIssueOf } from "../lib/parent-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
-import { PARENT_TAG } from "../lib/tags.ts";
 
 export const ref = defineScript(import.meta.url);
 
-interface GithubIssueClosedEvent {
-  issue?: { body?: string };
-}
-
 function main(): void {
-  const eventPath = process.env.GITHUB_EVENT_PATH;
   const closedNum = process.env.CLOSED_NUM ?? "";
   const owner = process.env.OWNER ?? "";
   const repo = process.env.REPO ?? "";
   const githubOutput = process.env.GITHUB_OUTPUT;
 
-  const event = eventPath ? (JSON.parse(readFileSync(eventPath, "utf8")) as GithubIssueClosedEvent) : {};
-  const body = event.issue?.body ?? "";
-  const parent = PARENT_TAG.read(body);
+  const found = parentIssueOf(`${owner}/${repo}`, Number(closedNum));
+  if (!found.known) {
+    console.error(
+      `::error::Could not tell whether #${closedNum} is a sub-issue (${found.why}), so nothing was aggregated. ` +
+        "Its parent will not be re-invoked until someone does it by hand.",
+    );
+    process.exit(1);
+  }
+  const parent = found.parent || undefined;
 
   if (parent === undefined) {
     if (githubOutput) appendFileSync(githubOutput, "is_sub_issue=false\n");

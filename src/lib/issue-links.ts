@@ -11,16 +11,37 @@
  * issue a person opened, decomposed and closed without an agent ever touching
  * it, and markers only exist where an agent has been.
  */
-import { ghGraphql } from "./gh.ts";
-import { claimsToClose, dedupeByNumber, type IssueLinks, type LinkedIssue, type LinkedPr } from "../domain/issue-links.ts";
+import { ghGraphqlRead } from "./gh.ts";
+import {
+  claimsToClose,
+  dedupeByNumber,
+  type IssueLinks,
+  type LinkedChild,
+  type LinkedIssue,
+  type LinkedPr,
+} from "../domain/issue-links.ts";
 
 /** How many children and pull requests to ask for. Past this the reader is not reading, they are scrolling. */
 const LINK_LIMIT = 50;
+
+/**
+ * How many labels to read per sub-issue.
+ *
+ * Only three are ever asked about — the sub-issue, launched and in-progress labels —
+ * but they arrive in whatever order GitHub holds them, so this has to be a bound on
+ * the issue rather than on what the caller wants. Twenty is far past what an issue in
+ * this system carries and still one page.
+ */
+const LABEL_LIMIT = 20;
 
 interface GqlIssue {
   number: number;
   title: string;
   state: string;
+}
+
+interface GqlChild extends GqlIssue {
+  labels?: { nodes: { name: string }[] };
 }
 
 interface GqlPr extends GqlIssue {
@@ -31,7 +52,7 @@ interface GqlPr extends GqlIssue {
 interface GqlIssueLinks {
   __typename: string;
   parent?: GqlIssue | null;
-  subIssues?: { nodes: GqlIssue[] };
+  subIssues?: { nodes: GqlChild[] };
   closedByPullRequestsReferences?: { nodes: GqlPr[] };
   timelineItems?: { nodes: { source?: GqlPr }[] };
   /** A pull request's own link: the issues it says it closes. */
@@ -56,13 +77,13 @@ interface GqlResponse {
  * sense (see `domain/work-tree.ts`). A pull request is a leaf.
  */
 const QUERY = `
-query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
+query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!) {
   repository(owner:$owner, name:$name) {
     issueOrPullRequest(number:$number) {
       __typename
       ... on Issue {
         parent { number title state }
-        subIssues(first:$limit) { nodes { number title state } }
+        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
         closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
           nodes { number title state merged body }
         }
@@ -79,6 +100,10 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
 
 function normalise(node: GqlIssue): LinkedIssue {
   return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+}
+
+function asChild(node: GqlChild): LinkedChild {
+  return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
 }
 
 function asPr(node: GqlPr): LinkedPr {
@@ -100,7 +125,7 @@ export function issueLinks(repo: string, number: number): IssueLinks {
 
   let issue: GqlIssueLinks | null = null;
   try {
-    issue = ghGraphql<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT })
+    issue = ghGraphqlRead<GqlResponse>(QUERY, { owner, name, number, limit: LINK_LIMIT, labelLimit: LABEL_LIMIT })
       .repository?.issueOrPullRequest ?? null;
   } catch (error) {
     const why = (error as Error).message;
@@ -135,7 +160,7 @@ export function issueLinks(repo: string, number: number): IssueLinks {
 
   return {
     parent: issue.parent ? normalise(issue.parent) : undefined,
-    children: (issue.subIssues?.nodes ?? []).map(normalise),
+    children: (issue.subIssues?.nodes ?? []).map(asChild),
     pullRequests: dedupeByNumber(declared, referenced),
   };
 }

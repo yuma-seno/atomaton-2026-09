@@ -23,7 +23,8 @@ import { gh } from "./gh.ts";
 import { countOpenSiblings } from "./sibling-check.ts";
 import { dispatchRunner } from "./dispatch.ts";
 import { resolveNotify } from "./notify.ts";
-import { AGGREGATED_TAG, LLM_CONTEXT_TAG, PARENT_TAG, SUB_RESULT_TAG } from "./tags.ts";
+import { AGGREGATED_TAG, LLM_CONTEXT_TAG, SUB_RESULT_TAG } from "./tags.ts";
+import { parentIssueOf } from "./parent-issue.ts";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,10 +36,9 @@ export interface DispatchGateOptions {
   /** The sub-issue whose completion triggered this check. */
   closedNum: number;
   /**
-   * Retry the sibling count with backoff (4 attempts) on GitHub
-   * search-index eventual-consistency lag -- needed when called right
-   * after OUR OWN close of `closedNum`, before the search index has
-   * necessarily caught up.
+   * Retry the sibling count with backoff (4 attempts), for the lag between
+   * closing an issue and GitHub reporting it closed -- needed when called right
+   * after OUR OWN close of `closedNum`.
    */
   retry?: boolean;
   /**
@@ -70,7 +70,7 @@ export interface DispatchGateOptions {
  * that the return type cannot say what happened.
  */
 export type DispatchGateResult =
-  /** Not this issue's business: it carries no `atomaton:parent` tag. */
+  /** Not this issue's business: GitHub has it under nothing. */
   | { kind: "not-tracked" }
   /** Siblings are still open. `remaining` is how many. */
   | { kind: "waiting"; remaining: number }
@@ -114,7 +114,7 @@ export function needsAttention(result: DispatchGateResult): boolean {
  */
 export function describeGateResult(result: DispatchGateResult, closedNum: number, parent?: number): string {
   // `parent` is optional because one caller does not know it: `close_issue`
-  // reaches the gate through the sub-issue's own tag. Named as "the parent"
+  // reaches the gate through the sub-issue's own link. Named as "the parent"
   // there rather than printed as `#0`, which would be a number that identifies
   // a different thing.
   const which = parent === undefined ? "the parent issue" : `#${parent}`;
@@ -147,7 +147,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   const excludeNum = opts.exclude ? opts.closedNum : undefined;
   const count = () => countOpenSiblings({ repo: opts.repo, parent: opts.parent, exclude: excludeNum });
 
-  // `countOpenSiblings` throws on a failed `gh issue list`, while every other
+  // `countOpenSiblings` throws when the sub-issue links could not be read, while every other
   // failure in this module is a return value. That exception used to escape the
   // gate entirely, and the two call sites were inconsistent about it -- one
   // wrapped the whole thing in try/catch and the other did not, which is not a
@@ -244,14 +244,13 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
 }
 
 /**
- * Resolves `subIssueNum`'s orchestrator parent from its own `atomaton:parent`
- * tag, then runs the dispatch gate on it with retry enabled (GitHub's
- * search index is only eventually consistent -- the sub-issue we just
- * closed a moment ago may still be reported as open for a second or two).
- * Returns `not-tracked` when `subIssueNum` carries no parent tag at all (not
- * every closed issue is a tracked Atomaton sub-issue), and `undetermined` when its
- * body could not be read -- which is a different thing, because an unread body
- * may belong to a sub-issue that just completed.
+ * Resolves `subIssueNum`'s orchestrator parent from GitHub's own sub-issue link,
+ * then runs the dispatch gate on it with retry enabled (the sub-issue we just closed
+ * a moment ago may still be reported as open for a second or two).
+ * Returns `not-tracked` when `subIssueNum` is under nothing (not every closed issue
+ * is a tracked Atomaton sub-issue), and `undetermined` when its parent could not be
+ * read -- which is a different thing, because an unread one may belong to a sub-issue
+ * that just completed.
  *
  * The one canonical "a sub-issue just closed -- is its parent ready?"
  * entry point, used identically by mcp/github.ts's closeIssue() and
@@ -259,31 +258,28 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
  * spawned the now-removed dispatch_orchestrator_if_ready.ts script).
  */
 export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssueNum: number): Promise<DispatchGateResult> {
-  // Deliberately the `atomaton:parent` tag alone, NOT `lib/parent-issue.ts`, which
-  // prefers GitHub's native sub-issue link.
+  // `lib/parent-issue.ts`, the same reader `countOpenSiblings` now agrees with.
   //
-  // This module is tag-based end to end: `countOpenSiblings` finds siblings with
-  // `atomaton:parent=N in:body`, so a parent discovered through the native link
-  // would have no countable siblings and the gate would conclude "all done" on
-  // the strength of a search that could never have found any. Reading the richer
-  // answer here would make the two halves disagree about what a sibling is.
-  //
-  // Written down because the shared reader now exists and looks like the obvious
-  // thing to switch to.
-  const { code, stdout } = gh("issue", "view", String(subIssueNum), "--repo", repo, "--json", "body", "--jq", ".body");
-  // A body that could not be read is not a body without a parent tag. Reported as
-  // itself, because the two lead to opposite places: no tag means this issue is
-  // untracked and there is nothing to do, while an unread body means a tracked
-  // sub-issue may have just completed and the orchestrator is never told.
-  if (code !== 0) {
-    const why = `could not read issue #${subIssueNum}; cannot tell whether it belongs to a parent`;
+  // This used to insist on the `atomaton:parent` tag alone and said why: the sibling
+  // count was a search for `atomaton:parent=N in:body`, so a parent found through
+  // GitHub's native link would have had no countable siblings and the gate would have
+  // concluded "all done" on the strength of a search that could never have found any.
+  // Two halves that had to agree about what a sibling is, agreeing by both being
+  // wrong in the same way. Both halves read the link now, so the constraint is met by
+  // the answer being one answer rather than by neither half looking.
+  const found = parentIssueOf(repo, subIssueNum);
+  // A parent that could not be READ is not an issue without one. Reported as itself,
+  // because the two lead to opposite places: no parent means this issue is untracked
+  // and there is nothing to do, while an unread one means a tracked sub-issue may
+  // have just completed and the orchestrator is never told.
+  if (!found.known) {
+    const why = `could not read the parent of #${subIssueNum}: ${found.why}`;
     console.error(why);
     return { kind: "undetermined", why };
   }
-  const parent = PARENT_TAG.read(stdout);
-  if (parent === undefined) {
-    console.error(`issue #${subIssueNum} has no atomaton:parent tag, nothing to do`);
+  if (!found.parent) {
+    console.error(`issue #${subIssueNum} is not a sub-issue of anything, nothing to do`);
     return { kind: "not-tracked" };
   }
-  return dispatchOrchestratorIfReady({ repo, parent, closedNum: subIssueNum, retry: true });
+  return dispatchOrchestratorIfReady({ repo, parent: found.parent, closedNum: subIssueNum, retry: true });
 }

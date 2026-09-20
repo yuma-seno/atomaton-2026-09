@@ -12,23 +12,10 @@ describe("resolve_orchestrator_parent.ts", () => {
     expect(r.stdout.trim()).toBe("3");
   });
 
-  test("falls back to the atomaton:parent body comment when GraphQL has no parent", () => {
-    const r = runWithFakeGh(scriptPath("resolve_orchestrator_parent.ts"), ["--repo", "owner/repo", "--sub", "9"], {
-      rules: [
-        { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
-        { match: ["issue", "view"], stdout: "<!-- atomaton:parent=4 -->" },
-      ],
-    });
-    expect(r.stdout.trim()).toBe("4");
-  });
-
-  // A root issue: GitHub has no parent link and the body carries no tag.
+  // A root issue: GitHub has it under nothing.
   test("prints nothing for an issue that has no parent", () => {
     const r = runWithFakeGh(scriptPath("resolve_orchestrator_parent.ts"), ["--repo", "owner/repo", "--sub", "9"], {
-      rules: [
-        { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
-        { match: ["issue", "view"], stdout: "an ordinary issue body" },
-      ],
+      rules: [{ match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) }],
     });
     expect(r.status).toBe(0);
     expect(r.stdout.trim()).toBe("");
@@ -38,15 +25,16 @@ describe("resolve_orchestrator_parent.ts", () => {
   // spelled, so a failed read that also printed "" would be indistinguishable
   // from a root issue -- and the aggregation that should have followed would
   // simply never happen, with nothing anywhere saying why.
+  //
+  // It matters more since the `atomaton:parent` tag went: there is no second place
+  // to look, so this query IS the answer. `ghGraphqlRead` retries a transient
+  // failure, and only one that outlasts the retries gets here.
   test("fails rather than printing an empty parent it could not read", () => {
     const r = runWithFakeGh(scriptPath("resolve_orchestrator_parent.ts"), ["--repo", "owner/repo", "--sub", "9"], {
-      rules: [
-        { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
-        { match: ["issue", "view"], code: 1, stdout: "gh: not found" },
-      ],
+      rules: [{ match: ["graphql"], code: 1, stdout: "gh: not found" }],
     });
     expect(r.status).not.toBe(0);
     expect(r.stdout.trim()).toBe("");
-    expect(r.stderr).toContain("could not read issue #9");
+    expect(r.stderr).toContain("could not read the parent of #9");
   });
 });

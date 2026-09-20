@@ -133,16 +133,17 @@ export function ghJson<T = unknown>(...args: string[]): T | null {
   return stdout ? (JSON.parse(stdout) as T) : null;
 }
 
-/** Run a GraphQL query via `gh api graphql`. */
-export function ghGraphql<T = unknown>(
-  query: string,
-  variables: Record<string, string | number> = {},
-): T {
+/** The argv both GraphQL entry points build, so the two cannot drift. */
+function graphqlArgs(query: string, variables: Record<string, string | number>): string[] {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const [key, value] of Object.entries(variables)) {
     args.push("-F", `${key}=${value}`);
   }
-  const { code, stdout, stderr } = gh(...args);
+  return args;
+}
+
+/** What `gh api graphql` returned, or the reason it is not an answer. */
+function graphqlResult<T>({ code, stdout, stderr }: RunResult): T {
   if (code !== 0) {
     throw new Error(`GraphQL query failed: ${stderr || stdout.slice(0, 200)}`);
   }
@@ -151,6 +152,39 @@ export function ghGraphql<T = unknown>(
     throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
   }
   return result.data as T;
+}
+
+/**
+ * Run a GraphQL MUTATION via `gh api graphql`. One attempt.
+ *
+ * Deliberately not retried, which is the whole reason there are two of these rather
+ * than one with a flag. A retried mutation can apply twice, and a caller reaching for
+ * the only function there is would get that for free.
+ */
+export function ghGraphql<T = unknown>(
+  query: string,
+  variables: Record<string, string | number> = {},
+): T {
+  return graphqlResult<T>(gh(...graphqlArgs(query, variables)));
+}
+
+/**
+ * Run a GraphQL QUERY via `gh api graphql`, retrying a transient failure.
+ *
+ * The same argument `target-state.ts` makes for reading an issue's state through
+ * `ghRead`: a failure here refuses to answer, which is right for "there is no parent"
+ * and wrong for "GitHub returned 504", and the two are indistinguishable at this
+ * level. Without the retry a blip stalls a chain that had nothing wrong with it.
+ *
+ * It matters more since GitHub's own sub-issue link became the only record of which
+ * issue a sub-issue is under: the tag that used to be the fallback is gone, so this
+ * query IS the answer.
+ */
+export function ghGraphqlRead<T = unknown>(
+  query: string,
+  variables: Record<string, string | number> = {},
+): T {
+  return graphqlResult<T>(ghRead(...graphqlArgs(query, variables)));
 }
 
 /**

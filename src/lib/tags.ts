@@ -34,8 +34,9 @@ export interface AtomatonTag<T> {
    * match `<!-- ... -->` — measured: a tree walk searching for `write()`'s output found
    * none of its children, on a repository where every one of them carried the tag.
    *
-   * Never the predicate. GitHub tokenizes, so a search for `atomaton:parent=5` also
-   * returns the sub-issues of #50; every hit is confirmed with `read` afterwards.
+   * Never the predicate. GitHub tokenizes, so a search for `atomaton:parent-issue=5`
+   * also returns the pull requests of #50; every hit is confirmed with `read`
+   * afterwards.
    */
   search(value: T): string;
 }
@@ -104,9 +105,35 @@ export const STOP_TAG = stringTag("stop", "requested");
  */
 export const ENDED_TAG = stringTag("ended", "stopped|limit|done");
 
-/** Sub-issue -> orchestrator parent ISSUE link (set via `github__create_issue`'s `sub_issue: true`). */
-export const PARENT_TAG = numericTag("parent");
-/** PR -> the issue it closes/was created to address (set via `github__create_pr`). */
+// `PARENT_TAG` (`atomaton:parent`, sub-issue -> parent issue) was here. GitHub's own
+// sub-issue link answers the same question and a person can change it, while this was
+// written once at creation and never rewritten -- so re-parenting in the web UI left
+// two answers in the system with nothing to say they differed. `lib/parent-issue.ts`
+// carries the measurement and the argument.
+
+/**
+ * PR -> the issue it was created to deliver (set via `github__create_pr`).
+ *
+ * ## Why this one stays when the issue-to-issue tag went
+ *
+ * Not symmetry, and not habit: GitHub's own PR-to-issue link does not survive in this
+ * design, and that was measured rather than assumed. Of the nine pull requests this
+ * repository had tagged, SEVEN carried a correct `Closes #N` line and only TWO
+ * appeared in `closingIssuesReferences`.
+ *
+ * GitHub drops the link once the issue is closed by anything other than that pull
+ * request's merge, and two things here do exactly that:
+ *
+ *   - A sub-issue's pull request merges into its PARENT's branch, not the default
+ *     one, so GitHub's auto-close never fires for it at all. That is the stacking
+ *     design in `branch-placement.ts`, chosen so sub-issues can see each other's work.
+ *   - After a merge, `dispatchPostMergeAgent` re-invokes the agent to confirm and
+ *     close the sub-issue. By the time it does, the link is gone.
+ *
+ * So the edge exists and GitHub will not keep it. Making it keepable means giving up
+ * stacking or giving up the post-merge confirmation, which is a larger question than
+ * where a number is written down.
+ */
 export const PARENT_ISSUE_TAG = numericTag("parent-issue");
 /** Who to `@mention` on completion/escalation. */
 export const NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
@@ -145,16 +172,10 @@ export const SUB_RESULT_TAG = numericTag("sub-result");
  */
 export const CI_RETRY_TAG = numericTag("ci-retry");
 
-/**
- * Resolve a `parent` link from EITHER `atomaton:parent` (issue -> issue) or
- * `atomaton:parent-issue` (PR -> issue), preferring whichever is present --
- * mirrors the original combined regex used by resolve_notify.ts's
- * parent-chain walk, where a body may carry either form depending on
- * whether it's an issue or a PR.
- */
-export function readAnyParentTag(text: string): number | undefined {
-  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
-}
+// `readAnyParentTag` was here: `PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text)`,
+// for a walk that did not know whether it held an issue or a pull request. With one
+// tag left there is nothing to choose between, and the one caller that walks upward
+// asks GitHub which kind it is looking at -- see `lib/notify.ts`.
 
 /**
  * `text` with every Atomaton tag removed.
