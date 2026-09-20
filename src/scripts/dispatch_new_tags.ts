@@ -8,7 +8,7 @@
  * that cuts a release creates its tag with GITHUB_TOKEN, from inside a workflow, so
  * no `push` arrives and `on_tag` never fires. A project could write a perfectly good
  * `on_tag` entry and watch it never run — which is exactly this repository's own
- * shape, where `scripts/release.sh` tags every release.
+ * shape, where `scripts/tag-release.sh` tags every release.
  *
  * The run that created the tag is the only thing that knows it is new, so that run
  * dispatches: `--ref <tag>`, `trigger=tag`, once per tag, in the order GitHub lists
