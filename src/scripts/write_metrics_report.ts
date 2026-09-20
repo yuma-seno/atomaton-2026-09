@@ -84,18 +84,25 @@ function log(message: string): void {
 }
 
 /**
- * The agent a session belongs to, from its path.
+ * The agent a session belongs to, out of the session itself.
  *
- * Both layouts end in the agent's name: `issue-7-engineer.json` and
- * `issue-7/engineer.json`, with `archive/engineer-1.json` beside the second. Unreadable
- * is `unknown` rather than a guess, so a layout nobody anticipated shows up as a row in
- * the report instead of being silently attributed to the wrong agent.
+ * `metadata.github_context.agent`, written by `reconcile_github_session.ts` and
+ * `record_run_metadata.ts` and declared on `SessionGithubContext`. This used to regex
+ * the FILENAME instead — `(?:^|-)(orchestrator|engineer|reviewer)$` over the stem,
+ * with the `(?:^|-)` there to straddle two path layouts (`issue-7-engineer.json` and
+ * `issue-7/engineer.json`, both of which really do exist on the data branch) and the
+ * allowlist there to tell an agent's name from an issue number in the flat one.
+ *
+ * Neither was needed, and the allowlist was harmful. Measured over all 392 stored
+ * sessions: every one carries the field, and in every one it agrees with what the
+ * regex derived. The document is parsed and in hand at the one call site. And which
+ * agents exist is an adopter's to choose — a project that renames `engineer` had every
+ * one of that agent's sessions reported as `unknown`, by a list in a metrics script.
+ *
+ * `unknown` now means what it says: a session with no attribution recorded in it.
  */
-export function agentOf(path: string): string {
-  const file = path.split("/").pop() ?? "";
-  const stem = file.replace(/\.json$/, "").replace(/-\d+$/, "");
-  const match = /(?:^|-)(orchestrator|engineer|reviewer)$/.exec(stem);
-  return match?.[1] ?? "unknown";
+export function agentOf(session: { metadata?: { github_context?: { agent?: string } } }): string {
+  return session.metadata?.github_context?.agent?.trim() || "unknown";
 }
 
 /**
@@ -180,6 +187,7 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   let parsed: {
     messages?: { role?: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown[] }[];
     atoma_runs?: unknown;
+    metadata?: { github_context?: { agent?: string } };
   };
   try {
     parsed = JSON.parse(raw);
@@ -196,7 +204,7 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   }
 
   const calls: CallRecord[] = [];
-  const agent = agentOf(path);
+  const agent = agentOf(parsed);
   for (const message of messages) {
     for (const call of (message.tool_calls ?? []) as { id?: string; function?: { name?: string; arguments?: string } }[]) {
       const tool = call.function?.name ?? "";
@@ -206,7 +214,12 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
       let act: CallRecord["act"];
       if (tool.endsWith("load_skill")) {
         try {
-          skill = JSON.parse(call.function?.arguments ?? "{}").name;
+          // `skill_name`, which is what the tool takes. This read `name`, the spelling
+          // atoma#24 removed when it collapsed five aliases into the one the models
+          // measurably reach for -- so from that release onwards every `load_skill`
+          // call was counted and none was attributed to a skill, and the report's
+          // "unused skills" section was answering from an empty list.
+          skill = JSON.parse(call.function?.arguments ?? "{}").skill_name;
         } catch {
           /* a malformed load_skill is counted as a call and named by no skill */
         }

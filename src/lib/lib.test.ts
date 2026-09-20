@@ -246,54 +246,52 @@ describe("mcp-tool schema helpers", () => {
     }
   });
 
-  // Measured on a real run, three times in a row:
-  //
-  //   Tool error for get_issue: Unrecognized key(s) in object: 'issue_number'
-  //
-  // `issue_number` is what the GitHub REST API calls it, so a model has seen it
-  // far more often than a bare `number`. Before schemas became strict, zod dropped
-  // the unknown key and the defaulted `number` filled in, so these silently
-  // worked. Strictness surfaced them by refusing the call outright.
-  describe("a synonym for `number` is accepted", () => {
+  /**
+   * The synonym table is gone, and these hold the line that made removing it safe.
+   *
+   * It folded `issue_number`, `pr_number`, `pull_number` and `pull_request_number`
+   * into `number`, and `name` into `branch`, before the strict schema saw the call.
+   * Only `issue_number` was ever observed. The tools name their arguments the way a
+   * model reaches for them now — `issue_number` on an issue tool, `pull_number` on a
+   * pull request one — so there is nothing left to fold.
+   */
+  describe("a strict schema is the whole mechanism", () => {
     const tool = async () => {
       const { defineMcpTool, positiveInt, z } = await import("./mcp-tool.ts");
       return defineMcpTool({
         name: "probe",
         description: "probe",
-        schema: z.object({ number: positiveInt("n").optional(), from: positiveInt("f").optional() }),
+        schema: z.object({ issue_number: positiveInt("n").optional(), from: positiveInt("f").optional() }),
         handler: (a) => JSON.stringify(a),
       });
     };
 
-    test("every alias arrives as `number`", async () => {
+    test("the declared name is taken as it is", async () => {
       const t = await tool();
-      for (const alias of ["issue_number", "pr_number", "pull_number", "pull_request_number"]) {
-        const { text } = await t.call({ [alias]: 42 });
-        expect(JSON.parse(text), alias).toEqual({ number: 42 });
+      const { text } = await t.call({ issue_number: 42 });
+      expect(JSON.parse(text)).toEqual({ issue_number: 42 });
+    });
+
+    /**
+     * The point strictness exists for: a MISSPELLING is a different call and must not
+     * succeed. `form` for `from` returned the default window and the agent read it as
+     * the range it had asked for.
+     */
+    test("a misspelling is refused", async () => {
+      const t = await tool();
+      await expect(t.call({ issue_number: 1, form: 3 })).rejects.toThrow(/form/);
+    });
+
+    /** And a name nothing declares is refused rather than quietly renamed. */
+    test("a synonym for a declared name is refused, not folded", async () => {
+      const t = await tool();
+      for (const spelling of ["number", "pr_number", "pull_number", "pull_request_number"]) {
+        await expect(t.call({ [spelling]: 42 }), spelling).rejects.toThrow(new RegExp(spelling));
       }
     });
 
-    // The explicit one wins. An alias must never silently override a value the
-    // caller actually named.
-    test("an explicit `number` is not overridden", async () => {
+    test("the advertised schema says so, so the constraint reaches the model first", async () => {
       const t = await tool();
-      const { text } = await t.call({ number: 7, issue_number: 42 });
-      expect(JSON.parse(text)).toEqual({ number: 7 });
-    });
-
-    // The point of strictness stands: a MISSPELLING is a different call that must
-    // not succeed. `form` for `from` returned the default window and the agent
-    // read it as the range it asked for.
-    test("a misspelling is still refused", async () => {
-      const t = await tool();
-      await expect(t.call({ number: 1, form: 3 })).rejects.toThrow(/form/);
-    });
-
-    // And the advertised schema stays strict, so the constraint still reaches the
-    // model before the call rather than after.
-    test("the alias is not advertised", async () => {
-      const t = await tool();
-      expect(JSON.stringify(t.tool.inputSchema)).not.toContain("issue_number");
       expect(JSON.stringify(t.tool.inputSchema)).toContain("additionalProperties");
     });
   });

@@ -7,15 +7,16 @@
  *
  * `shell_guard` refuses a search once fifteen have gone by with nothing opened, and
  * it counts opens by watching shell commands (`sed -n`, `head`, `cat`). A read done
- * with `filesystem__read_text_file` never passed through it, so the streak kept
- * climbing while the agent was doing exactly what the refusal asked for.
+ * with the files server never passed through it, so the streak kept climbing while
+ * the agent was doing exactly what the refusal asked for.
  *
- * That is not a small over-count. The refusal names `filesystem__read_text_file` by
- * name as the thing to do next, so an obedient agent is sent to the one act the
- * counter cannot see; the next search is refused identically, and the core stops the
- * run after three identical failures. Measured on issue #706: the streak went 15 to
- * 27, with two filesystem reads in the middle, and the run died. See
- * `domain/search-streak.ts` for the full account.
+ * That is not a small over-count. The refusal names the read tool by name as the
+ * thing to do next, so an obedient agent is sent to the one act the counter cannot
+ * see; the next search is refused identically, and the core stops the run after three
+ * identical failures. Measured on issue #706: the streak went 15 to 27, with two
+ * reads in the middle, and the run died. See `domain/search-streak.ts` for the full
+ * account -- including the second time the refusal came to name a tool nothing could
+ * call, after `/server-filesystem` left the deliverable.
  *
  * ## Why an after-hook, and why on the server rather than file-wide
  *

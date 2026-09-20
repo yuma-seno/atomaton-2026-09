@@ -131,11 +131,20 @@ export function classifyShellAct(command: string): ShellAct {
  * enumerate for ever without reading anything — the shape this whole module exists to
  * catch. Neither is `grep` or `glob`, for the same reason.
  *
- * `read` is the shipped `files` server, which gives its tools their own names. The
- * alternation already allowed a bare name and a test already fixed that; what it did
- * not have was this one, because no server was called `read` until there was one.
+ * `read` is what the shipped `files` server calls it, and it is the only name left.
+ *
+ * `read_text_file`, `read_media_file`, `read_multiple_files` and `read_file` were
+ * here too — `@modelcontextprotocol/server-filesystem`'s vocabulary. That server is
+ * gone from the deliverable: `tools/packages.json` installs no npm package, and no
+ * agent definition declares `filesystem`. `read` was ADDED beside the four when
+ * `files` arrived rather than replacing them, and leaving them is what kept a
+ * now-false invariant looking true — see `refusalReason`, which named one of them for
+ * two releases after nothing could call it.
+ *
+ * `(^|__)` stays, and is what makes the four unnecessary rather than merely dead: a
+ * prefixed server's `read` matches it already.
  */
-const TOOLS_THAT_OPEN = /(^|__)(read|read_text_file|read_media_file|read_multiple_files|read_file)$/;
+const TOOLS_THAT_OPEN = /(^|__)read$/;
 
 /** Whether a completed tool call counts as having opened something. */
 export function toolOpens(tool: string): boolean {
@@ -168,10 +177,9 @@ export function refusalReason(streak: number, limit = MAX_SEARCHES_WITHOUT_OPENI
   return (
     `${streak} searches in a row without opening any of the files they found. A search returns ` +
     "where something is, not what it is, so nothing found so far has been read. Do one of two " +
-    "things before searching again: open the most promising result — with " +
-    "filesystem__read_text_file, or `sed -n` for a range — or, if you are guessing at what the " +
-    "thing is called, ask search__search_code the same question in a sentence. Measured, that " +
-    "finds the right file in the top five 70% of the time, against 41.5% for the regex patterns " +
-    "agents search with."
+    "things before searching again: open the most promising result — with `read`, or `sed -n` " +
+    "for a range — or, if you are guessing at what the thing is called, ask " +
+    "search__search_code the same question in a sentence. Measured, that finds the right file " +
+    "in the top five 70% of the time, against 41.5% for the regex patterns agents search with."
   );
 }

@@ -80,90 +80,29 @@ export function stringArray(description: string) {
     .describe(description);
 }
 
-/**
- * Names a model reaches for when the schema says something else.
- *
- * Measured, not guessed. A verification run on a real runner produced three of
- * these in a row:
- *
- *   Tool error for get_issue: Unrecognized key(s) in object: 'issue_number'
- *   Tool error for get_issue_comments: Unrecognized key(s) in object: 'issue_number'
- *   Tool error for request_close_issue: Unrecognized key(s) in object: 'issue_number'
- *
- * `issue_number` is what the GitHub REST API calls it, so a model has seen it far
- * more often than a bare `number`. Before schemas became strict, zod dropped the
- * unknown key and the defaulted `number` filled in from `ISSUE_NUMBER` — so these
- * calls silently worked, which is why nothing surfaced until strictness arrived.
- *
- * Strictness stays: it exists because a MISSPELLED key (`form` for `from`) turned
- * into a different call that succeeded, and that is a real defect. This is not
- * that. `issue_number` is not a typo for `number`, it is a synonym for it, and
- * accepting it changes nothing about what the call does.
- *
- * That is the distinction to hold on to. `positiveInt` and `stringArray` are the
- * same bargain — advertise the strict shape, be forgiving at run time about a
- * KNOWN confusion whose intent is unambiguous. It is the opposite of the APPROVE
- * case, where the runtime used to accept a value that could never work and taught
- * the model to keep asking for it.
- *
- * Generalised from `number` to a map after the same confusion turned up on a second
- * key. `get_branch` took `name` while `sync_branch`, sitting beside it in the same
- * catalog, took `branch` -- so an agent that had just synchronised a branch asked
- * about it with the key it had used a moment earlier and was refused. Two adjacent
- * tools naming one concept differently is the defect; accepting the synonym is the
- * repair that does not require every caller to know which is which.
- */
-const ALIASES: Record<string, readonly string[]> = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  // `name` is what `get_branch` used to declare. It is listed rather than guessed at:
-  // the confusion ran the other way -- agents passed `branch` to a tool asking for
-  // `name` -- and renaming the parameter to `branch` is what fixed that. This entry
-  // catches the reverse, from a caller working off the older shape. Nothing else goes
-  // in here until a session shows an agent reaching for it; a speculative synonym is
-  // indistinguishable from a typo, and quietly accepting a typo is the defect
-  // strictness exists to prevent.
-  branch: ["name"],
-};
-
-/**
- * The keys a schema actually declares.
- *
- * An alias is folded only into a key this tool declares, and never over a key the
- * tool also declares in its own right. The second half is the guard that matters: a
- * tool taking both `branch` and `name` as separate parameters would otherwise have
- * one quietly overwrite the other. Where a tool has only the canonical key the fold
- * is exactly what is wanted -- `sync_branch` takes `branch`, so a caller that said
- * `name` is understood there too, which is the consistency this map exists to give.
- */
-function declaredKeys(schema: z.ZodTypeAny): Set<string> {
-  return schema instanceof z.ZodObject ? new Set(Object.keys(schema.shape as object)) : new Set<string>();
-}
-
-/**
- * Fold a synonym into the key it is a synonym for, before validation sees it.
- *
- * Applied to whole object schemas rather than to a field, because the key itself
- * is what needs renaming and a field-level check never sees a key it does not
- * know. An alias present alongside the real key is ignored — the explicit one
- * wins, and nothing silently overrides it.
- */
-function acceptAliases(raw: unknown, declared: Set<string>): unknown {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return raw;
-  let value = raw as Record<string, unknown>;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical)) continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value)) continue;
-      const { [alias]: aliased, ...rest } = value;
-      // An alias alongside the real key is dropped: the explicit one wins.
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
+// `ALIASES`, `declaredKeys` and `acceptAliases` were here: a table folding four
+// synonyms into `number` and one into `branch`, applied before the strict schema
+// could see the call.
+//
+// It was the wrong half of the repair. Only ONE of the five was ever observed --
+// `issue_number`, three times in one run -- and the other four were speculative,
+// which this file's own comment forbade in the same breath as adding them: "a
+// speculative synonym is indistinguishable from a typo, and quietly accepting a
+// typo is the defect strictness exists to prevent". Worse, `branch: ["name"]` was
+// added by the very commit that renamed `get_branch`'s argument to `branch`, so
+// there was never an older deployed shape to be compatible with; and because
+// `sync_branch`'s `branch` is OPTIONAL, `sync_branch({name: ...})` was not refused
+// but silently understood as a branch to synchronise.
+//
+// The cause was diagnosed and fixed elsewhere while the tolerance stayed: the
+// Responses adapter had been sending no MCP schemas at all, so the model was
+// inferring argument shapes from names in the system prompt -- exactly the shape of
+// these failures. See `src/workflows/actions/atoma-cli.ts`.
+//
+// So the tools name their arguments the way a model reaches for them --
+// `issue_number` on an issue tool, `pull_number` on a pull request one, `branch` on
+// both branch tools -- and there are no synonyms. `refuseUnknownKeys` is the whole
+// mechanism now, which is what it was written to be.
 
 /** An image in MCP's own content-block shape, which the Atoma core maps per provider. */
 export interface McpImageBlock {
@@ -252,7 +191,6 @@ function refuseUnknownKeys<S extends z.ZodTypeAny>(schema: S): S {
 
 export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): BuiltMcpTool {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none",
@@ -260,10 +198,7 @@ export function defineMcpTool<S extends z.ZodTypeAny>(spec: McpToolSpec<S>): Bui
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema as Tool["inputSchema"] },
     async call(args: Record<string, unknown>): Promise<McpToolPayload> {
-      // Before validation, not inside the schema: the key is what is being
-      // renamed, and a strict object rejects an unknown key before any field-level
-      // rule could see it.
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined) throw new Error(better);

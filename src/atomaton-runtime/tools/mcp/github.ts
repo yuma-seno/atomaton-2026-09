@@ -93,14 +93,42 @@ async function resolveIssueId(number: number): Promise<string> {
 }
 
 /**
- * Shared schema for tools that take a single required `number` (issue/PR
- * number) argument.
+ * What each shape of tool calls its number.
  *
- * `number` stays required for every mutation, and for every PR read. Only the
- * two issue reads below default it — see `ISSUE_CONTEXT_NUMBER_ARG_SCHEMA`.
+ * These were both `number`, with `lib/mcp-tool.ts` folding four synonyms into it —
+ * `issue_number`, `pr_number`, `pull_number`, `pull_request_number` — before the
+ * schema was allowed to see the call. Only ONE of those was ever observed
+ * (`issue_number`, three times in one run); the other three were speculative, which
+ * that file's own comment forbids: "a speculative synonym is indistinguishable from a
+ * typo, and quietly accepting a typo is the defect strictness exists to prevent".
+ *
+ * So the name is the one a model reaches for, and there are no synonyms. Every tool
+ * here addresses exactly one kind of object — the schemas were already split
+ * issue-shaped and PR-shaped, and each tool's name (`get_issue`, `merge_pr`) fixes
+ * which — so there is nothing ambiguous about spelling it out. The same repair as
+ * atoma#24's `load_skill`, which had grown five spellings of one argument.
+ *
+ * Constants because each name is written twice: once in the schema below and once in
+ * the refusal a caller reads when they leave it out. That is exactly the pair that
+ * drifted in atoma#24.
  */
-const NUMBER_ARG_SCHEMA = z.object({
-  number: positiveInt("Positive GitHub issue or pull request number, without a leading '#'."),
+const ISSUE_NUMBER_ARG = "issue_number";
+const PR_NUMBER_ARG = "pull_number";
+
+/**
+ * Schema for a MUTATION on an issue, whose number is never inferred.
+ *
+ * Required, and deliberately not defaulted from the run: inferring the target of an
+ * irreversible, outward-facing action turns a malformed call into a wrong close
+ * instead of an error message.
+ */
+const ISSUE_NUMBER_ARG_SCHEMA = z.object({
+  [ISSUE_NUMBER_ARG]: positiveInt("Positive GitHub issue number, without a leading '#'."),
+});
+
+/** Schema for a MUTATION on a pull request. Required, for the same reason. */
+const PR_NUMBER_ARG_SCHEMA = z.object({
+  [PR_NUMBER_ARG]: positiveInt("Positive GitHub pull request number, without a leading '#'."),
 });
 
 /**
@@ -121,7 +149,7 @@ const NUMBER_ARG_SCHEMA = z.object({
  * pull request run.
  */
 const ISSUE_CONTEXT_NUMBER_ARG_SCHEMA = z.object({
-  number: positiveInt(
+  [ISSUE_NUMBER_ARG]: positiveInt(
     "Positive GitHub issue number, without a leading '#'. " +
       "Omit to use the issue this run is already operating on.",
   ).optional(),
@@ -137,7 +165,7 @@ const ISSUE_CONTEXT_NUMBER_ARG_SCHEMA = z.object({
  * checks first.
  */
 const PR_CONTEXT_NUMBER_ARG_SCHEMA = z.object({
-  number: positiveInt(
+  [PR_NUMBER_ARG]: positiveInt(
     "Positive pull request number, without a leading '#'. " +
       "Omit only on a pull request run, to use the pull request this run is reviewing; " +
       "on an issue run, pass the number of the pull request that closes it.",
@@ -146,7 +174,7 @@ const PR_CONTEXT_NUMBER_ARG_SCHEMA = z.object({
 
 
 const ISSUE_COMMENTS_SCHEMA = z.object({
-  number: positiveInt(
+  [ISSUE_NUMBER_ARG]: positiveInt(
     "Positive GitHub issue number, without a leading '#'. Omit to use the issue this run is already operating on.",
   ).optional(),
   from: positiveInt(
@@ -159,23 +187,26 @@ const ISSUE_COMMENTS_SCHEMA = z.object({
 /**
  * Resolve an issue read's target, falling back to the run's issue number.
  *
- * Models omit `number` entirely when they are already reasoning about a single
- * issue, which used to surface as `number: Required` and burn an iteration.
+ * Models omit it entirely when they are already reasoning about a single issue,
+ * which used to surface as a required-argument error and burn an iteration.
  * `ISSUE_NUMBER` is the number the runner resolved for this run (see
  * `atomaton-runner.wac.ts`), and is already relied on elsewhere in this file.
  */
-function issueContextNumber(args: { number?: number }): number {
-  if (args.number !== undefined) return args.number;
+function issueContextNumber(args: { issue_number?: number }): number {
+  if (args[ISSUE_NUMBER_ARG] !== undefined) return args[ISSUE_NUMBER_ARG];
   const raw = (process.env.ISSUE_NUMBER ?? "").trim();
   const parsed = Number(raw);
   if (!raw || !Number.isInteger(parsed) || parsed <= 0) {
-    mcpFail("`number` was omitted and this run has no current issue number. Pass `number` explicitly.");
+    mcpFail(
+      `\`${ISSUE_NUMBER_ARG}\` was omitted and this run has no current issue number. ` +
+        `Pass \`${ISSUE_NUMBER_ARG}\` explicitly.`,
+    );
   }
   return parsed;
 }
 
 /**
- * The message a mutation gives when `number` was left out.
+ * The message a mutation gives when its number was left out.
  *
  * Reads above may default their target from the run; mutations may not, and the
  * comment on `ISSUE_CONTEXT_NUMBER_ARG_SCHEMA` says why: inferring the target of an
@@ -189,16 +220,17 @@ function issueContextNumber(args: { number?: number }): number {
  * it still has to pass it.
  */
 function omittedNumberGuidance(what: "pull request" | "issue"): (args: Record<string, unknown>) => string | undefined {
+  const arg = what === "pull request" ? PR_NUMBER_ARG : ISSUE_NUMBER_ARG;
   return (args) => {
-    if ("number" in args) return undefined;
+    if (arg in args) return undefined;
     if (process.env.ATOMATON_RUN_TYPE !== (what === "pull request" ? "pr" : "issue")) return undefined;
     const raw = (process.env.ISSUE_NUMBER ?? "").trim();
     if (!/^[0-9]+$/.test(raw)) return undefined;
     return (
-      "`number` is required and was omitted. This tool changes GitHub, so unlike the " +
+      `\`${arg}\` is required and was omitted. This tool changes GitHub, so unlike the ` +
       "read-only tools it will not infer its target -- a guessed number here is a wrong " +
       `merge or a wrong close, not an error message. This run is working on ${what} ` +
-      `#${raw}; if that is the one you mean, call this again with {"number": ${raw}}.`
+      `#${raw}; if that is the one you mean, call this again with {"${arg}": ${raw}}.`
     );
   };
 }
@@ -213,18 +245,22 @@ function omittedNumberGuidance(what: "pull request" | "issue"): (args: Record<st
  * `gh pr view <issue-number>` fails with a GitHub error about resolving a
  * PullRequest, which reads as a broken tool rather than a missing argument.
  */
-function prContextNumber(args: { number?: number }): number {
-  if (args.number !== undefined) return args.number;
+function prContextNumber(args: { pull_number?: number }): number {
+  if (args[PR_NUMBER_ARG] !== undefined) return args[PR_NUMBER_ARG];
   if (process.env.ATOMATON_RUN_TYPE !== "pr") {
     mcpFail(
-      "`number` was omitted, and this run is working on an issue rather than a pull request. " +
-        "Pass the pull request's number explicitly — an issue's number is not a pull request's.",
+      `\`${PR_NUMBER_ARG}\` was omitted, and this run is working on an issue rather than a ` +
+        "pull request. Pass the pull request's number explicitly — an issue's number is not a " +
+        "pull request's.",
     );
   }
   const raw = (process.env.ISSUE_NUMBER ?? "").trim();
   const parsed = Number(raw);
   if (!raw || !Number.isInteger(parsed) || parsed <= 0) {
-    mcpFail("`number` was omitted and this run has no current pull request number. Pass `number` explicitly.");
+    mcpFail(
+      `\`${PR_NUMBER_ARG}\` was omitted and this run has no current pull request number. ` +
+        `Pass \`${PR_NUMBER_ARG}\` explicitly.`,
+    );
   }
   return parsed;
 }
@@ -505,8 +541,8 @@ function getIssueComments(a: z.infer<typeof ISSUE_COMMENTS_SCHEMA>): string {
   });
 }
 
-function closeIssue(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
-  const num = a.number;
+function closeIssue(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): string {
+  const num = a[ISSUE_NUMBER_ARG];
   log(`closeIssue: #${num}`);
   // Refuse to close issues opened by humans.
   // NOTE: `gh issue view --json author` returns {id, is_bot, login, name} --
@@ -533,9 +569,9 @@ function closeIssue(a: z.infer<typeof NUMBER_ARG_SCHEMA>): string {
  * Bun.spawnSync-based blocking behavior) so the tool response isn't
  * returned before phase-gating has actually run.
  */
-async function closeIssueAndDispatch(a: z.infer<typeof NUMBER_ARG_SCHEMA>): Promise<string> {
+async function closeIssueAndDispatch(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): Promise<string> {
   closeIssue(a);
-  const num = a.number;
+  const num = a[ISSUE_NUMBER_ARG];
 
   // The aggregation outcome is part of what happened, so it goes in the result.
   // This used to be awaited and discarded, and `{ok: true}` was returned whether
@@ -1155,8 +1191,8 @@ function deleteMergedBranch(branch: string): void {
   log(`mergePr: deleted merged branch ${branch}`);
 }
 
-async function mergePr(a: z.infer<typeof NUMBER_ARG_SCHEMA>): Promise<string> {
-  const num = a.number;
+async function mergePr(a: z.infer<typeof PR_NUMBER_ARG_SCHEMA>): Promise<string> {
+  const num = a[PR_NUMBER_ARG];
 
   // The gate, applied on the path every agent merge takes. The verdict itself is
   // the repository's own branch protection, re-read here rather than restated —
@@ -1237,7 +1273,7 @@ async function mergePr(a: z.infer<typeof NUMBER_ARG_SCHEMA>): Promise<string> {
 /** closeIssueAndDispatch also triggers phase-gating/aggregation itself. Shared by mergePr()'s "close-directly" case and its "reinvoke failed" fallback. */
 async function closeParentAndReport(parentIssue: number): Promise<string> {
   try {
-    await closeIssueAndDispatch({ number: parentIssue });
+    await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue });
     return JSON.stringify({
       merged: true,
       closed_issue: parentIssue,
@@ -1270,7 +1306,7 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves — use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atomaton branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
   defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
   defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),
@@ -1302,7 +1338,7 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "merge_pr",
     description: "Merge a pull request, then continue Atomaton's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge.gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around — read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
-    schema: NUMBER_ARG_SCHEMA,
+    schema: PR_NUMBER_ARG_SCHEMA,
     guidance: omittedNumberGuidance("pull request"),
     handler: mergePr,
   }),

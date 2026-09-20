@@ -656,7 +656,7 @@ beyond the one run.
 
 `search__search_issues` answers a question from the issues and their discussion,
 and returns which passage answered it — `matched_in: "comment 3"` — so the caller
-can read that comment with `github__get_issue_comments(number=..., from=3)`
+can read that comment with `github__get_issue_comments(issue_number=..., from=3)`
 rather than pulling a whole conversation in.
 
 Nothing needs configuring for this to work. The index is built on the first

@@ -29,12 +29,33 @@
  *   scan_secrets.ts
  */
 import { gh, gitRun } from "../lib/gh.ts";
+import { getBaseBranch } from "../lib/config.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);
 
 function log(message: string): void {
   console.error(`[scan-secrets] ${message}`);
+}
+
+/**
+ * The branch this work is measured against, or "" when nobody could say.
+ *
+ * Three answers in order, and none of them a literal: the pull request's own base
+ * when GitHub named one, then `base_branch` from config.yaml, then the repository's
+ * default branch asked of GitHub. `getBaseBranch()` answers "" for a project that
+ * never set the key -- that is its contract, so `gh` can fall back to the default --
+ * which is why the third step exists here, where a concrete name is needed to fetch.
+ */
+function baseBranch(): string {
+  const fromEvent = (process.env.GITHUB_BASE_REF ?? "").trim();
+  if (fromEvent) return fromEvent;
+
+  const configured = getBaseBranch();
+  if (configured) return configured;
+
+  const { code, stdout } = gh("repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name");
+  return code === 0 ? stdout.trim() : "";
 }
 
 /** The commits this branch adds, as a range gitleaks can be pointed at. */
@@ -44,10 +65,20 @@ function branchRange(): string | undefined {
   // already complete refuses to unshallow, which is not a failure.
   gitRun("fetch", "--quiet", "--unshallow", "origin");
 
-  // A pull request sets GITHUB_BASE_REF; a dispatch -- the agent path -- does
-  // not, and falls back to the default branch, which is where their branches
-  // start.
-  const base = (process.env.GITHUB_BASE_REF || process.env.ATOMATON_BASE_BRANCH || "main").trim();
+  // A pull request sets GITHUB_BASE_REF; a dispatch -- the agent path -- does not,
+  // and the branches start from what this project calls its base.
+  //
+  // This used to read `GITHUB_BASE_REF || ATOMATON_BASE_BRANCH || "main"`. Nothing
+  // sets `ATOMATON_BASE_BRANCH` and nothing documents it: it was `ATOMA_BASE_BRANCH`
+  // before the rename and survived the audit as a name with no writer. And `"main"`
+  // was a guess standing in for a value this repository already holds -- on a project
+  // whose base is `develop`, every dispatched scan computed its range against a branch
+  // the work does not come from, and either found nothing or scanned the wrong commits.
+  const base = baseBranch();
+  if (!base) {
+    log("no base branch could be determined; scanning nothing rather than guessing at a range");
+    return undefined;
+  }
   if (gitRun("fetch", "--quiet", "origin", base).code !== 0) {
     log(`could not fetch ${base}; scanning nothing rather than guessing at a range`);
     return undefined;

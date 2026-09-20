@@ -120,15 +120,30 @@ describe("the refusal", () => {
  * the run that cost.
  */
 describe("a read that did not go through the shell", () => {
-  test("the filesystem server's reads count as opening", () => {
+  test("the files server's read counts as opening", () => {
+    // `files` and `files_readonly` are both `unprefixed: true`, so the call arrives
+    // as the bare name. The prefixed form is here because an adopter may declare the
+    // server prefixed, not because anything ships it that way.
+    for (const tool of ["read", "files__read", "files_readonly__read"]) {
+      expect(toolOpens(tool), tool).toBe(true);
+    }
+  });
+
+  /**
+   * `@modelcontextprotocol/server-filesystem`'s vocabulary, which this used to accept
+   * alongside `read`. That server is gone — `tools/packages.json` installs no npm
+   * package and no agent declares `filesystem` — and leaving its names in the
+   * alternation is what kept `refusalReason` naming an uncallable tool while a test
+   * asserted the refusal was satisfiable.
+   */
+  test("a server that is no longer shipped is not still recognised", () => {
     for (const tool of [
       "filesystem__read_text_file",
       "filesystem__read_multiple_files",
       "filesystem__read_media_file",
       "filesystem_readonly__read_file",
-      "filesystem_readonly__read_multiple_files",
     ]) {
-      expect(toolOpens(tool), tool).toBe(true);
+      expect(toolOpens(tool), tool).toBe(false);
     }
   });
 
@@ -138,36 +153,35 @@ describe("a read that did not go through the shell", () => {
    * is the shape the whole rule exists to catch.
    */
   test("listing is not opening", () => {
-    for (const tool of [
-      "filesystem__list_directory",
-      "filesystem__directory_tree",
-      "filesystem__search_files",
-      "filesystem_readonly__get_file_info",
-      "shell__shell_execute",
-      "github__create_pr",
-    ]) {
+    for (const tool of ["list", "files__list", "grep", "glob", "shell__shell_execute", "github__create_pr"]) {
       expect(toolOpens(tool), tool).toBe(false);
     }
   });
 
   /** Not anchored to one server: a read is a read whoever performed it. */
   test("the server prefix is not what decides it", () => {
-    expect(toolOpens("somethingelse__read_text_file")).toBe(true);
-    expect(toolOpens("read_text_file")).toBe(true);
+    expect(toolOpens("somethingelse__read")).toBe(true);
+    expect(toolOpens("read")).toBe(true);
   });
 
   /**
    * The failure in full. An agent that obeys the refusal must be able to satisfy it;
    * before this, obeying and ignoring ended the same way -- three identical refusals
    * and a dead run.
+   *
+   * It came back. The refusal went on naming `filesystem__read_text_file` after that
+   * server left the deliverable, and this test stayed green because the dead name was
+   * still in the alternation — the invariant was false and the check that exists to
+   * prove it was true was passing on the tolerance. So it asserts the name is one a
+   * shipped server actually offers, rather than one this module happens to recognise.
    */
   test("obeying the refusal clears the streak", () => {
     let streak = MAX_SEARCHES_WITHOUT_OPENING;
     expect(refusalReason(streak)).toBeDefined();
 
-    // What the refusal names, verbatim.
-    expect(refusalReason(streak)).toContain("filesystem__read_text_file");
-    expect(toolOpens("filesystem__read_text_file")).toBe(true);
+    // What the refusal names, verbatim -- and what `files.ts` registers.
+    expect(refusalReason(streak)).toContain("`read`");
+    expect(toolOpens("read")).toBe(true);
 
     streak = 0; // what the after-hook writes on that read
     expect(refusalReason(nextStreak(streak, "search"))).toBeUndefined();
