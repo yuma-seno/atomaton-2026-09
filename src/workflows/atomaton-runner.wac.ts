@@ -11,6 +11,7 @@ import {
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import {
   AGENT_DEFINITIONS_DIR,
+  MACHINERY_ROOT_VAR,
   CONFIG_FILE as CONFIG_FILE_PATH,
   TOOL_PACKAGES_FILE,
   PROMPT_TEMPLATE as PROMPT_TEMPLATE_FILE,
@@ -159,7 +160,7 @@ const MACHINERY_DIR = "atomaton-machinery";
 const MACHINERY_ABS = "\${RUNNER_TEMP}/atomaton-machinery";
 
 /** The same directory, as shell -- the job exports it so every step agrees. */
-const MACHINERY = "${ATOMATON_MACHINERY_ROOT}";
+const MACHINERY = `\${${MACHINERY_ROOT_VAR}}`;
 
 // Six literals used to sit here, and five other files spelled the same strings
 // for themselves. See `domain/machinery-layout.ts` for why they are constants at
@@ -757,7 +758,7 @@ AGENT_ENV=(
   HOME="$HOME"
   PATH="$PATH"
   AGENT="$AGENT"
-  ATOMATON_MACHINERY_ROOT="$ATOMATON_MACHINERY_ROOT"
+  ${MACHINERY_ROOT_VAR}="$${MACHINERY_ROOT_VAR}"
   GITHUB_REPOSITORY="$GITHUB_REPOSITORY"
   BRANCH="\${BRANCH:-}"
   ISSUE_NUMBER="$ISSUE_NUMBER"
@@ -1287,7 +1288,7 @@ echo "this run's files: ${RUN_DIR}"
     shell: "bash",
     run: `rm -rf "${MACHINERY_ABS}"
 mv "${MACHINERY_DIR}" "${MACHINERY_ABS}"
-echo "ATOMATON_MACHINERY_ROOT=${MACHINERY_ABS}" >> "$GITHUB_ENV"
+echo "${MACHINERY_ROOT_VAR}=${MACHINERY_ABS}" >> "$GITHUB_ENV"
 echo "machinery moved to ${MACHINERY_ABS}; the work tree holds only the repository"
 `,
   }),
@@ -1708,7 +1709,7 @@ sudo setfacl -R -d -m "u:$(id -un):rwX" "${RUN_DIR}"
 # \`rX\` rather than \`rwX\`: read everywhere, execute only where execute is already
 # set for somebody. "Make tool hooks executable" ran earlier, so the hooks get it
 # and the ordinary files do not. Nothing here is the agent's to modify.
-sudo setfacl -R -m "u:${TOOL_USER}:rX" "$ATOMATON_MACHINERY_ROOT"
+sudo setfacl -R -m "u:${TOOL_USER}:rX" "$${MACHINERY_ROOT_VAR}"
 
 # And the libraries the servers import, which sit beside the machinery for module
 # resolution to find. Read-only for the same reason.

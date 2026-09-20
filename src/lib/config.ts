@@ -2,8 +2,9 @@
  * config.ts — shared helper for reading .github/atomaton/config.yaml. The one
  * canonical copy used by every script and MCP server in this repo.
  *
- * Resolved against `ATOMATON_MACHINERY_ROOT` when that is set, and against the
- * working directory otherwise -- see `configPath()` for why a runner sets it.
+ * Resolved through `lib/machinery.ts`, which is the one place that knows which tree
+ * the machinery is in -- and `MACHINERY_ROOT_VAR`'s comment is the one place that
+ * says which job sets it, and why the three jobs differ.
  */
 import { readFileSync } from "node:fs";
 import { DEFAULT_GOVERNED_PATHS } from "../domain/merge-readiness.ts";
@@ -12,22 +13,18 @@ import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/decl
 import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
 import { CONFIG_FILE } from "../domain/machinery-layout.ts";
+import { machineryPath } from "./machinery.ts";
 
 /**
  * Where this project's configuration is read from.
  *
- * `ATOMATON_MACHINERY_ROOT` is set by `atomaton-runner` to a checkout of the default
- * branch, and unset everywhere else. The difference matters on a pull request
- * run: that workspace is the pull request's own head, so reading configuration
- * from it would let a pull request decide how the run reviewing it behaves --
- * which agent, which commands, which credentials.
- *
- * Unset resolves to the working directory, which is what every other caller
- * wants and what this did before.
+ * Through `machineryPath`, which is the one place that knows what an unset
+ * `MACHINERY_ROOT_VAR` means, and whose comment holds the table of which job sets it
+ * and why. This function used to resolve it itself, as one of three hand-written
+ * copies of that rule.
  */
 function configPath(): string {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
+  return machineryPath(CONFIG_FILE);
 }
 
 let cached: AtomaConfig | undefined;

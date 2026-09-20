@@ -27,6 +27,7 @@ import {
   SECRET_SLOT_PREFIX,
   SECRET_SLOTS,
 } from "../../domain/declared-secrets.ts";
+import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
 import { scriptCommandWithArgs } from "./script-call.ts";
 import { ref as readSecretNamesRef } from "../../scripts/read_secret_names.ts";
 import { TypedOutputsStep } from "./base.ts";
@@ -59,7 +60,7 @@ export const SECRET_NAMES_STEP_ID = "secret-names";
  * ## Why the fetch writes its own ref instead of using FETCH_HEAD
  *
  * This used to be `git fetch ... || true` followed by
- * `git show "FETCH_HEAD:.github/atomaton/config.yaml"`. `actions/checkout` has
+ * `git show "FETCH_HEAD:<CONFIG_FILE>"`. `actions/checkout` has
  * already written a FETCH_HEAD for the pull request's own ref by the time this
  * step runs, so a failed fetch did not reach the fall-back: the `git show`
  * succeeded against the pull request's own file, the run took its declaration
@@ -88,7 +89,7 @@ TRUSTED_CONFIG="${trustedConfig}"
 # failed fetch has nothing to fall back to. Shallow: one commit of one branch is
 # all this needs. \`+\` so a re-run overwrites rather than refusing.
 if git fetch --quiet --depth=1 origin "+\$DEFAULT_BRANCH:refs/atomaton/trusted-config" 2>/dev/null \\
-  && git show "refs/atomaton/trusted-config:.github/atomaton/config.yaml" > "$TRUSTED_CONFIG" 2>/dev/null; then
+  && git show "refs/atomaton/trusted-config:${CONFIG_FILE}" > "$TRUSTED_CONFIG" 2>/dev/null; then
   echo "Read the credential declaration from \${DEFAULT_BRANCH}."
 else
   # Either the branch has no config.yaml or the fetch failed, and this cannot
@@ -96,7 +97,7 @@ else
   # the safe one. Naming both is the honest message -- asserting the first would
   # be asserting something this could not determine.
   echo '{}' > "$TRUSTED_CONFIG"
-  echo "::warning::Could not read .github/atomaton/config.yaml from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
+  echo "::warning::Could not read ${CONFIG_FILE} from \${DEFAULT_BRANCH} (absent, or the fetch failed); this run reaches no declared credentials."
 fi
 
 ${scriptCommandWithArgs(readSecretNamesRef, { config: trustedConfig })}
