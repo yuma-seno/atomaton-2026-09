@@ -1,22 +1,46 @@
 /**
  * dispatch-targets.ts — the workflows an agent's own actions have to start.
  *
- * All four exist for one reason: GitHub starts no workflow run for events its
- * own token triggers. An agent opening a pull request fires no
- * `pull_request.opened`; an agent merging fires no `push`. So anything that
- * would have chained off those events has to be dispatched explicitly, and
- * `workflow_dispatch` is the documented exception that still runs.
+ * One fact, and this is where it is written down: **GitHub starts no workflow run
+ * for an event its own token triggered.** An agent opening a pull request fires no
+ * `pull_request.opened`; an agent merging fires no `push`; a deployment tagging a
+ * release fires no `push` for the tag. Anything that would have chained off those
+ * events has to be dispatched explicitly, and `workflow_dispatch` is the documented
+ * exception that still runs.
  *
- * Every one is best-effort. A dispatch that fails must not fail the action that
- * prompted it — a pull request that exists without its CI started is recoverable,
- * one that was never created is not.
+ * Every stand-in for a suppressed event is here, or is `dispatch.ts`'s
+ * `dispatchRunner`, and each names the event it replaces:
+ *
+ * | stand-in | the event GitHub did not deliver |
+ * |---|---|
+ * | `dispatchPrValidation` | `pull_request.opened`, for an agent's pull request |
+ * | `dispatchCi` | `push` to a pull request's head branch |
+ * | `dispatchCd` | `push` to the branch a merge landed on |
+ * | `dispatchTagDeploy` | `push` of a tag a deployment created |
+ * | `dispatchPostMergeAgent` | `pull_request.closed`, when an agent did the merging |
+ * | `dispatchRunner` (`dispatch.ts`) | every hand-off from one agent to the next |
+ *
+ * This header said "All four" while there were five, and three more had been
+ * written outside it — two of those in a workflow's own bash, so they ran without
+ * `dispatchRunner`'s closed-target guard and wrote no ops-log entry, which is the
+ * exact failure `dispatch.ts` was written to make impossible. A count that goes
+ * stale is the symptom; `tests/contract/dispatch-sites.test.ts` is what stops the
+ * next one being written elsewhere: nothing outside these two modules may start a
+ * workflow run.
+ *
+ * None of them throws, and each returns whether GitHub accepted it. A dispatch that
+ * fails must not fail the action that prompted it — a pull request that exists
+ * without its CI started is recoverable, one that was never created is not. Whether
+ * a refusal is fatal is the CALLER's to decide, and one caller decides it is:
+ * `scripts/dispatch_new_tags.ts` fails its job, because a deployment nobody starts
+ * is one nobody notices.
  */
 import { dispatchWorkflow, gh } from "./gh.ts";
 import { getDeploySection, getWorkflowName } from "./config.ts";
 import { dispatchRunner } from "./dispatch.ts";
 import { resolveNotify } from "./notify.ts";
 import { isIssueBranch } from "./branch-placement.ts";
-import { mergeMightDeploy, resolveDeployJobs } from "../domain/deploy-jobs.ts";
+import { mergeMightDeploy, resolveDeployJobs, type DeployTrigger } from "../domain/deploy-jobs.ts";
 import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
 
 // The two shipped workflow names now live in `domain/shipped-workflows.ts`. They were
@@ -143,8 +167,10 @@ export function dispatchCd(baseRef: string): boolean {
     return false;
   }
 
-  const configured = getWorkflowName("cd");
-  if (!configured) {
+  // Asked only when Atomaton's own workflow is the one that would run: a project
+  // naming its own deployment workflow has told us nothing about when it deploys,
+  // so there is no question to answer here and the dispatch goes out.
+  if (!getWorkflowName("cd")) {
     const { jobs, problems } = resolveDeployJobs(getDeploySection());
     if (problems.length === 0 && !mergeMightDeploy(jobs, baseRef)) {
       log(
@@ -154,17 +180,53 @@ export function dispatchCd(baseRef: string): boolean {
     }
   }
 
-  const workflow = configured || DEFAULT_CD_WORKFLOW;
-  // No `--ref` rather than a guessed one. This used to fall back to `"main"`,
-  // in a file that argues a hundred lines above that guessing a workflow name
-  // "would dispatch a workflow that does not exist" -- and on a repository whose
-  // default branch is `develop`, the guess made the dispatch fail, logged as a
-  // WARN, so the merge landed and nothing deployed. Omitted, `gh workflow run`
-  // uses the repository's real default branch, which is what `getBaseBranch()`
-  // already relies on for the same reason.
-  const args = baseRef ? ["--ref", baseRef] : [];
-  // Only the shipped workflow understands why it was started. A project's own
-  // deployment workflow gets the bare dispatch it has always got.
-  if (!configured) args.push("-f", "trigger=merge");
-  return dispatchWorkflow("dispatchCd", workflow, args, log);
+  return dispatchDeploy("dispatchCd", "merge", baseRef);
+}
+
+/**
+ * Deploy a tag one of this run's deployments just created.
+ *
+ * The same hole as `dispatchCd`, one event along: a deployment that cuts a release
+ * creates its tag with GITHUB_TOKEN, so no `push` arrives for it and `on_tag` never
+ * fires. See `scripts/dispatch_new_tags.ts` for how a run knows which tags are new,
+ * and why the dispatching is a job of its own.
+ *
+ * `repo` is required rather than optional: the only caller runs in a job checked out
+ * for the scripts, not for the repository being deployed.
+ */
+export function dispatchTagDeploy(repo: string, tag: string): boolean {
+  return dispatchDeploy(`dispatchTagDeploy: ${tag}`, "tag", tag, repo);
+}
+
+/**
+ * Start the deployment workflow for one ref, whatever stood in for the `push`.
+ *
+ * One place, because it is one fact: a project either names its own workflow in
+ * `deploy.your_workflow` or lets `atomaton-deploy.yml` run its declarations, and
+ * only the shipped one understands the `trigger` input. It was written twice, and
+ * the second copy — the tag one, written last — named `atomaton-deploy.yml`
+ * outright and sent `trigger=tag` unconditionally. A project that had named its own
+ * deployment workflow would have had the wrong workflow started, with an input it
+ * does not declare.
+ *
+ * `trigger` is `DeployTrigger` rather than a string, so the value the workflow
+ * branches on and the value sent here are the same three names.
+ */
+function dispatchDeploy(context: string, trigger: DeployTrigger, ref: string, repo?: string): boolean {
+  const configured = getWorkflowName("cd");
+  const args = [
+    ...(repo ? ["--repo", repo] : []),
+    // No `--ref` rather than a guessed one. This used to fall back to `"main"`,
+    // in a file that argues a hundred lines above that guessing a workflow name
+    // "would dispatch a workflow that does not exist" -- and on a repository whose
+    // default branch is `develop`, the guess made the dispatch fail, logged as a
+    // WARN, so the merge landed and nothing deployed. Omitted, `gh workflow run`
+    // uses the repository's real default branch, which is what `getBaseBranch()`
+    // already relies on for the same reason.
+    ...(ref ? ["--ref", ref] : []),
+    // Only the shipped workflow understands why it was started. A project's own
+    // deployment workflow gets the bare dispatch it has always got.
+    ...(configured ? [] : ["-f", `trigger=${trigger}`]),
+  ];
+  return dispatchWorkflow(context, configured || DEFAULT_CD_WORKFLOW, args, log);
 }

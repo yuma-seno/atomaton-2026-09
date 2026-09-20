@@ -84,7 +84,7 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { decideValidationOutcome } from "../domain/pr-validation.ts";
-import { gh } from "../lib/gh.ts";
+import { dispatchWorkflow, gh } from "../lib/gh.ts";
 import { readBranchRules } from "../lib/branch-rules.ts";
 import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../lib/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
@@ -214,9 +214,16 @@ function runCiAndWait(
   timeoutSeconds: number,
 ): { conclusion: string; runUrl: string } {
   const since = new Date().toISOString();
-  const dispatch = gh("workflow", "run", workflow, "--repo", repo, "--ref", branch);
-  if (dispatch.code) {
-    log(`could not dispatch ${workflow} against ${branch}: ${dispatch.stderr}`);
+  // `dispatchWorkflow` rather than a `gh workflow run` built here. This is the sixth
+  // stand-in for the same hole — GitHub starts no workflow run for an event its own
+  // token triggered — and the only one that cannot live in `lib/dispatch-targets.ts`,
+  // because it has to RECOGNISE the run it started (see `pickDispatchedRun`: `gh
+  // workflow run` returns nothing identifying, so the wait below matches on head sha
+  // and start time). What it can share is the call itself.
+  //
+  // Fatal here, unlike everywhere else that dispatch is best-effort: this function's
+  // whole purpose is the verdict CI gives, and there is none without a run.
+  if (!dispatchWorkflow(`validate_pull_request: CI for ${branch}`, workflow, ["--repo", repo, "--ref", branch], log)) {
     process.exit(1);
   }
 

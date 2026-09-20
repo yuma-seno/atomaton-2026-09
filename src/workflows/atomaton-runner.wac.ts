@@ -49,6 +49,7 @@ import { ref as recordRunMetadataRef } from "../scripts/record_run_metadata.ts";
 import { ref as saveAgentSessionRef } from "../scripts/save_agent_session.ts";
 import { ref as manageDispatchLoopRef } from "../scripts/manage_dispatch_loop.ts";
 import { ref as decideGuardReleaseRef } from "../scripts/decide_guard_release.ts";
+import { ref as dispatchAgentRef } from "../scripts/dispatch_agent.ts";
 import { runCredentialEnv, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
 import { ref as reportRunFailureRef } from "../scripts/report_run_failure.ts";
 import { ref as writeCredentialsFileRef } from "../scripts/write_credentials_file.ts";
@@ -1126,30 +1127,43 @@ const DISPATCH_NEXT_GUARD =
   `${runAgentStep.rawOutputs.limit_reached} != 'true' && ` +
   `${runAgentStep.rawOutputs.stop_requested} != 'true'`;
 
+/**
+ * Hand this run's work to the agent its directive named.
+ *
+ * Through `scripts/dispatch_agent.ts`, and so through `lib/dispatch.ts`, rather than
+ * the `gh workflow run atomaton-runner.yml` this step used to write itself. That copy
+ * refused no closed target, wrote no ops-log entry and sent no `reload_count` -- the
+ * three things `dispatchRunner` exists to make unforgettable, missing from the
+ * busiest hand-off in the system. It also carried its own copy of
+ * `AGENT_NAME_PATTERN`, spliced into bash; the script validates the name instead.
+ *
+ * `GH_TOKEN` still carries the CALLER's token (an `issue_comment` event's, say), so
+ * the dispatched run keeps the permissions the trigger had. That was the reason this
+ * step used `gh` rather than a `workflow_call`, and it is unchanged: the script shells
+ * out to the same `gh` with the same environment.
+ *
+ * `ATOMATON_OPS_LOG` is set so the dispatch entry lands in this run's own log rather
+ * than in `/tmp`, where `lib/ops-log.ts` puts it when nobody says otherwise.
+ */
 const dispatchNextAgentStep = new TypedOutputsStep({
   name: "Dispatch next agent",
   if: `${DISPATCH_NEXT_GUARD} && ${loopControlStep.rawOutputs.loop_limit_reached} != 'true'`,
   shell: "bash",
   env: {
     GH_TOKEN: "${{ github.token }}",
+    ATOMATON_OPS_LOG: `${RUN_DIR_EXPR}/atomaton_ops.log`,
     DIRECTIVE: runAgentStep.outputs.directive,
     NUMBER: "${{ inputs.number }}",
     TYPE: "${{ inputs.type }}",
     NOTIFY: notifyStep.outputs.notify,
   },
-  run: `if ! [[ "$DIRECTIVE" =~ ^${AGENT_NAME_PATTERN}$ ]]; then
-  echo "::error::Invalid directive value: \${DIRECTIVE}"
-  exit 1
-fi
-
-echo "Dispatching '\${DIRECTIVE}' on \${TYPE} #\${NUMBER} via atomaton-runner.yml ..."
-# Use gh workflow run with the current GH_TOKEN (caller's token, e.g. from issue_comment event).
-# This preserves the caller's token permissions (PR creation OK for issue_comment events).
-gh workflow run atomaton-runner.yml \\
-  --field agent="$DIRECTIVE" \\
-  --field number="$NUMBER" \\
-  --field type="$TYPE" \\
-  --field notify="$NOTIFY"
+  run: `${scriptCommandWithArgs(dispatchAgentRef, {
+    agent: "\${DIRECTIVE}",
+    number: "\${NUMBER}",
+    type: "\${TYPE}",
+    notify: "\${NOTIFY}",
+    context: "the agent on \${TYPE} #\${NUMBER} handed off to \${DIRECTIVE}",
+  })}
 `,
 });
 
@@ -1873,6 +1887,13 @@ export interface AtomaRunnerInputs {
   notify?: string;
   session_mode?: string;
   atoma_version?: string;
+  /**
+   * Optional here and defaulted above, and it was missing from this mirror entirely
+   * — so a `workflow_call` caller that wanted to carry the rebuild count forward
+   * could not name it without a type error, in the one place that claims to be the
+   * single source of truth for these inputs.
+   */
+  reload_count?: string;
 }
 
 /** Type-safe `workflow_call` invocation of this workflow from other `*.wac.ts` files. */
