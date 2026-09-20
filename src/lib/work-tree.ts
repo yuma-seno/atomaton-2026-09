@@ -28,8 +28,8 @@
  *
  * GitHub tokenizes, so a query for `atomaton:parent=5` also returns the sub-issues of
  * #50. Every result is checked against the tag reader before it is believed — the same
- * trap `running-children.ts` and `aggregate_sub_issues.ts` document, and the reason
- * both of them re-read the body they just searched on.
+ * trap `aggregate_sub_issues.ts` documents, and the reason it re-reads the body it
+ * just searched on.
  *
  * ## What a failed read means here
  *
@@ -65,11 +65,23 @@ function labelNames(labels: Listed["labels"]): string[] {
   return (labels ?? []).map((l) => (typeof l === "string" ? l : (l.name ?? "")));
 }
 
-function parseListed(stdout: string): Listed[] {
+/**
+ * The listing, or null when it could not be read as one.
+ *
+ * Null rather than `[]`, because the two answers travel to the same place and mean
+ * opposite things. `[]` is "this parent has no children of that kind"; an unreadable
+ * listing is "nobody knows", and a stop that walks a tree built from the second
+ * reaches whatever it happened to see and reports success.
+ *
+ * The failed CALL was already reported. This is the narrower case — `gh` exited zero
+ * and handed back something that is not JSON — and it was the one that answered
+ * "none".
+ */
+function parseListed(stdout: string): Listed[] | null {
   try {
     return JSON.parse(stdout || "[]") as Listed[];
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -121,7 +133,9 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     "--json", "number,body,state,labels",
   );
   if (issues.code !== 0) problems.push(`could not list the sub-issues of #${parent}`);
-  for (const found of parseListed(issues.stdout)) {
+  const listedIssues = parseListed(issues.stdout);
+  if (listedIssues === null) problems.push(`the sub-issue listing for #${parent} was not readable`);
+  for (const found of listedIssues ?? []) {
     if (PARENT_TAG.read(found.body ?? "") !== parent) continue;
     nodes.push({
       number: found.number,
@@ -138,7 +152,9 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     "--json", "number,body,state,labels",
   );
   if (prs.code !== 0) problems.push(`could not list the pull requests for #${parent}`);
-  for (const found of parseListed(prs.stdout)) {
+  const listedPrs = parseListed(prs.stdout);
+  if (listedPrs === null) problems.push(`the pull request listing for #${parent} was not readable`);
+  for (const found of listedPrs ?? []) {
     if (PARENT_ISSUE_TAG.read(found.body ?? "") !== parent) continue;
     nodes.push({
       number: found.number,

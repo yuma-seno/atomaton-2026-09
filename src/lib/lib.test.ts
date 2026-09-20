@@ -462,21 +462,30 @@ describe("issue-branches.ts collectIssueBranches", () => {
       { match: ["head=owner:atomaton/issue-12"], stdout: JSON.stringify([{ merged_at: "2026-01-01T00:00:00Z" }]) },
     ]);
 
-    expect(JSON.parse(r.stdout.trim())).toEqual([
-      { name: "atomaton/issue-12", merged: true },
-      { name: "atomaton/issue-12-2", merged: false },
-    ]);
+    expect(JSON.parse(r.stdout.trim())).toEqual({
+      known: true,
+      branches: [
+        { name: "atomaton/issue-12", merged: true },
+        { name: "atomaton/issue-12-2", merged: false },
+      ],
+    });
     for (const call of r.ghCalls) {
       const pulls = call.find((arg) => arg.includes("/pulls?"));
       if (pulls) expect(pulls).toContain("head=owner:");
     }
   });
 
-  // A run that cannot see the branches has to start from the base branch, not
-  // fail before the agent has said anything.
-  test("reports no branches when the ref listing fails", () => {
+  /**
+   * Not `[]`. The two callers want opposite things from an unread list: the one
+   * that RESUMES a branch may safely start from the base, and the one that NAMES a
+   * new branch would otherwise pick `atomaton/issue-12` while `-2` already exists.
+   * Saying which answer this is, is what lets them differ.
+   */
+  test("says it could not read the list, rather than reporting no branches", () => {
     const r = run([{ match: ["matching-refs"], code: 1 }]);
-    expect(JSON.parse(r.stdout.trim())).toEqual([]);
+    const read = JSON.parse(r.stdout.trim());
+    expect(read.known).toBe(false);
+    expect(read.why).toContain("could not list the branches");
   });
 
   test("treats a branch whose pull requests cannot be read as unmerged", () => {
@@ -484,7 +493,10 @@ describe("issue-branches.ts collectIssueBranches", () => {
       { match: ["matching-refs/heads/atomaton/issue-12"], stdout: JSON.stringify([{ ref: "refs/heads/atomaton/issue-12" }]) },
       { match: ["head=owner:atomaton/issue-12"], code: 1 },
     ]);
-    expect(JSON.parse(r.stdout.trim())).toEqual([{ name: "atomaton/issue-12", merged: false }]);
+    expect(JSON.parse(r.stdout.trim())).toEqual({
+      known: true,
+      branches: [{ name: "atomaton/issue-12", merged: false }],
+    });
   });
 });
 

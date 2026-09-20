@@ -51,7 +51,13 @@ function main(): void {
   // said anything.
   let branch = "";
   if (repo && Number.isInteger(issue) && issue > 0) {
-    branch = branchToResume(collectIssueBranches(repo, issue), issue);
+    // An unread list is safely "start from the base branch" HERE, and only here:
+    // resuming nothing costs a run its previous work tree, while creating a branch
+    // blind risks an existing one. `collectIssueBranches` says which answer it is
+    // giving so the two callers can differ.
+    const listed = collectIssueBranches(repo, issue);
+    if (listed.known) branch = branchToResume(listed.branches, issue);
+    else log(`${listed.why}; staying on the base branch`);
   } else {
     log("missing --repo or --issue; staying on the base branch");
   }
