@@ -3,12 +3,16 @@
  * dispatch_new_tags.ts — start a deploy run for each tag this run's deployments
  * created.
  *
- * The fifth instance of the hole `lib/dispatch-targets.ts` opens by naming four:
- * **GitHub starts no workflow run for events its own token triggers.** A deployment
- * that cuts a release creates its tag with GITHUB_TOKEN, from inside a workflow, so
- * no `push` arrives and `on_tag` never fires. A project could write a perfectly good
- * `on_tag` entry and watch it never run — which is exactly this repository's own
- * shape, where `scripts/tag-release.sh` tags every release.
+ * One more stand-in for the hole `lib/dispatch-targets.ts` states once: **GitHub
+ * starts no workflow run for events its own token triggers.** A deployment that cuts
+ * a release creates its tag with GITHUB_TOKEN, from inside a workflow, so no `push`
+ * arrives and `on_tag` never fires. A project could write a perfectly good `on_tag`
+ * entry and watch it never run — which is exactly this repository's own shape, where
+ * `scripts/tag-release.sh` tags every release.
+ *
+ * What is here is the COMPARISON — which tags are new — and the decision to fail.
+ * The dispatch itself is `dispatchTagDeploy`, beside the other four, because which
+ * workflow deploys is not this script's fact to know.
  *
  * The run that created the tag is the only thing that knows it is new, so that run
  * dispatches: `--ref <tag>`, `trigger=tag`, once per tag, in the order GitHub lists
@@ -48,8 +52,7 @@
  *   ATOMATON_TAGS_BEFORE='["v1.0.0"]' dispatch_new_tags.ts --repo owner/name
  */
 import { parseArgs } from "node:util";
-import { DEFAULT_CD_WORKFLOW } from "../domain/shipped-workflows.ts";
-import { gh } from "../lib/gh.ts";
+import { dispatchTagDeploy } from "../lib/dispatch-targets.ts";
 import { readTagNames, tagsAdded } from "../lib/git-tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -105,14 +108,16 @@ function main(): void {
     return;
   }
 
+  // `dispatchTagDeploy` rather than a `gh workflow run` built here. This script used
+  // to name `atomaton-deploy.yml` outright and send `trigger=tag` unconditionally,
+  // which is the same decision `dispatchCd` makes from `deploy.your_workflow` -- one
+  // fact, answered in two places, and this copy did not know the setting existed.
+  // The dispatch it reports as failed is the same failure either way.
   let failed = 0;
   for (const tag of added) {
-    const { code, stdout, stderr } = gh(
-      "workflow", "run", DEFAULT_CD_WORKFLOW, "--repo", repo, "--ref", tag, "-f", "trigger=tag",
-    );
-    if (code) {
+    if (!dispatchTagDeploy(repo, tag)) {
       failed += 1;
-      console.error(`::error::Could not start a deployment for the new tag ${tag}: ${stderr || stdout}`);
+      console.error(`::error::Could not start a deployment for the new tag ${tag}.`);
       continue;
     }
     console.error(`Started a deployment for the new tag ${tag}.`);

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { rmSync } from "node:fs";
 import { parseBefore, TAGS_BEFORE_VAR } from "./dispatch_new_tags.ts";
-import { runWithFakeGh, scriptPath } from "./testing/harness.ts";
+import { makeConfigDir, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 
 /**
  * The endpoint's shape, as `readTags` asks for it: the ref and the commit it names.
@@ -8,15 +9,28 @@ import { runWithFakeGh, scriptPath } from "./testing/harness.ts";
  */
 const refs = (...tags: string[]) => tags.map((tag) => `refs/tags/${tag} sha-${tag}`).join("\n");
 
-function dispatch(before: string, tagsNow: string | { code: number }) {
+/**
+ * Run with a config of the test's own, rather than in this repository's checkout.
+ *
+ * The dispatch reads `deploy.your_workflow` now — which is the fix, and which makes
+ * the ambient `config.yaml` an input. A test that let the repository's own file
+ * answer would pass here and say nothing about an adopter's.
+ */
+function dispatch(before: string, tagsNow: string | { code: number }, config: Record<string, unknown> = {}) {
   const listing =
     typeof tagsNow === "string"
       ? { match: ["api", "matching-refs/tags"], stdout: tagsNow }
       : { match: ["api", "matching-refs/tags"], code: tagsNow.code, stdout: "" };
-  return runWithFakeGh(scriptPath("dispatch_new_tags.ts"), ["--repo", "o/r"], {
-    rules: [listing, { match: ["workflow", "run"], stdout: "" }],
-    env: { [TAGS_BEFORE_VAR]: before },
-  });
+  const dir = makeConfigDir(config);
+  try {
+    return runWithFakeGh(scriptPath("dispatch_new_tags.ts"), ["--repo", "o/r"], {
+      cwd: dir,
+      rules: [listing, { match: ["workflow", "run"], stdout: "" }],
+      env: { [TAGS_BEFORE_VAR]: before },
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 const dispatched = (calls: string[][]) =>
@@ -35,6 +49,22 @@ describe("dispatch_new_tags.ts", () => {
     const run = r.ghCalls.find((call) => call[0] === "workflow") ?? [];
     expect(run).toContain("atomaton-deploy.yml");
     expect(run).toContain("trigger=tag");
+  });
+
+  /**
+   * The bug this script had while it built its own `gh workflow run`: it named
+   * `atomaton-deploy.yml` outright and sent `trigger=tag` unconditionally, so a
+   * project that had named its own deployment workflow would have had the wrong
+   * workflow started with an input it does not declare. `dispatchCd` answered the
+   * same question correctly two files away.
+   */
+  test("a project's own deployment workflow is the one started, and gets no `trigger`", () => {
+    const r = dispatch("[]", refs("v1.0.0"), { deploy: { your_workflow: "cd.yml" } });
+    expect(r.status).toBe(0);
+    const run = r.ghCalls.find((call) => call[0] === "workflow") ?? [];
+    expect(run).toContain("cd.yml");
+    expect(run).not.toContain("atomaton-deploy.yml");
+    expect(run.join(" "), "only the shipped workflow understands why it was started").not.toContain("trigger=");
   });
 
   test("several are dispatched, one run each", () => {
@@ -70,13 +100,21 @@ describe("dispatch_new_tags.ts", () => {
     });
 
     test("a refused dispatch fails, after trying every tag", () => {
-      const r = runWithFakeGh(scriptPath("dispatch_new_tags.ts"), ["--repo", "o/r"], {
-        rules: [
-          { match: ["api", "matching-refs/tags"], stdout: refs("v1.0.0", "v1.1.0") },
-          { match: ["workflow", "run"], code: 1, stdout: "refused" },
-        ],
-        env: { [TAGS_BEFORE_VAR]: "[]" },
-      });
+      const dir = makeConfigDir({});
+      const r = (() => {
+        try {
+          return runWithFakeGh(scriptPath("dispatch_new_tags.ts"), ["--repo", "o/r"], {
+            cwd: dir,
+            rules: [
+              { match: ["api", "matching-refs/tags"], stdout: refs("v1.0.0", "v1.1.0") },
+              { match: ["workflow", "run"], code: 1, stdout: "refused" },
+            ],
+            env: { [TAGS_BEFORE_VAR]: "[]" },
+          });
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      })();
       expect(r.status).toBe(1);
       expect(dispatched(r.ghCalls)).toEqual(["v1.0.0", "v1.1.0"]);
       expect(r.stderr.match(/::error::/g)).toHaveLength(2);

@@ -9,6 +9,7 @@ import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.
 import { ref as validatePullRequestRef } from "../scripts/validate_pull_request.ts";
 import { ref as validateDeliverableRef } from "../scripts/validate_deliverable.ts";
 import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
+import { ref as dispatchAgentRef } from "../scripts/dispatch_agent.ts";
 
 // Runs CI against an agent's pull request and decides who works next.
 //
@@ -185,6 +186,14 @@ export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
       deliverableStep,
       configStep,
       validateStep,
+      // Through `scripts/dispatch_agent.ts`, and so through `lib/dispatch.ts`, rather
+      // than the `gh workflow run atomaton-runner.yml` written here before. That copy
+      // refused no closed target and wrote no ops-log entry — the guarantees
+      // `dispatchRunner` exists to make unforgettable, and this was one of the two
+      // call sites that had forgotten them.
+      //
+      // Nothing is echoed afterwards. The old line said "Dispatched ..." whether or
+      // not anything had been, and a refusal now says so itself.
       new TypedOutputsStep({
         name: "Dispatch the agent the result calls for",
         // Empty when CI never reported. There is no defect to hand anyone, so
@@ -196,13 +205,15 @@ export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
           AGENT: validateStep.outputs.next_agent,
           NUMBER: "${{ inputs.number }}",
           SUMMARY: validateStep.outputs.summary,
+          REPO: "${{ github.repository }}",
         },
-        run: `gh workflow run atomaton-runner.yml \\
-  --repo "\${{ github.repository }}" \\
-  -f agent="$AGENT" \\
-  -f number="$NUMBER" \\
-  -f type=pr
-echo "Dispatched $AGENT for #$NUMBER: $SUMMARY"
+        run: `${scriptCommandWithArgs(dispatchAgentRef, {
+          agent: "\${AGENT}",
+          number: "\${NUMBER}",
+          type: "pr",
+          repo: "\${REPO}",
+          context: "validation of #\${NUMBER} finished: \${SUMMARY}",
+        })}
 `,
       }),
     ],
