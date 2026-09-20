@@ -167,3 +167,34 @@ export const SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
 /** What the deployed release is, written by the deploy and read to decide whether an upgrade is due. */
 export const RELEASE_MANIFEST = ".github/atomaton-release.json";
+
+/**
+ * The variable that says which tree every path above resolves against.
+ *
+ * Named here because it belongs to this layout: the paths are relative, and this is
+ * what they are relative TO. It was typed out as a literal in five places — the
+ * config reader, two scripts that resolved it by hand, the shell the workflow
+ * generator writes, and the runner's own steps — with each of those carrying its own
+ * spelling of what an unset value means.
+ *
+ * ## What it decides, which is not one answer
+ *
+ * Which tree is trusted for a given read is a property of the JOB, not of the reader,
+ * and the three jobs differ on purpose:
+ *
+ *   the agent's run    Set, to a checkout of the default branch. A pull-request run's
+ *                      workspace is the pull request's own head, so reading how the
+ *                      run behaves from there would let a pull request choose which
+ *                      agent reviews it, with which commands and which credentials.
+ *   checks             Unset: the job's checkout IS what it reads, and for the
+ *                      `from_pull_request` arm that is the point — an agent adds a
+ *                      dependency and proves it in the same pull request. It grants
+ *                      nothing, because no credential reaches that arm.
+ *   deployment         Unset: the tag, or the default branch. Both are post-merge.
+ *
+ * So `machineryPath()` (see `lib/machinery.ts`) resolves a path and deliberately does
+ * NOT decide trust. The one read that must never accept the job's checkout —
+ * the credential declaration — refuses to resolve a path at all and is handed one:
+ * see `scripts/read_secret_names.ts`.
+ */
+export const MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";

@@ -25,6 +25,7 @@ import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atomaton-data.ts";
 import { classifyShellAct } from "../domain/search-streak.ts";
 import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
+import { machineryPath } from "../lib/machinery.ts";
 import {
   metricsOf,
   type DeclaredServer,
@@ -331,14 +332,13 @@ export function skillsUnder(dir: string): string[] | undefined {
  * gave for as long as the skill directory was being renamed underneath it.
  */
 function declared(): { tools: DeclaredServer[] | undefined; skills: string[] | undefined } {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   let tools: DeclaredServer[] | undefined;
   try {
     // From the config, not from the generated tools file: that file is written per
     // run into the runner's temp directory and is gone by the time anything reads a
     // report. `tools.servers` is also where a person would go to act on being told a
     // server is unused, which is the only reason this list is in the report.
-    const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8")) as {
+    const config = Bun.YAML.parse(readFileSync(machineryPath(CONFIG_FILE), "utf8")) as {
       tools?: { servers?: Record<string, unknown> };
     };
     // An empty `tools.servers` is ordinary -- a project that adds no server of its own
@@ -353,9 +353,10 @@ function declared(): { tools: DeclaredServer[] | undefined; skills: string[] | u
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
-  const skills = skillsUnder(`${root}/${SKILLS_DIR}`);
+  const skillsDir = machineryPath(SKILLS_DIR);
+  const skills = skillsUnder(skillsDir);
   if (skills === undefined) {
-    log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
+    log(`no skills found under ${skillsDir}; the report will say it could not check`);
   }
   return { tools, skills };
 }

@@ -42,20 +42,23 @@ import { join } from "node:path";
 import {
   AGENT_DEFINITIONS_DIR,
   CONFIG_FILE,
+  MACHINERY_ROOT_VAR,
+  SCRIPTS_DIR,
   TOOL_DEFAULTS_FILE,
   TOOLS_DIR,
 } from "../domain/machinery-layout.ts";
+import { machineryPath, machineryRoot } from "../lib/machinery.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);
 
 /** Exit codes: 0 sound, 1 a finding or a server that would not answer, 2 nothing to check. */
 export function main(): void {
-  // The tree this repository actually runs from. `ATOMATON_MACHINERY_ROOT` is what
-  // every other script here resolves against, so a checkout somewhere else is
-  // checked rather than silently skipped.
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
-  const defs = `${root}/${AGENT_DEFINITIONS_DIR}`;
+  // The tree this repository actually runs from, resolved where every other reader
+  // resolves it, so a checkout somewhere else is checked rather than silently
+  // skipped. It used to re-implement that rule here, with its own spelling of what
+  // an unset variable means.
+  const defs = machineryPath(AGENT_DEFINITIONS_DIR);
   if (!existsSync(defs)) {
     console.error(
       `::error::${defs} does not exist, so no agent definition could be checked and a clean pass would mean nothing.`,
@@ -76,12 +79,22 @@ export function main(): void {
   // behind would describe an older build than the tree being checked.
   const work = mkdtempSync(join(tmpdir(), "atomaton-live-tools-"));
   const toolsFile = join(work, "tools.yaml");
-  const writer = `${root}/${TOOLS_DIR}/../scripts/write_tools_file.ts`;
-  const runtimeTools = `${root}/${TOOLS_DIR}`;
+  // `SCRIPTS_DIR`, not `${TOOLS_DIR}/../scripts`: the scripts directory is a constant
+  // in this layout, and deriving it by walking up from a sibling made two constants
+  // agree about their depth for the writer to be found at all.
+  //
+  // The filename is written out, and deliberately not taken from
+  // `write_tools_file.ts`'s own `ref`. That is the obvious improvement and it is
+  // wrong: `build-dist.ts` bundles each script, `defineScript` reads
+  // `import.meta.url`, and a bundled non-entry module is handed the ENTRY's url — so
+  // the imported `ref` resolves to `check_live_tools.ts` and this would spawn itself.
+  // Measured in the generated bundle. See `scripts/lib/script-ref.ts`.
+  const writer = machineryPath(`${SCRIPTS_DIR}/write_tools_file.ts`);
+  const runtimeTools = machineryPath(TOOLS_DIR);
   const wrote = Bun.spawnSync([
     "bun", "run", writer,
-    "--config", `${root}/${CONFIG_FILE}`,
-    "--defaults", `${root}/${TOOL_DEFAULTS_FILE}`,
+    "--config", machineryPath(CONFIG_FILE),
+    "--defaults", machineryPath(TOOL_DEFAULTS_FILE),
     "--out", toolsFile,
     "--hook-base", runtimeTools,
   ], { stdout: "inherit", stderr: "inherit" });
@@ -101,7 +114,11 @@ export function main(): void {
     const { GH_TOKEN: _dropped, ...env } = process.env;
     const result = Bun.spawnSync(
       [atoma, "validate", "--agent-def", `${defs}/${definition}`, "--tools-file", toolsFile, "--with-live-tools"],
-      { stdout: "inherit", stderr: "inherit", env: { ...env, ATOMATON_MACHINERY_ROOT: root } },
+      // Set for the child even when nothing set it here. The server command lines
+      // `write_tools_file.ts` writes are `bun run ${ATOMATON_MACHINERY_ROOT}/...`, so
+      // an unset variable expands to nothing rather than to this tree, and every
+      // server fails to start with a path that begins at the filesystem root.
+      { stdout: "inherit", stderr: "inherit", env: { ...env, [MACHINERY_ROOT_VAR]: machineryRoot() ?? "." } },
     );
     console.log("::endgroup::");
     if (result.exitCode !== 0) failed += 1;

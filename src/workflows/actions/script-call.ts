@@ -25,6 +25,7 @@
  * script's own `Args` interface) into the `bun run ...` command string.
  */
 import { toArgv } from "../../scripts/lib/cli.ts";
+import { MACHINERY_ROOT_VAR } from "../../domain/machinery-layout.ts";
 import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
 
 /**
@@ -39,7 +40,7 @@ import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
  * A shell default rather than a generation-time choice, so one generated file
  * serves both: the workflows that never set it are byte-identical to before.
  */
-export const MACHINERY_ROOT = "${ATOMATON_MACHINERY_ROOT:-.}";
+export const MACHINERY_ROOT = `\${${MACHINERY_ROOT_VAR}:-.}`;
 
 /**
  * Build a `bun run <deployed-path> [argv...]` command for a script that

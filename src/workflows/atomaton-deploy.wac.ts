@@ -2,7 +2,7 @@ import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-wo
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
 import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
-import { scriptCommandWithArgs } from "./actions/script-call.ts";
+import { MACHINERY_ROOT, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { renameSecretSlots } from "./actions/secret-slots.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
@@ -124,7 +124,7 @@ const planJob = new DefinedJob<{ jobs: string; tags_before: string }>(
       // question could not be asked" look identical afterwards, and only one of them
       // is a repository that deploys nothing here.
       run: [
-        `PLANNER="\${ATOMATON_MACHINERY_ROOT:-.}/${planDeployRef.runtimePath}"`,
+        `PLANNER="${MACHINERY_ROOT}/${planDeployRef.runtimePath}"`,
         'if [ ! -f "$PLANNER" ]; then',
         '  echo "::warning::$PLANNER is not on the default branch yet, so nothing could be planned and nothing was deployed. This is expected once, on the upgrade that adds it."',
         `  echo "jobs=[]" >> "\$GITHUB_OUTPUT"`,

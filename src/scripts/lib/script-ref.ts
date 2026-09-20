@@ -13,7 +13,23 @@
  *
  * `import.meta.url` is populated by the runtime from the actual file being
  * executed/imported, so the derived path can never drift from the real
- * file -- a rename/move is automatically reflected. This replaces the old
+ * file -- a rename/move is automatically reflected.
+ *
+ * ## One place a `ref` must not be imported: another script
+ *
+ * `build-dist.ts` bundles each script in `src/scripts/` separately, and a bundled
+ * non-entry module is handed the ENTRY's `import.meta.url`. So a script that imports
+ * a sibling's `ref` gets a `runtimePath` naming ITSELF -- measured in the generated
+ * bundle, where `write_tools_file.ts`'s `ref` came out as
+ * `.github/atomaton-runtime/scripts/check_live_tools.ts`. The wrong value is a
+ * perfectly good path to a real script, so nothing fails until the spawned program
+ * turns out to be the wrong one.
+ *
+ * `src/workflows/*.wac.ts` importing a `ref` is the intended use and is unaffected:
+ * the generator runs unbundled, one module per file. `tests/contract/script-refs.test.ts`
+ * holds the line.
+ *
+ * This replaces the old
  * "path-validation-only `import type * as Foo`" convention: importing `ref`
  * is a real VALUE import, which already fails `tsc --noEmit` (TS2307) the
  * same way a type-only import did if the script is renamed/deleted, while

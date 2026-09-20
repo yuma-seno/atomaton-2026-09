@@ -2,7 +2,7 @@ import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-wo
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
 import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
-import { scriptCommandWithArgs } from "./actions/script-call.ts";
+import { MACHINERY_ROOT, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { scriptCommand } from "./actions/script-call.ts";
 import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";
 import { renameSecretSlots } from "./actions/secret-slots.ts";
@@ -126,7 +126,7 @@ const planDefaultBranchChecksJob = planJob(
   // from being silent: an empty answer and an unaskable question look identical
   // afterwards, and only one of them is a project with no such check.
   [
-    `PLANNER="\${ATOMATON_MACHINERY_ROOT:-.}/${planChecksRef.runtimePath}"`,
+    `PLANNER="${MACHINERY_ROOT}/${planChecksRef.runtimePath}"`,
     'if [ ! -f "$PLANNER" ]; then',
     '  echo "::warning::$PLANNER is not on the default branch yet, so no credentialed check could be planned. This is expected once, on the change that adds it."',
     `  echo "jobs=[]" >> "\$GITHUB_OUTPUT"`,
