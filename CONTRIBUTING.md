@@ -235,7 +235,7 @@ What each command proves:
 
 - `typecheck`: static type contract for scripts/workflows/shared libs.
 - `synth`: workflow generation and deliverable build to `dist/.github`.
-- `test`: unit-level behavior across `src/domain`, `src/lib`, `src/scripts`, and MCP/hook scripts.
+- `test`: unit-level behavior across `src/domain`, `src/shared`, `src/adapters`, `src/app`, `src/entrypoints/machinery`, and the MCP servers and hooks.
 - `test:e2e`: end-to-end checks in `tests/e2e`.
 
 `test:e2e` runs against the built tree, so `bun run synth` has to come first — it

@@ -9,11 +9,11 @@
  * the generator runs unbundled, one module per file.
  *
  * It does not work between scripts. `build-dist.ts` bundles each script in
- * `src/scripts/` separately, and a bundled non-entry module is handed the ENTRY's
+ * `src/entrypoints/machinery/` separately, and a bundled non-entry module is handed the ENTRY's
  * `import.meta.url` — so the imported `ref` names the importer. Measured while
  * replacing a hand-built path in `check_live_tools.ts`: the bundle came out with
  *
- *     // src/scripts/write_tools_file.ts
+ *     // src/entrypoints/machinery/write_tools_file.ts
  *     var ref = defineScript(import.meta.url);
  *
  * inside `check_live_tools.ts`, which would have spawned `check_live_tools.ts`
@@ -27,9 +27,9 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-/** Every `.ts` directly under `src/scripts/`, tests excluded. `lib/` and `testing/` are not scripts. */
+/** Every `.ts` directly under `src/entrypoints/machinery/`, tests excluded. `lib/` and `testing/` are not scripts. */
 function scripts(): string[] {
-  return readdirSync("src/scripts", { withFileTypes: true })
+  return readdirSync("src/entrypoints/machinery", { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts"))
     .map((entry) => entry.name);
 }
@@ -42,7 +42,7 @@ describe("script refs", () => {
     const importsSiblingRef = /import\s*\{[^}]*\bref\b[^}]*\}\s*from\s*["']\.\/[A-Za-z0-9_]+\.ts["']/;
 
     const offenders = scripts().filter((name) =>
-      importsSiblingRef.test(readFileSync(join("src/scripts", name), "utf8")),
+      importsSiblingRef.test(readFileSync(join("src/entrypoints/machinery", name), "utf8")),
     );
 
     expect(

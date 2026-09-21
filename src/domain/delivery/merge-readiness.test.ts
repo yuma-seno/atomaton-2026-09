@@ -319,9 +319,9 @@ describe("governedPathsIn", () => {
   // The default names an adopter's deployed tree. A template repository develops
   // the same files under `src/`, where they are ordinary source until deployed.
   test("the default covers the deployed tree, not a template's source", () => {
-    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
-    expect(governedPathsIn(["src/atomaton/agent-definitions/engineer.md"], ["src/atomaton/**"])).toEqual([
-      "src/atomaton/agent-definitions/engineer.md",
+    expect(governedPathsIn(["src/content/agent-definitions/engineer.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
+    expect(governedPathsIn(["src/content/agent-definitions/engineer.md"], ["src/content/**"])).toEqual([
+      "src/content/agent-definitions/engineer.md",
     ]);
   });
 

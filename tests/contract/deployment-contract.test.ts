@@ -10,19 +10,23 @@
  * all. It keeps working wherever it already sits and is simply missing
  * everywhere else, which leaves no diff and so cannot be caught in review. That
  * is the failure this file exists to make loud, and it is why the check is
- * against `src/atomaton/` and `build-dist.ts` rather than against any deployed
+ * against `src/content/` and `build-dist.ts` rather than against any deployed
  * tree.
  *
  * This already happened: a PR added a package list under `.github/atomaton/` by hand
- * without adding it to `src/atomaton/` or to build-dist.ts's copy list, while
+ * without adding it to `src/content/` or to build-dist.ts's copy list, while
  * switching tools.yaml to a binary that only that file installs.
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { sourceOf, TOOLS_DIR, USER_ROOT } from "../../src/domain/machinery/machinery-layout.ts";
 
-const ATOMA_SRC = join(process.cwd(), "src/atomaton");
-const RUNTIME_TOOLS = join(process.cwd(), "src/atomaton-runtime/tools");
+// Both from the one table, so a source tree that moves again cannot leave this
+// checking a directory that is not there. `BUILT_FROM` is what `build-dist.ts`
+// itself reads, and this file is about the two of them agreeing.
+const ATOMA_SRC = join(process.cwd(), "src", sourceOf(USER_ROOT));
+const RUNTIME_TOOLS = join(process.cwd(), "src", sourceOf(TOOLS_DIR));
 const BUILD_DIST = join(process.cwd(), "src/build-dist.ts");
 
 /** Filenames in build-dist.ts's verbatim-copy list. */
@@ -37,7 +41,7 @@ function copiedFiles(): string[] {
 }
 
 /**
- * Loose static files sitting directly in src/atomaton/, i.e. the ones that have to
+ * Loose static files sitting directly in src/content/, i.e. the ones that have to
  * be named in build-dist.ts's copy list. Restricted to shippable data
  * extensions: anything else in there is a stray, which the first test below
  * reports on its own terms rather than as a missing copy-list entry.
@@ -60,7 +64,7 @@ function walk(dir: string): string[] {
 }
 
 describe("deployment contract", () => {
-  // `src/atomaton/` is the deliverable, mirrored 1:1 into `dist/.github/atomaton/`
+  // `src/content/` is the deliverable, mirrored 1:1 into `dist/.github/atomaton/`
   // and from there into an adopter's own `.github/`. Anything that exists to
   // develop THIS repository belongs outside it, which is why these contract
   // tests live under `tests/`.
@@ -70,17 +74,17 @@ describe("deployment contract", () => {
   // build-and-deploy machinery lives here under `tests/`, because it describes
   // the factory. Neither ever ships — build-dist.ts excludes `*.test.ts`.
   //
-  // So `src/atomaton-runtime/tools/**` is exempt: `mcp.test.ts` and `shell_guard.test.ts`
+  // So `src/entrypoints/tools/**` is exempt: `mcp.test.ts` and `shell_guard.test.ts`
   // exercise MCP servers that adopters receive and run, and a template repo that
   // shipped an untested MCP server would be handing adopters untested code.
   test("the deliverable's content directories hold no test files", () => {
     const strays = walk(ATOMA_SRC)
       .filter((f) => /\.test\.ts$|\.spec\.ts$/.test(f))
-      .filter((f) => !f.startsWith("src/atomaton-runtime/tools/"));
-    expect(strays, `move these out of src/atomaton/: ${strays.join(", ")}`).toEqual([]);
+      .filter((f) => !f.startsWith("src/entrypoints/tools/"));
+    expect(strays, `move these out of src/content/: ${strays.join(", ")}`).toEqual([]);
   });
 
-  test("src/atomaton/ and the shipped dist tree hold the same static files", () => {
+  test("src/content/ and the shipped dist tree hold the same static files", () => {
     const distAtomaton = join(process.cwd(), "dist/.github/atomaton");
     let shipped: string[];
     try {
@@ -96,15 +100,15 @@ describe("deployment contract", () => {
 
     // Markdown and YAML are copied verbatim, so every one in src must ship.
     const sourceStatic = walk(ATOMA_SRC)
-      .map((f) => f.replace("src/atomaton/", ""))
+      .map((f) => f.replace("src/content/", ""))
       .filter((f) => f.endsWith(".md") || f.endsWith(".yaml") || f.endsWith(".json"));
 
     for (const file of sourceStatic) {
-      expect(shipped.includes(file), `src/atomaton/${file} never reaches dist/.github/atomaton/`).toBe(true);
+      expect(shipped.includes(file), `src/content/${file} never reaches dist/.github/atomaton/`).toBe(true);
     }
   });
 
-  test("build-dist.ts copies every static file in src/atomaton/", () => {
+  test("build-dist.ts copies every static file in src/content/", () => {
     const copied = copiedFiles();
     const present = staticFiles();
 
@@ -112,7 +116,7 @@ describe("deployment contract", () => {
     for (const file of present) {
       expect(
         copied.includes(file),
-        `src/atomaton/${file} is not in build-dist.ts's copy list, so it never reaches ` +
+        `src/content/${file} is not in build-dist.ts's copy list, so it never reaches ` +
           `dist/ and no adopter ever receives it.`,
       ).toBe(true);
     }
@@ -121,7 +125,7 @@ describe("deployment contract", () => {
   test("build-dist.ts does not claim to copy files that are missing", () => {
     const present = staticFiles();
     for (const file of copiedFiles()) {
-      expect(present.includes(file), `build-dist.ts copies src/atomaton/${file}, which does not exist`).toBe(true);
+      expect(present.includes(file), `build-dist.ts copies src/content/${file}, which does not exist`).toBe(true);
     }
   });
 
@@ -185,7 +189,7 @@ describe("the machinery layout is declared once", () => {
   const SOURCES = [
     "src/workflows/atomaton-runner.wac.ts",
     "src/adapters/runner/config.ts",
-    "src/scripts/write_metrics_report.ts",
+    "src/entrypoints/machinery/write_metrics_report.ts",
     "src/build-dist.ts",
   ];
 
@@ -213,7 +217,7 @@ describe("the machinery layout is declared once", () => {
    * validation that is judging it.
    */
   test("the validator keeps its own paths", () => {
-    const source = readFileSync("src/scripts/validate_deliverable.ts", "utf8");
+    const source = readFileSync("src/entrypoints/machinery/validate_deliverable.ts", "utf8");
     // The IMPORT, not the name. Any mention used to fail this, which meant the one
     // file whose independence is deliberate could not say so -- a comment explaining
     // why it does not import the layout was indistinguishable from importing it.
@@ -226,7 +230,7 @@ describe("the machinery layout is declared once", () => {
 
   /** An adopter opening the directory should find out what each path means there. */
   test("the README ships", () => {
-    expect(existsSync("src/atomaton/README.md")).toBe(true);
+    expect(existsSync("src/content/README.md")).toBe(true);
     expect(readFileSync("src/build-dist.ts", "utf8")).toContain('"README.md"');
   });
 });

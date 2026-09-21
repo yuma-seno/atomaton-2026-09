@@ -37,7 +37,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const AGENT_DIR = "src/atomaton/agent-definitions";
+const AGENT_DIR = "src/content/agent-definitions";
 
 /** `provider:` from an agent definition's frontmatter. */
 function providerOf(file: string): string | undefined {

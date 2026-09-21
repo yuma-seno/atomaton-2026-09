@@ -30,15 +30,15 @@ import { toolsFileFrom, type ToolsSection } from "../../src/domain/machinery/too
  *
  * So the thing worth checking is what that generator produces from the config this
  * template ships — which is exactly what a run will be handed. `hookBase` is the
- * real `src/atomaton/tools`, so the hook paths below point at the actual scripts and
+ * real `src/content/tools`, so the hook paths below point at the actual scripts and
  * the existence check still means something.
  */
-const HOOK_BASE = join(process.cwd(), "src/atomaton-runtime/tools");
+const HOOK_BASE = join(process.cwd(), "src/entrypoints/tools");
 const GENERATED = join(mkdtempSync(join(tmpdir(), "atomaton-tools-")), "tools.yaml");
 writeFileSync(
   GENERATED,
   Bun.YAML.stringify(
-    toolsFileFrom((Bun.YAML.parse(readFileSync("src/atomaton/config.yaml", "utf8")) as { tools?: ToolsSection }).tools, HOOK_BASE),
+    toolsFileFrom((Bun.YAML.parse(readFileSync("src/content/config.yaml", "utf8")) as { tools?: ToolsSection }).tools, HOOK_BASE),
     null,
     2,
   ),
@@ -161,7 +161,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
    * matters is the one the agent is told, and that is the one in the schema.
    */
   test("a tool that advertises a long timeout has a server entry that allows it", () => {
-    const source = readFileSync("src/atomaton-runtime/tools/mcp/shell.ts", "utf8");
+    const source = readFileSync("src/entrypoints/tools/mcp/shell.ts", "utf8");
     const advertised = source.match(/timeout_seconds:[^\n]*?\.max\((\d+)\)/);
     expect(advertised, "shell.ts must still declare a max for timeout_seconds").not.toBeNull();
     const seconds = Number(advertised![1]);

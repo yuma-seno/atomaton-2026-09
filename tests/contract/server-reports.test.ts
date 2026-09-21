@@ -15,7 +15,7 @@
  *   - it is a report, and it should go through `adapters/mcp/mcp-report.ts`
  *   - it is not, and the fallback will put it in front of an agent as a problem
  *
- * The scope is `src/atomaton-runtime/tools/**`, which is code that only ever runs as a
+ * The scope is `src/entrypoints/tools/**`, which is code that only ever runs as a
  * tool server. `src/lib/**` is deliberately outside it: those functions are called
  * from workflow scripts too, where there is no protocol channel and a WARN on
  * stderr is what a person reads in the run log. Their lines still reach the
@@ -29,9 +29,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SERVER_DIRS = [
-  "src/atomaton-runtime/tools/mcp",
-  "src/atomaton-runtime/tools/lib",
-  "src/atomaton-runtime/tools/hooks",
+  "src/entrypoints/tools/mcp",
+  "src/entrypoints/tools/lib",
+  "src/entrypoints/tools/hooks",
 ];
 
 /** The words atoma's stderr fallback reads severity out of. */
@@ -91,7 +91,7 @@ describe("what a shipped tool server says about itself", () => {
     // testing the formatter.
     const expected: [string, string[]][] = [
       [
-        "src/atomaton-runtime/tools/mcp/search.ts",
+        "src/entrypoints/tools/mcp/search.ts",
         [
           // The failure itself, and the line that says the answer is worse.
           "could not preload the reranker",
@@ -99,11 +99,11 @@ describe("what a shipped tool server says about itself", () => {
         ],
       ],
       [
-        "src/atomaton-runtime/tools/lib/harden.ts",
+        "src/entrypoints/tools/lib/harden.ts",
         ["this process could not become unreadable"],
       ],
       [
-        "src/atomaton-runtime/tools/mcp/github.ts",
+        "src/entrypoints/tools/mcp/github.ts",
         ["CI validation was NOT dispatched"],
       ],
     ];

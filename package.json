@@ -9,7 +9,7 @@
   "scripts": {
     "synth": "gwf build && bun run src/build-dist.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test ./src/domain ./src/shared ./src/adapters ./src/app ./src/scripts ./tests/contract ./src/atomaton-runtime/tools/mcp ./src/atomaton-runtime/tools/hooks",
+    "test": "bun test ./src/domain ./src/shared ./src/adapters ./src/app ./src/entrypoints/machinery ./tests/contract ./src/entrypoints/tools/mcp ./src/entrypoints/tools/hooks",
     "test:e2e": "bun test ./tests/e2e",
     "lint": "bun run typecheck && bun run synth"
   },

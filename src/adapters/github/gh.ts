@@ -1,7 +1,7 @@
 /**
  * gh.ts — thin wrappers around the `gh` CLI and `git`. The one canonical
  * copy shared by every script and MCP server in this repo (workflow-invoked
- * `src/scripts/**` and Atomaton-tool-invoked `src/atomaton-runtime/tools/**`
+ * `src/entrypoints/machinery/**` and Atomaton-tool-invoked `src/entrypoints/tools/**`
  * alike) -- see build-dist.ts for how this stays true in the deployed
  * output despite living in one shared place at dev time.
  */

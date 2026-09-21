@@ -32,7 +32,7 @@ which rules apply:
 The rest of this file does not separate them cleanly. That is a known gap, tracked
 in the documentation restructure; until then, read each rule and ask which of the two it is about.
 
-`src/atomaton/**` is mirrored verbatim into `dist/.github/atomaton/` and from there
+`src/content/**` is mirrored verbatim into `dist/.github/atomaton/` and from there
 into an adopter's repository. **It may only contain content that holds for any
 project using Atomaton.** No reference to this repository's build pipeline, no
 mention of `dist/`, `bun run synth`, or `build-dist.ts`, and no incident history
@@ -85,7 +85,7 @@ The workflows that run agents are generated from `src/workflows/` and shipped.
 
 ## Adding a static file to the deliverable
 
-A new non-code file under `src/atomaton/` must also be added to `build-dist.ts`'s
+A new non-code file under `src/content/` must also be added to `build-dist.ts`'s
 verbatim-copy list, or it never reaches `dist/` at all.
 `tests/contract/deployment-contract.test.ts` enforces this.
 

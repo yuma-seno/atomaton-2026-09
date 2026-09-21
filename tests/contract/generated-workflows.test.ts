@@ -120,7 +120,7 @@ describe("generated workflows", () => {
    * instructions on a fresh issue took 61k.
    */
   test("every script that posts a comment says whether the agent should read it", () => {
-    const dir = "src/scripts";
+    const dir = "src/entrypoints/machinery";
     const scripts = readdirSync(dir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
 
     // `post_result_comment.ts` is the one comment that IS the agent's own output. It
@@ -359,7 +359,7 @@ describe("generated workflows", () => {
    * question as "reachable by a server".
    */
   test("every environment variable a tool server reads is passed to the agent", () => {
-    const roots = ["src/atomaton-runtime/tools", "src/adapters", "src/app", "src/domain", "src/shared"];
+    const roots = ["src/entrypoints/tools", "src/adapters", "src/app", "src/domain", "src/shared"];
     const files: string[] = [];
     const walk = (directory: string): void => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -565,9 +565,9 @@ describe("generated workflows", () => {
   test("no script opens the run's own files by a bare name", () => {
     const names = ["session.json", "events.json", "atomaton_ops.log", "atomaton_output.txt", "atomaton_logs.txt"];
     const CALLS = ["existsSync", "readFileSync", "writeFileSync", "appendFileSync", "unlinkSync", "statSync"];
-    const scripts = readdirSync("src/scripts", { withFileTypes: true })
+    const scripts = readdirSync("src/entrypoints/machinery", { withFileTypes: true })
       .filter((entry) => entry.isFile() && entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts"))
-      .map((entry) => join("src/scripts", entry.name));
+      .map((entry) => join("src/entrypoints/machinery", entry.name));
     expect(scripts.length, "there should be scripts to check").toBeGreaterThan(5);
 
     for (const file of scripts) {
@@ -679,7 +679,7 @@ describe("generated workflows", () => {
     const ops = /"op":"\(([a-z_|]+)\)"/.exec(grep ?? "")?.[1]?.split("|") ?? [];
     expect(ops.length, "and must name at least one op").toBeGreaterThan(0);
 
-    const github = readFileSync("src/atomaton-runtime/tools/mcp/github.ts", "utf8");
+    const github = readFileSync("src/entrypoints/tools/mcp/github.ts", "utf8");
     for (const op of ops) {
       expect(github, `nothing writes an ops-log entry for "${op}"`).toContain(`logOp("${op}"`);
     }
@@ -1281,7 +1281,7 @@ describe("generated workflows", () => {
         const path = match[0];
         // Only the scripts this repository ships as workflow glue. A tool server or a
         // hook is named from the tools file, not from here.
-        if (!existsSync(`src/scripts/${match[1]}`)) continue;
+        if (!existsSync(`src/entrypoints/machinery/${match[1]}`)) continue;
         named += 1;
         expect(path, `${file} runs ${match[1]} from outside ${SCRIPTS_DIR}/`).toContain(`${SCRIPTS_DIR}/`);
       }
@@ -1354,7 +1354,7 @@ describe("generated workflows", () => {
    * Without an explicit `name`, GitHub builds one from EVERY field of the matrix
    * entry. Measured on the first run of this shape:
    *
-   *     pull-request-checks (verify, ["ubuntu-latest"], bun run src/scripts/scan_…
+   *     pull-request-checks (verify, ["ubuntu-latest"], bun run src/entrypoints/machinery/scan_…
    *
    * — truncated by the UI, with the one part a person needs buried among the commands
    * and the runner. That string is also what a failing check reports itself as, so it

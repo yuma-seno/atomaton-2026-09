@@ -198,3 +198,35 @@ export const RELEASE_MANIFEST = ".github/atomaton-release.json";
  * see `scripts/read_secret_names.ts`.
  */
 export const MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
+/**
+ * Which directory under `src/` builds each deployed tree.
+ *
+ * The deployed layout above is a published interface: an adopter's tree is replaced
+ * by position, so a path there is one this repository may not move on a whim. The
+ * source layout is not — it is ours, and `docs/architecture.md` sorts it by layer.
+ * The two were the same name for as long as `src/atomaton/` deployed to
+ * `.github/atomaton/`, and `build-dist.ts` derived one from the other by slicing the
+ * string.
+ *
+ * They are not the same name any more, so the correspondence is written down. A
+ * table rather than a derivation, because there is nothing left to derive: `content/`
+ * is what a project receives, `entrypoints/machinery/` is what a workflow step runs,
+ * `entrypoints/tools/` is what the core starts, and none of those three words appears
+ * in the path it lands at.
+ *
+ * `tests/contract/deployment-contract.test.ts` holds both ends of it to the trees
+ * that exist.
+ */
+export const BUILT_FROM: ReadonlyArray<readonly [deployed: string, source: string]> = [
+  [USER_ROOT, "content"],
+  [SCRIPTS_DIR, "entrypoints/machinery"],
+  [TOOLS_DIR, "entrypoints/tools"],
+];
+
+/** Where `deployed` is built from, relative to `src/`. */
+export function sourceOf(deployed: string): string {
+  const found = BUILT_FROM.find(([target]) => target === deployed);
+  if (!found) throw new Error(`machinery-layout: nothing builds ${deployed}`);
+  return found[1];
+}

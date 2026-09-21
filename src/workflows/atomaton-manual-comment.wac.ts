@@ -7,12 +7,12 @@ import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { dispatchToAtomaRunner } from "./atomaton-runner.wac.ts";
-import { ref as parseCommentCommandRef } from "../scripts/parse_comment_command.ts";
-import { ref as guardCommentRef } from "../scripts/guard_comment_during_run.ts";
-import { ref as guardCommandOnClosedRef } from "../scripts/guard_command_on_closed.ts";
-import { ref as requestStopRef } from "../scripts/request_stop.ts";
-import { ref as resolveResumeAgentRef } from "../scripts/resolve_resume_agent.ts";
-import { ref as resumeSubtreeRef } from "../scripts/resume_subtree.ts";
+import { ref as parseCommentCommandRef } from "../entrypoints/machinery/parse_comment_command.ts";
+import { ref as guardCommentRef } from "../entrypoints/machinery/guard_comment_during_run.ts";
+import { ref as guardCommandOnClosedRef } from "../entrypoints/machinery/guard_command_on_closed.ts";
+import { ref as requestStopRef } from "../entrypoints/machinery/request_stop.ts";
+import { ref as resolveResumeAgentRef } from "../entrypoints/machinery/resolve_resume_agent.ts";
+import { ref as resumeSubtreeRef } from "../entrypoints/machinery/resume_subtree.ts";
 
 // Invoke agents via /agent-name slash command in issue/PR comments.
 // Slash-command DISPATCH is restricted to OWNER/MEMBER/COLLABORATOR (see

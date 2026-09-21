@@ -43,7 +43,7 @@
 import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../src/adapters/mcp/mcp-tool.ts";
 import { report } from "../src/adapters/mcp/mcp-report.ts";
 
-const REAL_SERVER = "src/atomaton-runtime/tools/mcp/github.ts";
+const REAL_SERVER = "src/entrypoints/tools/mcp/github.ts";
 const STARTUP_REPORT = "raised before this server had anywhere to send it";
 
 // ── the server built out of the shipped parts ────────────────────────────────

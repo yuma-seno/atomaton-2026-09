@@ -28,8 +28,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { toolDefaults } from "../../src/domain/machinery/shipped-servers.ts";
 
-const AGENT_DIR = join(process.cwd(), "src/atomaton/agent-definitions");
-const CONFIG = join(process.cwd(), "src/atomaton/config.yaml");
+const AGENT_DIR = join(process.cwd(), "src/content/agent-definitions");
+const CONFIG = join(process.cwd(), "src/content/config.yaml");
 
 /**
  * Every server name a run would resolve: the ones Atomaton ships, plus whatever this

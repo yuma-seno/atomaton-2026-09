@@ -4,7 +4,7 @@ import { WORKSPACE_PATH } from "../../src/domain/work/workspace.ts";
 
 describe("agent prompt contracts", () => {
   test("uses orchestrator-first delegation with an explicit engineer leaf gate", () => {
-    const orchestrator = readFileSync("src/atomaton/agent-definitions/orchestrator.md", "utf8");
+    const orchestrator = readFileSync("src/content/agent-definitions/orchestrator.md", "utf8");
     expect(orchestrator).toContain("assign them to `orchestrator` by default");
     expect(orchestrator).toContain("only when it satisfies every leaf condition");
     expect(orchestrator).toContain("File count and apparent effort do not determine leaf status");
@@ -23,7 +23,7 @@ describe("agent prompt contracts", () => {
    * run that is still working, right up to the iteration limit.
    */
   test("an engineer asked a question has somewhere to arrive", () => {
-    const engineer = readFileSync("src/atomaton/agent-definitions/engineer.md", "utf8");
+    const engineer = readFileSync("src/content/agent-definitions/engineer.md", "utf8");
     expect(engineer, "the outcome table must offer answering as an outcome").toContain(
       "The request is a question rather than a change",
     );
@@ -34,7 +34,7 @@ describe("agent prompt contracts", () => {
   });
 
   test("prevents engineers from implementing unresolved non-leaf work", () => {
-    const engineer = readFileSync("src/atomaton/agent-definitions/engineer.md", "utf8");
+    const engineer = readFileSync("src/content/agent-definitions/engineer.md", "utf8");
     expect(engineer).toContain("If it is not engineer-ready, do not edit");
     expect(engineer).toContain("Return `/orchestrator` on the first line");
   });
@@ -53,8 +53,8 @@ describe("agent prompt contracts", () => {
    * in its first minute.
    */
   test("loads procedures as skills without requesting visible chain of thought", () => {
-    const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
-    const prompt = readFileSync("src/atomaton/prompt-template.md", "utf8");
+    const reviewer = readFileSync("src/content/agent-definitions/reviewer.md", "utf8");
+    const prompt = readFileSync("src/content/prompt-template.md", "utf8");
     expect(reviewer).toContain("Load `review/quick-quality-gate`");
     expect(prompt).toContain("atoma_builtin__load_skill");
     expect(prompt).toContain("in place of your own approach");
@@ -64,8 +64,8 @@ describe("agent prompt contracts", () => {
   });
 
   test("requires agent handoff directives to occupy their own line", () => {
-    const prompt = readFileSync("src/atomaton/prompt-template.md", "utf8");
-    const orchestrator = readFileSync("src/atomaton/agent-definitions/orchestrator.md", "utf8");
+    const prompt = readFileSync("src/content/prompt-template.md", "utf8");
+    const orchestrator = readFileSync("src/content/agent-definitions/orchestrator.md", "utf8");
     expect(prompt).toContain("directive line must contain only `/agent-name`");
     expect(orchestrator).toContain("Return `/engineer` on its own line");
   });
@@ -75,7 +75,7 @@ describe("agent prompt contracts", () => {
   // and it announced that it would wait for a check with nothing able to resume
   // the run. Both are properties of the wording, so they belong in a test.
   test("tells every agent that an outcome is a tool call and that it cannot wait", () => {
-    const prompt = readFileSync("src/atomaton/prompt-template.md", "utf8");
+    const prompt = readFileSync("src/content/prompt-template.md", "utf8");
     // Single-line substrings on purpose: these files are wrapped prose, and a
     // phrase spanning a line break also picks up whatever indentation wraps it.
     expect(prompt).toContain("outcome means making that call");
@@ -85,7 +85,7 @@ describe("agent prompt contracts", () => {
   // The reviewer is the one agent whose outcomes were prose-classified rather than
   // a numbered procedure ending in a named call, and the one that failed to act.
   test("gives the reviewer an ordered procedure that names the merge calls", () => {
-    const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
+    const reviewer = readFileSync("src/content/agent-definitions/reviewer.md", "utf8");
     expect(reviewer).toContain("Do this before deciding");
     // The outcome is the call, not the sentence that describes it. Was two calls
     // until `submit_pr_review` was removed -- a review the shared identity can
@@ -112,7 +112,7 @@ describe("agent prompt contracts", () => {
    * noticed something.
    */
   test("says a problem a tool reported about itself is not the agent's failure", () => {
-    for (const file of ["src/atomaton/prompt-template.md", "src/atomaton/skills/engineering/environment.md"]) {
+    for (const file of ["src/content/prompt-template.md", "src/content/skills/engineering/environment.md"]) {
       const text = readFileSync(file, "utf8");
       expect(text, `${file} must not let a tool's degradation read as the agent's fault`).toContain(
         "not a failure of your work",
@@ -131,7 +131,7 @@ describe("agent prompt contracts", () => {
    * and disappear when that issue closed.
    */
   test("the environment skill turns a reported problem into a filed issue", () => {
-    const skill = readFileSync("src/atomaton/skills/engineering/environment.md", "utf8");
+    const skill = readFileSync("src/content/skills/engineering/environment.md", "utf8");
     expect(skill).toContain("github__create_issue");
     expect(skill, "a tool defect is not a child of the current issue").toContain("sub_issue: false");
   });
@@ -151,7 +151,7 @@ describe("agent prompt contracts", () => {
    * workspace exists to remove.
    */
   test("the scratch workspace is named identically wherever an agent reads about it", () => {
-    for (const file of ["src/atomaton/prompt-template.md", "src/atomaton-runtime/tools/mcp/shell.ts"]) {
+    for (const file of ["src/content/prompt-template.md", "src/entrypoints/tools/mcp/shell.ts"]) {
       const text = readFileSync(file, "utf8");
       expect(text, `${file} must name the workspace`).toContain(WORKSPACE_PATH);
       // Both halves. "This survives" alone invites leaving working files in the
@@ -175,7 +175,7 @@ describe("agent prompt contracts", () => {
    * name -- and the shape is what is checked now, whatever the project is called.
    */
   test("the workspace is never named through a variable", () => {
-    for (const file of ["src/atomaton/prompt-template.md", "src/atomaton-runtime/tools/mcp/shell.ts"]) {
+    for (const file of ["src/content/prompt-template.md", "src/entrypoints/tools/mcp/shell.ts"]) {
       const expansions = readFileSync(file, "utf8").match(
         /\$\{?[A-Za-z_]*WORKSPACE[A-Za-z_]*\}?/g,
       );

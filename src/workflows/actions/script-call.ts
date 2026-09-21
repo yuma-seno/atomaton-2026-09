@@ -1,6 +1,6 @@
 /**
  * script-call.ts — Type-safe(r) invocation of the one-shot TS scripts in
- * `src/scripts/` (deployed flat into `.github/scripts/*.ts` by
+ * `src/entrypoints/machinery/` (deployed flat into `.github/scripts/*.ts` by
  * `build-dist.ts`) from inside a workflow step's `run:` bash.
  *
  * NOT `.github/atomaton/tools/scripts/`, which this file used to name. That is a
@@ -17,16 +17,16 @@
  * Two independent strings, nothing stopping them from silently mismatching.
  *
  * Now every call site imports the script's own `ref` (see
- * `../../scripts/lib/script-ref.ts`) -- a real value, derived from the
+ * `../../entrypoints/machinery/lib/script-ref.ts`) -- a real value, derived from the
  * script's `import.meta.url`, so there is only ONE thing identifying the
  * script (the import itself) and the deployed path is never hand-typed at
  * all. `scriptCommand()`/`scriptCommandWithArgs()` just turn that `ref` (and,
  * for the latter, a typed `args` object checked directly against the
  * script's own `Args` interface) into the `bun run ...` command string.
  */
-import { toArgv } from "../../scripts/lib/cli.ts";
+import { toArgv } from "../../entrypoints/machinery/lib/cli.ts";
 import { MACHINERY_ROOT_VAR } from "../../domain/machinery/machinery-layout.ts";
-import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
+import type { ScriptRef } from "../../entrypoints/machinery/lib/script-ref.ts";
 
 /**
  * Where a workflow's own scripts are read from, as shell that resolves at run

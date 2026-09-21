@@ -6,8 +6,8 @@ import { MACHINERY_ROOT, scriptCommandWithArgs } from "./actions/script-call.ts"
 import { renameSecretSlots } from "./actions/secret-slots.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
-import { ref as dispatchNewTagsRef, TAGS_BEFORE_VAR } from "../scripts/dispatch_new_tags.ts";
-import { ref as planDeployRef } from "../scripts/plan_deploy.ts";
+import { ref as dispatchNewTagsRef, TAGS_BEFORE_VAR } from "../entrypoints/machinery/dispatch_new_tags.ts";
+import { ref as planDeployRef } from "../entrypoints/machinery/plan_deploy.ts";
 
 // Runs whatever config.yaml's `deploy` says this project ships.
 //

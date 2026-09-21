@@ -31,9 +31,9 @@
  * was chosen for, and the generator strips it exactly as it strips `settings`.
  */
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { TOOL_DEFAULTS_FILE } from "./machinery-layout.ts";
+import { sourceOf, TOOL_DEFAULTS_FILE, TOOLS_DIR } from "./machinery-layout.ts";
 import type { ConfiguredServer } from "./tools-file.ts";
 
 /** A server as `defaults.yaml` carries it: the core's keys, plus this project's own. */
@@ -57,7 +57,7 @@ export interface ToolDefaults {
  *
  * **This default is correct in `src/` only.** The earlier version of this comment
  * claimed the two layouts happened to agree -- that `<runtime>/scripts/` to
- * `<runtime>/tools/` was the same step as `src/domain/` to `src/atomaton-runtime/tools/`
+ * `<runtime>/tools/` was the same step as `src/domain/` to `src/entrypoints/tools/`
  * -- and they do not. Bundling flattens `src/domain/` into the script that imports
  * it, so `import.meta.url` in a deployed tree is the SCRIPT's location, and `..`
  * from `<runtime>/scripts/` is `<runtime>`, which already ends in `atomaton-runtime`.
@@ -69,17 +69,20 @@ export interface ToolDefaults {
  * and the build, which do run from `src/`.
  */
 function defaultPath(): string {
-  // `.github/atomaton-runtime/tools/defaults.yaml` deployed is
-  // `src/atomaton-runtime/tools/defaults.yaml` here: the same path under a
-  // different root. Taken from the constant rather than rebuilt from segments,
-  // because a name broken into `join(..., "atomaton-runtime", "tools", ...)` is
-  // invisible to a search for the path and survives a rename unchanged.
-  const belowRoot = TOOL_DEFAULTS_FILE.slice(TOOL_DEFAULTS_FILE.indexOf("/") + 1);
   // Two steps up, because this module sits at `src/domain/machinery/` and the tree it
   // reaches for hangs off `src/`. A count that moves when the file does — and it has:
   // splitting `domain/` into contexts put another directory between the two, and the
   // tests for the shipped servers are what said so rather than a run in production.
-  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", ...belowRoot.split("/"));
+  //
+  // The rest is `BUILT_FROM` rather than a slice of the deployed constant. Those
+  // agreed for as long as `src/atomaton-runtime/tools/` deployed to
+  // `.github/atomaton-runtime/tools/`, and slicing was how this reached the source
+  // tree. The source is sorted by layer now — `entrypoints/tools/` — and the two names
+  // have nothing in common, so the one table that knows both answers it. Still not
+  // rebuilt from segments: a name broken into `join(..., "tools", ...)` is the one form
+  // of duplicate a search for the path cannot find.
+  const belowSrc = sourceOf(TOOLS_DIR).split("/");
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", ...belowSrc, basename(TOOL_DEFAULTS_FILE));
 }
 
 let cached: ToolDefaults | undefined;

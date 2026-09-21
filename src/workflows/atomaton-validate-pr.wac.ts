@@ -6,10 +6,10 @@ import { DEFAULT_CI_WORKFLOW } from "../domain/delivery/shipped-workflows.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";
-import { ref as validatePullRequestRef } from "../scripts/validate_pull_request.ts";
-import { ref as validateDeliverableRef } from "../scripts/validate_deliverable.ts";
-import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
-import { ref as dispatchAgentRef } from "../scripts/dispatch_agent.ts";
+import { ref as validatePullRequestRef } from "../entrypoints/machinery/validate_pull_request.ts";
+import { ref as validateDeliverableRef } from "../entrypoints/machinery/validate_deliverable.ts";
+import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../entrypoints/machinery/get_config_value.ts";
+import { ref as dispatchAgentRef } from "../entrypoints/machinery/dispatch_agent.ts";
 
 // Runs CI against an agent's pull request and decides who works next.
 //

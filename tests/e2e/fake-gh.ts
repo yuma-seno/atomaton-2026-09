@@ -1,6 +1,6 @@
 /**
  * fake-gh.ts — shared helper for tests/e2e/*.e2e.test.ts: configures the
- * fake `gh` CLI (reuses src/scripts/testing/bin/gh -- same configurable
+ * fake `gh` CLI (reuses src/entrypoints/machinery/testing/bin/gh -- same configurable
  * design already needed there, no reason to keep a second byte-identical
  * copy) via env vars and returns those env vars plus a way to read back
  * every invocation made. Meant to be spread into the *top-level* `atoma`
@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { fakeGhEnv } from "../../src/scripts/testing/fake-gh-env.ts";
+import { fakeGhEnv } from "../../src/entrypoints/machinery/testing/fake-gh-env.ts";
 
 export interface FakeGhRule {
   /** Every one of these substrings must appear in at least one argv element for this rule to match. */
