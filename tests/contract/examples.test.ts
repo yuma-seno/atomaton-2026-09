@@ -32,9 +32,11 @@ describe("examples are examples", () => {
     }
   });
 
-  // A `.wac.ts` file WOULD be generated -- `gwf build` collects them by
-  // extension. Plain YAML is what keeps these out of the deliverable, so the
-  // extension is load-bearing rather than a style choice.
+  // Plain YAML, not `.wac.ts`, and the extension is load-bearing rather than a
+  // style choice: it is what says these are not workflow sources. The generator
+  // reads `src/workflows/` only (see `workflow-sources.test.ts`), so a `.wac.ts`
+  // here would not be generated today -- but that bound is one directory, and
+  // moving `examples/` under it would then ship a schedule to every adopter.
   test("none of them is a workflow source file", () => {
     for (const example of examples) {
       expect(example.endsWith(".wac.ts"), example).toBe(false);

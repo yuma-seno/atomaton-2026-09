@@ -205,7 +205,7 @@ function copyStaticAtomatonContent(): void {
  * Write what this release is and what it contains.
  *
  * Last, because it lists what the steps above produced -- including the generated
- * workflows, which `gwf build` wrote before any of this ran. Walking `dist/` rather
+ * workflows, which `synth-workflows.ts` wrote before any of this ran. Walking `dist/` rather
  * than assembling a list by hand is the point: a list written by hand is a list that
  * disagrees with the zip the first time somebody adds a file.
  *
