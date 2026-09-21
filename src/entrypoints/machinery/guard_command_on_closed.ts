@@ -84,7 +84,7 @@ function main(): void {
 
   say(true);
   console.error(
-    `Refused '${command}' on #${number}: ${state.kind === "unknown" ? `state unreadable (${state.why})` : "not open"}.`,
+    `Refused '${command}' on #${number}: ${!state.known ? `state unreadable (${state.why})` : "not open"}.`,
   );
 }
 

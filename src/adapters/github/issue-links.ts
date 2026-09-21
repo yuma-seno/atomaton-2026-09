@@ -12,6 +12,7 @@
  * it, and markers only exist where an agent has been.
  */
 import { ghGraphqlRead } from "./gh.ts";
+import { issueOutcome, pullRequestOutcome, saysOpen } from "./outcome.ts";
 import {
   claimsToClose,
   dedupeByNumber,
@@ -38,6 +39,8 @@ interface GqlIssue {
   number: number;
   title: string;
   state: string;
+  /** Why a closed issue is closed: `COMPLETED`, `NOT_PLANNED`, `DUPLICATE`, or absent. */
+  stateReason?: string | null;
 }
 
 interface GqlChild extends GqlIssue {
@@ -82,8 +85,8 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
     issueOrPullRequest(number:$number) {
       __typename
       ... on Issue {
-        parent { number title state }
-        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        parent { number title state stateReason }
+        subIssues(first:$limit) { nodes { number title state stateReason labels(first:$labelLimit) { nodes { name } } } }
         closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
           nodes { number title state merged body }
         }
@@ -92,22 +95,45 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
         }
       }
       ... on PullRequest {
-        closingIssuesReferences(first:$limit) { nodes { number title state } }
+        closingIssuesReferences(first:$limit) { nodes { number title state stateReason } }
       }
     }
   }
 }`;
 
+/**
+ * An issue, read into the tree's vocabulary.
+ *
+ * `stateReason` is asked for in the query above and was not before. Without it a
+ * closed issue could only be reported as closed, which is the ambiguity
+ * `NodeState` exists to remove: an issue somebody finished and one somebody
+ * decided against are opposite outcomes wearing the same word.
+ */
 function normalise(node: GqlIssue): LinkedIssue {
-  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : issueOutcome(node.stateReason),
+  };
 }
 
 function asChild(node: GqlChild): LinkedChild {
   return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
 }
 
+/**
+ * A pull request, whose outcome is `merged` rather than a reason.
+ *
+ * Not `normalise`, because that would read a closed pull request's absent
+ * `stateReason` as `done` and call every abandoned one delivered. The two kinds
+ * end differently and GitHub says so differently; this is the whole of it.
+ */
 function asPr(node: GqlPr): LinkedPr {
-  return { ...normalise(node), merged: Boolean(node.merged) };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : pullRequestOutcome(Boolean(node.merged)),
+  };
 }
 
 /**

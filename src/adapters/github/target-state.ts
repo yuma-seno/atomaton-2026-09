@@ -28,10 +28,14 @@
  * with it.
  */
 import { ghRead } from "./gh.ts";
+import { issueOutcome, pullRequestOutcome } from "./outcome.ts";
 import type { TargetState } from "../../domain/work/closed-issue.ts";
+import type { NodeKind } from "../../domain/work/work-tree.ts";
 
 interface IssueOrPr {
   state?: string;
+  /** Why a closed ISSUE is closed. Absent on a pull request, which says `merged_at` instead. */
+  state_reason?: string | null;
   pull_request?: { merged_at?: string | null };
 }
 
@@ -47,20 +51,30 @@ export function readTargetState(number: number | string, repo?: string): TargetS
   const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;
   const { code, stdout, stderr } = ghRead("api", path);
   if (code !== 0) {
-    return { kind: "unknown", why: (stderr || stdout || `gh exited ${code}`).trim().split("\n")[0] ?? "" };
+    return { known: false, why: (stderr || stdout || `gh exited ${code}`).trim().split("\n")[0] ?? "" };
   }
 
   let parsed: IssueOrPr;
   try {
     parsed = JSON.parse(stdout) as IssueOrPr;
   } catch {
-    return { kind: "unknown", why: "the response was not JSON" };
+    return { known: false, why: "the response was not JSON" };
   }
 
   // An unrecognised state is not "open". GitHub answers `open` or `closed` here, so a
   // third value means this is reading something it does not understand, and the
   // permissive reading is the one that lets work through.
-  if (parsed.state === "open") return { kind: "open" };
-  if (parsed.state === "closed") return { kind: "closed", merged: Boolean(parsed.pull_request?.merged_at) };
-  return { kind: "unknown", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
+  const isPr = parsed.pull_request !== undefined;
+  const kind: NodeKind = isPr ? "pull-request" : "issue";
+  if (parsed.state === "open") return { known: true, kind, state: "open" };
+  if (parsed.state === "closed") {
+    return {
+      known: true,
+      kind,
+      state: isPr
+        ? pullRequestOutcome(Boolean(parsed.pull_request?.merged_at))
+        : issueOutcome(parsed.state_reason),
+    };
+  }
+  return { known: false, why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
 }

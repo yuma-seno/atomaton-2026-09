@@ -68,7 +68,7 @@ describe("nodesToStop", () => {
    * node is holding a run, and it is the one a person wants stopped.
    */
   test("reaches a closed node that is still running", () => {
-    const nodes = [issue(1, undefined, { state: "closed", running: true })];
+    const nodes = [issue(1, undefined, { state: "done", running: true })];
     expect(nodesToStop(nodes).map((n) => n.number)).toEqual([1]);
   });
 
@@ -92,14 +92,17 @@ describe("nodesToClose", () => {
   });
 
   /**
-   * GitHub cannot close a merged pull request, and a closed node is already where
-   * this would put it. Attempting either would report a failure that is not one.
+   * GitHub cannot close a merged pull request, and a node that has already ended is
+   * where this would put it. Attempting either would report a failure that is not one.
+   *
+   * However it ended: a close pass does not care whether the work landed or was
+   * dropped, which is why `nodesToClose` asks only whether it is open.
    */
-  test("leaves a merged pull request and an already closed issue alone", () => {
+  test("leaves a node that already ended alone, whichever way it ended", () => {
     const nodes = [
       issue(1),
-      issue(2, 1, { state: "closed" }),
-      pr(3, 1, { state: "merged" }),
+      issue(2, 1, { state: "done" }),
+      pr(3, 1, { state: "done" }),
     ];
     expect(nodesToClose(subtree(nodes, 1)).map((n) => n.number)).toEqual([1]);
   });
@@ -110,7 +113,7 @@ describe("resumeCandidates and nodesToResume", () => {
     issue(1, undefined),
     issue(2, 1),
     issue(3, 1), // ran and finished
-    issue(4, 1, { state: "closed" }),
+    issue(4, 1, { state: "abandoned" }),
     issue(5, 1, { running: true }),
   ];
   /** What the caller learns from the thread, one request per candidate. */

@@ -13,12 +13,20 @@
  *
  * Pure. The GraphQL half lives in `adapters/github/issue-links.ts`.
  */
+import type { NodeState } from "./work-tree.ts";
 
 export interface LinkedIssue {
   number: number;
   title: string;
-  /** GitHub's state, lowercased: "open" or "closed". */
-  state: string;
+  /**
+   * How the work there stands, in the one vocabulary the tree uses.
+   *
+   * It was `string`, holding GitHub's own state lowercased, which is how this
+   * module came to carry a second spelling of something `work-tree.ts` already
+   * names — and why `LinkedPr` needed a `merged` flag beside it. See `NodeState`
+   * for why `closed` was not an answer worth keeping.
+   */
+  state: NodeState;
 }
 
 /**
@@ -37,16 +45,19 @@ export interface LinkedChild extends LinkedIssue {
   readonly labels: readonly string[];
 }
 
-export interface LinkedPr extends LinkedIssue {
-  /**
-   * Whether it landed.
-   *
-   * Separate from `state` because GitHub says only `closed` for both a merged
-   * pull request and an abandoned one, and those mean opposite things to
-   * someone reading "we decided to do X" in the discussion above.
-   */
-  merged: boolean;
-}
+/**
+ * A pull request linked to an issue.
+ *
+ * Nothing of its own any more. It carried `merged: boolean`, whose comment made
+ * exactly the argument `NodeState` now makes — *GitHub says only `closed` for both
+ * a merged pull request and an abandoned one, and those mean opposite things* —
+ * and compensated for it with a second field. `state` answers it: a pull request
+ * that is `done` is one that merged. Nothing ever read the flag.
+ *
+ * Kept as a name because the three lists on [`IssueLinks`] are three different
+ * things and reading `LinkedIssue[]` for all of them would say they are not.
+ */
+export type LinkedPr = LinkedIssue;
 
 export interface IssueLinks {
   parent?: LinkedIssue;

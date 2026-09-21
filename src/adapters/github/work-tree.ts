@@ -40,6 +40,7 @@
 import { gh, ghRead } from "./gh.ts";
 import { getLabel } from "../../adapters/runner/config.ts";
 import { issueLinks } from "./issue-links.ts";
+import { issueOutcome, pullRequestOutcome, saysOpen } from "./outcome.ts";
 import { ENDED_TAG, LLM_CONTEXT_TAG, PARENT_ISSUE_TAG, STOP_TAG } from "./tags.ts";
 import {
   closeReachedNotice,
@@ -92,6 +93,7 @@ function readNode(repo: string, number: number): { node?: WorkNode; problem?: st
   }
   let raw: {
     state?: string;
+    state_reason?: string | null;
     body?: string;
     labels?: { name?: string }[];
     pull_request?: { merged_at?: string | null };
@@ -103,11 +105,15 @@ function readNode(repo: string, number: number): { node?: WorkNode; problem?: st
   }
 
   const isPr = raw.pull_request !== undefined;
-  const merged = Boolean(raw.pull_request?.merged_at);
-  const state: NodeState = merged ? "merged" : raw.state === "open" ? "open" : "closed";
   if (raw.state !== "open" && raw.state !== "closed") {
     return { problem: `#${number} reported an unrecognised state ${JSON.stringify(raw.state ?? null)}` };
   }
+  const state: NodeState =
+    raw.state === "open"
+      ? "open"
+      : isPr
+        ? pullRequestOutcome(Boolean(raw.pull_request?.merged_at))
+        : issueOutcome(raw.state_reason);
 
   return {
     node: {
@@ -162,8 +168,8 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     nodes.push({
       number: found.number,
       kind: "pull-request",
-      // A merged pull request has left the tree, and `gh` says so directly here.
-      state: found.state === "OPEN" ? "open" : found.state === "MERGED" ? "merged" : "closed",
+      // `gh` says outright whether it merged, so the outcome needs nothing else.
+      state: saysOpen(found.state) ? "open" : pullRequestOutcome(found.state === "MERGED"),
       parent,
       running: labelNames(found.labels).includes(label),
     });
@@ -188,7 +194,9 @@ function readChildren(repo: string, parent: number): { nodes: WorkNode[]; proble
     nodes.push({
       number: child.number,
       kind: "issue",
-      state: child.state === "open" ? "open" : "closed",
+      // Already the tree.s vocabulary: `issue-links.ts` reads GitHub.s reason and
+      // answers in it, so there is nothing left here to decide.
+      state: child.state,
       parent,
       running: child.labels.includes(label),
     });
