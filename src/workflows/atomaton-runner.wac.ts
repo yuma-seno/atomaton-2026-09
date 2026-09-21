@@ -754,6 +754,13 @@ done
 # Built as an array so a setting that is EMPTY is not passed at all. \`env NAME=\`
 # sets the empty string, and atoma reads an empty base URL as a base URL -- which
 # would defeat the guard above and point every request at "/chat/completions".
+#
+# Adding a name here means adding it to \`AGENT_ENV_NAMES\` in
+# domain/declared-secrets.ts as well: a name the agent's process already means
+# something by is a name \`tools.secrets\` must not be able to mean something else
+# by. This is not an import -- the values below are shell and belong here -- so
+# tests/contract/agent-environment.test.ts is what holds the two together. It has
+# caught this drifting twice.
 AGENT_ENV=(
   HOME="$HOME"
   PATH="$PATH"

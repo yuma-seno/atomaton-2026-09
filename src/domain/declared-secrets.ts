@@ -47,6 +47,7 @@
  * would be invisible to everyone reviewing the repository — which is precisely
  * the audience for "what credentials can this reach".
  */
+import { MACHINERY_ROOT_VAR } from "./machinery-layout.ts";
 
 /**
  * How many credentials one workflow can carry.
@@ -126,47 +127,105 @@ export const RUN_CREDENTIALS: readonly string[] = [
 ];
 
 /**
- * The agent's own process: `RUN_CREDENTIALS`, plus the run context in the "Run
- * agent" step's `env:` (`atomaton-runner.wac.ts`) and the names atoma derives for
- * itself from the credentials file.
+ * Every name the runner puts in the AGENT's own environment.
  *
- * The credentials are no longer in that step's environment — they are written to
- * a file by an earlier step that exits before the agent starts — so this is a
- * union of two places rather than a mirror of one. Reserving them is not about
- * where they sit; it is about the agent's process ending up with one meaning per
- * name.
+ * The list the "Run agent" step builds as `AGENT_ENV` — see
+ * `atomaton-runner.wac.ts`.
+ *
+ * That step does NOT import this, and deliberately: the shell needs a value per
+ * name rather than a name. `${BRANCH:-}` is not `$BRANCH`, the cache paths are
+ * built from `RUNNER_TEMP`, and two entries are appended by a loop only when they
+ * are set — moving that here would put `RUNNER_TEMP` in `domain/` and take the
+ * shell's own comments with it. `tests/contract/agent-environment.test.ts` is the
+ * link instead: it reads the generated YAML and holds the two to each other.
+ *
+ * Here rather than there because two places need it and only one of them can
+ * reach a workflow generator: this is also what `TOOL_SECRETS` reserves. That was
+ * a hand-kept mirror, and its own comment said what a hand-kept mirror does —
+ * "it is right until the day something is added to one side". Twelve names had
+ * been added to one side: `HOME`, `PATH`, `ATOMATON_MACHINERY_ROOT`,
+ * `GITHUB_REPOSITORY`, `BRANCH` and the seven cache directories.
+ *
+ * None of those was reachable — a declared secret goes into the credentials file,
+ * and atoma hands a server a value only when that server's own `env` names it,
+ * which none of the shipped ones do. So this closes a defensive list that was
+ * incomplete rather than a hole that was open. It is still worth closing: the
+ * reason a name is on this list is that the agent's process already means
+ * something by it, and that is a fact about the runner, not about this file.
+ */
+export const AGENT_ENV_NAMES: readonly string[] = [
+  // The toolchain's own. `HOME` stays the runner's so interpreters resolve; it is
+  // not writable by the tool user, which is why the caches below are redirected.
+  "HOME",
+  "PATH",
+  // The run's identity, which decides what every tool acts on.
+  "AGENT",
+  // Imported, not spelled. Which tree the machinery is in has one owner, and
+  // `tests/contract/machinery-root.test.ts` caught this line writing the name out
+  // the first time it was added here -- which is the whole of what that test is for.
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  // How many times this work has already rebuilt its environment. A declared
+  // secret shadowing it would set the tally the reload tool reads -- and a smaller
+  // number buys extra reloads, each of which resets the run's own time budget.
+  // Shadowing this is a way to remove that limit.
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  // Caches, because $HOME is read-only to the tool user.
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  // Appended only when set, by the loop after the array: an empty base URL is a
+  // base URL to atoma, so passing `NAME=` would defeat the check above it.
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER",
+];
+
+/**
+ * Names the RUN STEP is given, which never reach the agent's process.
+ *
+ * Reserved all the same, because the run script reads them before the agent
+ * starts and a declared secret is written to the credentials file before that.
+ * Separate from [`AGENT_ENV_NAMES`] because the contract test holds that one to
+ * the generated `AGENT_ENV` and these are deliberately not in it.
+ */
+const RUN_STEP_NAMES: readonly string[] = [
+  "GITHUB_RUN_ID",
+  // One per provider, all of them the same shape since atoma v0.1.13: a declared
+  // secret that shadowed one would move that provider's endpoint, which is a way
+  // to send a credential somewhere else.
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  // The repository-variable forms the step is actually given. The run script
+  // promotes each to the unsuffixed name above once it has checked it is not
+  // empty, so shadowing either would decide the provider or its host before that
+  // check ever runs.
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN",
+];
+
+/**
+ * The agent's own process: `RUN_CREDENTIALS`, plus everything the runner puts in
+ * the environment around it.
+ *
+ * The credentials are not in that step's environment — they are written to a file
+ * by an earlier step that exits before the agent starts — so this is a union of
+ * three lists rather than a mirror of one. Reserving them is not about where they
+ * sit; it is about the agent's process ending up with one meaning per name.
  */
 export const TOOL_SECRETS: SecretDestination = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    // How many times this work has already rebuilt its environment. A declared
-    // secret shadowing it would set the tally the reload tool reads -- and a
-    // smaller number buys extra reloads, each of which resets the run's own time
-    // budget. Shadowing this is a way to remove that limit.
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    // One per provider, all of them the same shape since atoma v0.1.13: a
-    // declared secret that shadowed one would move that provider's endpoint, which
-    // is a way to send a credential somewhere else.
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    // The repository-variable forms the step is actually given. The run script
-    // promotes each to the unsuffixed name above once it has checked it is not
-    // empty, so shadowing either would decide the provider or its host before
-    // that check ever runs.
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN",
-  ]),
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES]),
 };
 
 /**
