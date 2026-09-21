@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { isAbsolute } from "node:path";
 import { reservedServerNames, toolsFileFrom } from "./tools-file.ts";
 import { toolDefaults } from "./shipped-servers.ts";
+import { TOOL_OUTPUT_BACKSTOP } from "../../shared/tool-output.ts";
 
 /** The `tools/` directory relative hook paths are written against. */
 const HOOK_BASE = "/m/.github/atomaton/tools";
@@ -157,5 +158,37 @@ describe("reservedServerNames", () => {
 
   test("ordinary names are not reserved", () => {
     expect(reservedServerNames({ servers: { shell: { command: "x" }, github: { command: "y" } } })).toEqual([]);
+  });
+});
+
+/**
+ * The cap the core applies to a server it is handed, which was an accident.
+ *
+ * Every server Atomaton writes caps its own output at `TOOL_OUTPUT_BUDGET`, and the
+ * core caps whatever comes back as well. Both were 50,000 and neither knew about the
+ * other, so the core's cap on these servers never fired and nothing said why. These
+ * pin the passing, and its two edges: a server Atomaton did not write is not covered
+ * by a measurement nobody took for it, and an adopter who names a number means it.
+ */
+describe("max_output_chars", () => {
+  test("a server Atomaton ships is handed the value tool-output.ts owns", () => {
+    const entry = shipped().shell as Record<string, unknown>;
+    expect(entry.max_output_chars).toBe(TOOL_OUTPUT_BACKSTOP);
+  });
+
+  /**
+   * The core's default is the last bound on a server nobody here wrote, and it is
+   * the only one: a third-party server does not cap itself. Writing Atomaton's
+   * number onto it would raise that bound on the strength of a measurement taken
+   * against different code.
+   */
+  test("a server Atomaton does not ship keeps the core's default", () => {
+    const out = toolsFileFrom({ servers: { warehouse: { command: "bun", args: ["run", "x.ts"] } } }, HOOK_BASE);
+    expect(out.warehouse).toEqual({ command: "bun", args: ["run", "x.ts"] });
+  });
+
+  test("a project that names its own number keeps it", () => {
+    const out = toolsFileFrom({ servers: { shell: { max_output_chars: 12_000 } } }, HOOK_BASE);
+    expect((out.shell as Record<string, unknown>).max_output_chars).toBe(12_000);
   });
 });

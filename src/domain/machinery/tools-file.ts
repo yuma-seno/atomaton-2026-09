@@ -21,6 +21,24 @@
  * -- `url` and `headers` for a remote server, whatever comes next -- works the day
  * it ships without this file learning it.
  *
+ * ## Why `max_output_chars` is added here rather than written in `defaults.yaml`
+ *
+ * The core caps every tool result as well, and until this line the two caps agreed
+ * only by accident -- this project's servers cap themselves at
+ * `TOOL_OUTPUT_BUDGET`, the core defaults to the same number, and neither knew about
+ * the other. The dependency was real and invisible, and the day either moved, one
+ * result carried two truncation notes.
+ *
+ * So the value is passed, from the module that owns it. It is NOT a line in
+ * `defaults.yaml`, because the servers spend the same number at run time from
+ * `shared/tool-output.ts` and a YAML copy of it is the same defect one file along:
+ * two spellings of one fact, agreeing until somebody changes one. `TOOL_OUTPUT_BACKSTOP`
+ * is derived from that budget and says there why it is not equal to it.
+ *
+ * A project's own entry still wins -- an adopter who writes `max_output_chars` on a
+ * server means it -- and a server this project does not ship gets nothing, so the
+ * core's default keeps covering the servers nobody here measured.
+ *
  * ## Why the hook paths come out absolute
  *
  * The core resolves a hook path against the directory the tools file is IN
@@ -42,6 +60,7 @@
  * request was refused with three identical `Hook script not found` problems.
  */
 import { isAbsolute, join, resolve } from "node:path";
+import { TOOL_OUTPUT_BACKSTOP } from "../../shared/tool-output.ts";
 import { toolDefaults } from "./shipped-servers.ts";
 import type { ConfiguredServer, ToolDefaults, ToolsSection } from "./tool-server.ts";
 
@@ -69,6 +88,10 @@ export function toolsFileFrom(
   for (const [name, server] of Object.entries(mergedServers(tools?.servers, defaults))) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord(forTheCore.hooks)) forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
+    // `Object.hasOwn` rather than `in`, so a server named `toString` is a server.
+    if (Object.hasOwn(defaults.servers, name) && forTheCore.max_output_chars === undefined) {
+      forTheCore.max_output_chars = TOOL_OUTPUT_BACKSTOP;
+    }
     out[name] = forTheCore;
   }
   return out;

@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { toolDefaults } from "../../src/domain/machinery/shipped-servers.ts";
 import { toolsFileFrom, type ToolsSection } from "../../src/domain/machinery/tools-file.ts";
+import { TOOL_OUTPUT_BACKSTOP, TOOL_OUTPUT_BUDGET } from "../../src/shared/tool-output.ts";
 
 /**
  * `tools.yaml` decides how every tool server is started, and nothing was reading
@@ -54,6 +56,7 @@ interface ToolEntry {
   /** Only on the reserved `hooks` entry, which is a hooks block rather than a server. */
   after_tool?: string | string[];
   request_timeout_secs?: number;
+  max_output_chars?: number;
 }
 
 /**
@@ -263,5 +266,53 @@ describe("the generated tools file says nothing the core has not declared", () =
   /** The one key this project reserves must not reach the core. */
   test("settings is not in it", () => {
     expect(readFileSync(DEPLOYED, "utf8")).not.toContain("settings");
+  });
+});
+
+/**
+ * The core's cap on these servers is asked for, not inherited.
+ *
+ * Every server here caps its own output at `TOOL_OUTPUT_BUDGET` before returning it,
+ * and the core caps whatever arrives as well -- a client-side bound is the only kind
+ * that covers a server nobody here wrote. Both numbers were 50,000, and that was a
+ * coincidence: this project's came from the two tools already using it, the core's
+ * from its own default. So the core's cap on these servers never fired, nothing
+ * stated the relationship, and the day either side moved one tool result would carry
+ * two truncation notes with two different numbers.
+ *
+ * What is pinned below is therefore not that two numbers agree -- agreeing is the
+ * accident being removed -- but that the value is PASSED, and that it comes from the
+ * module that owns it.
+ */
+describe("the cap the core applies to Atomaton's own servers", () => {
+  const shipped = Object.keys(toolDefaults().servers);
+
+  test("every server Atomaton ships declares one", () => {
+    const generated = parse(GENERATED);
+    const silent = shipped.filter((name) => generated[name]?.max_output_chars === undefined);
+    expect(silent, "a server that says nothing is a server relying on the core's default").toEqual([]);
+  });
+
+  /**
+   * From `shared/tool-output.ts` and nowhere else. A literal written into this file
+   * or into `defaults.yaml` would be a second spelling of one fact, which is the
+   * defect being fixed rather than a way of fixing it.
+   */
+  test("the value is the one shared/tool-output.ts owns", () => {
+    const generated = parse(GENERATED);
+    for (const name of shipped) {
+      expect(generated[name]?.max_output_chars, `${name}.max_output_chars`).toBe(TOOL_OUTPUT_BACKSTOP);
+    }
+  });
+
+  /**
+   * Above what the servers spend, because the two caps count different strings: the
+   * budget is CONTENT, and the core counts that content escaped inside a JSON
+   * envelope. Measured, a `shell_execute` that fills both streams spends exactly
+   * 50,000 and returns 51,412 -- so a cap at the budget would cut a result this
+   * project had already cut well, and write a second note about it.
+   */
+  test("and it sits above the budget those servers spend, not at it", () => {
+    expect(TOOL_OUTPUT_BACKSTOP).toBeGreaterThan(TOOL_OUTPUT_BUDGET);
   });
 });
