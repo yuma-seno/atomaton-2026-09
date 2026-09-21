@@ -156,8 +156,22 @@ import { TypedOutputsStep } from "./base.ts";
  * session id. Measured before it: inferences inside a single run alternating between
  * a 98% cache hit and a fall back to exactly the shared prefix, which is what being
  * routed to a deployment that has not seen this conversation looks like.
+ *
+ * v0.1.45 names `load_skill`'s one argument `skill_name` and accepts no other
+ * spelling. This pin is what makes that true of a run: an older binary still takes
+ * the four aliases, so a model calling it `name` succeeds there and the session
+ * records `name` -- which is the spelling `write_metrics_report.ts` stopped reading
+ * when it was corrected to `skill_name`. Until this moves, the skill tally counts
+ * calls it cannot attribute.
+ *
+ * It also stops five answers being invented where a refusal was owed: a fabricated
+ * `tool_use_id`, a tool definition read without its wrapper, an `extra_body.tools`
+ * that is not a list, a nameless tool registered as `unknown`, and an `unprefixed`
+ * server whose hooks -- its denylist and allowlist included -- were never found.
+ * That last one is the reason to take this release rather than wait: a guard that
+ * silently does not run is indistinguishable from one that passes.
  */
-export const ATOMA_DEFAULT_VERSION = "v0.1.44";
+export const ATOMA_DEFAULT_VERSION = "v0.1.45";
 
 export const ATOMA_VERSION_DESC =
   "Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.";
