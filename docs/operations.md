@@ -647,7 +647,7 @@ worth seeing, and a failure at the bottom.
 That end used to be the part that was dropped — the cap was a million bytes and it
 kept the head, so a build log that overran returned its banner rather than its
 error. A million bytes is also about 250k tokens, more than a context window, from
-one call. See [docs/writing-a-tool.md](writing-a-tool.md) for why that matters
+one call. See [docs/tools/tasks/write-a-tool.md](tools/tasks/write-a-tool.md) for why that matters
 beyond the one run.
 
 ## What the agent's own tools do
@@ -677,7 +677,7 @@ resolves to an image comes back as an image for agents with `vision: true`.
 
 Searching is a skill rather than a tool: `.github/atomaton/skills/research/web-search.md`
 tells agents to fetch a search engine's results page and read the links out of it.
-Changing or removing that is in [recipes.md](recipes.md).
+Changing or removing that is in [tools/tasks/change-or-remove-web-fetching-and-search.md](tools/tasks/change-or-remove-web-fetching-and-search.md).
 
 ### Skills
 

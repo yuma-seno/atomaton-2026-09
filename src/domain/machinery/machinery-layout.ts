@@ -204,7 +204,7 @@ export const MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
  *
  * The deployed layout above is a published interface: an adopter's tree is replaced
  * by position, so a path there is one this repository may not move on a whim. The
- * source layout is not — it is ours, and `docs/architecture.md` sorts it by layer.
+ * source layout is not — it is ours, and `docs/template/architecture.md` sorts it by layer.
  * The two were the same name for as long as `src/atomaton/` deployed to
  * `.github/atomaton/`, and `build-dist.ts` derived one from the other by slicing the
  * string.

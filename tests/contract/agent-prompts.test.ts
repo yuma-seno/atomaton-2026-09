@@ -121,7 +121,7 @@ describe("agent prompt contracts", () => {
   });
 
   /**
-   * And the skill has to close the loop, not just absolve the agent. `docs/edd.md`
+   * And the skill has to close the loop, not just absolve the agent. `docs/method/edd.md`
    * names the failure this is against: "Whoever observed the gap cannot propose the
    * fix, so it waits until someone else notices." The run that saw the warning is the
    * only one holding it, so filing is part of seeing it.

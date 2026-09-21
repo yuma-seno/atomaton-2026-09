@@ -5,7 +5,7 @@
 ## Why this document exists
 
 The rules below were settled in discussion and, until this file, existed only in
-a chat log and in the comment at the top of one module. `docs/edd.md` names that
+a chat log and in the comment at the top of one module. `docs/method/edd.md` names that
 as a way the loop opens:
 
 > Reasons are not kept. The same question is settled twice, or a decision is
@@ -93,7 +93,7 @@ question on `Turn`.
 | `domain/work/` | The tree, a turn on a node, who goes next, what stop and close reach. |
 | `domain/delivery/` | What the adopting project declares it checks and deploys. |
 | `domain/machinery/` | What Atomaton ships, where it lands, and which tree is trusted. |
-| `domain/record/` | What the environment keeps about its own operation — `docs/edd.md`'s centre. |
+| `domain/record/` | What the environment keeps about its own operation — `docs/method/edd.md`'s centre. |
 
 A module goes where its **vocabulary** is, not where its caller is. A pure rule
 written entirely in the store's path shapes belongs to the store, even though it
@@ -164,7 +164,7 @@ anything under `.github/atomaton-runtime/`; the next upgrade puts the shipped
 version back. This is a template, not a library — the whole tree is theirs to
 change, and an upgrade that reverted nothing would be an upgrade that shipped
 nothing. The upgrade arrives as a commit, so a reverted edit is in that diff and
-in git history: it can be read, and it can be put back. `docs/recipes.md` treats
+in git history: it can be read, and it can be put back. `docs/runtime/tasks/move-to-a-newer-release.md` treats
 uptake as vendoring for this reason, and #435 holds what is left of making that
 easy.
 

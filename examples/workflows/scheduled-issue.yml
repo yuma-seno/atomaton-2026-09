@@ -29,7 +29,7 @@
 # no-op costs seconds of runner time, while an agent's costs a billed inference
 # whether or not there was work.
 #
-# See docs/recipes.md, "Recurring work".
+# See docs/work/tasks/have-something-happen-every-week.md, "Recurring work".
 
 name: Weekly dependency review
 
