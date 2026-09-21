@@ -5,10 +5,10 @@ serving the endpoint you picked — not every OpenAI-compatible gateway implemen
 `/responses`.
 
 What you give up by doing that instead of naming a provider is that the run's log says
-`openai`, so where it went is only visible in the variable. **This repository's own
-agent definitions were that case**, reading `provider: openai-responses # openrouter`
-— and the trailing comment was there because the name did not say where the request
-went. They name `orcarouter-responses` now.
+`openai`, so where it went is only visible in the variable. The tell is a definition that
+grows a trailing comment — `provider: openai-responses # openrouter` — written because
+the name on its own stopped saying where the request goes. Name a provider from the
+table wherever one fits.
 
 Each endpoint moves with its own `*_BASE_URL` variable (`OPENROUTER_BASE_URL` and so
 on), and it is a repository variable rather than a secret. None of them may be declared

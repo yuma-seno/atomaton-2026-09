@@ -107,7 +107,7 @@ If you know the key and not the artifact,
 [Where a server is read from](tools/how-it-works/where-a-server-is-read-from.md) ·
 [How a credential reaches a tool](tools/how-it-works/routing-a-credential.md) ·
 [How long a tool has to answer](tools/how-it-works/how-long-a-tool-has.md) ·
-[Searching this repository's issues](tools/how-it-works/searching-the-issues.md) ·
+[Searching your repository's issues](tools/how-it-works/searching-the-issues.md) ·
 [How the issue search ranks](tools/how-it-works/how-the-issue-search-ranks.md) ·
 [Reading the web](tools/how-it-works/reading-the-web.md)
 
@@ -148,7 +148,7 @@ The cause and what to do about it are on the page, once.
 | | |
 | --- | --- |
 | [Environment-Driven Development](method/edd.md) | The idea the rest of this is an argument for. Nothing in it is a setting. |
-| [Architecture](template/architecture.md) | The template's own source. An adopted repository receives `.github/`, never `src/`, so no path named there exists in it. |
+| [Architecture](template/architecture.md) | Atomaton's own source tree — the one page here whose subject is the template rather than your repository. Nothing it names is in yours. |
 
 ## What is not here yet
 

@@ -13,10 +13,11 @@ tools:
       request_timeout_secs: 600
 ```
 
-A server this template ships is declared in `src/entrypoints/tools/defaults.yaml`
-instead — `.github/atomaton-runtime/tools/defaults.yaml` in an adopted repository —
-and carries the same key there, in the same schema. Either way the value reaches
-the core through the tools file a run writes for itself.
+A server Atomaton ships declares it in `.github/atomaton-runtime/tools/defaults.yaml`
+instead, under the same key and in the same schema. Raising one of those is an
+override rather than an edit to that file — [let a tool run longer than a
+minute](../tasks/let-a-tool-run-longer-than-a-minute.md). Either way the value
+reaches the core through the tools file a run writes for itself.
 
 A server of your own that is started by a program rather than by `bun` also needs
 that program installed: name it in

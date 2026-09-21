@@ -15,9 +15,10 @@ is reported on the pull request rather than on whoever triggered the next run �
 ## A tool that answers worse than it should
 
 A tool that fails returns an error and the agent sees it. A tool that **degrades**
-returns an answer that looks like any other, and nothing says otherwise. That
-happened here: the search server's reranker failed to load, every search answered
-with first-stage ordering, and two releases went out before anyone noticed.
+returns an answer that looks like any other, and nothing says otherwise. That is
+what the shipped `search` server did: its reranker failed to load, every search
+answered with first-stage ordering, and nothing in the result said so — so nobody
+noticed.
 
 So a server says so, and Atoma attaches what it says to that server's next tool
 result:
@@ -29,19 +30,9 @@ search__search_issues → [results]
 warning: reranking failed (EACCES); these results are first-stage ordered, not reranked
 ```
 
-In one of the servers in this template, that is one call:
-
-```ts
-import { report } from "../../../lib/mcp-report.ts";
-
-report("warning", "could not save the search index; every search from here rebuilds it");
-```
-
-That import is this template's own source layout: `src/adapters/mcp/mcp-report.ts`, reached
-from `src/entrypoints/tools/mcp/`. The servers an adopted repository receives are
-bundles with the helper already inside them, so there is no file at that path to
-import — what the deliverable carries is the behaviour, not the module. For a
-server that is not built in this tree, see the protocol form at the end of this
+The servers under `.github/atomaton-runtime/tools/mcp/` already do this — they arrive
+as bundles with the reporting helper inside them, so there is nothing to wire and no
+file to edit. For a server of your own, the protocol form is at the end of this
 section.
 
 It goes out as MCP `notifications/message`, which `serveMcpServer` enables by
@@ -65,13 +56,10 @@ carrying one is promoted in front of the agent as a problem whether or not it is
 one.
 
 That is not a house style you can decline. The word-matching happens at run time,
-to your server, in whichever repository it lives. What is local to this template is
-the *enforcement*: `tests/contract/server-reports.test.ts` fails a shipped server
-whose `log()` text carries one of those words. An adopted repository does not
-receive that test — it has the same rule and nothing that checks it.
+to your server, in whichever repository it lives, and nothing checks your `log()`
+text for those words before it gets there.
 
-For a server of your own that is not written against this repository's helpers:
-declare `logging` in your `initialize` result and send
+For a server of your own: declare `logging` in your `initialize` result and send
 `notifications/message` with a `level` of `warning` or `error`. If you do
 neither, Atoma falls back to reading your stderr, and the word-matching above is
 what you get.

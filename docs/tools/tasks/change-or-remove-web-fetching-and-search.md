@@ -13,5 +13,5 @@ results page and read the links out of it. The endpoint lives in that file on pu
   `config.yaml`: `web` is one of the servers Atomaton ships, and a server no agent names is
   never started.
 
-This is separate from the search over this repository's own issues, which is a tool
-server — [searching this repository's issues](../how-it-works/searching-the-issues.md).
+This is separate from the search over your repository's own issues, which is a tool
+server — [searching your repository's issues](../how-it-works/searching-the-issues.md).
