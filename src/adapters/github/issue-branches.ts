@@ -9,7 +9,19 @@
  * import another script's entry point.
  */
 import { gh } from "./gh.ts";
-import type { IssueBranch } from "../../domain/work/issue-branch.ts";
+import { matchingRefsPath, ordinalOfBranch } from "./branch-names.ts";
+import { ordinalToResume, type OwnedBranch } from "../../domain/work/issue-branch.ts";
+
+/**
+ * A branch that exists on the remote, with the two things a caller needs of it.
+ *
+ * `ordinal` comes from the name, through the module that owns the convention, and
+ * every branch here has one above zero: a ref this issue does not own is dropped
+ * before anything asks GitHub whether it merged.
+ */
+export interface IssueBranch extends OwnedBranch {
+  name: string;
+}
 
 function log(message: string): void {
   console.error(`[atomaton-issue-branch] ${message}`);
@@ -21,9 +33,9 @@ function log(message: string): void {
  *
  * Scoped to one issue rather than listing every `atomaton/issue-*` branch, because
  * the merged flag has to be asked for per branch and a repository accumulates
- * hundreds. `atomaton/issue-12` also matches `atomaton/issue-120` here; separating
- * them is `domain/work/issue-branch.ts`'s job, and over-collecting is the safe
- * direction.
+ * hundreds. The prefix over-collects even so — `atomaton/issue-12` matches
+ * `atomaton/issue-120` — and `branch-names.ts` settles ownership below, before
+ * anything asks whether a branch merged.
  *
  * Merged is read from the pull requests rather than from git ancestry: a squash
  * merge leaves no ancestry to follow, so a branch whose work is in the base
@@ -39,7 +51,7 @@ function log(message: string): void {
  * "start from the base branch" — which is what the empty answer gave it, correctly
  * and by accident.
  *
- * `branch-placement.ts` picks a name to CREATE, through `nextBranchName`, and there
+ * `branch-placement.ts` picks a name to CREATE, through `nextOrdinal`, and there
  * an unread list means the first name: `atomaton/issue-7`, even when `-2` and `-3`
  * already exist. The push is not forced, so git rejects the divergence and the run
  * fails — loudly, but reporting a non-fast-forward rather than the failed read three
@@ -53,7 +65,7 @@ export type IssueBranchesRead =
   | { readonly known: false; readonly why: string };
 
 export function collectIssueBranches(repo: string, issueNumber: number): IssueBranchesRead {
-  const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
+  const refs = gh("api", matchingRefsPath(repo, issueNumber));
   if (refs.code) {
     const why = `could not list the branches of #${issueNumber}: ${(refs.stderr || refs.stdout).trim()}`;
     log(`WARN ${why}`);
@@ -70,8 +82,16 @@ export function collectIssueBranches(repo: string, issueNumber: number): IssueBr
     return { known: false, why };
   }
 
+  // Ownership is settled before anything asks whether a branch merged. The
+  // `matching-refs` prefix over-collects — `atomaton/issue-12` matches
+  // `atomaton/issue-120` — and each survivor costs a request, so dropping the ones
+  // this issue does not own here is both the correct place and the cheap one.
   const owner = repo.split("/", 1)[0] ?? "";
-  return { known: true, branches: names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) })) };
+  const branches = names
+    .map((name) => ({ name, ordinal: ordinalOfBranch(name, issueNumber) }))
+    .filter((entry) => entry.ordinal > 0)
+    .map((entry) => ({ ...entry, merged: headBranchMerged(repo, owner, entry.name) }));
+  return { known: true, branches };
 }
 
 /**
@@ -95,4 +115,17 @@ function headBranchMerged(repo: string, owner: string, branch: string): boolean 
     log(`WARN pull request list for ${branch} was not valid JSON`);
     return false;
   }
+}
+
+/**
+ * The name of the branch a run should continue, or `""` to stay on the base.
+ *
+ * The rule is `ordinalToResume`; this turns its answer back into the name the
+ * caller checks out. `""` rather than `undefined` because the one caller writes it
+ * straight to `$GITHUB_OUTPUT`, where an absent value and an empty one are the same
+ * thing and the empty one is what the step's condition reads.
+ */
+export function resumableBranch(branches: readonly IssueBranch[]): string {
+  const ordinal = ordinalToResume(branches);
+  return branches.find((branch) => branch.ordinal === ordinal)?.name ?? "";
 }

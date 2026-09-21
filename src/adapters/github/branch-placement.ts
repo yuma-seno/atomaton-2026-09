@@ -12,7 +12,7 @@
  */
 import { gh, gitRun } from "./gh.ts";
 import { parentIssueOf, type ParentIssue } from "./parent-issue.ts";
-import { nextBranchName } from "../../domain/work/issue-branch.ts";
+import { nextOrdinal } from "../../domain/work/issue-branch.ts";
 import { collectIssueBranches } from "./issue-branches.ts";
 
 // Re-exported because this module's own callers ask for it by this name. The
@@ -24,18 +24,11 @@ function log(message: string): void {
   console.error(`[atomaton-github] ${message}`);
 }
 
-/** The prefix every Atomaton work branch carries; also how a parent's branch is named. */
-const BRANCH_PREFIX = "atomaton/issue-";
-
-/** A parent issue's branch name. */
-export function branchOfIssue(issue: number): string {
-  return `${BRANCH_PREFIX}${issue}`;
-}
-
-/** Whether a branch name is one of Atomaton's work branches. */
-export function isIssueBranch(name: string): boolean {
-  return name.startsWith(BRANCH_PREFIX);
-}
+// The naming convention itself is `branch-names.ts`. Re-exported because these two
+// are what the rest of the repository reaches for, and moving the definition should
+// not move every import with it.
+export { branchOfIssue, isIssueBranch } from "./branch-names.ts";
+import { branchNameFor, branchOfIssue, isIssueBranch } from "./branch-names.ts";
 
 /**
  * What to say when this run has no branch at all.
@@ -189,7 +182,7 @@ export function branchForCommit(repo: string): string {
   if (issue === undefined) return resolveBranch();
 
   const from = stackedBaseFor(repo, issue);
-  // Refused rather than guessed. An unread list makes `nextBranchName` answer with the
+  // Refused rather than guessed. An unread list makes `nextOrdinal` answer with the
   // FIRST name, which is the one most likely to exist already -- and the run then fails
   // at the push, reporting a non-fast-forward instead of the read that caused it.
   const listed = collectIssueBranches(repo, issue);
@@ -198,7 +191,7 @@ export function branchForCommit(repo: string): string {
       `${listed.why}, so a new branch for #${issue} cannot be named without risking one that already exists.`,
     );
   }
-  const name = nextBranchName(listed.branches, issue);
+  const name = branchNameFor(issue, nextOrdinal(listed.branches));
   const created = from
     ? gitRun("checkout", "-b", name, `origin/${from}`)
     : gitRun("checkout", "-b", name);

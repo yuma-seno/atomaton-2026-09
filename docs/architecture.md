@@ -198,11 +198,6 @@ This is the larger half of the same question, and it reaches the session store,
 the workspace branch and the metrics window. Not a refactor — a decision about
 where the authority for a node's history lives.
 
-### `issue-branch.ts` fuses a rule with a convention
-
-*Resume the existing branch or cut a new one* is a work rule. `atomaton/issue-N`
-is a naming convention, which is mechanism. They are one module.
-
 ### `pr-validation.ts` returns three answers at once
 
 Who runs next (work), what the check context is (mechanism), and whether the

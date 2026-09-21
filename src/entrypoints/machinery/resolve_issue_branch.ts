@@ -21,8 +21,8 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { branchToResume } from "../../domain/work/issue-branch.ts";
-import { collectIssueBranches } from "../../adapters/github/issue-branches.ts";
+import { collectIssueBranches, resumableBranch } from "../../adapters/github/issue-branches.ts";
+
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ResolveIssueBranchArgs {
@@ -56,7 +56,7 @@ function main(): void {
     // blind risks an existing one. `collectIssueBranches` says which answer it is
     // giving so the two callers can differ.
     const listed = collectIssueBranches(repo, issue);
-    if (listed.known) branch = branchToResume(listed.branches, issue);
+    if (listed.known) branch = resumableBranch(listed.branches);
     else log(`${listed.why}; staying on the base branch`);
   } else {
     log("missing --repo or --issue; staying on the base branch");
