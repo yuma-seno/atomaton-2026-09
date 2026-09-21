@@ -95,4 +95,4 @@ a summary presented as a quotation is worse than either.
 ## Re-entry
 
 - If a review requests changes, inspect the current PR and address only concrete findings, then validate, commit, and update the same PR.
-- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(number=...)` so parent aggregation can continue. It refuses on an issue a human opened — that is the expected answer there, not a failure to work around. Report that the merge is done and that closing it is the owner's step, and end.
+- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(issue_number=...)` so parent aggregation can continue. It refuses on an issue a human opened — that is the expected answer there, not a failure to work around. Report that the merge is done and that closing it is the owner's step, and end.

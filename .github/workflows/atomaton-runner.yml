@@ -40,7 +40,7 @@ name: Atomaton Runner
         description: Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.
         required: false
         type: string
-        default: v0.1.44
+        default: v0.1.45
       reload_count:
         description: How many times this work has already rebuilt its environment (set by atomaton_env__reload_environment; leave at 0)
         required: false
@@ -80,7 +80,7 @@ name: Atomaton Runner
         description: Atoma CLI version tag to install (e.g. v0.1.7). Use `source` to build from a checkout of yuma-seno/atoma@main.
         required: false
         type: string
-        default: v0.1.44
+        default: v0.1.45
       reload_count:
         description: How many times this work has already rebuilt its environment (set by atomaton_env__reload_environment; leave at 0)
         required: false
@@ -769,6 +769,13 @@ jobs:
           # Built as an array so a setting that is EMPTY is not passed at all. `env NAME=`
           # sets the empty string, and atoma reads an empty base URL as a base URL -- which
           # would defeat the guard above and point every request at "/chat/completions".
+          #
+          # Adding a name here means adding it to `AGENT_ENV_NAMES` in
+          # domain/declared-secrets.ts as well: a name the agent's process already means
+          # something by is a name `tools.secrets` must not be able to mean something else
+          # by. This is not an import -- the values below are shell and belong here -- so
+          # tests/contract/agent-environment.test.ts is what holds the two together. It has
+          # caught this drifting twice.
           AGENT_ENV=(
             HOME="$HOME"
             PATH="$PATH"
@@ -1006,24 +1013,13 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          ATOMATON_OPS_LOG: ${{ runner.temp }}/atomaton-run/atomaton_ops.log
           DIRECTIVE: ${{ steps.atoma.outputs.directive }}
           NUMBER: ${{ inputs.number }}
           TYPE: ${{ inputs.type }}
           NOTIFY: ${{ steps.notify.outputs.notify }}
         run: |
-          if ! [[ "$DIRECTIVE" =~ ^[a-z][a-z0-9-]*$ ]]; then
-            echo "::error::Invalid directive value: ${DIRECTIVE}"
-            exit 1
-          fi
-
-          echo "Dispatching '${DIRECTIVE}' on ${TYPE} #${NUMBER} via atomaton-runner.yml ..."
-          # Use gh workflow run with the current GH_TOKEN (caller's token, e.g. from issue_comment event).
-          # This preserves the caller's token permissions (PR creation OK for issue_comment events).
-          gh workflow run atomaton-runner.yml \
-            --field agent="$DIRECTIVE" \
-            --field number="$NUMBER" \
-            --field type="$TYPE" \
-            --field notify="$NOTIFY"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_agent.ts" --agent "${DIRECTIVE}" --number "${NUMBER}" --type "${TYPE}" --notify "${NOTIFY}" --context "the agent on ${TYPE} #${NUMBER} handed off to ${DIRECTIVE}"
       - name: Comment on loop limit reached
         if: steps.atoma.outcome == 'success' && steps.atoma.outputs.directive != '' && steps.atoma.outputs.limit_reached != 'true' && steps.atoma.outputs.stop_requested != 'true' && steps.loop-control.outputs.loop_limit_reached == 'true'
         shell: bash

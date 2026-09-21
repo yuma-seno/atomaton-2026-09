@@ -95,6 +95,7 @@ var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
 // src/scripts/lib/script-ref.ts
 function defineScript(importMetaUrl) {
@@ -162,6 +163,15 @@ function classifyShellAct(command) {
   if (OPENS.test(name))
     return "open";
   return "other";
+}
+
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
 }
 
 // src/domain/metrics.ts
@@ -477,11 +487,8 @@ function rowsOf(sessions) {
 function log(message) {
   console.error(`[metrics] ${message}`);
 }
-function agentOf(path) {
-  const file = path.split("/").pop() ?? "";
-  const stem = file.replace(/\.json$/, "").replace(/-\d+$/, "");
-  const match = /(?:^|-)(orchestrator|engineer|reviewer)$/.exec(stem);
-  return match?.[1] ?? "unknown";
+function agentOf(session) {
+  return session.metadata?.github_context?.agent?.trim() || "unknown";
 }
 function looksRefused(content) {
   return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
@@ -524,7 +531,7 @@ function sessionFrom(path, raw) {
     }
   }
   const calls = [];
-  const agent = agentOf(path);
+  const agent = agentOf(parsed);
   for (const message of messages) {
     for (const call of message.tool_calls ?? []) {
       const tool = call.function?.name ?? "";
@@ -535,7 +542,7 @@ function sessionFrom(path, raw) {
       let act;
       if (tool.endsWith("load_skill")) {
         try {
-          skill = JSON.parse(call.function?.arguments ?? "{}").name;
+          skill = JSON.parse(call.function?.arguments ?? "{}").skill_name;
         } catch {}
       } else if (tool.endsWith("shell_execute")) {
         try {
@@ -599,10 +606,9 @@ function skillsUnder(dir) {
   return skills.length === 0 ? undefined : skills;
 }
 function declared() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
   let tools;
   try {
-    const config = Bun.YAML.parse(readFileSync(`${root}/${CONFIG_FILE}`, "utf8"));
+    const config = Bun.YAML.parse(readFileSync(machineryPath(CONFIG_FILE), "utf8"));
     tools = Object.entries(config.tools?.servers ?? {}).map(([name, server]) => ({
       name,
       unprefixed: server?.unprefixed === true
@@ -610,9 +616,10 @@ function declared() {
   } catch {
     log("could not read the tool servers from config.yaml; the report will not name unused tools");
   }
-  const skills = skillsUnder(`${root}/${SKILLS_DIR}`);
+  const skillsDir = machineryPath(SKILLS_DIR);
+  const skills = skillsUnder(skillsDir);
   if (skills === undefined) {
-    log(`no skills found under ${root}/${SKILLS_DIR}; the report will say it could not check`);
+    log(`no skills found under ${skillsDir}; the report will say it could not check`);
   }
   return { tools, skills };
 }

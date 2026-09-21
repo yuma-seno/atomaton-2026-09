@@ -82,6 +82,15 @@ function ghCommand() {
 function gh(...args) {
   return run([...ghCommand(), ...args]);
 }
+function dispatchWorkflow(context, workflow, args = [], log = (m) => console.error(m)) {
+  const { code, stdout, stderr } = gh("workflow", "run", workflow, ...args);
+  if (code) {
+    log(`${context}: WARN failed to dispatch ${workflow}: ${stderr || stdout}`);
+    return false;
+  }
+  log(`${context}: dispatched ${workflow}`);
+  return true;
+}
 
 // src/lib/branch-rules.ts
 var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
@@ -143,7 +152,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -215,9 +223,7 @@ function reportFailure(repo, number, attempt, runUrl, summary, details = []) {
 }
 function runCiAndWait(repo, workflow, branch, headSha, timeoutSeconds) {
   const since = new Date().toISOString();
-  const dispatch = gh("workflow", "run", workflow, "--repo", repo, "--ref", branch);
-  if (dispatch.code) {
-    log(`could not dispatch ${workflow} against ${branch}: ${dispatch.stderr}`);
+  if (!dispatchWorkflow(`validate_pull_request: CI for ${branch}`, workflow, ["--repo", repo, "--ref", branch], log)) {
     process.exit(1);
   }
   const deadline = Date.now() + timeoutSeconds * 1000;

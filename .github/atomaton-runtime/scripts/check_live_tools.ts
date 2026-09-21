@@ -20,6 +20,16 @@ var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
 
 // src/scripts/lib/script-ref.ts
 import { basename } from "path";
@@ -31,8 +41,7 @@ function defineScript(importMetaUrl) {
 // src/scripts/check_live_tools.ts
 var ref = defineScript(import.meta.url);
 function main() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim() || ".";
-  const defs = `${root}/${AGENT_DEFINITIONS_DIR}`;
+  const defs = machineryPath(AGENT_DEFINITIONS_DIR);
   if (!existsSync(defs)) {
     console.error(`::error::${defs} does not exist, so no agent definition could be checked and a clean pass would mean nothing.`);
     process.exit(2);
@@ -44,16 +53,16 @@ function main() {
   }
   const work = mkdtempSync(join(tmpdir(), "atomaton-live-tools-"));
   const toolsFile = join(work, "tools.yaml");
-  const writer = `${root}/${TOOLS_DIR}/../scripts/write_tools_file.ts`;
-  const runtimeTools = `${root}/${TOOLS_DIR}`;
+  const writer = machineryPath(`${SCRIPTS_DIR}/write_tools_file.ts`);
+  const runtimeTools = machineryPath(TOOLS_DIR);
   const wrote = Bun.spawnSync([
     "bun",
     "run",
     writer,
     "--config",
-    `${root}/${CONFIG_FILE}`,
+    machineryPath(CONFIG_FILE),
     "--defaults",
-    `${root}/${TOOL_DEFAULTS_FILE}`,
+    machineryPath(TOOL_DEFAULTS_FILE),
     "--out",
     toolsFile,
     "--hook-base",
@@ -68,7 +77,7 @@ function main() {
   for (const definition of definitions) {
     console.log(`::group::atoma validate --with-live-tools ${definition}`);
     const { GH_TOKEN: _dropped, ...env } = process.env;
-    const result = Bun.spawnSync([atoma, "validate", "--agent-def", `${defs}/${definition}`, "--tools-file", toolsFile, "--with-live-tools"], { stdout: "inherit", stderr: "inherit", env: { ...env, ATOMATON_MACHINERY_ROOT: root } });
+    const result = Bun.spawnSync([atoma, "validate", "--agent-def", `${defs}/${definition}`, "--tools-file", toolsFile, "--with-live-tools"], { stdout: "inherit", stderr: "inherit", env: { ...env, [MACHINERY_ROOT_VAR]: machineryRoot() ?? "." } });
     console.log("::endgroup::");
     if (result.exitCode !== 0)
       failed += 1;

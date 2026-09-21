@@ -17438,7 +17438,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -17542,32 +17541,6 @@ class StdioServerTransport {
 }
 
 // src/lib/mcp-tool.ts
-var ALIASES = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  branch: ["name"]
-};
-function declaredKeys(schema) {
-  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
-}
-function acceptAliases(raw, declared) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return raw;
-  let value = raw;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical))
-      continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value))
-        continue;
-      const { [alias]: aliased, ...rest } = value;
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17576,7 +17549,6 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -17584,7 +17556,7 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined)
@@ -17689,6 +17661,21 @@ function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
   return { text: text.slice(0, head) + note("dropped from the middle") + text.slice(-tail), dropped };
 }
 
+// src/domain/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
 // src/domain/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
@@ -17698,26 +17685,40 @@ var RUN_CREDENTIALS = [
   "ATOMA_COPILOT_TOKEN",
   "GH_TOKEN"
 ];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
 var TOOL_SECRETS = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
 };
 var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
@@ -17793,7 +17794,7 @@ async function executeShell(args) {
 var { tools, dispatch } = buildMcpTools([
   defineMcpTool({
     name: "shell_execute",
-    description: "Execute one foreground bash command and return its exit code, stdout, stderr, and duration. Use this for tests, builds, linting, and focused read-only inspection. Set timeout_seconds for commands that may run longer than five minutes. Commands run on the same machine, as the same user, and with the same filesystem as every other tool: a file you write in the repository is the same file github__* commits and filesystem__* reads, at the same path. Writes OUTSIDE the repository mostly fail rather than silently not persisting: $HOME is not writable and system packages cannot be installed. $HOME itself also cannot be LISTED -- `ls ~` is refused -- while paths under it can be read and executed, so use `command -v` or a direct path rather than listing the home directory to find a toolchain. /tmp is writable. Within it, `/tmp/atomaton-workspace` is the one place that SURVIVES: anything you leave there is restored on the next run on this issue and is shared with the other agents working on it. Put notes, scratch scripts and intermediate output there rather than in the repository, where they would be committed as part of the work. Elsewhere under /tmp is fine for scratch that does not need to outlive the run. That is a real error you can read, not a write that looks like it worked. If something must persist, add it to `environment.setup_commands` in .github/atomaton/config.yaml and say so in your report; a person merges that and the next run has it. Some commands are routed to MCP tools instead of running here -- Git mutations, `gh`, `curl`, `wget`, `ssh`, `scp`, `rsync` -- and the set may grow, so read the refusal rather than assuming a fixed list: each one names the tool to use in its place. Read-only Git inspection (status, diff, log) runs normally. Output is capped: a long stdout or stderr keeps its beginning and its END, with a marker naming how much was dropped from the middle, and `output_truncated` set. So a build log keeps its failure -- but if you see that marker, narrow the command (a specific test, `grep`, `tail`) rather than re-running the same one and expecting more.",
+    description: "Execute one foreground bash command and return its exit code, stdout, stderr, and duration. Use this for tests, builds, linting, and focused read-only inspection. Set timeout_seconds for commands that may run longer than five minutes. Commands run on the same machine, as the same user, and with the same filesystem as every other tool: a file you write in the repository is the same file github__* commits and the files server reads, at the same path. Writes OUTSIDE the repository mostly fail rather than silently not persisting: $HOME is not writable and system packages cannot be installed. $HOME itself also cannot be LISTED -- `ls ~` is refused -- while paths under it can be read and executed, so use `command -v` or a direct path rather than listing the home directory to find a toolchain. /tmp is writable. Within it, `/tmp/atomaton-workspace` is the one place that SURVIVES: anything you leave there is restored on the next run on this issue and is shared with the other agents working on it. Put notes, scratch scripts and intermediate output there rather than in the repository, where they would be committed as part of the work. Elsewhere under /tmp is fine for scratch that does not need to outlive the run. That is a real error you can read, not a write that looks like it worked. If something must persist, add it to `environment.setup_commands` in .github/atomaton/config.yaml and say so in your report; a person merges that and the next run has it. Some commands are routed to MCP tools instead of running here -- Git mutations, `gh`, `curl`, `wget`, `ssh`, `scp`, `rsync` -- and the set may grow, so read the refusal rather than assuming a fixed list: each one names the tool to use in its place. Read-only Git inspection (status, diff, log) runs normally. Output is capped: a long stdout or stderr keeps its beginning and its END, with a marker naming how much was dropped from the middle, and `output_truncated` set. So a build log keeps its failure -- but if you see that marker, narrow the command (a specific test, `grep`, `tail`) rather than re-running the same one and expecting more.",
     schema: SHELL_EXECUTE_SCHEMA,
     handler: executeShell
   })

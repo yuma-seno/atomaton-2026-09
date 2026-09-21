@@ -35,7 +35,7 @@ jobs:
         with:
           bun-version: latest
         uses: oven-sh/setup-bun@v2
-      - name: Check sub-issue closure (parent tag + already-handled-via-PR?)
+      - name: Check sub-issue closure (native parent link + already-handled-via-PR?)
         id: check
         shell: bash
         env:

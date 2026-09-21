@@ -6637,6 +6637,26 @@ function looksTransient(result) {
     return true;
   return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
 }
+function graphqlArgs(query, variables) {
+  const args = ["api", "graphql", "-f", `query=${query}`];
+  for (const [key, value] of Object.entries(variables)) {
+    args.push("-F", `${key}=${value}`);
+  }
+  return args;
+}
+function graphqlResult({ code, stdout, stderr }) {
+  if (code !== 0) {
+    throw new Error(`GraphQL query failed: ${stderr || stdout.slice(0, 200)}`);
+  }
+  const result = JSON.parse(stdout);
+  if (result.errors) {
+    throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+  }
+  return result.data;
+}
+function ghGraphqlRead(query, variables = {}) {
+  return graphqlResult(ghRead(...graphqlArgs(query, variables)));
+}
 function dispatchWorkflow(context, workflow, args = [], log = (m) => console.error(m)) {
   const { code, stdout, stderr } = gh("workflow", "run", workflow, ...args);
   if (code) {
@@ -6669,6 +6689,21 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
+// src/domain/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
 // src/domain/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
@@ -6678,26 +6713,40 @@ var RUN_CREDENTIALS = [
   "ATOMA_COPILOT_TOKEN",
   "GH_TOKEN"
 ];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
 var TOOL_SECRETS = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
 };
 var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
@@ -6712,24 +6761,18 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/domain/machinery-layout.ts
-var USER_ROOT = ".github/atomaton";
-var RUNTIME_ROOT = ".github/atomaton-runtime";
-var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${USER_ROOT}/skills`;
-var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
-var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
-var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
-var RULESETS_DIR = `${USER_ROOT}/rulesets`;
-var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
 
 // src/lib/config.ts
 function configPath() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
+  return machineryPath(CONFIG_FILE);
 }
 var cached;
 function loadConfig() {
@@ -6884,7 +6927,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -6895,9 +6937,6 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
-function readAnyParentTag(text) {
-  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
-}
 
 // src/atomaton-runtime/tools/lib/dispatch_sub_agent.ts
 function dispatchSubAgent(issue, agent, notify = "") {
@@ -6931,29 +6970,54 @@ Atomaton: Agent \`${agent}\` dispatched to work on this sub-task.`);
   return { issue, agent };
 }
 
-// src/lib/notify.ts
+// src/lib/parent-issue.ts
 function log(message) {
+  console.error(`[atomaton-parent] ${message}`);
+}
+function parentIssueOf(repo, issue) {
+  const [owner, name] = repo.split("/", 2);
+  if (!owner || !name) {
+    const why = `'${repo}' is not an owner/name repository, so #${issue}'s parent could not be asked for`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+  try {
+    const data = ghGraphqlRead("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}", { owner, repo: name, num: issue });
+    return { known: true, parent: data.repository.issue.parent?.number ?? 0 };
+  } catch (error) {
+    const why = `could not read the parent of #${issue}: ${error.message}`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+}
+
+// src/lib/notify.ts
+function log2(message) {
   console.error(`[atomaton-notify] ${message}`);
 }
 var MAX_HOPS = 10;
 function repositoryOwner(repo) {
   const owner = repo.split("/")[0]?.trim() ?? "";
   if (!owner)
-    log(`WARN could not read an owner out of ${JSON.stringify(repo)}; nobody will be mentioned`);
+    log2(`WARN could not read an owner out of ${JSON.stringify(repo)}; nobody will be mentioned`);
   return owner;
 }
 function fetchIssueLookup(repo, number) {
-  const { code, stderr, stdout } = gh("api", `repos/${repo}/issues/${number}`, "--jq", "{body: .body, login: .user.login, type: .user.type}");
+  const { code, stderr, stdout } = gh("api", `repos/${repo}/issues/${number}`, "--jq", "{body: .body, login: .user.login, type: .user.type, is_pr: (.pull_request != null)}");
   if (code !== 0 || !stdout.trim()) {
-    log(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
+    log2(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
     return {};
   }
   try {
     return JSON.parse(stdout);
   } catch {
-    log(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
+    log2(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
     return {};
   }
+}
+function nativeParentOf(repo, issue) {
+  const found = parentIssueOf(repo, issue);
+  return found.known && found.parent ? found.parent : undefined;
 }
 function resolveNotify(repo, number) {
   const visited = new Set;
@@ -6970,28 +7034,105 @@ function resolveNotify(repo, number) {
     if ((d.type ?? "").toLowerCase() === "user" && d.login) {
       return d.login;
     }
-    const parent = readAnyParentTag(body);
+    const parent = d.is_pr ? PARENT_ISSUE_TAG.read(body) : nativeParentOf(repo, current);
     if (parent === undefined)
       break;
     current = parent;
   }
   const owner = repositoryOwner(repo);
   if (owner)
-    log(`no requester found for #${number}; falling back to the repository owner @${owner}`);
+    log2(`no requester found for #${number}; falling back to the repository owner @${owner}`);
   return owner;
+}
+
+// src/domain/issue-links.ts
+var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
+function claimsToClose(body, issue) {
+  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
+}
+function dedupeByNumber(...lists) {
+  const seen = new Map;
+  for (const list of lists)
+    for (const item of list)
+      if (!seen.has(item.number))
+        seen.set(item.number, item);
+  return [...seen.values()].sort((a, b) => a.number - b.number);
+}
+
+// src/lib/issue-links.ts
+var LINK_LIMIT = 50;
+var LABEL_LIMIT = 20;
+var QUERY = `
+query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!) {
+  repository(owner:$owner, name:$name) {
+    issueOrPullRequest(number:$number) {
+      __typename
+      ... on Issue {
+        parent { number title state }
+        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
+          nodes { number title state merged body }
+        }
+        timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
+          nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+        }
+      }
+      ... on PullRequest {
+        closingIssuesReferences(first:$limit) { nodes { number title state } }
+      }
+    }
+  }
+}`;
+function normalise(node) {
+  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+}
+function asChild(node) {
+  return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
+}
+function asPr(node) {
+  return { ...normalise(node), merged: Boolean(node.merged) };
+}
+function issueLinks(repo, number) {
+  const [owner, name] = repo.split("/");
+  if (!owner || !name) {
+    return { children: [], pullRequests: [], unavailable: `"${repo}" is not an owner/name repository` };
+  }
+  let issue = null;
+  try {
+    issue = ghGraphqlRead(QUERY, { owner, name, number, limit: LINK_LIMIT, labelLimit: LABEL_LIMIT }).repository?.issueOrPullRequest ?? null;
+  } catch (error) {
+    const why = error.message;
+    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
+    return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
+  }
+  if (!issue)
+    return { children: [], pullRequests: [], unavailable: `#${number} was not found` };
+  if (issue.__typename === "PullRequest") {
+    const closes = issue.closingIssuesReferences?.nodes ?? [];
+    return {
+      parent: closes[0] ? normalise(closes[0]) : undefined,
+      children: [],
+      pullRequests: []
+    };
+  }
+  const declared = (issue.closedByPullRequestsReferences?.nodes ?? []).map(asPr);
+  const referenced = (issue.timelineItems?.nodes ?? []).map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
+  return {
+    parent: issue.parent ? normalise(issue.parent) : undefined,
+    children: (issue.subIssues?.nodes ?? []).map(asChild),
+    pullRequests: dedupeByNumber(declared, referenced)
+  };
 }
 
 // src/lib/sibling-check.ts
 function countOpenSiblings(opts) {
   const label = opts.label || getLabel("sub_issue");
   const launchedLabel = opts.launchedLabel || getLabel("launched");
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `${PARENT_TAG.search(opts.parent)} in:body`, "--json", "number");
-  if (code !== 0) {
-    throw new Error(`countOpenSiblings: gh issue list failed: ${stderr}`);
+  const links = issueLinks(opts.repo, opts.parent);
+  if (links.unavailable) {
+    throw new Error(`countOpenSiblings: could not read the sub-issues of #${opts.parent}: ${links.unavailable}`);
   }
-  const siblings = stdout ? JSON.parse(stdout) : [];
-  const remaining = opts.exclude !== undefined ? siblings.filter((s) => s.number !== opts.exclude) : siblings;
-  return remaining.length;
+  return links.children.filter((child) => child.state === "open" && child.labels.includes(label) && child.labels.includes(launchedLabel) && child.number !== opts.exclude).length;
 }
 
 // src/lib/aggregation.ts
@@ -7076,18 +7217,17 @@ Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orches
   return outcome === "refused-closed" ? { kind: "parent-closed" } : { kind: "dispatch-failed" };
 }
 async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
-  const { code, stdout } = gh("issue", "view", String(subIssueNum), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code !== 0) {
-    const why = `could not read issue #${subIssueNum}; cannot tell whether it belongs to a parent`;
+  const found = parentIssueOf(repo, subIssueNum);
+  if (!found.known) {
+    const why = `could not read the parent of #${subIssueNum}: ${found.why}`;
     console.error(why);
     return { kind: "undetermined", why };
   }
-  const parent = PARENT_TAG.read(stdout);
-  if (parent === undefined) {
-    console.error(`issue #${subIssueNum} has no atomaton:parent tag, nothing to do`);
+  if (!found.parent) {
+    console.error(`issue #${subIssueNum} is not a sub-issue of anything, nothing to do`);
     return { kind: "not-tracked" };
   }
-  return dispatchOrchestratorIfReady({ repo, parent, closedNum: subIssueNum, retry: true });
+  return dispatchOrchestratorIfReady({ repo, parent: found.parent, closedNum: subIssueNum, retry: true });
 }
 
 // src/atomaton-runtime/tools/lib/conclude_issue.ts
@@ -18057,32 +18197,6 @@ class StdioServerTransport {
 function positiveInt(description) {
   return coerce.number().int().positive().describe(description);
 }
-var ALIASES = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  branch: ["name"]
-};
-function declaredKeys(schema) {
-  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
-}
-function acceptAliases(raw, declared) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return raw;
-  let value = raw;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical))
-      continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value))
-        continue;
-      const { [alias]: aliased, ...rest } = value;
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -18091,7 +18205,6 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -18099,7 +18212,7 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined)
@@ -18244,10 +18357,10 @@ function reloadAccepted(next, limit) {
 }
 
 // src/atomaton-runtime/tools/mcp/atomaton.ts
-function log2(msg) {
+function log3(msg) {
   console.error(`[atomaton-mcp] ${msg}`);
 }
-hardenCredentialHolder(log2);
+hardenCredentialHolder(log3);
 var LAUNCH_SUB_AGENT_SCHEMA = objectType({
   tasks: arrayType(objectType({
     issue: positiveInt("The sub-issue number."),
@@ -18263,7 +18376,7 @@ function mcpFail(message) {
 }
 function handleLaunchSubAgent(args) {
   const validTasks = args.tasks;
-  log2(`Dispatching ${validTasks.length} sub-issue(s): ${JSON.stringify(validTasks)}`);
+  log3(`Dispatching ${validTasks.length} sub-issue(s): ${JSON.stringify(validTasks)}`);
   const parentIssue = (process.env.ISSUE_NUMBER ?? "").trim();
   const notify = process.env.ISSUE_NOTIFY ?? "";
   const dispatched = [];
@@ -18274,7 +18387,7 @@ function handleLaunchSubAgent(args) {
       dispatched.push(`#${issue}\u2192${agent}`);
     } catch (e) {
       const message = e.message ?? String(e);
-      log2(`dispatchSubAgent failed for #${issue}: ${message}`);
+      log3(`dispatchSubAgent failed for #${issue}: ${message}`);
       errors.push(`#${issue}/${agent}: ${message}`);
     }
   }
@@ -18306,13 +18419,13 @@ async function handleRequestCloseIssue(args) {
   if (!issueNumberRaw)
     mcpFail("ISSUE_NUMBER is not set in the environment");
   const issueNumber = Number(issueNumberRaw);
-  log2(`Concluding issue #${issueNumber}: reason=${JSON.stringify(reason)}`);
+  log3(`Concluding issue #${issueNumber}: reason=${JSON.stringify(reason)}`);
   let result;
   try {
     result = await concludeIssue(issueNumber, reason, summary);
   } catch (e) {
     const message = e.message ?? String(e);
-    log2(`concludeIssue failed for #${issueNumber}: ${message}`);
+    log3(`concludeIssue failed for #${issueNumber}: ${message}`);
     mcpFail(`Failed to conclude issue #${issueNumber}: ${message}`);
   }
   if (result.outcome !== "closed") {
@@ -18345,7 +18458,7 @@ function handleReloadEnvironment(args) {
   const soFar = reloadsSoFar(process.env.ATOMATON_RELOAD_COUNT);
   const refusal = reloadRefusal(soFar, limit);
   if (refusal) {
-    log2(`reload refused: ${soFar}/${limit}`);
+    log3(`reload refused: ${soFar}/${limit}`);
     mcpFail(refusal);
   }
   const next = soFar + 1;
@@ -18358,7 +18471,7 @@ Atomaton: rebuilding the environment and restarting \`${agent}\` ` + `(reload ${
     number,
     notify: (process.env.ISSUE_NOTIFY ?? "").trim(),
     reloadCount: next,
-    log: log2
+    log: log3
   });
   if (outcome === "refused-closed") {
     mcpFail(`#${number} is no longer open, so the environment was not rebuilt and nothing was restarted. ` + "Report what you found rather than retrying.");
@@ -18389,8 +18502,8 @@ var { tools: TOOLS, dispatch } = buildMcpTools([
   })
 ]);
 async function main() {
-  log2("Starting atomaton-mcp-server (stdio transport)");
-  await serveMcpServer({ name: "atomaton-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log: log2 });
+  log3("Starting atomaton-mcp-server (stdio transport)");
+  await serveMcpServer({ name: "atomaton-mcp-server", version: "1.0.0", tools: TOOLS, dispatch, log: log3 });
 }
 if (import.meta.main)
   main();

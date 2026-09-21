@@ -40,6 +40,21 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
+// src/domain/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
 // src/domain/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
@@ -49,26 +64,40 @@ var RUN_CREDENTIALS = [
   "ATOMA_COPILOT_TOKEN",
   "GH_TOKEN"
 ];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
 var TOOL_SECRETS = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
 };
 var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
@@ -83,24 +112,18 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/domain/machinery-layout.ts
-var USER_ROOT = ".github/atomaton";
-var RUNTIME_ROOT = ".github/atomaton-runtime";
-var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${USER_ROOT}/skills`;
-var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
-var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
-var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
-var RULESETS_DIR = `${USER_ROOT}/rulesets`;
-var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
 
 // src/lib/config.ts
 function configPath() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
+  return machineryPath(CONFIG_FILE);
 }
 var cached;
 function loadConfig() {

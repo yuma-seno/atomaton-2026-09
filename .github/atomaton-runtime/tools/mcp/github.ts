@@ -6637,12 +6637,14 @@ function looksTransient(result) {
     return true;
   return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
 }
-function ghGraphql(query, variables = {}) {
+function graphqlArgs(query, variables) {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const [key, value] of Object.entries(variables)) {
     args.push("-F", `${key}=${value}`);
   }
-  const { code, stdout, stderr } = gh(...args);
+  return args;
+}
+function graphqlResult({ code, stdout, stderr }) {
   if (code !== 0) {
     throw new Error(`GraphQL query failed: ${stderr || stdout.slice(0, 200)}`);
   }
@@ -6651,6 +6653,12 @@ function ghGraphql(query, variables = {}) {
     throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
   }
   return result.data;
+}
+function ghGraphql(query, variables = {}) {
+  return graphqlResult(gh(...graphqlArgs(query, variables)));
+}
+function ghGraphqlRead(query, variables = {}) {
+  return graphqlResult(ghRead(...graphqlArgs(query, variables)));
 }
 function nothingToCommit(result) {
   return /nothing to commit|no changes added to commit/i.test(`${result.stdout} ${result.stderr}`);
@@ -6849,6 +6857,21 @@ function formatBlockers(blockers) {
 `);
 }
 
+// src/domain/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
 // src/domain/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
@@ -6861,26 +6884,40 @@ var RUN_CREDENTIALS = [
   "ATOMA_COPILOT_TOKEN",
   "GH_TOKEN"
 ];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
 var TOOL_SECRETS = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
 };
 var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
@@ -7201,24 +7238,18 @@ function matchMergeGates(gates, facts) {
   return matches;
 }
 
-// src/domain/machinery-layout.ts
-var USER_ROOT = ".github/atomaton";
-var RUNTIME_ROOT = ".github/atomaton-runtime";
-var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${USER_ROOT}/skills`;
-var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
-var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
-var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
-var RULESETS_DIR = `${USER_ROOT}/rulesets`;
-var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
 
 // src/lib/config.ts
 function configPath() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
+  return machineryPath(CONFIG_FILE);
 }
 var cached;
 function loadConfig() {
@@ -7290,7 +7321,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -7301,38 +7331,60 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
-function readAnyParentTag(text) {
-  return PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text);
-}
 function withoutTags(text) {
   const tags = EVERY_TAG_PATTERN.join("|");
   const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
   return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
 }
 
-// src/lib/notify.ts
+// src/lib/parent-issue.ts
 function log(message) {
+  console.error(`[atomaton-parent] ${message}`);
+}
+function parentIssueOf(repo, issue) {
+  const [owner, name] = repo.split("/", 2);
+  if (!owner || !name) {
+    const why = `'${repo}' is not an owner/name repository, so #${issue}'s parent could not be asked for`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+  try {
+    const data = ghGraphqlRead("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}", { owner, repo: name, num: issue });
+    return { known: true, parent: data.repository.issue.parent?.number ?? 0 };
+  } catch (error) {
+    const why = `could not read the parent of #${issue}: ${error.message}`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+}
+
+// src/lib/notify.ts
+function log2(message) {
   console.error(`[atomaton-notify] ${message}`);
 }
 var MAX_HOPS = 10;
 function repositoryOwner(repo) {
   const owner = repo.split("/")[0]?.trim() ?? "";
   if (!owner)
-    log(`WARN could not read an owner out of ${JSON.stringify(repo)}; nobody will be mentioned`);
+    log2(`WARN could not read an owner out of ${JSON.stringify(repo)}; nobody will be mentioned`);
   return owner;
 }
 function fetchIssueLookup(repo, number) {
-  const { code, stderr, stdout } = gh("api", `repos/${repo}/issues/${number}`, "--jq", "{body: .body, login: .user.login, type: .user.type}");
+  const { code, stderr, stdout } = gh("api", `repos/${repo}/issues/${number}`, "--jq", "{body: .body, login: .user.login, type: .user.type, is_pr: (.pull_request != null)}");
   if (code !== 0 || !stdout.trim()) {
-    log(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
+    log2(`WARN could not read issue #${number} to resolve a mention: ${stderr.trim() || `gh exited ${code}`}`);
     return {};
   }
   try {
     return JSON.parse(stdout);
   } catch {
-    log(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
+    log2(`WARN issue #${number} lookup was not valid JSON; no mention will be resolved from it`);
     return {};
   }
+}
+function nativeParentOf(repo, issue) {
+  const found = parentIssueOf(repo, issue);
+  return found.known && found.parent ? found.parent : undefined;
 }
 function resolveNotify(repo, number) {
   const visited = new Set;
@@ -7349,28 +7401,135 @@ function resolveNotify(repo, number) {
     if ((d.type ?? "").toLowerCase() === "user" && d.login) {
       return d.login;
     }
-    const parent = readAnyParentTag(body);
+    const parent = d.is_pr ? PARENT_ISSUE_TAG.read(body) : nativeParentOf(repo, current);
     if (parent === undefined)
       break;
     current = parent;
   }
   const owner = repositoryOwner(repo);
   if (owner)
-    log(`no requester found for #${number}; falling back to the repository owner @${owner}`);
+    log2(`no requester found for #${number}; falling back to the repository owner @${owner}`);
   return owner;
+}
+
+// src/domain/issue-links.ts
+var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
+function claimsToClose(body, issue) {
+  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
+}
+function closingReferences(text) {
+  const pattern = new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+((?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\\d+)\\b`, "gi");
+  const found = [];
+  for (const segment of outsideCode(text)) {
+    for (const match of segment.matchAll(pattern)) {
+      const whole = match[0].trim();
+      if (!found.includes(whole))
+        found.push(whole);
+    }
+  }
+  return found;
+}
+function closingKeywordRefusal(found, what) {
+  if (found.length === 0)
+    return;
+  const quoted = found.map((f) => `"${f}"`).join(", ");
+  return `This ${what} contains ${quoted}, which GitHub acts on: merging would close ` + "whatever issue that names, without going through the path that cleans up labels and " + "tells a parent its child is done. Remove it and try again. To close an issue, call " + "github__close_issue; to link this work to the issue it belongs to, do nothing -- " + "that link is added for you.";
+}
+var CODE = /```[\s\S]*?```|`[^`\n]*`/g;
+function outsideCode(text) {
+  const out = [];
+  let last = 0;
+  for (const match of text.matchAll(CODE)) {
+    const at = match.index ?? 0;
+    out.push(text.slice(last, at));
+    last = at + match[0].length;
+  }
+  out.push(text.slice(last));
+  return out;
+}
+function dedupeByNumber(...lists) {
+  const seen = new Map;
+  for (const list of lists)
+    for (const item of list)
+      if (!seen.has(item.number))
+        seen.set(item.number, item);
+  return [...seen.values()].sort((a, b) => a.number - b.number);
+}
+
+// src/lib/issue-links.ts
+var LINK_LIMIT = 50;
+var LABEL_LIMIT = 20;
+var QUERY = `
+query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!) {
+  repository(owner:$owner, name:$name) {
+    issueOrPullRequest(number:$number) {
+      __typename
+      ... on Issue {
+        parent { number title state }
+        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
+          nodes { number title state merged body }
+        }
+        timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
+          nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
+        }
+      }
+      ... on PullRequest {
+        closingIssuesReferences(first:$limit) { nodes { number title state } }
+      }
+    }
+  }
+}`;
+function normalise(node) {
+  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+}
+function asChild(node) {
+  return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
+}
+function asPr(node) {
+  return { ...normalise(node), merged: Boolean(node.merged) };
+}
+function issueLinks(repo, number) {
+  const [owner, name] = repo.split("/");
+  if (!owner || !name) {
+    return { children: [], pullRequests: [], unavailable: `"${repo}" is not an owner/name repository` };
+  }
+  let issue = null;
+  try {
+    issue = ghGraphqlRead(QUERY, { owner, name, number, limit: LINK_LIMIT, labelLimit: LABEL_LIMIT }).repository?.issueOrPullRequest ?? null;
+  } catch (error) {
+    const why = error.message;
+    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
+    return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
+  }
+  if (!issue)
+    return { children: [], pullRequests: [], unavailable: `#${number} was not found` };
+  if (issue.__typename === "PullRequest") {
+    const closes = issue.closingIssuesReferences?.nodes ?? [];
+    return {
+      parent: closes[0] ? normalise(closes[0]) : undefined,
+      children: [],
+      pullRequests: []
+    };
+  }
+  const declared = (issue.closedByPullRequestsReferences?.nodes ?? []).map(asPr);
+  const referenced = (issue.timelineItems?.nodes ?? []).map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
+  return {
+    parent: issue.parent ? normalise(issue.parent) : undefined,
+    children: (issue.subIssues?.nodes ?? []).map(asChild),
+    pullRequests: dedupeByNumber(declared, referenced)
+  };
 }
 
 // src/lib/sibling-check.ts
 function countOpenSiblings(opts) {
   const label = opts.label || getLabel("sub_issue");
   const launchedLabel = opts.launchedLabel || getLabel("launched");
-  const { code, stdout, stderr } = gh("issue", "list", "--repo", opts.repo, "--state", "open", "--label", label, "--label", launchedLabel, "--search", `${PARENT_TAG.search(opts.parent)} in:body`, "--json", "number");
-  if (code !== 0) {
-    throw new Error(`countOpenSiblings: gh issue list failed: ${stderr}`);
+  const links = issueLinks(opts.repo, opts.parent);
+  if (links.unavailable) {
+    throw new Error(`countOpenSiblings: could not read the sub-issues of #${opts.parent}: ${links.unavailable}`);
   }
-  const siblings = stdout ? JSON.parse(stdout) : [];
-  const remaining = opts.exclude !== undefined ? siblings.filter((s) => s.number !== opts.exclude) : siblings;
-  return remaining.length;
+  return links.children.filter((child) => child.state === "open" && child.labels.includes(label) && child.labels.includes(launchedLabel) && child.number !== opts.exclude).length;
 }
 
 // src/lib/ops-log.ts
@@ -7564,18 +7723,17 @@ Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orches
   return outcome === "refused-closed" ? { kind: "parent-closed" } : { kind: "dispatch-failed" };
 }
 async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
-  const { code, stdout } = gh("issue", "view", String(subIssueNum), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code !== 0) {
-    const why = `could not read issue #${subIssueNum}; cannot tell whether it belongs to a parent`;
+  const found = parentIssueOf(repo, subIssueNum);
+  if (!found.known) {
+    const why = `could not read the parent of #${subIssueNum}: ${found.why}`;
     console.error(why);
     return { kind: "undetermined", why };
   }
-  const parent = PARENT_TAG.read(stdout);
-  if (parent === undefined) {
-    console.error(`issue #${subIssueNum} has no atomaton:parent tag, nothing to do`);
+  if (!found.parent) {
+    console.error(`issue #${subIssueNum} is not a sub-issue of anything, nothing to do`);
     return { kind: "not-tracked" };
   }
-  return dispatchOrchestratorIfReady({ repo, parent, closedNum: subIssueNum, retry: true });
+  return dispatchOrchestratorIfReady({ repo, parent: found.parent, closedNum: subIssueNum, retry: true });
 }
 
 // src/lib/mcp-report.ts
@@ -7635,7 +7793,7 @@ function knownParticipants(repo, number) {
 
 // src/domain/mention.ts
 var MENTION = /(^|[^\w@/-])@([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\b(?!\/)/g;
-var CODE = /```[\s\S]*?```|`[^`\n]*`/g;
+var CODE2 = /```[\s\S]*?```|`[^`\n]*`/g;
 function escapeUnknownMentions(text, known) {
   const allowed = new Set([...known].map((login) => login.trim().toLowerCase()).filter(Boolean));
   const escaped = [];
@@ -7648,8 +7806,8 @@ function escapeUnknownMentions(text, known) {
   });
   let out = "";
   let last = 0;
-  CODE.lastIndex = 0;
-  for (const match of text.matchAll(CODE)) {
+  CODE2.lastIndex = 0;
+  for (const match of text.matchAll(CODE2)) {
     const at = match.index ?? 0;
     out += transform(text.slice(last, at));
     out += match[0];
@@ -7664,50 +7822,6 @@ function escapedMentionNotice(escaped) {
   const names = escaped.map((login) => `\`@${login}\``).join(", ");
   return `> [!NOTE]
 ` + `> ${names} ${escaped.length === 1 ? "was" : "were"} written as ${escaped.length === 1 ? "a mention" : "mentions"} ` + `and had the notification removed: this run could not confirm ${escaped.length === 1 ? "that account" : "those accounts"} ` + `as a participant in this repository or this thread. Nobody was notified. If the mention was meant, mention them yourself.`;
-}
-
-// src/domain/issue-links.ts
-var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
-function claimsToClose(body, issue) {
-  return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
-}
-function closingReferences(text) {
-  const pattern = new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+((?:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)?#\\d+)\\b`, "gi");
-  const found = [];
-  for (const segment of outsideCode(text)) {
-    for (const match of segment.matchAll(pattern)) {
-      const whole = match[0].trim();
-      if (!found.includes(whole))
-        found.push(whole);
-    }
-  }
-  return found;
-}
-function closingKeywordRefusal(found, what) {
-  if (found.length === 0)
-    return;
-  const quoted = found.map((f) => `"${f}"`).join(", ");
-  return `This ${what} contains ${quoted}, which GitHub acts on: merging would close ` + "whatever issue that names, without going through the path that cleans up labels and " + "tells a parent its child is done. Remove it and try again. To close an issue, call " + "github__close_issue; to link this work to the issue it belongs to, do nothing -- " + "that link is added for you.";
-}
-var CODE2 = /```[\s\S]*?```|`[^`\n]*`/g;
-function outsideCode(text) {
-  const out = [];
-  let last = 0;
-  for (const match of text.matchAll(CODE2)) {
-    const at = match.index ?? 0;
-    out.push(text.slice(last, at));
-    last = at + match[0].length;
-  }
-  out.push(text.slice(last));
-  return out;
-}
-function dedupeByNumber(...lists) {
-  const seen = new Map;
-  for (const list of lists)
-    for (const item of list)
-      if (!seen.has(item.number))
-        seen.set(item.number, item);
-  return [...seen.values()].sort((a, b) => a.number - b.number);
 }
 
 // node_modules/zod/v3/helpers/util.js
@@ -18609,32 +18723,6 @@ function positiveInt(description) {
 function stringArray(description) {
   return preprocessType((value) => typeof value === "string" ? [value] : value, arrayType(stringType())).describe(description);
 }
-var ALIASES = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  branch: ["name"]
-};
-function declaredKeys(schema) {
-  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
-}
-function acceptAliases(raw, declared) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return raw;
-  let value = raw;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical))
-      continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value))
-        continue;
-      const { [alias]: aliased, ...rest } = value;
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -18643,7 +18731,6 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -18651,7 +18738,7 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined)
@@ -18777,34 +18864,6 @@ function unattendedNotice(notify, agent) {
   return `${mention}This pull request was opened by \`${agent}\` with no reviewer named and nobody mentioned, ` + `so nothing is scheduled to look at it. CI still runs and its result stands. ` + `Comment \`/reviewer\` to have it reviewed, or take it from here.`;
 }
 
-// src/lib/parent-issue.ts
-function log2(message) {
-  console.error(`[atomaton-parent] ${message}`);
-}
-function nativeParent(repo, issue) {
-  const [owner, name] = repo.split("/", 2);
-  if (!owner || !name)
-    return;
-  try {
-    const data = ghGraphql("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}", { owner, repo: name, num: issue });
-    return data.repository.issue.parent?.number;
-  } catch {
-    return;
-  }
-}
-function parentIssueOf(repo, issue) {
-  const native = nativeParent(repo, issue);
-  if (native)
-    return { known: true, parent: native };
-  const { code, stderr, stdout } = gh("issue", "view", String(issue), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code) {
-    const why = `could not read issue #${issue}: ${stderr.trim() || `gh exited ${code}`}`;
-    log2(`WARN ${why}`);
-    return { known: false, why };
-  }
-  return { known: true, parent: PARENT_TAG.read(stdout) ?? 0 };
-}
-
 // src/domain/issue-branch.ts
 var OWNED_SUFFIX = /^-(\d+)$/;
 function ordinalOf(rest) {
@@ -18832,19 +18891,21 @@ function log3(message) {
 function collectIssueBranches(repo, issueNumber) {
   const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
   if (refs.code) {
-    log3(`WARN could not list branches: ${refs.stderr || refs.stdout}`);
-    return [];
+    const why = `could not list the branches of #${issueNumber}: ${(refs.stderr || refs.stdout).trim()}`;
+    log3(`WARN ${why}`);
+    return { known: false, why };
   }
   let names;
   try {
     const parsed = JSON.parse(refs.stdout || "[]");
     names = parsed.map((entry) => entry.ref.replace(/^refs\/heads\//, ""));
   } catch {
-    log3("WARN branch list was not valid JSON");
-    return [];
+    const why = `the branch list for #${issueNumber} was not valid JSON`;
+    log3(`WARN ${why}`);
+    return { known: false, why };
   }
   const owner = repo.split("/", 1)[0] ?? "";
-  return names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) }));
+  return { known: true, branches: names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) })) };
 }
 function headBranchMerged(repo, owner, branch) {
   const prs = gh("api", `repos/${repo}/pulls?state=all&per_page=100&head=${owner}:${branch}`);
@@ -18938,7 +18999,11 @@ function branchForCommit(repo) {
   if (issue === undefined)
     return resolveBranch();
   const from = stackedBaseFor(repo, issue);
-  const name = nextBranchName(collectIssueBranches(repo, issue), issue);
+  const listed = collectIssueBranches(repo, issue);
+  if (!listed.known) {
+    throw new Error(`${listed.why}, so a new branch for #${issue} cannot be named without risking one that already exists.`);
+  }
+  const name = nextBranchName(listed.branches, issue);
   const created = from ? gitRun("checkout", "-b", name, `origin/${from}`) : gitRun("checkout", "-b", name);
   if (created.code)
     throw new Error(`Could not create branch '${name}': ${created.stderr || created.stdout}`);
@@ -19110,80 +19175,23 @@ function dispatchCd(baseRef) {
     log5(`dispatchCd: merged into ${baseRef}, which is work in progress; not deploying`);
     return false;
   }
-  const configured = getWorkflowName("cd");
-  if (!configured) {
+  if (!getWorkflowName("cd")) {
     const { jobs, problems } = resolveDeployJobs(getDeploySection());
     if (problems.length === 0 && !mergeMightDeploy(jobs, baseRef)) {
       log5(`dispatchCd: nothing in deploy.on_merge covers ${baseRef || "this branch"}, and deploy.your_workflow is unset; nothing to dispatch`);
       return false;
     }
   }
-  const workflow = configured || DEFAULT_CD_WORKFLOW;
-  const args = baseRef ? ["--ref", baseRef] : [];
-  if (!configured)
-    args.push("-f", "trigger=merge");
-  return dispatchWorkflow("dispatchCd", workflow, args, log5);
+  return dispatchDeploy("dispatchCd", "merge", baseRef);
 }
-
-// src/lib/issue-links.ts
-var LINK_LIMIT = 50;
-var QUERY = `
-query($owner:String!, $name:String!, $number:Int!, $limit:Int!) {
-  repository(owner:$owner, name:$name) {
-    issueOrPullRequest(number:$number) {
-      __typename
-      ... on Issue {
-        parent { number title state }
-        subIssues(first:$limit) { nodes { number title state } }
-        closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
-          nodes { number title state merged body }
-        }
-        timelineItems(last:$limit, itemTypes:[CROSS_REFERENCED_EVENT]) {
-          nodes { ... on CrossReferencedEvent { source { ... on PullRequest { number title state merged body } } } }
-        }
-      }
-      ... on PullRequest {
-        closingIssuesReferences(first:$limit) { nodes { number title state } }
-      }
-    }
-  }
-}`;
-function normalise(node) {
-  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
-}
-function asPr(node) {
-  return { ...normalise(node), merged: Boolean(node.merged) };
-}
-function issueLinks(repo, number) {
-  const [owner, name] = repo.split("/");
-  if (!owner || !name) {
-    return { children: [], pullRequests: [], unavailable: `"${repo}" is not an owner/name repository` };
-  }
-  let issue = null;
-  try {
-    issue = ghGraphql(QUERY, { owner, name, number, limit: LINK_LIMIT }).repository?.issueOrPullRequest ?? null;
-  } catch (error) {
-    const why = error.message;
-    console.error(`[atomaton-github] WARN could not read links for #${number}: ${why}`);
-    return { children: [], pullRequests: [], unavailable: `GitHub could not be reached: ${why}` };
-  }
-  if (!issue)
-    return { children: [], pullRequests: [], unavailable: `#${number} was not found` };
-  if (issue.__typename === "PullRequest") {
-    const closes = issue.closingIssuesReferences?.nodes ?? [];
-    return {
-      parent: closes[0] ? normalise(closes[0]) : undefined,
-      children: [],
-      pullRequests: []
-    };
-  }
-  const declared = (issue.closedByPullRequestsReferences?.nodes ?? []).map(asPr);
-  const referenced = (issue.timelineItems?.nodes ?? []).map((node) => node.source).filter((source) => Boolean(source?.number) && claimsToClose(source?.body ?? "", number)).map(asPr);
-  return {
-    parent: issue.parent ? normalise(issue.parent) : undefined,
-    children: (issue.subIssues?.nodes ?? []).map(normalise),
-    pullRequests: dedupeByNumber(declared, referenced)
-  };
+function dispatchDeploy(context, trigger, ref, repo) {
+  const configured = getWorkflowName("cd");
+  const args = [
+    ...repo ? ["--repo", repo] : [],
+    ...ref ? ["--ref", ref] : [],
+    ...configured ? [] : ["-f", `trigger=${trigger}`]
+  ];
+  return dispatchWorkflow(context, configured || DEFAULT_CD_WORKFLOW, args, log5);
 }
 
 // src/lib/branch-rules.ts
@@ -19460,52 +19468,58 @@ async function resolveIssueId(number) {
   const d = ghGraphql("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){id}}}", { owner, repo, num: number });
   return d.repository.issue.id;
 }
-var NUMBER_ARG_SCHEMA = objectType({
-  number: positiveInt("Positive GitHub issue or pull request number, without a leading '#'.")
+var ISSUE_NUMBER_ARG = "issue_number";
+var PR_NUMBER_ARG = "pull_number";
+var ISSUE_NUMBER_ARG_SCHEMA = objectType({
+  [ISSUE_NUMBER_ARG]: positiveInt("Positive GitHub issue number, without a leading '#'.")
+});
+var PR_NUMBER_ARG_SCHEMA = objectType({
+  [PR_NUMBER_ARG]: positiveInt("Positive GitHub pull request number, without a leading '#'.")
 });
 var ISSUE_CONTEXT_NUMBER_ARG_SCHEMA = objectType({
-  number: positiveInt("Positive GitHub issue number, without a leading '#'. " + "Omit to use the issue this run is already operating on.").optional()
+  [ISSUE_NUMBER_ARG]: positiveInt("Positive GitHub issue number, without a leading '#'. " + "Omit to use the issue this run is already operating on.").optional()
 });
 var PR_CONTEXT_NUMBER_ARG_SCHEMA = objectType({
-  number: positiveInt("Positive pull request number, without a leading '#'. " + "Omit only on a pull request run, to use the pull request this run is reviewing; " + "on an issue run, pass the number of the pull request that closes it.").optional()
+  [PR_NUMBER_ARG]: positiveInt("Positive pull request number, without a leading '#'. " + "Omit only on a pull request run, to use the pull request this run is reviewing; " + "on an issue run, pass the number of the pull request that closes it.").optional()
 });
 var ISSUE_COMMENTS_SCHEMA = objectType({
-  number: positiveInt("Positive GitHub issue number, without a leading '#'. Omit to use the issue this run is already operating on.").optional(),
+  [ISSUE_NUMBER_ARG]: positiveInt("Positive GitHub issue number, without a leading '#'. Omit to use the issue this run is already operating on.").optional(),
   from: positiveInt("First comment to return, counting from 1 in the order they were posted. " + "This is the number `search__search_issues` reports as `comment`, so a match can be read directly.").optional(),
   to: positiveInt("Last comment to return, inclusive. Defaults to `from`, so passing only `from` reads one comment.").optional()
 });
 function issueContextNumber(args) {
-  if (args.number !== undefined)
-    return args.number;
+  if (args[ISSUE_NUMBER_ARG] !== undefined)
+    return args[ISSUE_NUMBER_ARG];
   const raw = (process.env.ISSUE_NUMBER ?? "").trim();
   const parsed = Number(raw);
   if (!raw || !Number.isInteger(parsed) || parsed <= 0) {
-    mcpFail("`number` was omitted and this run has no current issue number. Pass `number` explicitly.");
+    mcpFail(`\`${ISSUE_NUMBER_ARG}\` was omitted and this run has no current issue number. ` + `Pass \`${ISSUE_NUMBER_ARG}\` explicitly.`);
   }
   return parsed;
 }
 function omittedNumberGuidance(what) {
+  const arg = what === "pull request" ? PR_NUMBER_ARG : ISSUE_NUMBER_ARG;
   return (args) => {
-    if ("number" in args)
+    if (arg in args)
       return;
     if (process.env.ATOMATON_RUN_TYPE !== (what === "pull request" ? "pr" : "issue"))
       return;
     const raw = (process.env.ISSUE_NUMBER ?? "").trim();
     if (!/^[0-9]+$/.test(raw))
       return;
-    return "`number` is required and was omitted. This tool changes GitHub, so unlike the " + "read-only tools it will not infer its target -- a guessed number here is a wrong " + `merge or a wrong close, not an error message. This run is working on ${what} ` + `#${raw}; if that is the one you mean, call this again with {"number": ${raw}}.`;
+    return `\`${arg}\` is required and was omitted. This tool changes GitHub, so unlike the ` + "read-only tools it will not infer its target -- a guessed number here is a wrong " + `merge or a wrong close, not an error message. This run is working on ${what} ` + `#${raw}; if that is the one you mean, call this again with {"${arg}": ${raw}}.`;
   };
 }
 function prContextNumber(args) {
-  if (args.number !== undefined)
-    return args.number;
+  if (args[PR_NUMBER_ARG] !== undefined)
+    return args[PR_NUMBER_ARG];
   if (process.env.ATOMATON_RUN_TYPE !== "pr") {
-    mcpFail("`number` was omitted, and this run is working on an issue rather than a pull request. " + "Pass the pull request's number explicitly \u2014 an issue's number is not a pull request's.");
+    mcpFail(`\`${PR_NUMBER_ARG}\` was omitted, and this run is working on an issue rather than a ` + "pull request. Pass the pull request's number explicitly \u2014 an issue's number is not a " + "pull request's.");
   }
   const raw = (process.env.ISSUE_NUMBER ?? "").trim();
   const parsed = Number(raw);
   if (!raw || !Number.isInteger(parsed) || parsed <= 0) {
-    mcpFail("`number` was omitted and this run has no current pull request number. Pass `number` explicitly.");
+    mcpFail(`\`${PR_NUMBER_ARG}\` was omitted and this run has no current pull request number. ` + `Pass \`${PR_NUMBER_ARG}\` explicitly.`);
   }
   return parsed;
 }
@@ -19560,9 +19574,6 @@ async function createIssue(a) {
   const parentNum = (process.env.ISSUE_NUMBER ?? "").trim();
   body = notifyTagPrefix(body, "Issue") + withCheckedMentions(body);
   if (sub) {
-    if (parentNum)
-      body = `${PARENT_TAG.write(Number(parentNum))}
-${body}`;
     const subIssueLabel = getLabel("sub_issue");
     const ensured = gh("label", "create", subIssueLabel, "--repo", REPO, "--force", "--color", "8250df", "--description", "Child delivery task managed by Atomaton");
     if (ensured.code)
@@ -19588,7 +19599,7 @@ ${body}`;
       ghGraphql("mutation($parent:ID!,$sub:ID!){addSubIssue(input:{issueId:$parent,subIssueId:$sub,replaceParent:true}){issue{number}}}", { parent: pid, sub: sid });
       log7(`Linked sub-issue #${num} to parent #${parentNum} via official sub-issues API`);
     } catch (e) {
-      log7(`the native sub-issue link did not take for #${num} \u2192 #${parentNum}: ${e}`);
+      mcpFail(`Issue #${num} was created, but could not be linked under #${parentNum} as a sub-issue: ${e}. ` + `Nothing records that edge except the link, so #${num} is currently a root issue and no aggregation ` + `will pick it up. Do not create it again \u2014 add it under #${parentNum} in the web UI, or retry the link.`);
     }
   }
   logOp("create_issue", { number: num, title, sub_issue: sub });
@@ -19602,6 +19613,9 @@ ${body}`;
     } : {}
   });
 }
+function shownChildren(children) {
+  return children.map(({ labels: _judgedBy, ...shown }) => shown);
+}
 function getIssue(a) {
   const number = issueContextNumber(a);
   const issue = ghJsonOrThrow("issue", "view", String(number), "--repo", REPO, "--json", "number,title,body,state,labels,createdAt,closedAt,comments");
@@ -19612,7 +19626,7 @@ function getIssue(a) {
     body: typeof body === "string" ? capText(body).text : body,
     total_comments: comments?.length ?? 0,
     parent: links.parent,
-    children: links.children,
+    children: shownChildren(links.children),
     pull_requests: links.pullRequests,
     ...links.unavailable ? { links_unavailable: links.unavailable } : {}
   });
@@ -19643,7 +19657,7 @@ function getIssueComments(a) {
       state: issue?.state,
       total_comments: all.length,
       parent: links.parent,
-      children: links.children,
+      children: shownChildren(links.children),
       pull_requests: links.pullRequests,
       ...links.unavailable ? { links_unavailable: links.unavailable } : {}
     },
@@ -19652,7 +19666,7 @@ function getIssueComments(a) {
   });
 }
 function closeIssue(a) {
-  const num = a.number;
+  const num = a[ISSUE_NUMBER_ARG];
   log7(`closeIssue: #${num}`);
   const d = ghJsonOrThrow("issue", "view", String(num), "--repo", REPO, "--json", "author");
   const isBot = Boolean(d?.author?.is_bot);
@@ -19667,7 +19681,7 @@ function closeIssue(a) {
 }
 async function closeIssueAndDispatch(a) {
   closeIssue(a);
-  const num = a.number;
+  const num = a[ISSUE_NUMBER_ARG];
   let aggregation;
   try {
     aggregation = await dispatchOrchestratorIfSubIssueReady(REPO, num);
@@ -20001,7 +20015,7 @@ function deleteMergedBranch(branch) {
   log7(`mergePr: deleted merged branch ${branch}`);
 }
 async function mergePr(a) {
-  const num = a.number;
+  const num = a[PR_NUMBER_ARG];
   const { signals, refs } = gatherMergeSignals(REPO, num, mcpFail);
   const { headRefName, baseRefName } = refs;
   const readiness = decideMergeReadiness(signals);
@@ -20060,7 +20074,7 @@ ${formatBlockers(readiness.blockers)}`
 }
 async function closeParentAndReport(parentIssue) {
   try {
-    await closeIssueAndDispatch({ number: parentIssue });
+    await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue });
     return JSON.stringify({
       merged: true,
       closed_issue: parentIssue,
@@ -20089,7 +20103,7 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves \u2014 use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atomaton branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
   defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
   defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),
@@ -20120,7 +20134,7 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({
     name: "merge_pr",
     description: "Merge a pull request, then continue Atomaton's issue handoff. Refuses and returns merged:false with a `blockers` list whenever the PR is not mergeable. The list is open-ended, so read it rather than assuming a fixed set: it covers failing, pending and absent required checks, conflicts, a branch behind its base, branch protection, draft state, a human author, a change under a governed path, a condition this project declared in `merge.gates`, and merge policy. A refusal is a decision or a real defect, never a condition to retry around \u2014 read `blockers`, and use github__check_merge_readiness for detail. On success this may merge the PR, close its linked issue, and dispatch follow-up work.",
-    schema: NUMBER_ARG_SCHEMA,
+    schema: PR_NUMBER_ARG_SCHEMA,
     guidance: omittedNumberGuidance("pull request"),
     handler: mergePr
   })
