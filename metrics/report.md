@@ -10,16 +10,16 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 | window | runs | gave up | median seconds | longest | median round trips | median seconds each |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Last 7 days | 59 | 32.2% | 262 | 3,392 | 30 | 20.8 |
-| Last 30 days | 64 | 29.7% | 208 | 3,392 | 30 | 20.8 |
-| Last year | 64 | 29.7% | 208 | 3,392 | 30 | 20.8 |
-| All time | 64 | 29.7% | 208 | 3,392 | 30 | 20.8 |
+| Last 7 days | 60 | 31.7% | 262 | 3,392 | 30 | 17.0 |
+| Last 30 days | 65 | 29.2% | 178 | 3,392 | 30 | 17.0 |
+| Last year | 65 | 29.2% | 178 | 3,392 | 30 | 17.0 |
+| All time | 65 | 29.2% | 178 | 3,392 | 30 | 17.0 |
 
 **Gave up** is every ending that is not `completed` — a ceiling reached, a person asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding the run should not continue, which is worth watching whether or not it was right.
 
 | ended because | runs |
 | --- | ---: |
-| `completed` | 45 |
+| `completed` | 46 |
 | `failed` | 8 |
 | `stopped` | 7 |
 | `runtime` | 4 |
@@ -28,14 +28,14 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 
 33 sessions.
 
-**71,009,310 tokens** over 31 runs that reported them, **96.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**71,152,615 tokens** over 32 runs that reported them, **96.8% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**92.9% of that prompt was served from cache**, over the 12 of 31 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**92.8% of that prompt was served from cache**, over the 13 of 32 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 264,849 | 7,118,379 | 13,911,470 | 13,911,470 | 71,009,310 |
-| messages per session | 172 | 532 | 1,598 | 1,598 | 8,600 |
+| tokens per run | 264,849 | 7,118,379 | 13,911,470 | 13,911,470 | 71,152,615 |
+| messages per session | 172 | 532 | 1,598 | 1,598 | 8,609 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -79,9 +79,9 @@ A session appears in a dated window only if it recorded when its runs ended. Ses
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
+| `github__close_issue` | 8 | 0 | 7 | 0% |
 | `github__sync_branch` | 8 | 1 | 0 | 12.5% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
-| `github__close_issue` | 7 | 0 | 6 | 0% |
 | `github__merge_pr` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
@@ -114,14 +114,14 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 38 sessions.
 
-**82,985,545 tokens** over 52 runs that reported them, **97.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**83,128,850 tokens** over 53 runs that reported them, **97.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**92.9% of that prompt was served from cache**, over the 12 of 52 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**92.8% of that prompt was served from cache**, over the 13 of 53 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 251,449 | 6,464,694 | 13,911,470 | 13,911,470 | 82,985,545 |
-| messages per session | 152 | 532 | 1,598 | 1,598 | 8,641 |
+| tokens per run | 174,230 | 6,464,694 | 13,911,470 | 13,911,470 | 83,128,850 |
+| messages per session | 161 | 532 | 1,598 | 1,598 | 8,650 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -165,9 +165,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
+| `github__close_issue` | 8 | 0 | 7 | 0% |
 | `github__sync_branch` | 8 | 1 | 0 | 12.5% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
-| `github__close_issue` | 7 | 0 | 6 | 0% |
 | `github__merge_pr` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
@@ -201,14 +201,14 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 38 sessions.
 
-**187,328,790 tokens** over 444 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**187,472,095 tokens** over 445 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**92.9% of that prompt was served from cache**, over the 12 of 444 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**92.8% of that prompt was served from cache**, over the 13 of 445 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 27,066 | 382,963 | 9,000,677 | 39,737,697 | 187,328,790 |
-| messages per session | 152 | 532 | 1,598 | 1,598 | 8,641 |
+| tokens per run | 27,066 | 382,963 | 9,000,677 | 39,737,697 | 187,472,095 |
+| messages per session | 161 | 532 | 1,598 | 1,598 | 8,650 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -252,9 +252,9 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `github__submit_pr_review` | 11 | 1 | 0 | 9.1% |
 | `filesystem__edit_file` | 8 | 0 | 0 | 0% |
 | `filesystem__read_multiple_files` | 8 | 0 | 0 | 0% |
+| `github__close_issue` | 8 | 0 | 7 | 0% |
 | `github__sync_branch` | 8 | 1 | 0 | 12.5% |
 | `filesystem_readonly__read_file` | 7 | 1 | 0 | 14.3% |
-| `github__close_issue` | 7 | 0 | 6 | 0% |
 | `github__merge_pr` | 7 | 0 | 0 | 0% |
 | `filesystem__search_files` | 6 | 0 | 0 | 0% |
 | `github__create_issue` | 6 | 0 | 0 | 0% |
@@ -288,14 +288,14 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 
 394 sessions.
 
-**187,328,790 tokens** over 444 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
+**187,472,095 tokens** over 445 runs that reported them, **98.1% of it prompt** — what the agents were made to read, not what they wrote. Anything spent on making runs cheaper belongs on that side. No money here, deliberately: of the four providers only one reports a cost, and a price table goes quietly stale and then prints confident wrong numbers.
 
-**92.9% of that prompt was served from cache**, over the 12 of 444 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
+**92.8% of that prompt was served from cache**, over the 13 of 445 runs whose provider reported it. A cached prompt token costs a fraction of a fresh one, so this is most of what separates the counts above from the bill — and it is the figure that moves when what gets resent changes.
 
 | | p50 | p90 | p99 | max | total |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| tokens per run | 27,066 | 382,963 | 9,000,677 | 39,737,697 | 187,328,790 |
-| messages per session | 10 | 126 | 601 | 1,598 | 21,442 |
+| tokens per run | 27,066 | 382,963 | 9,000,677 | 39,737,697 | 187,472,095 |
+| messages per session | 10 | 126 | 601 | 1,598 | 21,451 |
 
 | agent | sessions | share |
 | --- | ---: | ---: |
@@ -341,10 +341,10 @@ What the agents do when they reach for a shell. `search` without a matching `ope
 | `filesystem__search_files` | 50 | 0 | 43 | 0% |
 | `github__list_prs` | 47 | 1 | 0 | 2.1% |
 | `github__create_issue` | 41 | 4 | 0 | 9.8% |
+| `github__close_issue` | 39 | 1 | 19 | 2.6% |
 | `github__get_pr_reviews` | 39 | 2 | 0 | 5.1% |
 | `github__merge_pr` | 39 | 1 | 0 | 2.6% |
 | `filesystem_readonly__search_files` | 38 | 1 | 21 | 2.6% |
-| `github__close_issue` | 38 | 1 | 18 | 2.6% |
 | `filesystem__read_file` | 35 | 0 | 1 | 0% |
 | `github__list_issues` | 33 | 3 | 0 | 9.1% |
 | `write` | 31 | 0 | 0 | 0% |
