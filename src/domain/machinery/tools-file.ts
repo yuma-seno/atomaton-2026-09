@@ -42,18 +42,10 @@
  * request was refused with three identical `Hook script not found` problems.
  */
 import { isAbsolute, join, resolve } from "node:path";
-import { toolDefaults, type ToolDefaults } from "./shipped-servers.ts";
+import { toolDefaults } from "./shipped-servers.ts";
+import type { ConfiguredServer, ToolDefaults, ToolsSection } from "./tool-server.ts";
 
-/** A server entry as the config carries it: the core's own keys, plus `settings`. */
-export interface ConfiguredServer {
-  settings?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-
-export interface ToolsSection {
-  watch?: Record<string, unknown>;
-  servers?: Record<string, ConfiguredServer>;
-}
+export type { ConfiguredServer, ToolsSection } from "./tool-server.ts";
 
 /**
  * The tools file's content, as a plain object ready to be serialised.
