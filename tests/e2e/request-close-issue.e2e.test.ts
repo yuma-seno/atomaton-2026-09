@@ -7,8 +7,8 @@
  * concludeIssue -> lib/notify.ts's resolveNotify() -> gh) runs
  * without touching the real GitHub API.
  *
- * Covers only the human-authored branch (escalate via comment, do NOT
- * close): the bot-authored branch additionally cascades into
+ * Covers only the human-authored branch (ask for the close in a comment, do NOT
+ * close, and report success anyway): the bot-authored branch additionally cascades into
  * lib/aggregation.ts's `dispatchOrchestratorIfSubIssueReady()` (its own
  * retry/sibling-check logic), which would need its own dedicated fixture --
  * left as a further opportunity, not implemented here (see
@@ -18,6 +18,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CLOSE_REQUEST_LINE } from "../../src/domain/work/close-request.ts";
 import { setupFakeGh } from "./fake-gh.ts";
 import { startMockLlmServer } from "./mock-llm-server.ts";
 import { atomaAvailable, REPO_ROOT, runAtoma } from "./run-atoma.ts";
@@ -89,14 +90,22 @@ You are a test orchestrator agent.
       const calls = fakeGh.calls();
       expect(calls.some((c) => c[0] === "issue" && c[1] === "close")).toBe(false);
       const commentCall = calls.find((c) => c.includes("comment"));
-      expect(commentCall?.join(" ")).toContain("@alice");
-      expect(commentCall?.join(" ")).toContain("All done");
+      const body = commentCall?.join(" ") ?? "";
+      expect(body).toContain("@alice");
+      expect(body).toContain("All done");
+      // The ask comes before the report, because it is the sentence the reader acts on.
+      expect(body.indexOf(CLOSE_REQUEST_LINE)).toBeGreaterThan(-1);
+      expect(body.indexOf(CLOSE_REQUEST_LINE)).toBeLessThan(body.indexOf("All done"));
 
       const session = JSON.parse(readFileSync(join(dir, "session.json"), "utf8")) as {
         messages: { role: string; content: string }[];
       };
       const toolMessage = session.messages.find((m) => m.role === "tool");
-      expect(toolMessage?.content).toContain("opened directly by a human");
+      // What the agent is told is that it is done -- not that a tool declined
+      // something. The refusal it used to read here is what ended up in the
+      // report a person then had to read (#933).
+      expect(toolMessage?.content).toContain("is concluded");
+      expect(toolMessage?.content?.toLowerCase()).not.toContain("not been closed");
     } finally {
       mock.stop();
       rmSync(dir, { recursive: true, force: true });

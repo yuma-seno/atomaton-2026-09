@@ -29,6 +29,7 @@ import { knownParticipants } from "../../../adapters/github/participants.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/work/mention.ts";
 import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG } from "../../../adapters/github/tags.ts";
 import { closingKeywordRefusal, closingReferences } from "../../../domain/work/issue-links.ts";
+import { closeRequestComment } from "../../../domain/work/close-request.ts";
 import type { GhIssueAuthor } from "../../../adapters/github/wire-types.ts";
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../adapters/mcp/mcp-tool.ts";
 import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
@@ -541,10 +542,28 @@ function getIssueComments(a: z.infer<typeof ISSUE_COMMENTS_SCHEMA>): string {
   });
 }
 
-function closeIssue(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): string {
+/**
+ * Close the issue, or ask the person who opened it to.
+ *
+ * This used to answer a person-opened issue with a tool ERROR -- "Refusing to
+ * close issue #N: opened by a human, not a bot" -- and post nothing. Two things
+ * were wrong with that, and `domain/work/close-request.ts` holds the measurement:
+ * the error arrived at the moment the agent had decided it was finished, so it
+ * went into the report as a paragraph about tools; and because an error posts no
+ * comment, nobody was ever asked to close anything. The issue just stayed open
+ * with a merged pull request against it.
+ *
+ * `atomaton__request_close_issue` had already settled the shape for the same
+ * question and this tool disagreed with it. It is the canonical one: the tool
+ * decides, it does not fail, and it leaves the request where a person will read
+ * it.
+ *
+ * Returns whether the close actually happened, because the caller's aggregation
+ * gate counts siblings and an issue that is still open is not one of them.
+ */
+function closeIssue(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): boolean {
   const num = a[ISSUE_NUMBER_ARG];
   log(`closeIssue: #${num}`);
-  // Refuse to close issues opened by humans.
   // NOTE: `gh issue view --json author` returns {id, is_bot, login, name} --
   // there is NO `.type` field (that only exists on the REST
   // `gh api repos/OWNER/REPO/issues/N` endpoint, as `.user.type`). Use the
@@ -552,11 +571,23 @@ function closeIssue(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): string {
   const d = ghJsonOrThrow<GhIssueAuthor>("issue", "view", String(num), "--repo", REPO, "--json", "author");
   const isBot = Boolean(d?.author?.is_bot);
   log(`closeIssue: author.is_bot=${isBot}`);
-  if (!isBot) mcpFail(`Refusing to close issue #${num}: opened by a human, not a bot`);
+  if (!isBot) {
+    const body = closeRequestComment({
+      notify: resolveNotify(REPO, num),
+      body: "Atomaton: an agent finished the work on this issue and asked for it to be closed.",
+    });
+    const { code, stdout, stderr } = gh("issue", "comment", String(num), "--repo", REPO, "--body", body);
+    // The one failure still worth an error. Saying nothing here would leave an
+    // issue that nobody has been asked to close and an agent that believes
+    // somebody has -- which is the defect above with the comment removed.
+    if (code) mcpFail(`Could not ask for issue #${num} to be closed: ${stderr || stdout}`);
+    logOp("close_issue", { number: num, closed: false });
+    return false;
+  }
   const { code, stdout, stderr } = gh("issue", "close", String(num), "--repo", REPO);
   if (code) mcpFail(stderr || stdout);
-  logOp("close_issue", { number: num });
-  return JSON.stringify({ ok: true });
+  logOp("close_issue", { number: num, closed: true });
+  return true;
 }
 
 /**
@@ -568,10 +599,27 @@ function closeIssue(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): string {
  * nothing. Awaited by every caller (matching the original
  * Bun.spawnSync-based blocking behavior) so the tool response isn't
  * returned before phase-gating has actually run.
+ *
+ * The gate is skipped entirely when the close was only requested. Aggregation
+ * asks whether every sibling is closed, and this one is not -- running it would
+ * either answer "not yet" pointlessly or, worse, re-invoke a parent on the
+ * strength of an issue that is still open.
  */
 async function closeIssueAndDispatch(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>): Promise<string> {
-  closeIssue(a);
+  const closed = closeIssue(a);
   const num = a[ISSUE_NUMBER_ARG];
+
+  if (!closed) {
+    // Success, stated as what happened rather than as what was declined. It says
+    // the close was requested because an agent that believed it had closed the
+    // issue would go on to tell a person so -- the honest half of the old refusal,
+    // kept, with the part that read as a failure to work around removed.
+    return JSON.stringify({
+      ok: true,
+      close_requested: num,
+      note: "The issue's author was asked on the thread to close it.",
+    });
+  }
 
   // The aggregation outcome is part of what happened, so it goes in the result.
   // This used to be awaited and discarded, and `{ok: true}` was returned whether
@@ -1273,7 +1321,23 @@ async function mergePr(a: z.infer<typeof PR_NUMBER_ARG_SCHEMA>): Promise<string>
 /** closeIssueAndDispatch also triggers phase-gating/aggregation itself. Shared by mergePr()'s "close-directly" case and its "reinvoke failed" fallback. */
 async function closeParentAndReport(parentIssue: number): Promise<string> {
   try {
-    await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue });
+    // Read, not discarded. `closeIssueAndDispatch` stopped throwing when the author
+    // is a person: it asks them on the thread and reports success. A caller that
+    // ignores the answer therefore reports a parent as closed while it is open --
+    // which is the failure this change exists to remove, and discarding the return
+    // value here would have moved it rather than fixed it.
+    const outcome = JSON.parse(await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue })) as {
+      close_requested?: number;
+    };
+    if (outcome.close_requested !== undefined) {
+      return JSON.stringify({
+        merged: true,
+        closed_issue: null,
+        parent_issue: parentIssue,
+        parent_outcome: "close-requested",
+        note: `The pull request merged. Issue #${parentIssue} was opened by a person, so it was not closed -- they have been asked on the thread to close it. Nothing further is needed from you.`,
+      });
+    }
     return JSON.stringify({
       merged: true,
       closed_issue: parentIssue,
@@ -1306,7 +1370,7 @@ const { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves — use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Conclude an issue whose work is complete, and trigger Atomaton parent-task aggregation when applicable. Whether the issue is closed now or the person who opened it is asked on the thread to close it is this tool's decision and not yours; it does not fail on either. Returns JSON and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atomaton branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
   defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
   defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),

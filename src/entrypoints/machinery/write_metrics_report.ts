@@ -125,6 +125,11 @@ function looksRefused(content: string): boolean {
     // wrote ourselves, so unlike a general "looks like a refusal" rule it cannot
     // swallow a call the agent simply got wrong. Fourteen of these were counted as
     // failures, which read as a broken tool when it was the tool doing its job.
+    //
+    // Nothing emits this any more: the tool now posts a comment asking the issue's
+    // author to close it and reports success, because a refusal handed to an agent at
+    // the end of its run came back out in the report. The pattern stays for the
+    // sessions already recorded, which this report still reads.
     /Refusing to close issue #[0-9]+: opened by a human/.test(content)
   );
 }

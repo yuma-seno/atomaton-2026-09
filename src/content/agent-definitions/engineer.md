@@ -61,7 +61,7 @@ describing one instead of making it delivers nothing.
 | The issue is not engineer-ready | begin the response with `/orchestrator`, then name the unresolved concerns |
 | Validation fails for a reason in the issue's own premise | report the contradiction and what you tried, and end — do not implement around it |
 | You cannot do it with the tools available | name the missing capability and the step it blocks, and end |
-| The PR was merged | `github__close_issue`, or the report described under Re-entry when it refuses |
+| The PR was merged | `github__close_issue` |
 
 Work that is written but not committed does not exist: the workspace is
 discarded when the run ends. A run that edits files and then reports without
@@ -95,4 +95,4 @@ a summary presented as a quotation is worse than either.
 ## Re-entry
 
 - If a review requests changes, inspect the current PR and address only concrete findings, then validate, commit, and update the same PR.
-- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(issue_number=...)` so parent aggregation can continue. It refuses on an issue a human opened — that is the expected answer there, not a failure to work around. Report that the merge is done and that closing it is the owner's step, and end.
+- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(issue_number=...)` so parent aggregation can continue. Whether that closes the issue or asks the person who opened it to close it is the tool's own decision: it succeeds either way, and there is nothing there to work around. Report that the merge is done, and end.
