@@ -1,7 +1,7 @@
 /**
  * issue-branches.ts — lists an issue's branches as they exist on the remote.
  *
- * The I/O half of `domain/issue-branch.ts`: that module decides which branch to
+ * The I/O half of `domain/work/issue-branch.ts`: that module decides which branch to
  * resume and what to call a new one, this one goes and asks GitHub. Both callers
  * need it — the runner, to resume a branch before the agent starts, and the
  * GitHub MCP server, to name a branch at the first commit — and shared code
@@ -9,7 +9,7 @@
  * import another script's entry point.
  */
 import { gh } from "./gh.ts";
-import type { IssueBranch } from "../domain/issue-branch.ts";
+import type { IssueBranch } from "../domain/work/issue-branch.ts";
 
 function log(message: string): void {
   console.error(`[atomaton-issue-branch] ${message}`);
@@ -22,7 +22,7 @@ function log(message: string): void {
  * Scoped to one issue rather than listing every `atomaton/issue-*` branch, because
  * the merged flag has to be asked for per branch and a repository accumulates
  * hundreds. `atomaton/issue-12` also matches `atomaton/issue-120` here; separating
- * them is `domain/issue-branch.ts`'s job, and over-collecting is the safe
+ * them is `domain/work/issue-branch.ts`'s job, and over-collecting is the safe
  * direction.
  *
  * Merged is read from the pull requests rather than from git ancestry: a squash

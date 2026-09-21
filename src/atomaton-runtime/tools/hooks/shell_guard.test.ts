@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { MAX_SEARCHES_WITHOUT_OPENING } from "../../../domain/search-streak.ts";
+import { MAX_SEARCHES_WITHOUT_OPENING } from "../../../domain/work/search-streak.ts";
 
 const SCRIPT = "src/atomaton-runtime/tools/hooks/shell_guard.ts";
 
@@ -32,7 +32,7 @@ describe("shell_guard.ts", () => {
   /**
    * The measured failure this exists for: three sessions searched 124-188 times while
    * opening almost nothing, one of them 85 times in a row. See
-   * `domain/search-streak.ts` for the numbers and for why repetition was not the
+   * `domain/work/search-streak.ts` for the numbers and for why repetition was not the
    * signal.
    */
   /**

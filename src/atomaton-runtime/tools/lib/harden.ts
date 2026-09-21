@@ -26,7 +26,7 @@
  *
  * ## 2. Narrow PATH
  *
- * See `domain/tool-hardening.ts`. Briefly: three directories on the runner's PATH
+ * See `domain/machinery/tool-hardening.ts`. Briefly: three directories on the runner's PATH
  * are world-writable, so a peer can put a file called `gh` in one and the server
  * that looks `gh` up hands it the token. Nothing is read; the credential is
  * delivered.
@@ -45,7 +45,7 @@
  * from".
  */
 import { statSync } from "node:fs";
-import { classifyPathEntries, pathWithoutWorldWritable } from "../../../domain/tool-hardening.ts";
+import { classifyPathEntries, pathWithoutWorldWritable } from "../../../domain/machinery/tool-hardening.ts";
 import { report } from "../../../lib/mcp-report.ts";
 
 const PR_SET_DUMPABLE = 4;

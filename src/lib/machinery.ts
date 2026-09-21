@@ -1,7 +1,7 @@
 /**
  * machinery.ts — which tree the deployed machinery is in, for this process.
  *
- * Every path in `domain/machinery-layout.ts` is relative. What they are relative to
+ * Every path in `domain/machinery/machinery-layout.ts` is relative. What they are relative to
  * was resolved in three places, by hand, with three spellings: `lib/config.ts` wrote
  * `root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE`, while `check_live_tools.ts` and
  * `write_metrics_report.ts` each wrote `process.env.ATOMATON_MACHINERY_ROOT?.trim()
@@ -23,7 +23,7 @@
  * is handed one, so a variable that went missing cannot downgrade it: see
  * `scripts/read_secret_names.ts`.
  */
-import { MACHINERY_ROOT_VAR } from "../domain/machinery-layout.ts";
+import { MACHINERY_ROOT_VAR } from "../domain/machinery/machinery-layout.ts";
 
 /**
  * The tree the machinery was put in, or undefined when nothing moved it.

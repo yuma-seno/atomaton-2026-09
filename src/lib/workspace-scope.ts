@@ -1,7 +1,7 @@
 /**
  * workspace-scope.ts — walk to the root issue whose workspace a run shares.
  *
- * The I/O half of `domain/workspace.ts`'s `workspaceScope`, which holds the rule.
+ * The I/O half of `domain/work/workspace.ts`'s `workspaceScope`, which holds the rule.
  * Here is the walking: one hop at a time through `parentIssueOf`, and for a pull
  * request one extra hop first, because a pull request's link to its issue is the
  * `atomaton:parent-issue` tag rather than a sub-issue relationship.
@@ -9,7 +9,7 @@
 import { gh } from "./gh.ts";
 import { parentIssueOf } from "./parent-issue.ts";
 import { PARENT_ISSUE_TAG } from "./tags.ts";
-import { workspaceScope, type WorkspaceScope } from "../domain/workspace.ts";
+import { workspaceScope, type WorkspaceScope } from "../domain/work/workspace.ts";
 
 /**
  * How far up the chain to walk.
@@ -38,7 +38,7 @@ function issueOfPullRequest(repo: string, number: number): number | undefined {
  * Which issue's workspace this run shares.
  *
  * A read that fails is reported and turns into a private workspace rather than a
- * borrowed one -- see `domain/workspace.ts` for why that direction. The `why` it
+ * borrowed one -- see `domain/work/workspace.ts` for why that direction. The `why` it
  * returns is what the caller logs, so a run working alone when it should have been
  * sharing says so instead of looking normal.
  */

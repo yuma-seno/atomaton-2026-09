@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { CONFIG_FILE } from "../domain/machinery-layout.ts";
+import { CONFIG_FILE } from "../domain/machinery/machinery-layout.ts";
 import { parseGithubOutput, scriptPath } from "./testing/harness.ts";
 import { declarationIn } from "./read_secret_names.ts";
 

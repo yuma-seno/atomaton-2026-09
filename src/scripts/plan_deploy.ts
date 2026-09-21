@@ -7,7 +7,7 @@
  * branch list an agent can edit cannot live there. The workflow starts for every tag
  * and every branch, and this decides whether any entry wanted that ref.
  *
- * How a run is selected — `domain/deploy-jobs.ts` holds the rule, in one place:
+ * How a run is selected — `domain/delivery/deploy-jobs.ts` holds the rule, in one place:
  *
  *   --target NAME      one entry by name, from any list. A name that matches nothing
  *                      fails, rather than falling back to something the caller did
@@ -62,7 +62,7 @@ import {
   type DeployRequest,
   type PlannedDeploy,
   type TagCandidate,
-} from "../domain/deploy-jobs.ts";
+} from "../domain/delivery/deploy-jobs.ts";
 import { deploymentRefusal, readBranchRules } from "../lib/branch-rules.ts";
 import { getDeploySection } from "../lib/config.ts";
 import { commitsAdded, isContained, readTags, type RepositoryTag } from "../lib/git-tags.ts";

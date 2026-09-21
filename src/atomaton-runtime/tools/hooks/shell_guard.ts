@@ -35,7 +35,7 @@
  *      covers. Honest about being partial. See PROCESS_ENVIRONMENT_READ.
  */
 import { resolve, sep } from "node:path";
-import { classifyShellAct, nextStreak, refusalReason } from "../../../domain/search-streak.ts";
+import { classifyShellAct, nextStreak, refusalReason } from "../../../domain/work/search-streak.ts";
 import { readStreak, streakFile, writeStreak } from "../lib/search-streak-file.ts";
 
 /**

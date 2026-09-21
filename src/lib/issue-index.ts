@@ -15,7 +15,7 @@
  * does nothing.
  */
 import { ghPaginated } from "./gh.ts";
-import { buildIndex, splitBody, type Bm25Index, type Chunk } from "../domain/bm25.ts";
+import { buildIndex, splitBody, type Bm25Index, type Chunk } from "../shared/bm25.ts";
 
 /**
  * The branch the index lives on, which is its own and holds one commit.

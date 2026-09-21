@@ -18,12 +18,12 @@ import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
 import { AGENT_TAG, CHANGED_TAG, ENDED_TAG } from "../lib/tags.ts";
 import { parentIssueOf } from "../lib/parent-issue.ts";
-import { shouldMentionOnCompletion } from "../domain/completion-mention.ts";
-import { redact } from "../domain/redaction.ts";
-import { renderTokenLine } from "../domain/token-line.ts";
-import { escapedMentionNotice, escapeUnknownMentions } from "../domain/mention.ts";
+import { shouldMentionOnCompletion } from "../domain/work/completion-mention.ts";
+import { redact } from "../shared/redaction.ts";
+import { renderTokenLine } from "../domain/record/token-line.ts";
+import { escapedMentionNotice, escapeUnknownMentions } from "../domain/work/mention.ts";
 import { knownParticipants } from "../lib/participants.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface PostResultCommentArgs {
@@ -238,7 +238,7 @@ export function buildCommentBody(args: {
    * Whether this run pushed a commit, opened a pull request or merged one.
    *
    * Written into the comment because that is where the next run can read it.
-   * `domain/progress.ts` counts consecutive runs that changed nothing, and it
+   * `domain/work/progress.ts` counts consecutive runs that changed nothing, and it
    * counts them from the thread rather than from a counter -- so the thread has to
    * carry the fact.
    */
@@ -367,7 +367,7 @@ function main(): void {
   // shape patterns, which needs no knowledge of any particular value and so works
   // in this step, which deliberately holds none.
   //
-  // A net, not a control: see domain/redaction.ts on what a shape check cannot
+  // A net, not a control: see shared/redaction.ts on what a shape check cannot
   // catch. The reason it is here at all is that this is one of the two sinks that
   // publish unmasked text (the other is the failure excerpt in
   // atomaton-runner.wac.ts).
@@ -442,7 +442,7 @@ function main(): void {
   // Checked on the way out for the same reason it is redacted on the way out:
   // this text is whatever the agent decided to write, and a comment is the one
   // place it reaches people. A `@name` here notifies a real account -- see
-  // `domain/mention.ts` for why a name it read somewhere is enough.
+  // `domain/work/mention.ts` for why a name it read somewhere is enough.
   //
   // The mention the RUNNER adds is not part of this. It is put in by
   // `buildCommentBody` below from a login `resolveNotify` produced, and never

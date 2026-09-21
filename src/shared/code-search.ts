@@ -87,7 +87,7 @@
  * deliberate. A foreign-language question has no salvageable result at all, so refusing
  * loses nothing. A missing name can be missing for innocent reasons, and one turned up
  * the moment this was measured against the real corpus: `session_size` is reported
- * missing although `src/domain/session-size.ts` is right there, because the tokenizer
+ * missing although `src/domain/work/session-size.ts` is right there, because the tokenizer
  * splits on the hyphen and never forms that token. A name can also live in a file
  * `code-corpus.ts` excludes, or be one the run is about to create. Meanwhile the rest of
  * the question still ranks. A note costs a sentence when it is wrong; a refusal would
@@ -317,7 +317,7 @@ export function rankFiles(
 /**
  * What the cross encoder is shown for one candidate.
  *
- * The path is part of it, not decoration. `src/domain/session-size.ts` tells a
+ * The path is part of it, not decoration. `src/domain/work/session-size.ts` tells a
  * multilingual cross encoder most of what the file is about before it reads a line,
  * and for the passage that IS the path it is all there is.
  */

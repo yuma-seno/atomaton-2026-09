@@ -19,7 +19,7 @@ import {
   TOOLS_DIR,
   TOOL_DEFAULTS_FILE,
   TOOL_HOOKS_DIR as TOOL_HOOKS_DIRECTORY,
-} from "../domain/machinery-layout.ts";
+} from "../domain/machinery/machinery-layout.ts";
 import { defineCallableWorkflow } from "./actions/reusable-workflow.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
@@ -29,7 +29,7 @@ import { providerCredentialCheckStep } from "./actions/provider-credential-check
 import { ref as resolveNotifyRef } from "../scripts/resolve_notify.ts";
 import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
 import { DEFAULT_RERANKER } from "../lib/config.ts";
-import { MODEL_CACHE_DIR } from "../domain/model-cache.ts";
+import { MODEL_CACHE_DIR } from "../domain/machinery/model-cache.ts";
 import { ref as resolveIssueBranchRef } from "../scripts/resolve_issue_branch.ts";
 import { ref as resolvePrBranchRef } from "../scripts/resolve_pr_branch.ts";
 import { ref as manageInProgressLabelRef } from "../scripts/manage_in_progress_label.ts";
@@ -38,7 +38,7 @@ import { ref as injectUncommittedNoticeRef } from "../scripts/inject_uncommitted
 import { ref as restoreWorkspaceRef } from "../scripts/restore_workspace.ts";
 import { ref as saveWorkspaceRef } from "../scripts/save_workspace.ts";
 import { ref as writeMetricsReportRef } from "../scripts/write_metrics_report.ts";
-import { WORKSPACE_PATH } from "../domain/workspace.ts";
+import { WORKSPACE_PATH } from "../domain/work/workspace.ts";
 import { ref as fetchEventsRef } from "../scripts/fetch_events.ts";
 import { ref as restoreAgentSessionRef } from "../scripts/restore_agent_session.ts";
 import { ref as reconcileGithubSessionRef } from "../scripts/reconcile_github_session.ts";
@@ -88,7 +88,7 @@ const SESSION_MODE_INPUT_DESC = "Session mode: continue restores history; recove
  *
  * An input rather than something the run works out, because there is nothing to
  * work it out from: `atomaton_env__reload_environment` leaves no comment, so unlike the
- * handoff tally in `domain/dispatch-chain.ts` there is no record on the issue to
+ * handoff tally in `domain/work/dispatch-chain.ts` there is no record on the issue to
  * count. The number has to be carried by whoever dispatches.
  *
  * It bounds a real hole: a reload starts a new run, and its time budget resets
@@ -163,7 +163,7 @@ const MACHINERY_ABS = "\${RUNNER_TEMP}/atomaton-machinery";
 const MACHINERY = `\${${MACHINERY_ROOT_VAR}}`;
 
 // Six literals used to sit here, and five other files spelled the same strings
-// for themselves. See `domain/machinery-layout.ts` for why they are constants at
+// for themselves. See `domain/machinery/machinery-layout.ts` for why they are constants at
 // all, and why they are now in one place.
 const AGENT_DEF_DIR = AGENT_DEFINITIONS_DIR;
 const PROMPT_TEMPLATE = PROMPT_TEMPLATE_FILE;
@@ -288,7 +288,7 @@ const STOP_FILE = `${RUN_DIR}/stop-requested`;
 /**
  * The agent's scratch workspace: restored before the run, saved after it.
  *
- * A literal path rather than `RUNNER_TEMP`, and `domain/workspace.ts` explains why
+ * A literal path rather than `RUNNER_TEMP`, and `domain/work/workspace.ts` explains why
  * -- briefly, the agent is told this path in one sentence and a path it has to
  * expand is a path it can get wrong in a way that looks like an empty directory.
  *
@@ -756,7 +756,7 @@ done
 # would defeat the guard above and point every request at "/chat/completions".
 #
 # Adding a name here means adding it to \`AGENT_ENV_NAMES\` in
-# domain/declared-secrets.ts as well: a name the agent's process already means
+# domain/delivery/declared-secrets.ts as well: a name the agent's process already means
 # something by is a name \`tools.secrets\` must not be able to mean something else
 # by. This is not an import -- the values below are shell and belong here -- so
 # tests/contract/agent-environment.test.ts is what holds the two together. It has
@@ -873,7 +873,7 @@ fi
 echo "chain_continues=\${CHAIN_CONTINUES}" >> "$GITHUB_OUTPUT"
 
 # Whether this run changed anything, read from the same log and for a related
-# reason: domain/progress.ts stops a chain that is not getting anywhere, and the
+# reason: domain/work/progress.ts stops a chain that is not getting anywhere, and the
 # most direct signal of that is a run that pushed nothing.
 #
 # Three ops count as progress. A commit is the obvious one; opening a pull request
@@ -955,7 +955,7 @@ const postResultCommentStep = new TypedOutputsStep(
       "messages-before": buildContextStep.outputs.messages_before,
       // Written into the comment, because that is where the next run reads it:
       // the no-progress limit counts consecutive runs from the thread rather than
-      // from a counter -- see domain/progress.ts.
+      // from a counter -- see domain/work/progress.ts.
       changed: runAgentStep.outputs.changed,
       "run-url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
       // Passed in, because the script used to open these by their bare names --
@@ -1079,7 +1079,7 @@ const loopControlStep = new TypedOutputsStep(
     env: { GH_TOKEN: "${{ github.token }}" },
     // The target number and nothing else. The tally is counted from that object's
     // comments rather than carried in the session, so `new_event_count` and the
-    // directive are no longer inputs -- see `domain/dispatch-chain.ts` for why the
+    // directive are no longer inputs -- see `domain/work/dispatch-chain.ts` for why the
     // stored counter could never reach 1.
     //
     // This must stay AFTER `postResultCommentStep`: the tally includes this run's
@@ -1092,7 +1092,7 @@ const loopControlStep = new TypedOutputsStep(
 );
 
 // Whether the atomaton/in-progress SerializationGuard should be released after
-// this run is a real domain decision (see domain/serialization-guard.ts's
+// this run is a real domain decision (see domain/work/serialization-guard.ts's
 // shouldReleaseGuard() for the actual rule + rationale), not something to
 // express as a hand-built GitHub Actions `if:` boolean expression. This
 // step computes that decision once via the shared, unit-tested domain
@@ -1835,7 +1835,7 @@ echo "tool servers will run as ${TOOL_USER} (no sudo), caches in ${TOOL_CACHE}"
       notify: "\${NOTIFY}",
       // Read for the tally: which tools the run spent its budget on. Its own
       // notice is what tells a person to retry, and a tally is what tells them
-      // whether retrying is the right move -- see domain/tool-tally.ts.
+      // whether retrying is the right move -- see domain/record/tool-tally.ts.
       session: `${RUN_DIR}/session.json`,
     })}
 `,

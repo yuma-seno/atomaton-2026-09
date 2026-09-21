@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { WORKSPACE_PATH } from "../../src/domain/workspace.ts";
+import { WORKSPACE_PATH } from "../../src/domain/work/workspace.ts";
 
 describe("agent prompt contracts", () => {
   test("uses orchestrator-first delegation with an explicit engineer leaf gate", () => {
@@ -139,7 +139,7 @@ describe("agent prompt contracts", () => {
   /**
    * The scratch workspace's path is stated in three places and has to be one path.
    *
-   * `domain/workspace.ts` holds it, the runner mounts it there, the prompt template
+   * `domain/work/workspace.ts` holds it, the runner mounts it there, the prompt template
    * tells the agent about it, and `shell_execute`'s description repeats it. Both of
    * the last two, because a tool's own description was measured to carry more weight
    * than the same words in the system prompt -- and this sentence has to hold

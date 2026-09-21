@@ -30,7 +30,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { resolveDeployJobs } from "../../src/domain/deploy-jobs.ts";
+import { resolveDeployJobs } from "../../src/domain/delivery/deploy-jobs.ts";
 
 const CHECK = "scripts/check-live-tools.sh";
 const RELEASE = "scripts/publish-release.sh";

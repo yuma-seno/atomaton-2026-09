@@ -37,8 +37,8 @@
 // `@huggingface/transformers` is NOT imported here. See `loadRerankerOnce`.
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, withoutBookkeeping, z } from "../../../lib/mcp-tool.ts";
 import { report } from "../../../lib/mcp-report.ts";
-import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../domain/bm25.ts";
-import { corpusFrom } from "../../../domain/code-corpus.ts";
+import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../shared/bm25.ts";
+import { corpusFrom } from "../../../domain/machinery/code-corpus.ts";
 import {
   CANDIDATES as CODE_CANDIDATES,
   documentFor as codeDocumentFor,
@@ -50,9 +50,9 @@ import {
   unknownNamesNotice,
   unreachableQueryReason,
   type CodePassage,
-} from "../../../domain/code-search.ts";
+} from "../../../shared/code-search.ts";
 import { getRerankerModel } from "../../../lib/config.ts";
-import { MODEL_CACHE_DIR } from "../../../domain/model-cache.ts";
+import { MODEL_CACHE_DIR } from "../../../domain/machinery/model-cache.ts";
 import { readFileSync } from "node:fs";
 import { gitRun } from "../../../lib/gh.ts";
 import {
@@ -211,7 +211,7 @@ type Reranker = { score(query: string, documents: string[]): Promise<number[]> }
  *
  * That 63.9s was a download. It is not one any more: the runner keeps the cache
  * between runs with `actions/cache`, keyed on the model name -- see the step in
- * `workflows/atomaton-runner.wac.ts`, and `domain/model-cache.ts` for why the
+ * `workflows/atomaton-runner.wac.ts`, and `domain/machinery/model-cache.ts` for why the
  * directory is a constant three places share. What is left on a cache hit is the
  * ONNX session initialisation, which nothing can cache.
  *
@@ -421,7 +421,7 @@ const CODE_SCHEMA = z.object({
  *
  * No cache, and the freshness question therefore does not exist: a file this run just
  * edited is in the next search. Measured at 275ms for the whole build, against a
- * reranker that takes 55 seconds to load -- see `domain/code-search.ts`.
+ * reranker that takes 55 seconds to load -- see `shared/code-search.ts`.
  */
 function codePassages(): CodePassage[] {
   const listed = gitRun("ls-files", "-z");
@@ -457,7 +457,7 @@ async function searchCode(a: z.infer<typeof CODE_SCHEMA>): Promise<string> {
   // Before ranking, because the ranking in this case is meaningless: measured on the
   // first real use, three Japanese questions against this English corpus returned
   // whichever files contain a Japanese test fixture, and the answer was outside the
-  // top twenty for all three. See `domain/code-search.ts`.
+  // top twenty for all three. See `shared/code-search.ts`.
   const coverage = queryCoverage(bm25, a.query);
   const unreachable = unreachableQueryReason(coverage);
   if (unreachable !== undefined) {

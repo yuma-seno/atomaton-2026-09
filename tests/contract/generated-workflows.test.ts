@@ -3,16 +3,16 @@ import { describe, expect, test } from "bun:test";
 const NEWLINE = String.fromCharCode(10);
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { toolDefaults } from "../../src/domain/shipped-servers.ts";
-import { SCRIPTS_DIR } from "../../src/domain/machinery-layout.ts";
-import type { Session } from "../../src/lib/session.ts";
+import { toolDefaults } from "../../src/domain/machinery/shipped-servers.ts";
+import { SCRIPTS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
+import type { Session } from "../../src/domain/work/session.ts";
 import {
   SECRET_NAMES_VAR,
   SECRET_SLOT_PREFIX,
   SECRET_SLOTS,
-} from "../../src/domain/declared-secrets.ts";
+} from "../../src/domain/delivery/declared-secrets.ts";
 import { CHECK_JOB_NAME } from "../../src/workflows/atomaton-check.wac.ts";
-import { MODEL_CACHE_DIR } from "../../src/domain/model-cache.ts";
+import { MODEL_CACHE_DIR } from "../../src/domain/machinery/model-cache.ts";
 
 describe("generated workflows", () => {
   /**

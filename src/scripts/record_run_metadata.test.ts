@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { updateRunMetadata } from "./record_run_metadata.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 
 describe("record_run_metadata.ts", () => {
   test("preserves the GitHub reconciliation version while updating run metadata", () => {

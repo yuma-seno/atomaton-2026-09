@@ -8,8 +8,8 @@
  * field.
  */
 import { appendFileSync } from "node:fs";
-import type { DeclaredJob } from "../../domain/declared-jobs.ts";
-import { runsOnOutput } from "../../domain/runner-label.ts";
+import type { DeclaredJob } from "../../domain/delivery/declared-jobs.ts";
+import { runsOnOutput } from "../../domain/delivery/runner-label.ts";
 
 /**
  * A declared job, and optionally the tree it operates on.

@@ -27,7 +27,7 @@
  * instead of parsing YAML again in TypeScript.
  *
  * config.yaml is delivery's own format and the core has never heard of it. That
- * half is `domain/deliverable-integrity.ts`, which likewise writes no new
+ * half is `domain/delivery/deliverable-integrity.ts`, which likewise writes no new
  * validator: it runs the four resolvers that already exist, at pull-request time
  * instead of at merge, deploy or credential-handout time.
  *
@@ -58,9 +58,9 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } fro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { configProblems } from "../domain/deliverable-integrity.ts";
-import { withEditableSource } from "../domain/generated-file-hint.ts";
-import { reservedServerNames, toolsFileFrom, type ToolsSection } from "../domain/tools-file.ts";
+import { configProblems } from "../domain/delivery/deliverable-integrity.ts";
+import { withEditableSource } from "../domain/machinery/generated-file-hint.ts";
+import { reservedServerNames, toolsFileFrom, type ToolsSection } from "../domain/machinery/tools-file.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ValidateDeliverableArgs {
@@ -116,7 +116,7 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
   // Relayed with the editable source named. `atoma validate` reports on the tools file
   // it was handed, which is generated from `tools.servers` -- so an adopter who opens
   // the file the message names and fixes it there loses the fix on the next build.
-  // See `domain/generated-file-hint.ts`; most messages pass through untouched.
+  // See `domain/machinery/generated-file-hint.ts`; most messages pass through untouched.
   const found = validatorProblems(`${stdout}\n${stderr}`);
   if (found.length > 0) return found.map((problem) => `${label}: ${withEditableSource(problem)}`);
   return [`${label}: \`atoma validate\` failed without saying why: ${stderr.trim() || stdout.trim() || "no output"}`];
@@ -131,7 +131,7 @@ function validateAgentDefinition(atoma: string, agentDef: string, toolsFile: str
  * directory, so the paths the core then checks for existence point at the scripts
  * this pull request would deploy — which is the thing being validated.
  *
- * Spelled out rather than taken from `domain/machinery-layout.ts`, like every other
+ * Spelled out rather than taken from `domain/machinery/machinery-layout.ts`, like every other
  * path in this file and for the reason its header gives: these describe the tree
  * being judged, and a pull request must not be able to redirect the judging.
  */

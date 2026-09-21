@@ -16,7 +16,25 @@
  * interfaces exists specifically so a script that only cares about a few
  * fields can still round-trip the rest of a real session.json untouched.
  */
-import type { ContentBlock } from "./issue-images.ts";
+/** An image the model can look at, in MCP's content-block shape. */
+export interface ImageBlock {
+  type: "image";
+  data: string;
+  mimeType: string;
+}
+
+/**
+ * What one message holds: text, or blocks when it carries something text cannot.
+ *
+ * The block form appears when a picture travels with the text, and it is the shape
+ * atoma's LLM adapters map to each provider — the same shape a tool result uses when
+ * it returns one. `lib/issue-images.ts` is what fetches an issue's pictures into it.
+ *
+ * Here rather than beside that fetcher because a session's shape is the work domain's
+ * to define: `domain/` may not import `lib/`, and this type is part of what a turn
+ * leaves behind.
+ */
+export type ContentBlock = { type: "text"; text: string } | ImageBlock;
 
 export interface SessionMessageMetadata {
   /** Set by record_run_metadata.ts, read by reconcile_github_session.ts to exclude an agent's own past result comments from its own future shared context. */

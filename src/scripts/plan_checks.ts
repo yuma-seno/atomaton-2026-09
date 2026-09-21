@@ -29,7 +29,7 @@
  * Usage:
  *   plan_checks.ts --arm pull-request|default-branch
  */
-import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../domain/check-jobs.ts";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../domain/delivery/check-jobs.ts";
 import { getDefaultBranchChecks, getPullRequestChecks } from "../lib/config.ts";
 import { parseAcrossReleases } from "./lib/cli.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";

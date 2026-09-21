@@ -5,7 +5,7 @@
  * an isolated git worktree).
  *
  * Caps each tool result on the way out, so a session never grows past what a model
- * will accept in the first place. See `domain/session-size.ts` for the measurement
+ * will accept in the first place. See `domain/work/session-size.ts` for the measurement
  * behind the number and for why this is the cheaper of the two places to do it.
  *
  * Usage: save_agent_session.ts --session session.json --type issue|pr --number N --agent NAME
@@ -14,8 +14,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
-import { capToolResults, shrinkLogLine } from "../domain/session-size.ts";
-import type { Session } from "../lib/session.ts";
+import { capToolResults, shrinkLogLine } from "../domain/work/session-size.ts";
+import type { Session } from "../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface SaveAgentSessionArgs {

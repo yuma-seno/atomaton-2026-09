@@ -25,7 +25,7 @@
  * script's own `Args` interface) into the `bun run ...` command string.
  */
 import { toArgv } from "../../scripts/lib/cli.ts";
-import { MACHINERY_ROOT_VAR } from "../../domain/machinery-layout.ts";
+import { MACHINERY_ROOT_VAR } from "../../domain/machinery/machinery-layout.ts";
 import type { ScriptRef } from "../../scripts/lib/script-ref.ts";
 
 /**

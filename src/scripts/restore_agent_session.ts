@@ -11,8 +11,8 @@ import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { archiveSession, restoreSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 import { defineScript } from "./lib/script-ref.ts";
-import { shrinkIfNeeded, shrinkLogLine, stillTooBigLine } from "../domain/session-size.ts";
-import type { Session } from "../lib/session.ts";
+import { shrinkIfNeeded, shrinkLogLine, stillTooBigLine } from "../domain/work/session-size.ts";
+import type { Session } from "../domain/work/session.ts";
 
 export interface RestoreAgentSessionArgs {
   type: string;
@@ -83,7 +83,7 @@ function main(): void {
  *
  * Here rather than in the core, because it needs no core change and because this
  * is the moment the history becomes this run's problem. See
- * `domain/session-size.ts` for what is replaced, and for why the calls that produced
+ * `domain/work/session-size.ts` for what is replaced, and for why the calls that produced
  * it are kept.
  *
  * Unreadable JSON is written back untouched rather than refused: whatever it is,

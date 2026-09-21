@@ -8,7 +8,7 @@
  * $GITHUB_OUTPUT.
  */
 import { appendFileSync } from "node:fs";
-import { closedIssueNumber } from "../domain/issue-links.ts";
+import { closedIssueNumber } from "../domain/work/issue-links.ts";
 import { PARENT_ISSUE_TAG } from "../lib/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

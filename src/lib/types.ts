@@ -50,7 +50,7 @@ export interface AtomaConfig {
      * The pull request's own commands, each entry its own job.
      *
      * Validated by `resolveDeclaredJobs`, which owns what a malformed one means and
-     * refuses a secret named here -- see `domain/declared-jobs.ts` for why there is
+     * refuses a secret named here -- see `domain/delivery/declared-jobs.ts` for why there is
      * nowhere to write one.
      */
     from_pull_request?: unknown;
@@ -66,7 +66,7 @@ export interface AtomaConfig {
    * Three lists rather than one with an `on:` key, because the entries are not the
    * same shape — a merge deployment is selected by branch and a tag deployment by
    * tag pattern. `resolveDeployJobs` owns their interior, including which of
-   * `branches:` and `tags:` each list has; see `domain/deploy-jobs.ts` for why the
+   * `branches:` and `tags:` each list has; see `domain/delivery/deploy-jobs.ts` for why the
    * combination nobody should write has no spelling.
    */
   deploy?: {
@@ -104,7 +104,7 @@ export interface AtomaConfig {
    * What an agent can reach beyond what Atomaton ships, and under what extra watch.
    *
    * Additive. The eight servers a run starts with and the hooks that watch all of
-   * them are in `domain/shipped-servers.ts`, not here: deleting one breaks a run, and
+   * them are in `domain/machinery/shipped-servers.ts`, not here: deleting one breaks a run, and
    * the file this interface describes is the one an adopter is told is theirs. See
    * that module for the line -- hide what breaks when edited wrong, show what
    * degrades.

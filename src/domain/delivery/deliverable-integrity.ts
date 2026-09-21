@@ -40,7 +40,7 @@
  * which the core has never heard of.
  */
 import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "./check-jobs.ts";
-import { isControlCommand } from "./control-commands.ts";
+import { isControlCommand } from "../../domain/work/control-commands.ts";
 import { resolveDeclaredSecrets, TOOL_SECRETS } from "./declared-secrets.ts";
 import { DEPLOY_ARMS, resolveDeployJobs } from "./deploy-jobs.ts";
 import { resolveDeclaredJobs } from "./declared-jobs.ts";

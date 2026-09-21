@@ -7,7 +7,7 @@
  * `lib/`. `lib/dispatch-targets.ts` was their home: a module that runs `gh`,
  * reads config.yaml off the disk and dispatches workflow runs. Importing it to
  * learn a default file name pulled all of that in — `atomaton-validate-pr.wac.ts`
- * does exactly that today at generation time, and `domain/deliverable-integrity.ts`
+ * does exactly that today at generation time, and `domain/delivery/deliverable-integrity.ts`
  * cannot, being pure by construction.
  *
  * The shipped ones are the default because they are the arrangement this template

@@ -26,7 +26,7 @@
  *
  * `tools.secrets` is a list for a whole workflow: the agent's own process gets
  * every name in it. A check or a deployment declares its credentials per entry
- * instead — see `domain/declared-jobs.ts` — so a token reaches the one job that
+ * instead — see `domain/delivery/declared-jobs.ts` — so a token reaches the one job that
  * asked for it and no other. Both arrive here; what differs is who the list
  * belongs to.
  *
@@ -47,7 +47,7 @@
  * would be invisible to everyone reviewing the repository — which is precisely
  * the audience for "what credentials can this reach".
  */
-import { MACHINERY_ROOT_VAR } from "./machinery-layout.ts";
+import { MACHINERY_ROOT_VAR } from "../../domain/machinery/machinery-layout.ts";
 
 /**
  * How many credentials one workflow can carry.

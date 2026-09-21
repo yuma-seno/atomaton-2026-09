@@ -33,7 +33,7 @@
  *
  * A list that owns extra keys says so through `extra`, which supplies both the names
  * — so everything else stays a typo — and the reader that turns them into fields.
- * `domain/deploy-jobs.ts` is the one caller that has any.
+ * `domain/delivery/deploy-jobs.ts` is the one caller that has any.
  *
  * Problems come back rather than throwing, and every entry is checked rather than
  * stopping at the first: somebody fixing their configuration should see everything

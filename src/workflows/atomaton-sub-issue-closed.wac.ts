@@ -49,7 +49,7 @@ const pruneStep = new TypedOutputsStep(
  * A person closed an issue an agent is working on, so the run is asked to stop.
  *
  * Gated on the closer being a person. An agent closing the issue it is working on is
- * a normal path -- `domain/atomaton-data-pruning.ts` is built around it -- and
+ * a normal path -- `domain/machinery/atomaton-data-pruning.ts` is built around it -- and
  * stopping that run would cut it off in the middle of finishing. The script checks
  * the in-progress label and does nothing when no run holds it, so this job is cheap
  * on the ordinary close.

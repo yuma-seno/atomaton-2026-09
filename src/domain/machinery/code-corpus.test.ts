@@ -4,7 +4,7 @@ import { corpusFrom, shouldIndex } from "./code-corpus.ts";
 describe("what the code search reads", () => {
   test("source, in whatever language the project is written in", () => {
     for (const path of [
-      "src/domain/bm25.ts",
+      "src/shared/bm25.ts",
       "src/main.rs",
       "app/models/user.rb",
       "cmd/serve/main.go",
@@ -91,6 +91,6 @@ describe("the corpus", () => {
   });
 
   test("windows separators are normalised", () => {
-    expect(corpusFrom(["src\\domain\\bm25.ts"])).toEqual(["src/domain/bm25.ts"]);
+    expect(corpusFrom(["src\\shared\\bm25.ts"])).toEqual(["src/shared/bm25.ts"]);
   });
 });

@@ -38,13 +38,13 @@
  *   write_tools_file.ts --config <config.yaml> --out <tools.yaml> --hook-base <dir>
  *
  * `--hook-base` is the directory relative hook paths are written against — the
- * `tools/` directory of the tree the hook scripts live in. See `domain/tools-file.ts`
+ * `tools/` directory of the tree the hook scripts live in. See `domain/machinery/tools-file.ts`
  * for why the output carries absolute paths.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { parseArgs } from "node:util";
-import { reservedServerNames, toolsFileFrom, type ToolsSection } from "../domain/tools-file.ts";
+import { reservedServerNames, toolsFileFrom, type ToolsSection } from "../domain/machinery/tools-file.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface WriteToolsFileArgs {
@@ -52,7 +52,7 @@ export interface WriteToolsFileArgs {
   out: string;
   "hook-base": string;
   /** The shipped `tools/defaults.yaml`. Passed rather than derived -- see
-   * `domain/shipped-servers.ts` for the layout the derivation got wrong. */
+   * `domain/machinery/shipped-servers.ts` for the layout the derivation got wrong. */
   defaults: string;
 }
 

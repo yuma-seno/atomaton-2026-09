@@ -75,7 +75,11 @@ function defaultPath(): string {
   // because a name broken into `join(..., "atomaton-runtime", "tools", ...)` is
   // invisible to a search for the path and survives a rename unchanged.
   const belowRoot = TOOL_DEFAULTS_FILE.slice(TOOL_DEFAULTS_FILE.indexOf("/") + 1);
-  return join(dirname(fileURLToPath(import.meta.url)), "..", ...belowRoot.split("/"));
+  // Two steps up, because this module sits at `src/domain/machinery/` and the tree it
+  // reaches for hangs off `src/`. A count that moves when the file does — and it has:
+  // splitting `domain/` into contexts put another directory between the two, and the
+  // tests for the shipped servers are what said so rather than a run in production.
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", ...belowRoot.split("/"));
 }
 
 let cached: ToolDefaults | undefined;

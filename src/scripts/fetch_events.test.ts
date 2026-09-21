@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 import { parseGithubOutput, runWithFakeGh, scriptPath } from "./testing/harness.ts";
 
 describe("fetch_events.ts", () => {

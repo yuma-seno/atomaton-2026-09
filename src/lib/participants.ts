@@ -4,7 +4,7 @@
  * Read by everything that posts text an agent wrote: the result comment, and the
  * bodies of the issues and pull requests it opens. One place, because "who counts
  * as a participant" answered differently in two files is two policies nobody
- * decided on. What is done with the answer is `domain/mention.ts`.
+ * decided on. What is done with the answer is `domain/work/mention.ts`.
  */
 import { gh } from "./gh.ts";
 
@@ -23,7 +23,7 @@ import { gh } from "./gh.ts";
  * both beats two that each work for half.
  *
  * An empty result is the fail-closed case and is correct: nothing confirmed means
- * nothing is exempt, and `domain/mention.ts` explains why that is the cheaper of
+ * nothing is exempt, and `domain/work/mention.ts` explains why that is the cheaper of
  * the two mistakes.
  */
 export function knownParticipants(repo: string, number: string | number): string[] {

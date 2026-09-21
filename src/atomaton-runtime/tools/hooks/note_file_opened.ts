@@ -14,7 +14,7 @@
  * thing to do next, so an obedient agent is sent to the one act the counter cannot
  * see; the next search is refused identically, and the core stops the run after three
  * identical failures. Measured on issue #706: the streak went 15 to 27, with two
- * reads in the middle, and the run died. See `domain/search-streak.ts` for the full
+ * reads in the middle, and the run died. See `domain/work/search-streak.ts` for the full
  * account -- including the second time the refusal came to name a tool nothing could
  * call, after `/server-filesystem` left the deliverable.
  *
@@ -36,7 +36,7 @@
  * and must never turn into a failure of it.
  */
 import { writeFileSync } from "node:fs";
-import { toolOpens } from "../../../domain/search-streak.ts";
+import { toolOpens } from "../../../domain/work/search-streak.ts";
 import { streakFile } from "../lib/search-streak-file.ts";
 
 async function main(): Promise<void> {

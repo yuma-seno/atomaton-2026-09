@@ -17,14 +17,14 @@
  * drift of the same list, `ATOMA_COPILOT_TOKEN`, is what the comment was written
  * about; this is the second.
  *
- * So the names live in `domain/declared-secrets.ts` and the generator reads them.
+ * So the names live in `domain/delivery/declared-secrets.ts` and the generator reads them.
  * This is the half a constant cannot do on its own: the shell is still written by
  * hand, with its own comments and its `${BRANCH:-}` and its cache paths, so
  * nothing but reading the generated file proves the two still agree.
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { AGENT_ENV_NAMES, TOOL_SECRETS } from "../../src/domain/declared-secrets.ts";
+import { AGENT_ENV_NAMES, TOOL_SECRETS } from "../../src/domain/delivery/declared-secrets.ts";
 
 /** The names the generated step actually passes, in the order it passes them. */
 function namesInGeneratedStep(): string[] {

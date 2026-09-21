@@ -4,7 +4,7 @@
  * what will be carried into the next run, while it can still do something about it.
  *
  * Invoked as an `after_tool` hook declared once in `tools.watch`, so it runs after
- * every call to every server. See `domain/workspace-size.ts` for why it is every server
+ * every call to every server. See `domain/work/workspace-size.ts` for why it is every server
  * and why the check is here rather than where the workspace is saved.
  *
  * ## What it answers
@@ -25,8 +25,8 @@
  */
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { WORKSPACE_PATH } from "../../../domain/workspace.ts";
-import { MAX_FILES, overLimitNotice, type WorkspaceUsage } from "../../../domain/workspace-size.ts";
+import { WORKSPACE_PATH } from "../../../domain/work/workspace.ts";
+import { MAX_FILES, overLimitNotice, type WorkspaceUsage } from "../../../domain/work/workspace-size.ts";
 
 /**
  * Stop walking once this many files have been seen.

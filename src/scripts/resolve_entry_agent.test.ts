@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 import { SCRIPTS_DIR, parseGithubOutput } from "./testing/harness.ts";
 
 describe("resolve_entry_agent.ts", () => {

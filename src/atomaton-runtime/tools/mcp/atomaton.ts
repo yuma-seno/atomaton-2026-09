@@ -33,7 +33,7 @@ import {
   reloadRefusal,
   reloadsSoFar,
   resolveReloadLimit,
-} from "../../../domain/environment-reload.ts";
+} from "../../../domain/work/environment-reload.ts";
 
 function log(msg: string): void {
   console.error(`[atomaton-mcp] ${msg}`);
@@ -202,7 +202,7 @@ const RELOAD_ENVIRONMENT_SCHEMA = z.object({
 /**
  * Re-run the project's setup and start a new run.
  *
- * The decision half is `domain/environment-reload.ts`. Here is the I/O: read the
+ * The decision half is `domain/work/environment-reload.ts`. Here is the I/O: read the
  * tally this run arrived with, refuse or dispatch, and say which on the issue.
  *
  * Refusing is a tool ERROR rather than a session end, and that is the point. The

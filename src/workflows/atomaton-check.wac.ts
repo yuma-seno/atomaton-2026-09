@@ -31,7 +31,7 @@ import { ref as planChecksRef } from "../scripts/plan_checks.ts";
 // tree. `checks.from_default_branch` runs the default branch's commands with the pull
 // request handed over as a path to read. Which arm a check belongs in is decided by
 // whose commands run, and that decides whether it may name a secret -- see
-// `domain/declared-jobs.ts`.
+// `domain/delivery/declared-jobs.ts`.
 //
 // Both are matrices, one GitHub job per declared check. The credentialed arm has to
 // be, so a secret reaches the one check that named it. The pull request's arm was a

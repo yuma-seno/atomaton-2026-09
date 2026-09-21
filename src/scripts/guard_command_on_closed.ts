@@ -30,7 +30,7 @@ import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
 import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
 import { readTargetState } from "../lib/target-state.ts";
-import { commandOnClosedNotice, mayStartWorkOn } from "../domain/closed-issue.ts";
+import { commandOnClosedNotice, mayStartWorkOn } from "../domain/work/closed-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface GuardCommandOnClosedArgs {

@@ -6,13 +6,13 @@
  * `tools.secrets` is the only list read this way, and the only one that is a list
  * for a whole workflow. A check or a deployment declares its credentials per entry,
  * and those travel in the matrix its planning job published — see
- * `domain/declared-jobs.ts`. This used to take a `--destination`, back when `deploy`
+ * `domain/delivery/declared-jobs.ts`. This used to take a `--destination`, back when `deploy`
  * had one list shared by every target it ran.
  *
  * The output feeds a computed-key lookup in a later step's `env:`
  * (`secrets[fromJSON(steps.<id>.outputs.names)[i]]`), which is what lets a
  * project add a credential without editing generated workflow YAML. See
- * domain/declared-secrets.ts for why it is shaped that way and what was measured
+ * domain/delivery/declared-secrets.ts for why it is shaped that way and what was measured
  * before relying on it.
  *
  * ## Why this reads a file it is handed, and not the checkout
@@ -66,7 +66,7 @@
  */
 import { appendFileSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { resolveDeclaredSecrets, TOOL_SECRETS } from "../domain/declared-secrets.ts";
+import { resolveDeclaredSecrets, TOOL_SECRETS } from "../domain/delivery/declared-secrets.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ReadSecretNamesArgs {

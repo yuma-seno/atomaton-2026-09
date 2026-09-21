@@ -5,7 +5,7 @@
  * The decision half of the pair whose I/O half is `scripts/validate_pull_request.ts`.
  * Everything here is a pure function of a conclusion string and a list of
  * contexts, so the whole truth table is testable without a `gh` in the loop —
- * the same split `domain/merge-readiness.ts` uses.
+ * the same split `domain/delivery/merge-readiness.ts` uses.
  */
 
 /** Conclusions GitHub reports for a completed run that should count as passing. */

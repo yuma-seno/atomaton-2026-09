@@ -1,11 +1,11 @@
 /**
  * merge-signals.ts — reads GitHub's view of a pull request into the input
- * `domain/merge-readiness.ts` decides on.
+ * `domain/delivery/merge-readiness.ts` decides on.
  *
  * The adapter half of that pair: everything here is I/O and shape-mapping,
  * everything there is decision. Keeping them apart is what lets the whole merge
  * truth table be tested against plain objects with no `gh` in the loop, and it is
- * the same split `domain/handoff.ts` already uses.
+ * the same split `domain/work/handoff.ts` already uses.
  *
  * It lived inside mcp/github.ts, which had grown to 870 lines and was by then the
  * gh plumbing, the tool schemas, the tool handlers, the dispatch helpers AND this.
@@ -15,14 +15,14 @@
 import { gh } from "./gh.ts";
 import { readBranchRules } from "./branch-rules.ts";
 import { getGovernedPaths, getMergeGates, getMergePolicy } from "./config.ts";
-import { governedPathsIn, type MergeSignals } from "../domain/merge-readiness.ts";
-import { pathPatternProblem } from "../domain/path-patterns.ts";
+import { governedPathsIn, type MergeSignals } from "../domain/delivery/merge-readiness.ts";
+import { pathPatternProblem } from "../domain/delivery/path-patterns.ts";
 import {
   matchMergeGates,
   type ChangedFile,
   type FileStatus,
   type MergeGateMatch,
-} from "../domain/merge-gates.ts";
+} from "../domain/delivery/merge-gates.ts";
 
 export interface PullRequestRefs {
   headRefName: string;

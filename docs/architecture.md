@@ -89,9 +89,27 @@ A module goes where its **vocabulary** is, not where its caller is. A pure rule
 written entirely in the store's path shapes belongs to the store, even though it
 is pure.
 
-The four do not import each other, with one deliberate exception:
-`delivery/deliverable-integrity.ts` reads `work/control-commands.ts` so that an
-agent definition cannot be named `/stop`. One list, two rules, one direction.
+They are not four peers. Measured after the split, three edges cross a context
+boundary, and they all run the same way:
+
+```text
+delivery  ->  work, machinery
+record    ->  work
+work      ->  (nothing)
+machinery ->  (nothing)
+```
+
+- `delivery/deliverable-integrity.ts` reads `work/control-commands.ts`, so that
+  an agent definition cannot be named `/stop`. One list, two rules.
+- `delivery/declared-secrets.ts` reads `machinery/machinery-layout.ts`, because
+  which secrets a job may reach depends on which tree it runs from.
+- `record/tool-tally.ts` reads `work/session.ts`, because what it counts is what
+  a turn left behind.
+
+So the rule inside `domain/` is the same as the rule outside it: arrows point
+inward, and `work` and `machinery` are the inside. An edge the other way is the
+signal that a module is in the wrong context — not something to add to the list
+above.
 
 ## Where the deployed tree splits, and why
 

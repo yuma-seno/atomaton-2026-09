@@ -1,7 +1,7 @@
 /**
  * deploy-jobs.ts — what this project deploys, split by the event that deploys it.
  *
- * A deployment is a `domain/declared-jobs.ts` entry: a name, a runner, commands and
+ * A deployment is a `domain/delivery/declared-jobs.ts` entry: a name, a runner, commands and
  * the credentials those commands may reach. It is configuration rather than a
  * workflow file because an agent can write configuration and cannot write a
  * workflow: GITHUB_TOKEN is refused on `.github/workflows/**` by identity, on every
@@ -20,7 +20,7 @@
  *
  * Under three lists the key is simply not there to write. `tags:` exists in `on_tag`
  * and nowhere else, so a tag pattern on a merge deployment — a deployment that would
- * never happen — has no spelling. The same move `domain/declared-jobs.ts` makes for a
+ * never happen — has no spelling. The same move `domain/delivery/declared-jobs.ts` makes for a
  * credential beside a pull request's own commands.
  *
  * `branches:` is in two of the three, and that is not the same thing as a key meaning

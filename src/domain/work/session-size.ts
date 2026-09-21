@@ -49,7 +49,7 @@
  * here removes a message, so the pairing cannot be broken by either -- which is
  * the same invariant `answer_unanswered_tool_calls` enforces in the core.
  */
-import type { Session, SessionMessage } from "../lib/session.ts";
+import type { Session, SessionMessage } from "./session.ts";
 
 /**
  * How much of one tool result is kept in a saved session.
@@ -164,7 +164,7 @@ function contentText(content: SessionMessage["content"]): string | undefined {
 /**
  * Keep the head and the tail of `text`, up to `limit` characters.
  *
- * The same rule as `domain/tool-output.ts` and the core's `domain::tool_output`,
+ * The same rule as `shared/tool-output.ts` and the core's `domain::tool_output`,
  * deliberately: three caps behaving differently would be three things to learn.
  * A quarter at the front and the rest at the back, because a command's exit
  * status, a stack trace's origin and a test summary are all at the end.

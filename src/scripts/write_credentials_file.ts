@@ -43,7 +43,7 @@
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { RUN_CREDENTIALS, SECRET_NAMES_VAR, SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../domain/declared-secrets.ts";
+import { RUN_CREDENTIALS, SECRET_NAMES_VAR, SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../domain/delivery/declared-secrets.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface WriteCredentialsFileArgs {
