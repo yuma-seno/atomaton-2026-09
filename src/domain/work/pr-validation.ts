@@ -7,6 +7,7 @@
  * contexts, so the whole truth table is testable without a `gh` in the loop —
  * the same split `domain/delivery/merge-readiness.ts` uses.
  */
+import type { NextTurn } from "./turn.ts";
 
 /** Conclusions GitHub reports for a completed run that should count as passing. */
 const PASSING = new Set(["success", "skipped", "neutral"]);
@@ -59,8 +60,16 @@ export interface ValidationOutcome {
   verdict: ValidationVerdict;
   /** Check runs to create, one per context the ruleset requires. */
   checks: { name: string; conclusion: "success" | "failure" }[];
-  /** Agent to dispatch next, or "" to hand back to a human. */
-  nextAgent: string;
+  /**
+   * Who runs next, when anybody does. Absent hands back to a person.
+   *
+   * It was `nextAgent: string`, where `""` meant nobody — the spelling of absence
+   * this domain kept reaching for and the one that reads as a name until you
+   * check. `NextTurn` is the same edge `domain/work/turn.ts` names when a run
+   * hands off, which is what this is: the validation is a turn on the pull
+   * request, and this is who it gives it to.
+   */
+  next?: NextTurn;
   /** One line for the comment that accompanies a hand-back to the engineer. */
   summary: string;
 }
@@ -99,7 +108,19 @@ export interface ValidationInput {
 }
 
 /**
- * Translate a completed CI run into a verdict, check runs, and a next agent.
+ * The hand-off, or nothing when the caller has nobody configured for the role.
+ *
+ * An unset `reviewerAgent` or `engineerAgent` is a project that has not named one,
+ * and a hand-off to the empty string is the bug that shape invites: it reads as a
+ * dispatch right up to the moment something tries to run an agent called "".
+ */
+function handTo(agent: string): { next?: NextTurn } {
+  const named = agent.trim();
+  return named === "" ? {} : { next: { agent: named } };
+}
+
+/**
+ * Translate a completed CI run into a verdict, check runs, and who works next.
  *
  * An empty `conclusion` — the run timed out, was cancelled, or could not be
  * found — is deliberately NOT treated as a failure to hand to the engineer:
@@ -128,7 +149,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
       return {
         verdict: "retries-exhausted",
         checks: failing,
-        nextAgent: "",
         summary:
           `The deliverable is still not internally consistent (${count}) after ${priorRetries} attempts. ` +
           `Stopping rather than dispatching the engineer again; a human should look.`,
@@ -137,7 +157,7 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
     return {
       verdict: "deliverable-invalid",
       checks: failing,
-      nextAgent: engineerAgent,
+      ...handTo(engineerAgent),
       summary: `.github/atomaton/ is not internally consistent (${count}), so CI was not run.`,
     };
   }
@@ -151,14 +171,13 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
   }));
 
   if (passed) {
-    return { verdict: "passed", checks, nextAgent: reviewerAgent, summary: `CI concluded ${normalised}.` };
+    return { verdict: "passed", checks, ...handTo(reviewerAgent), summary: `CI concluded ${normalised}.` };
   }
 
   if (!normalised) {
     return {
       verdict: "no-conclusion",
       checks,
-      nextAgent: "",
       summary: "CI never reported a conclusion. Nothing was dispatched; a human should look.",
     };
   }
@@ -167,7 +186,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
     return {
       verdict: "retries-exhausted",
       checks,
-      nextAgent: "",
       summary:
         `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` +
         `Stopping rather than dispatching the engineer again; a human should look.`,
@@ -177,7 +195,7 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
   return {
     verdict: "failed",
     checks,
-    nextAgent: engineerAgent,
+    ...handTo(engineerAgent),
     summary: `CI concluded ${normalised}. Returning to the engineer with the failing job.`,
   };
 }

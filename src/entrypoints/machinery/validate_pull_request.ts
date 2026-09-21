@@ -400,7 +400,7 @@ function main(): void {
     reportFailure(repo, values.number ?? "", priorRetries + 1, runUrl, outcome.summary, deliverableProblems);
   }
 
-  write(`next_agent=${outcome.nextAgent}`);
+  write(`next_agent=${outcome.next?.agent ?? ""}`);
   write(`conclusion=${conclusion}`);
   write(`summary=${outcome.summary}`);
 }
