@@ -940,9 +940,7 @@
     "calls": 51,
     "failed": 3,
     "refused": 1,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -960,9 +958,7 @@
     "calls": 51,
     "failed": 3,
     "refused": 1,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -980,9 +976,7 @@
     "calls": 51,
     "failed": 3,
     "refused": 1,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -1000,9 +994,7 @@
     "calls": 19,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -1033,9 +1025,7 @@
     "calls": 51,
     "failed": 5,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1054,9 +1044,7 @@
     "calls": 51,
     "failed": 5,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1075,9 +1063,7 @@
     "calls": 51,
     "failed": 5,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1096,9 +1082,7 @@
     "calls": 77,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 6,
@@ -1125,10 +1109,7 @@
     "calls": 22,
     "failed": 3,
     "refused": 2,
-    "skills": [
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1151,9 +1132,7 @@
     "calls": 14,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1178,11 +1157,7 @@
     "calls": 83,
     "failed": 8,
     "refused": 2,
-    "skills": [
-      "engineering/tdd",
-      "delivery/implementation-handoff",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 3,
       "github__get_issue": 1,
@@ -1211,9 +1186,7 @@
     "calls": 13,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1235,10 +1208,7 @@
     "calls": 54,
     "failed": 6,
     "refused": 0,
-    "skills": [
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1266,10 +1236,7 @@
     "calls": 36,
     "failed": 4,
     "refused": 9,
-    "skills": [
-      "delivery/implementation-handoff",
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1298,9 +1265,7 @@
     "calls": 38,
     "failed": 2,
     "refused": 3,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "github__get_issue": 1,
       "filesystem__list_allowed_directories": 1,
@@ -1324,10 +1289,7 @@
     "calls": 28,
     "failed": 1,
     "refused": 4,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1366,9 +1328,7 @@
     "calls": 12,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1415,10 +1375,7 @@
     "calls": 210,
     "failed": 7,
     "refused": 17,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 11,
@@ -1495,10 +1452,7 @@
     "calls": 11,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1533,10 +1487,7 @@
     "calls": 20,
     "failed": 1,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 4,
@@ -1578,10 +1529,7 @@
     "calls": 14,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1623,10 +1571,7 @@
     "calls": 11,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1666,10 +1611,7 @@
     "calls": 20,
     "failed": 2,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1739,9 +1681,7 @@
     "calls": 18,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "github__get_issue": 3,
       "github__list_issues": 1,
@@ -1782,10 +1722,7 @@
     "calls": 29,
     "failed": 1,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1829,10 +1766,7 @@
     "calls": 22,
     "failed": 2,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 2,
@@ -2010,7 +1944,10 @@
     "calls": 5,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_pr": 1,
@@ -2095,9 +2032,7 @@
     "calls": 248,
     "failed": 2,
     "refused": 25,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__list_directory": 8,
@@ -2170,9 +2105,7 @@
     "calls": 21,
     "failed": 3,
     "refused": 0,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "github__get_issue": 1,
       "atoma_builtin__load_skill": 2,
@@ -2287,9 +2220,7 @@
     "calls": 16,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "engineering/debugging"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -2310,9 +2241,7 @@
     "calls": 42,
     "failed": 7,
     "refused": 0,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 4,
@@ -2373,9 +2302,7 @@
     "calls": 21,
     "failed": 3,
     "refused": 1,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -2417,9 +2344,7 @@
     "calls": 221,
     "failed": 10,
     "refused": 2,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -2514,9 +2439,7 @@
     "calls": 80,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__list_directory": 24,
@@ -2533,9 +2456,7 @@
     "calls": 14,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "shell__shell_execute": 9,
@@ -2621,10 +2542,7 @@
     "calls": 311,
     "failed": 10,
     "refused": 1,
-    "skills": [
-      "research/web-search",
-      "engineering/environment"
-    ],
+    "skills": [],
     "tools": {
       "filesystem__list_directory": 6,
       "github__get_issue": 1,
@@ -2653,9 +2571,7 @@
     "calls": 31,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "research/web-search"
-    ],
+    "skills": [],
     "tools": {
       "search__search_code": 8,
       "filesystem__list_directory": 2,
@@ -2747,9 +2663,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "engineering/environment"
-    ],
+    "skills": [],
     "tools": {
       "search__search_issues": 1,
       "atoma_builtin__load_skill": 1,
@@ -2825,8 +2739,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [
-      "engineering/tdd",
-      "engineering/nonexistent"
+      "engineering/tdd"
     ],
     "tools": {
       "atoma_builtin__load_skill": 3
@@ -2913,9 +2826,7 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -2953,10 +2864,7 @@
     "calls": 186,
     "failed": 1,
     "refused": 18,
-    "skills": [
-      "engineering/tdd",
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "github__get_issue": 2,
       "atoma_builtin__load_skill": 2,
@@ -3008,9 +2916,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3097,13 +3003,7 @@
     "calls": 714,
     "failed": 6,
     "refused": 2,
-    "skills": [
-      "engineering/tdd",
-      "project/conventions",
-      "project/conventions",
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 5,
       "github__get_issue": 5,
@@ -3225,10 +3125,7 @@
     "calls": 267,
     "failed": 2,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 9,
@@ -3278,9 +3175,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3330,10 +3225,7 @@
     "calls": 55,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__list_directory": 2,
@@ -3372,9 +3264,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3399,9 +3289,7 @@
     "calls": 801,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__read_text_file": 3,
@@ -3432,10 +3320,7 @@
     "calls": 140,
     "failed": 3,
     "refused": 0,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__list_directory": 2,
@@ -3477,10 +3362,7 @@
     "calls": 122,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "glob": 4,
@@ -3516,11 +3398,7 @@
     "calls": 245,
     "failed": 1,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 3,
       "shell__shell_execute": 73,
@@ -3569,10 +3447,7 @@
     "calls": 108,
     "failed": 5,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition",
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 3,
@@ -3604,10 +3479,7 @@
     "calls": 135,
     "failed": 7,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate",
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -3642,10 +3514,7 @@
     "calls": 38,
     "failed": 0,
     "refused": 2,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 1,
@@ -3682,10 +3551,7 @@
     "calls": 22,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate",
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -3726,12 +3592,7 @@
     "calls": 316,
     "failed": 8,
     "refused": 4,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd",
-      "delivery/implementation-handoff",
-      "engineering/environment"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 4,
       "search__search_code": 2,
@@ -3793,10 +3654,7 @@
     "calls": 212,
     "failed": 7,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate",
-      "engineering/environment"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 4,
@@ -3847,9 +3705,7 @@
     "calls": 110,
     "failed": 4,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 4,
@@ -3897,9 +3753,7 @@
     "calls": 129,
     "failed": 3,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3936,10 +3790,7 @@
     "calls": 313,
     "failed": 8,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 2,
@@ -3991,9 +3842,7 @@
     "calls": 147,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -4027,11 +3876,7 @@
     "calls": 138,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 3,
       "read": 39,
@@ -4079,9 +3924,7 @@
     "calls": 75,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -4117,9 +3960,7 @@
     "calls": 173,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "delivery/issue-decomposition"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 16,
@@ -4311,10 +4152,7 @@
     "calls": 122,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "github__get_issue": 5,
       "atoma_builtin__load_skill": 2,
@@ -4369,10 +4207,7 @@
     "calls": 81,
     "failed": 0,
     "refused": 1,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "shell__shell_execute": 22,
@@ -4446,6 +4281,51 @@
       "other": 5
     },
     "runs": []
+  },
+  {
+    "path": "sessions/issue-909/engineer.json",
+    "agent": "engineer",
+    "messages": 152,
+    "calls": 91,
+    "failed": 1,
+    "refused": 1,
+    "skills": [
+      "project/conventions",
+      "delivery/implementation-handoff"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "github__get_issue": 1,
+      "read": 23,
+      "glob": 2,
+      "grep": 16,
+      "shell__shell_execute": 29,
+      "search__search_issues": 3,
+      "github__list_prs": 2,
+      "github__get_pr_diff": 3,
+      "github__get_issue_comments": 2,
+      "edit": 3,
+      "write": 2,
+      "github__commit_and_push": 1,
+      "github__create_pr": 2
+    },
+    "acts": {
+      "search": 5,
+      "other": 10,
+      "verify": 8,
+      "open": 4,
+      "edit": 2
+    },
+    "runs": [
+      {
+        "ended": "2026-09-21T04:37:34Z",
+        "ended_because": "completed",
+        "iterations": 59,
+        "messages": 152,
+        "seconds": 760,
+        "started": "2026-09-21T04:24:54Z"
+      }
+    ]
   },
   {
     "path": "sessions/issue-92-orchestrator.json",
@@ -4779,10 +4659,7 @@
     "calls": 32,
     "failed": 2,
     "refused": 2,
-    "skills": [
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 5,
@@ -4812,9 +4689,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4831,9 +4706,7 @@
     "calls": 6,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4852,9 +4725,7 @@
     "calls": 5,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4872,9 +4743,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4891,9 +4760,7 @@
     "calls": 5,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr": 1,
@@ -4911,9 +4778,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5027,9 +4892,7 @@
     "calls": 4,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -5046,9 +4909,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5091,9 +4952,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5138,11 +4997,7 @@
     "calls": 151,
     "failed": 26,
     "refused": 10,
-    "skills": [
-      "project/conventions",
-      "engineering/tdd",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 3,
       "github__get_issue": 3,
@@ -5336,9 +5191,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5382,9 +5235,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5400,9 +5251,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5505,9 +5354,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5522,9 +5369,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5568,9 +5413,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5802,11 +5645,7 @@
     "calls": 129,
     "failed": 19,
     "refused": 7,
-    "skills": [
-      "engineering/debugging",
-      "project/conventions",
-      "delivery/implementation-handoff"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_pr": 4,
@@ -5975,7 +5814,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6006,7 +5848,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6108,7 +5953,10 @@
     "calls": 6,
     "failed": 4,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "github__check_merge_readiness": 1,
       "atoma_builtin__load_skill": 2,
@@ -6258,9 +6106,7 @@
     "calls": 11,
     "failed": 2,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "github__check_merge_readiness": 1,
       "atoma_builtin__load_skill": 2,
@@ -6381,7 +6227,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6412,11 +6261,7 @@
     "calls": 74,
     "failed": 8,
     "refused": 5,
-    "skills": [
-      "project/conventions",
-      "engineering/debugging",
-      "engineering/tdd"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_pr": 3,
@@ -6446,9 +6291,7 @@
     "calls": 3,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6505,9 +6348,7 @@
     "calls": 67,
     "failed": 11,
     "refused": 4,
-    "skills": [
-      "project/conventions"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_issue": 1,
@@ -6564,7 +6405,10 @@
     "calls": 6,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6609,7 +6453,10 @@
     "calls": 5,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6683,7 +6530,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6698,7 +6548,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6713,7 +6566,10 @@
     "calls": 5,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6772,7 +6628,10 @@
     "calls": 7,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6919,7 +6778,10 @@
     "calls": 5,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6935,7 +6797,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6950,7 +6815,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6995,7 +6863,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7038,7 +6909,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7067,7 +6941,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7082,7 +6959,10 @@
     "calls": 6,
     "failed": 3,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -7127,7 +7007,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7184,7 +7067,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7241,7 +7127,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7256,7 +7145,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7271,7 +7163,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7300,7 +7195,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7315,7 +7213,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7358,7 +7259,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7373,7 +7277,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7389,6 +7296,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [
+      "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
     "tools": {
@@ -7405,7 +7313,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7420,7 +7331,10 @@
     "calls": 3,
     "failed": 2,
     "refused": 0,
-    "skills": [],
+    "skills": [
+      "review/quick-quality-gate",
+      "review/quick-quality-gate"
+    ],
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7478,9 +7392,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7496,9 +7408,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7513,9 +7423,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7644,9 +7552,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7689,9 +7595,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7706,9 +7610,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7766,9 +7668,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7825,9 +7725,7 @@
     "calls": 32,
     "failed": 1,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7875,9 +7773,7 @@
     "calls": 3,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7921,9 +7817,7 @@
     "calls": 7,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7973,9 +7867,7 @@
     "calls": 2,
     "failed": 0,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7990,9 +7882,7 @@
     "calls": 30,
     "failed": 9,
     "refused": 0,
-    "skills": [
-      "review/quick-quality-gate"
-    ],
+    "skills": [],
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
