@@ -4390,7 +4390,7 @@
   {
     "path": "sessions/issue-933/engineer.json",
     "agent": "engineer",
-    "messages": 72,
+    "messages": 74,
     "calls": 47,
     "failed": 0,
     "refused": 0,
@@ -4421,6 +4421,14 @@
         "messages": 72,
         "seconds": 75,
         "started": "2026-09-21T13:22:59Z"
+      },
+      {
+        "ended": "2026-09-21T13:27:03Z",
+        "ended_because": "completed",
+        "iterations": 1,
+        "messages": 74,
+        "seconds": 50,
+        "started": "2026-09-21T13:26:13Z"
       }
     ]
   },
