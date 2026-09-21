@@ -50,19 +50,21 @@ function log(message) {
 function collectIssueBranches(repo, issueNumber) {
   const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
   if (refs.code) {
-    log(`WARN could not list branches: ${refs.stderr || refs.stdout}`);
-    return [];
+    const why = `could not list the branches of #${issueNumber}: ${(refs.stderr || refs.stdout).trim()}`;
+    log(`WARN ${why}`);
+    return { known: false, why };
   }
   let names;
   try {
     const parsed = JSON.parse(refs.stdout || "[]");
     names = parsed.map((entry) => entry.ref.replace(/^refs\/heads\//, ""));
   } catch {
-    log("WARN branch list was not valid JSON");
-    return [];
+    const why = `the branch list for #${issueNumber} was not valid JSON`;
+    log(`WARN ${why}`);
+    return { known: false, why };
   }
   const owner = repo.split("/", 1)[0] ?? "";
-  return names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) }));
+  return { known: true, branches: names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) })) };
 }
 function headBranchMerged(repo, owner, branch) {
   const prs = gh("api", `repos/${repo}/pulls?state=all&per_page=100&head=${owner}:${branch}`);
@@ -117,7 +119,11 @@ function main() {
   const githubOutput = process.env.GITHUB_OUTPUT;
   let branch = "";
   if (repo && Number.isInteger(issue) && issue > 0) {
-    branch = branchToResume(collectIssueBranches(repo, issue), issue);
+    const listed = collectIssueBranches(repo, issue);
+    if (listed.known)
+      branch = branchToResume(listed.branches, issue);
+    else
+      log2(`${listed.why}; staying on the base branch`);
   } else {
     log2("missing --repo or --issue; staying on the base branch");
   }

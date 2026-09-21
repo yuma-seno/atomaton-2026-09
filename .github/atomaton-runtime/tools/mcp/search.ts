@@ -17461,7 +17461,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -17573,32 +17572,6 @@ class StdioServerTransport {
 function positiveInt(description) {
   return coerce.number().int().positive().describe(description);
 }
-var ALIASES = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  branch: ["name"]
-};
-function declaredKeys(schema) {
-  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
-}
-function acceptAliases(raw, declared) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return raw;
-  let value = raw;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical))
-      continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value))
-        continue;
-      const { [alias]: aliased, ...rest } = value;
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17607,7 +17580,6 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -17615,7 +17587,7 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined)
@@ -17807,6 +17779,7 @@ var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
 // src/domain/code-corpus.ts
 var DEPLOYED_ROOTS = [USER_ROOT, RUNTIME_ROOT].map((root) => new RegExp(`^${root.replaceAll(".", String.raw`\.`)}/`));
@@ -17937,26 +17910,40 @@ var RUN_CREDENTIALS = [
   "ATOMA_COPILOT_TOKEN",
   "GH_TOKEN"
 ];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
 var TOOL_SECRETS = {
   field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
 };
 var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
@@ -17971,10 +17958,18 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
+// src/lib/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
+}
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
+
 // src/lib/config.ts
 function configPath() {
-  const root = process.env.ATOMATON_MACHINERY_ROOT?.trim();
-  return root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE;
+  return machineryPath(CONFIG_FILE);
 }
 var cached2;
 function loadConfig() {

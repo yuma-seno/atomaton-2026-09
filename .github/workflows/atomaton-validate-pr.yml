@@ -66,7 +66,7 @@ jobs:
       - name: Install Atoma CLI
         shell: bash
         run: |
-          VERSION="v0.1.44"
+          VERSION="v0.1.45"
           if [ "$VERSION" = "source" ]; then
             echo "Building Atoma from source (atoma-src/) ..."
             cargo install --path atoma-src --force --locked
@@ -112,10 +112,6 @@ jobs:
           AGENT: ${{ steps.validate.outputs.next_agent }}
           NUMBER: ${{ inputs.number }}
           SUMMARY: ${{ steps.validate.outputs.summary }}
+          REPO: ${{ github.repository }}
         run: |
-          gh workflow run atomaton-runner.yml \
-            --repo "${{ github.repository }}" \
-            -f agent="$AGENT" \
-            -f number="$NUMBER" \
-            -f type=pr
-          echo "Dispatched $AGENT for #$NUMBER: $SUMMARY"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_agent.ts" --agent "${AGENT}" --number "${NUMBER}" --type "pr" --repo "${REPO}" --context "validation of #${NUMBER} finished: ${SUMMARY}"

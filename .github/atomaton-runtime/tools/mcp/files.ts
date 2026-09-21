@@ -17456,7 +17456,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -17560,32 +17559,6 @@ class StdioServerTransport {
 }
 
 // src/lib/mcp-tool.ts
-var ALIASES = {
-  number: ["issue_number", "pr_number", "pull_number", "pull_request_number"],
-  branch: ["name"]
-};
-function declaredKeys(schema) {
-  return schema instanceof ZodObject ? new Set(Object.keys(schema.shape)) : new Set;
-}
-function acceptAliases(raw, declared) {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return raw;
-  let value = raw;
-  let renamed = false;
-  for (const [canonical, aliases] of Object.entries(ALIASES)) {
-    if (!declared.has(canonical))
-      continue;
-    for (const alias of aliases) {
-      if (declared.has(alias) || !(alias in value))
-        continue;
-      const { [alias]: aliased, ...rest } = value;
-      value = canonical in rest ? rest : { ...rest, [canonical]: aliased };
-      renamed = true;
-      break;
-    }
-  }
-  return renamed ? value : raw;
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17594,7 +17567,6 @@ function refuseUnknownKeys(schema) {
 }
 function defineMcpTool(spec) {
   const schema = refuseUnknownKeys(spec.schema);
-  const declared = declaredKeys(schema);
   const { $schema: _drop, ...jsonSchema } = zodToJsonSchema(schema, {
     target: "jsonSchema7",
     $refStrategy: "none"
@@ -17602,7 +17574,7 @@ function defineMcpTool(spec) {
   return {
     tool: { name: spec.name, description: spec.description, inputSchema: jsonSchema },
     async call(args) {
-      const result = schema.safeParse(acceptAliases(args, declared));
+      const result = schema.safeParse(args);
       if (!result.success) {
         const better = spec.guidance?.(args);
         if (better !== undefined)

@@ -5,47 +5,6 @@
 import { writeFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/domain/declared-secrets.ts
-var SECRET_SLOTS = 10;
-var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
-var SECRET_NAMES_VAR = "ATOMATON_SECRET_NAMES";
-var RUN_CREDENTIALS = [
-  "OPENAI_API_KEY",
-  "OPENROUTER_API_KEY",
-  "ORCAROUTER_API_KEY",
-  "ANTHROPIC_API_KEY",
-  "ATOMA_COPILOT_TOKEN",
-  "GH_TOKEN"
-];
-var TOOL_SECRETS = {
-  field: "tools.secrets",
-  reserved: new Set([
-    ...RUN_CREDENTIALS,
-    "AGENT",
-    "ATOMATON_OPS_LOG",
-    "ATOMA_PROVIDER",
-    "ATOMATON_RELOAD_COUNT",
-    "ATOMATON_RUN_TYPE",
-    "GITHUB_RUN_ID",
-    "ISSUE_NOTIFY",
-    "ISSUE_NUMBER",
-    "OPENAI_BASE_URL",
-    "OPENROUTER_BASE_URL",
-    "ORCAROUTER_BASE_URL",
-    "ANTHROPIC_BASE_URL",
-    "COPILOT_BASE_URL",
-    "ATOMA_PROVIDER_IN",
-    "OPENAI_BASE_URL_IN"
-  ])
-};
-var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
-var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
-var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
-
-// src/scripts/lib/script-ref.ts
-import { basename } from "path";
-import { fileURLToPath } from "url";
-
 // src/domain/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
@@ -59,8 +18,62 @@ var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+
+// src/domain/declared-secrets.ts
+var SECRET_SLOTS = 10;
+var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
+var SECRET_NAMES_VAR = "ATOMATON_SECRET_NAMES";
+var RUN_CREDENTIALS = [
+  "OPENAI_API_KEY",
+  "OPENROUTER_API_KEY",
+  "ORCAROUTER_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "ATOMA_COPILOT_TOKEN",
+  "GH_TOKEN"
+];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
+var TOOL_SECRETS = {
+  field: "tools.secrets",
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
+};
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
 // src/scripts/lib/script-ref.ts
+import { basename } from "path";
+import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }

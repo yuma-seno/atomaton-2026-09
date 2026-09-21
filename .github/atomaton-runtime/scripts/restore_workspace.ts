@@ -28,12 +28,31 @@ function ghCommand() {
 function gh(...args) {
   return run([...ghCommand(), ...args]);
 }
-function ghGraphql(query, variables = {}) {
+function ghRead(...args) {
+  let result = gh(...args);
+  for (const delay of [2000, 6000]) {
+    if (result.code === 0 || !looksTransient(result))
+      return result;
+    console.error(`::warning::gh ${args.slice(0, 2).join(" ")} failed transiently, retrying: ${result.stderr || result.stdout}`);
+    Bun.sleepSync(delay);
+    result = gh(...args);
+  }
+  return result;
+}
+function looksTransient(result) {
+  const text = `${result.stderr} ${result.stdout}`;
+  if (/HTTP (429|5[0-9][0-9])(?![0-9])/.test(text))
+    return true;
+  return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
+}
+function graphqlArgs(query, variables) {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const [key, value] of Object.entries(variables)) {
     args.push("-F", `${key}=${value}`);
   }
-  const { code, stdout, stderr } = gh(...args);
+  return args;
+}
+function graphqlResult({ code, stdout, stderr }) {
   if (code !== 0) {
     throw new Error(`GraphQL query failed: ${stderr || stdout.slice(0, 200)}`);
   }
@@ -42,6 +61,9 @@ function ghGraphql(query, variables = {}) {
     throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
   }
   return result.data;
+}
+function ghGraphqlRead(query, variables = {}) {
+  return graphqlResult(ghRead(...graphqlArgs(query, variables)));
 }
 function gitRun(...args) {
   return run(["git", ...args]);
@@ -79,6 +101,27 @@ function restoreWorkspace(prefix, destDir) {
   return true;
 }
 
+// src/lib/parent-issue.ts
+function log(message) {
+  console.error(`[atomaton-parent] ${message}`);
+}
+function parentIssueOf(repo, issue) {
+  const [owner, name] = repo.split("/", 2);
+  if (!owner || !name) {
+    const why = `'${repo}' is not an owner/name repository, so #${issue}'s parent could not be asked for`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+  try {
+    const data = ghGraphqlRead("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}", { owner, repo: name, num: issue });
+    return { known: true, parent: data.repository.issue.parent?.number ?? 0 };
+  } catch (error) {
+    const why = `could not read the parent of #${issue}: ${error.message}`;
+    log(`WARN ${why}`);
+    return { known: false, why };
+  }
+}
+
 // src/lib/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
@@ -108,7 +151,6 @@ function stringTag(key, valuePattern) {
 }
 var STOP_TAG = stringTag("stop", "requested");
 var ENDED_TAG = stringTag("ended", "stopped|limit|done");
-var PARENT_TAG = numericTag("parent");
 var PARENT_ISSUE_TAG = numericTag("parent-issue");
 var NOTIFY_TAG = stringTag("notify", "[A-Za-z0-9-]+");
 var ORIGIN_AGENT_TAG = stringTag("origin-agent", AGENT_NAME_PATTERN);
@@ -119,34 +161,6 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
-
-// src/lib/parent-issue.ts
-function log(message) {
-  console.error(`[atomaton-parent] ${message}`);
-}
-function nativeParent(repo, issue) {
-  const [owner, name] = repo.split("/", 2);
-  if (!owner || !name)
-    return;
-  try {
-    const data = ghGraphql("query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){issue(number:$num){parent{number}}}}", { owner, repo: name, num: issue });
-    return data.repository.issue.parent?.number;
-  } catch {
-    return;
-  }
-}
-function parentIssueOf(repo, issue) {
-  const native = nativeParent(repo, issue);
-  if (native)
-    return { known: true, parent: native };
-  const { code, stderr, stdout } = gh("issue", "view", String(issue), "--repo", repo, "--json", "body", "--jq", ".body");
-  if (code) {
-    const why = `could not read issue #${issue}: ${stderr.trim() || `gh exited ${code}`}`;
-    log(`WARN ${why}`);
-    return { known: false, why };
-  }
-  return { known: true, parent: PARENT_TAG.read(stdout) ?? 0 };
-}
 
 // src/domain/workspace.ts
 var WORKSPACE_PATH = "/tmp/atomaton-workspace";
