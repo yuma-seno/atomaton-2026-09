@@ -1,11 +1,11 @@
 /**
- * pr-validation.ts — decides what a pull request's validation run means: which
- * check contexts to write, and who works next.
+ * pr-validation.ts — decides what a pull request's validation run means: whether
+ * it passed, who works next, and what to say about it.
  *
  * The decision half of the pair whose I/O half is `scripts/validate_pull_request.ts`.
- * Everything here is a pure function of a conclusion string and a list of
- * contexts, so the whole truth table is testable without a `gh` in the loop —
- * the same split `domain/delivery/merge-readiness.ts` uses.
+ * Everything here is a pure function of a conclusion string and a count, so the
+ * whole truth table is testable without a `gh` in the loop — the same split
+ * `domain/delivery/merge-readiness.ts` uses.
  */
 import type { NextTurn } from "./turn.ts";
 
@@ -58,8 +58,6 @@ export interface ValidationOutcome {
    * — and this is the other half: we read them, and there are none.
    */
   verdict: ValidationVerdict;
-  /** Check runs to create, one per context the ruleset requires. */
-  checks: { name: string; conclusion: "success" | "failure" }[];
   /**
    * Who runs next, when anybody does. Absent hands back to a person.
    *
@@ -85,8 +83,6 @@ export interface ValidationOutcome {
 export interface ValidationInput {
   /** GitHub's own conclusion for the dispatched run. Empty means it never reached one. */
   conclusion: string;
-  /** The contexts the base branch's ruleset requires, one check run written per name. */
-  requiredContexts: string[];
   /** Agent to dispatch when CI passes. */
   reviewerAgent: string;
   /** Agent to dispatch when CI fails and retries remain. */
@@ -108,6 +104,27 @@ export interface ValidationInput {
 }
 
 /**
+ * Whether the required contexts are written as passing.
+ *
+ * One rule, in one direction: a context passes when the verdict is `passed` and on
+ * no other verdict. It used to be a list of check runs on the outcome, one per
+ * context, each carrying this same answer — so the outcome restated the verdict
+ * once per required context, and the caller could read either.
+ *
+ * It read the wrong one. `checks.every((c) => c.conclusion === "success")` is
+ * `true` for the empty list a base branch with no required checks produces, so a
+ * failing run was taken for a passing one: no comment was posted, the engineer was
+ * dispatched with no brief, and the tally that bounds that loop never advanced.
+ * See `ValidationOutcome.verdict` for what that cost.
+ *
+ * A field derivable from another field is a second answer to one question. This is
+ * the derivation, named, and the caller writes the check runs from it.
+ */
+export function contextsPassed(verdict: ValidationVerdict): boolean {
+  return verdict === "passed";
+}
+
+/**
  * The hand-off, or nothing when the caller has nobody configured for the role.
  *
  * An unset `reviewerAgent` or `engineerAgent` is a project that has not named one,
@@ -120,17 +137,17 @@ function handTo(agent: string): { next?: NextTurn } {
 }
 
 /**
- * Translate a completed CI run into a verdict, check runs, and who works next.
+ * Translate a completed CI run into a verdict, who works next, and one sentence.
  *
  * An empty `conclusion` — the run timed out, was cancelled, or could not be
  * found — is deliberately NOT treated as a failure to hand to the engineer:
  * there is no defect to fix, and dispatching one would spend a model run
  * discovering that. It writes a failing check, which blocks the merge, and
- * stops. A human reads the pull request and decides.
+ * stops — `contextsPassed` is what makes that check a failing one. A human reads
+ * the pull request and decides.
  */
 export function decideValidationOutcome(input: ValidationInput): ValidationOutcome {
-  const { conclusion, requiredContexts, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
-  const failing = requiredContexts.map((name) => ({ name, conclusion: "failure" as const }));
+  const { conclusion, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
 
   // Judged first, and treated exactly as a red CI run: failing checks so the
   // merge is blocked, a comment so the engineer knows what to fix, and the same
@@ -148,7 +165,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
     if (priorRetries >= CI_RETRY_LIMIT) {
       return {
         verdict: "retries-exhausted",
-        checks: failing,
         summary:
           `The deliverable is still not internally consistent (${count}) after ${priorRetries} attempts. ` +
           `Stopping rather than dispatching the engineer again; a human should look.`,
@@ -156,7 +172,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
     }
     return {
       verdict: "deliverable-invalid",
-      checks: failing,
       ...handTo(engineerAgent),
       summary: `.github/atomaton/ is not internally consistent (${count}), so CI was not run.`,
     };
@@ -165,19 +180,13 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
   const normalised = conclusion.trim().toLowerCase();
   const passed = PASSING.has(normalised);
 
-  const checks = requiredContexts.map((name) => ({
-    name,
-    conclusion: (passed ? "success" : "failure") as "success" | "failure",
-  }));
-
   if (passed) {
-    return { verdict: "passed", checks, ...handTo(reviewerAgent), summary: `CI concluded ${normalised}.` };
+    return { verdict: "passed", ...handTo(reviewerAgent), summary: `CI concluded ${normalised}.` };
   }
 
   if (!normalised) {
     return {
       verdict: "no-conclusion",
-      checks,
       summary: "CI never reported a conclusion. Nothing was dispatched; a human should look.",
     };
   }
@@ -185,7 +194,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
   if (priorRetries >= CI_RETRY_LIMIT) {
     return {
       verdict: "retries-exhausted",
-      checks,
       summary:
         `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` +
         `Stopping rather than dispatching the engineer again; a human should look.`,
@@ -194,7 +202,6 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
 
   return {
     verdict: "failed",
-    checks,
     ...handTo(engineerAgent),
     summary: `CI concluded ${normalised}. Returning to the engineer with the failing job.`,
   };
