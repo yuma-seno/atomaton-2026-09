@@ -35,7 +35,7 @@
  * Usage:
  *   decide_turn_ending.ts --outcome success
  *     [--ended-because runtime] [--loop-limit-reached true]
- *     [--chain-continues true] [--directive AGENT_NAME]
+ *     [--chain-continues true] [--directive AGENT_NAME] [--reported true]
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
@@ -48,6 +48,15 @@ export interface DecideTurnEndingArgs {
   "loop-limit-reached"?: string;
   "chain-continues"?: string;
   directive?: string;
+  /**
+   * Whether the run left a report, as `read_run_ending.ts` read it off the session.
+   *
+   * Absent means not reported, and that is the safe direction rather than the
+   * convenient one: the ending it produces mentions a person, and being told about a
+   * run that did report is a smaller harm than a run that reported nothing being
+   * filed as a success — which is the state this argument exists to end.
+   */
+  reported?: string;
 }
 
 export const ref = defineScript<DecideTurnEndingArgs>(import.meta.url);
@@ -65,6 +74,7 @@ function main(): void {
       "loop-limit-reached": { type: "string" },
       "chain-continues": { type: "string" },
       directive: { type: "string" },
+      reported: { type: "string" },
     },
   });
   if (!values.outcome) {
@@ -77,6 +87,7 @@ function main(): void {
     loopLimitReached: isTrue(values["loop-limit-reached"]),
     chainContinues: isTrue(values["chain-continues"]),
     directive: values.directive ?? "",
+    reported: isTrue(values.reported),
   });
 
   const published = {

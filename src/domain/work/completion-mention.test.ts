@@ -10,6 +10,7 @@ const ended = (overrides: Partial<TurnSignals> = {}) =>
     loopLimitReached: false,
     chainContinues: false,
     directive: "",
+    reported: true,
     ...overrides,
   });
 
@@ -84,6 +85,40 @@ describe("shouldMentionOnCompletion", () => {
   test("a stop does not un-silence a closed sub-issue's hand-back", () => {
     expect(
       shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, ending: ended({ endedBecause: "stopped" }) }),
+    ).toBe(false);
+  });
+
+  /**
+   * The one that silence DOES un-silence, and the reason this function changed.
+   *
+   * The sub-issue rule holds because the parent's orchestrator is woken to aggregate
+   * what its children found. A child that wrote nothing gives it nothing to aggregate,
+   * and the parent cannot go and read the saved session. So the premise fails here,
+   * and the mention is the only thing left that reaches somebody who can.
+   */
+  test("a run that reported nothing is told about even when a closed sub-issue would hush it", () => {
+    expect(
+      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, ending: ended({ reported: false }) }),
+    ).toBe(true);
+  });
+
+  test("and on an ordinary issue, where it was already the sentence nobody could trust", () => {
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ reported: false }) })).toBe(true);
+  });
+
+  /** Nobody to mention is still nobody to mention: this changes which runs speak, not to whom. */
+  test("a run that reported nothing says nothing when no login is configured", () => {
+    expect(shouldMentionOnCompletion({ ...base, notify: "", ending: ended({ reported: false }) })).toBe(false);
+  });
+
+  /**
+   * The override cannot reach a run that handed off, because such a run never carries
+   * this ending -- `endingOf` answers `handed-off` first. Asserted through the real
+   * derivation so the ordering is what is being held, not a hand-built ending.
+   */
+  test("silence does not wake anybody when a tool call already dispatched the next run", () => {
+    expect(
+      shouldMentionOnCompletion({ ...base, chainContinues: true, ending: ended({ reported: false, chainContinues: true }) }),
     ).toBe(false);
   });
 });

@@ -894,7 +894,10 @@ fi
 echo "changed=\${CHANGED}" >> "$GITHUB_OUTPUT"
 `,
   },
-  ["result", "directive", "ended_because", "chain_continues", "changed"] as const,
+  // `reported` rides along with `ended_because`: both are read out of the saved
+  // session by read_run_ending.ts, from one open of one file, because they are two
+  // facts about the same run and a second read is a second answer waiting to disagree.
+  ["result", "directive", "ended_because", "reported", "chain_continues", "changed"] as const,
 );
 
 const tokenUsageStep = new TypedOutputsStep({
@@ -956,6 +959,11 @@ const postResultCommentStep = new TypedOutputsStep(
       directive: runAgentStep.outputs.directive,
       "chain-continues": runAgentStep.outputs.chain_continues,
       "ended-because": runAgentStep.outputs.ended_because,
+      // Whether the run left a report, so the mention can tell the two silences apart:
+      // a hand-off that ended the session through a tool, and a run that simply never
+      // said anything. Observed off the session, not inferred from the empty output
+      // file -- both look the same there.
+      reported: runAgentStep.outputs.reported,
       // Where this run's own messages begin, so a salvage cannot reach below it into
       // an earlier run's conclusion. See `lastAgentText`.
       "messages-before": buildContextStep.outputs.messages_before,
@@ -1098,7 +1106,7 @@ const loopControlStep = new TypedOutputsStep(
 );
 
 // How this turn ended is a domain decision -- see `domain/work/turn.ts` for the
-// six endings and what each one means -- and not something to express as
+// seven endings and what each one means -- and not something to express as
 // hand-built GitHub Actions `if:` expressions. This step reads the signals once,
 // through the shared and unit-tested function, and publishes one output per
 // question the steps below ask.
@@ -1122,6 +1130,7 @@ const turnEndingStep = new TypedOutputsStep(
       "loop-limit-reached": loopControlStep.outputs.loop_limit_reached,
       "chain-continues": runAgentStep.outputs.chain_continues,
       directive: runAgentStep.outputs.directive,
+      reported: runAgentStep.outputs.reported,
     })}\n`,
   },
   ["ended", "should_release", "dispatch_to", "chain_over_to"] as const,

@@ -24,7 +24,7 @@
  * So the signals are read once, into a name, and every question is asked of the
  * name.
  *
- * ## Why these six endings
+ * ## Why these seven endings
  *
  * Each is a different sentence a person says about a run that has stopped, and that
  * is the test applied: not "which flags were set" but "what would you tell somebody
@@ -49,6 +49,12 @@ export interface NextTurn {
  * person goes and looks at different things: the first is this run reaching the
  * limit set on it, the second is a chain of runs going on too long without getting
  * anywhere. They were one `if:` condition away from being reported as each other.
+ *
+ * `no-report` and `finished` are the same split one level further in. `finished` used
+ * to be the bottom of this list in the sense of "none of the above", and was then read
+ * as "completed" by everything downstream. It is not the same sentence: "it is done"
+ * and "it ended and never said a word" are what a person would tell you about two very
+ * different runs.
  */
 export type Ending =
   /** The run itself did not complete. Nothing below it is known. */
@@ -61,7 +67,19 @@ export type Ending =
   | "chain-over"
   /** Work continues: it named the next agent, or a tool call already started one. */
   | "handed-off"
-  /** It is done and nothing follows. */
+  /**
+   * It ran to an ordinary end and left no report: a last turn of tool calls and no
+   * words.
+   *
+   * Named so it cannot be read as a success, because it was being read as one.
+   * Measured over 396 stored sessions: 39 ended without a line of closing text, and
+   * three of those the core itself called `completed` — 313, 173 and 110 tool calls,
+   * nothing said, recorded as work done. Nothing was wrong with the record; the
+   * vocabulary had no word for it, so it fell into `finished` with the runs that
+   * really had finished.
+   */
+  | "no-report"
+  /** It is done, it said so, and nothing follows. */
   | "finished";
 
 export interface TurnEnding {
@@ -102,6 +120,23 @@ export interface TurnSignals {
   chainContinues: boolean;
   /** The agent's closing line naming who goes next, or empty. */
   directive: string;
+  /**
+   * Did the run leave a report — did the last thing it said have words in it?
+   *
+   * An observation, not a claim the agent makes about itself. The session records
+   * every message; the last assistant message either carries text or carries only
+   * tool calls, and nothing has to be asked or trusted to tell which.
+   *
+   * The last one rather than any one, because this repository has already measured
+   * what an earlier message is worth: these agents write prose exactly once, in their
+   * final turn (450 assistant turns with 1 carrying text; 204 with 1; 200 with 0).
+   * A sentence from the middle of the work is not a report, and
+   * `post_result_comment.ts` labels one as such when it shows it.
+   *
+   * Read by `read_run_ending.ts`, from the same session it reads `endedBecause` out
+   * of, so the two facts about one run come from one file at one moment.
+   */
+  reported: boolean;
 }
 
 /**
@@ -119,6 +154,13 @@ export interface TurnSignals {
  * anybody choosing to end it, and nothing it planned will run. Which ceiling is a
  * sentence rather than a decision, so it stays on the word and is read by whatever
  * writes that sentence — see the result comment.
+ *
+ * `no-report` sits BELOW `handed-off` on purpose, and that placement is most of what
+ * makes it usable. A run that ends by calling `create_pr`, `launch_sub_agent` or
+ * `request_close_issue` gets no further turn — atoma's loop stops the moment the tool
+ * returns — so "the last thing it said" is that tool call. Asked before the hand-off,
+ * this would label every one of those as having reported nothing. Asked after, it is
+ * left with exactly the runs where nothing continues AND nothing was said.
  */
 export function endingOf(signals: TurnSignals): TurnEnding {
   const named = signals.directive.trim();
@@ -129,6 +171,7 @@ export function endingOf(signals: TurnSignals): TurnEnding {
   if (signals.endedBecause === "iterations" || signals.endedBecause === "runtime") return { ended: "spent" };
   if (signals.loopLimitReached) return { ended: "chain-over", ...(next ? { next } : {}) };
   if (next || signals.chainContinues) return { ended: "handed-off", ...(next ? { next } : {}) };
+  if (!signals.reported) return { ended: "no-report" };
   return { ended: "finished" };
 }
 

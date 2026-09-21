@@ -14,6 +14,7 @@ function signals(overrides: Partial<TurnSignals> = {}): TurnSignals {
     loopLimitReached: false,
     chainContinues: false,
     directive: "",
+    reported: true,
     ...overrides,
   };
 }
@@ -66,6 +67,40 @@ describe("endingOf", () => {
   test("whitespace is not a name", () => {
     expect(endingFor({ directive: "   " }).ended).toBe("finished");
   });
+
+  /**
+   * The case `finished` used to swallow. Measured over 396 sessions: 39 left no
+   * closing text, and three of those the core called `completed` -- 313, 173 and 110
+   * tool calls each, recorded as work done.
+   */
+  test("a run that ended having said nothing is not finished", () => {
+    expect(endingFor({ reported: false }).ended).toBe("no-report");
+    expect(endingFor({ reported: false }).ended).not.toBe("finished");
+  });
+
+  /**
+   * The placement that makes the ending usable. A session-ending tool call -- create_pr,
+   * launch_sub_agent -- gives the model no further turn, so its last word is that tool
+   * call and nothing else. Asked before the hand-off, every one of those would read as
+   * a run that reported nothing.
+   */
+  test("a hand-off is a hand-off whether or not the agent wrote a closing line", () => {
+    expect(endingFor({ reported: false, chainContinues: true }).ended).toBe("handed-off");
+    expect(endingFor({ reported: false, directive: "reviewer" }).ended).toBe("handed-off");
+  });
+
+  /** Every ending above it is a different sentence, and each still wins. */
+  test("silence does not rename an ending that already has a name", () => {
+    expect(endingFor({ reported: false, succeeded: false }).ended).toBe("failed");
+    expect(endingFor({ reported: false, endedBecause: "stopped" }).ended).toBe("stopped");
+    expect(endingFor({ reported: false, endedBecause: "runtime" }).ended).toBe("spent");
+    expect(endingFor({ reported: false, loopLimitReached: true }).ended).toBe("chain-over");
+  });
+
+  /** It ended on its own and named nobody, so there is nobody to start. */
+  test("a run that said nothing hands off to nobody", () => {
+    expect(endingFor({ reported: false }).next).toBeUndefined();
+  });
 });
 
 /**
@@ -80,6 +115,9 @@ describe("shouldReleaseGuard", () => {
       { endedBecause: "stopped" },
       { endedBecause: "runtime" },
       { loopLimitReached: true },
+      // Nothing is working on a node whose agent went quiet, so the node must not
+      // stay locked against the person the mention is about to fetch.
+      { reported: false },
       {},
     ]) {
       expect(shouldReleaseGuard(endingFor(overrides)), JSON.stringify(overrides)).toBe(true);
@@ -115,6 +153,7 @@ describe("who runs next", () => {
       { endedBecause: "runtime", directive: "reviewer" },
       { loopLimitReached: true, directive: "reviewer" },
       { chainContinues: true },
+      { reported: false },
       {},
     ]) {
       expect(nextToDispatch(endingFor(overrides)), JSON.stringify(overrides)).toBeUndefined();
