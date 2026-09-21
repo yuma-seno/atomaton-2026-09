@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  canBeReopened,
   commandOnClosedNotice,
   dispatchRefusedNotice,
   mayStartWorkOn,
@@ -8,10 +9,15 @@ import {
   type TargetState,
 } from "./closed-issue.ts";
 
-const OPEN: TargetState = { kind: "open" };
-const CLOSED: TargetState = { kind: "closed", merged: false };
-const MERGED: TargetState = { kind: "closed", merged: true };
-const UNKNOWN: TargetState = { kind: "unknown", why: "gh exited 1" };
+const OPEN: TargetState = { known: true, kind: "issue", state: "open" };
+const CLOSED: TargetState = { known: true, kind: "issue", state: "done" };
+/** Dropped rather than finished, and still reopenable — which is what separates it from `MERGED`. */
+const DROPPED: TargetState = { known: true, kind: "issue", state: "abandoned" };
+/** A pull request that landed. The one ending GitHub makes final. */
+const MERGED: TargetState = { known: true, kind: "pull-request", state: "done" };
+/** A pull request closed without merging: an ending, and a reopenable one. */
+const PR_DROPPED: TargetState = { known: true, kind: "pull-request", state: "abandoned" };
+const UNKNOWN: TargetState = { known: false, why: "gh exited 1" };
 
 describe("mayStartWorkOn", () => {
   test("only an open target takes work", () => {
@@ -21,7 +27,7 @@ describe("mayStartWorkOn", () => {
   });
 
   /**
-   * The whole point of the `unknown` case. A lookup that failed is not evidence that
+   * The whole point of keeping "nobody could read it" apart from a state. A lookup that failed is not evidence that
    * the target is open, and every guard in this repository that has gone wrong went
    * wrong by answering an unanswerable question with the permissive value.
    */
@@ -43,6 +49,38 @@ describe("recoveryAdvice", () => {
     const advice = recoveryAdvice(MERGED, 826, "/engineer");
     expect(advice).not.toContain("Reopen");
     expect(advice).toContain("Open an issue");
+  });
+
+  /**
+   * The distinction the old shape could not draw. `{ kind: "closed", merged }` made
+   * "merged" the only thing that separated one ending from another, so a pull
+   * request closed WITHOUT merging looked like a merged one to anything that read
+   * `kind` alone. It reopens like any other close, and the advice says so.
+   */
+  test("a pull request closed without merging is reopened like anything else", () => {
+    expect(recoveryAdvice(PR_DROPPED, 826, "/engineer")).toContain("Reopen #826");
+  });
+
+  test("an issue dropped rather than finished is reopened too", () => {
+    expect(recoveryAdvice(DROPPED, 803, "/orchestrator")).toContain("Reopen #803");
+  });
+});
+
+describe("canBeReopened", () => {
+  /** Merging is the one ending GitHub makes final. */
+  test("everything that ended reopens, except a merged pull request", () => {
+    expect(canBeReopened(CLOSED)).toBe(true);
+    expect(canBeReopened(DROPPED)).toBe(true);
+    expect(canBeReopened(PR_DROPPED)).toBe(true);
+    expect(canBeReopened(MERGED)).toBe(false);
+  });
+
+  /**
+   * Not "yes" and not "no": nobody read it. Every guard in this module fails in the
+   * direction that refuses, and this is the same rule applied to the advice.
+   */
+  test("a target nobody could read is not promised a way back", () => {
+    expect(canBeReopened(UNKNOWN)).toBe(false);
   });
 });
 

@@ -57,14 +57,42 @@
 export type NodeKind = "issue" | "pull-request";
 
 /**
- * Open, closed, or merged.
+ * How the work at this node stands: still going, landed, or dropped.
  *
- * `merged` exists because a merged pull request has left the tree: GitHub cannot
- * reopen one, so there is nothing there to stop and nothing to close. Folding it into
- * `closed` would make the close pass try, and fail, on every delivered change in the
- * subtree.
+ * ## Why not `open | closed | merged`
+ *
+ * That was the shape for a long time, and it was GitHub's response fields rather
+ * than this project's vocabulary. It split where the world does not and merged
+ * where the world does:
+ *
+ *   - `closed` covered both an issue finished and an issue dropped, which are
+ *     opposite outcomes. GitHub itself distinguishes them — `stateReason` — and
+ *     nothing here read it.
+ *   - `merged` and `closed` were separate, though every reader asked only whether
+ *     the node was open. Measured before the change: two readers, both
+ *     `state === "open"`, and `merged` was produced and never distinguished from
+ *     `closed` anywhere.
+ *
+ * So the enum said three things and meant two, while the thing it could not say
+ * was the one a person cares about.
+ *
+ * ## Why `merged` is not a fourth value
+ *
+ * Because `kind` already carries it. A pull request that landed is a merged pull
+ * request; an issue that landed was closed as completed. One outcome, spelled per
+ * kind by the reader that knows which spelling GitHub uses. Keeping both would be
+ * the same redundancy in the other direction.
+ *
+ * `open` stays `open`. It is GitHub's word and it is also the word a person says
+ * about an issue, which is the test this project applies to a borrowed name.
  */
-export type NodeState = "open" | "closed" | "merged";
+export type NodeState =
+  /** Work can still happen here. */
+  | "open"
+  /** It landed: a merged pull request, or an issue closed as completed. */
+  | "done"
+  /** It was dropped: closed as not planned or duplicate, or a pull request closed unmerged. */
+  | "abandoned";
 
 export interface WorkNode {
   number: number;
@@ -137,9 +165,9 @@ export function nodesToStop(nodes: readonly WorkNode[]): WorkNode[] {
 /**
  * The nodes a close has to reach.
  *
- * Open ones only. A merged pull request cannot be closed and a closed node is already
- * where this would put it, so both are left alone rather than attempted and reported
- * as failures.
+ * Open ones only. A node that already landed or was already dropped is where this
+ * would put it, so both are left alone rather than attempted and reported as
+ * failures — and a merged pull request cannot be closed at all.
  */
 export function nodesToClose(nodes: readonly WorkNode[]): WorkNode[] {
   return nodes.filter((node) => node.state === "open");

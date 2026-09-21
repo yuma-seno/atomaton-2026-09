@@ -701,9 +701,9 @@ describe("issue-links.ts issueLinks", () => {
         rules: [{ match: ["api", "graphql"], stdout: JSON.stringify(payload) }],
       });
       return JSON.parse(r.stdout || "{}") as {
-        parent?: { number: number };
-        children: { number: number }[];
-        pullRequests: { number: number }[];
+        parent?: { number: number; state?: string };
+        children: { number: number; state?: string }[];
+        pullRequests: { number: number; state?: string }[];
         unavailable?: string;
       };
     } finally {
@@ -759,5 +759,79 @@ describe("issue-links.ts issueLinks", () => {
   test("a number that is neither says so rather than answering empty", () => {
     const result = links({ data: { repository: { issueOrPullRequest: null } } });
     expect(result.unavailable).toContain("was not found");
+  });
+
+  /**
+   * How a node ended, which is the question `state` used to be unable to answer.
+   *
+   * It held GitHub's own word, so a closed issue read as `closed` whether somebody
+   * finished it or decided against it, and a closed pull request read as `closed`
+   * whether it merged or was dropped. Those are opposite outcomes, and the reader
+   * that wanted the difference had to go back to GitHub for it — or, in the pull
+   * request's case, read a second field that was set here and never read anywhere.
+   *
+   * `stateReason` is in the query for this. Nothing asked GitHub for it before.
+   */
+  describe("how a node ended", () => {
+    const issueWith = (nodes: unknown[], prs: unknown[] = []) =>
+      links({
+        data: {
+          repository: {
+            issueOrPullRequest: {
+              __typename: "Issue",
+              parent: null,
+              subIssues: { nodes },
+              closedByPullRequestsReferences: { nodes: prs },
+              timelineItems: { nodes: [] },
+            },
+          },
+        },
+      });
+
+    test("an issue closed as completed landed", () => {
+      const result = issueWith([{ number: 1, title: "c", state: "CLOSED", stateReason: "COMPLETED" }]);
+      expect(result.children[0]?.state).toBe("done");
+    });
+
+    test("an issue closed as not planned was dropped", () => {
+      const result = issueWith([{ number: 1, title: "c", state: "CLOSED", stateReason: "NOT_PLANNED" }]);
+      expect(result.children[0]?.state).toBe("abandoned");
+    });
+
+    /** The work moved elsewhere, which is still not landing here. */
+    test("an issue closed as a duplicate was dropped", () => {
+      const result = issueWith([{ number: 1, title: "c", state: "CLOSED", stateReason: "DUPLICATE" }]);
+      expect(result.children[0]?.state).toBe("abandoned");
+    });
+
+    /**
+     * GitHub's own default for a close with nothing said. Reading a silent close as
+     * abandonment would relabel every issue finished before the field existed.
+     */
+    test("an issue closed with no reason given landed", () => {
+      const result = issueWith([{ number: 1, title: "c", state: "CLOSED" }]);
+      expect(result.children[0]?.state).toBe("done");
+    });
+
+    test("an open issue is open, whatever reason is attached", () => {
+      const result = issueWith([{ number: 1, title: "c", state: "OPEN", stateReason: "REOPENED" }]);
+      expect(result.children[0]?.state).toBe("open");
+    });
+
+    test("a merged pull request landed", () => {
+      const result = issueWith([], [{ number: 9, title: "p", state: "MERGED", merged: true, body: "" }]);
+      expect(result.pullRequests[0]?.state).toBe("done");
+    });
+
+    /**
+     * The case the old shape could not express at all: closed and unmerged read as
+     * `closed`, exactly like the merged one beside it. A pull request carries no
+     * `stateReason`, so reading it the way an issue is read would call every
+     * abandoned one delivered — which is why the two kinds are mapped separately.
+     */
+    test("a pull request closed without merging was dropped", () => {
+      const result = issueWith([], [{ number: 9, title: "p", state: "CLOSED", merged: false, body: "" }]);
+      expect(result.pullRequests[0]?.state).toBe("abandoned");
+    });
   });
 });

@@ -16,25 +16,51 @@
  *
  * Pure: callers read the state from GitHub, these decide and write the words.
  */
+import type { NodeKind, NodeState } from "./work-tree.ts";
 
 /**
  * A dispatch target's state as far as this is concerned.
  *
- * `unknown` is deliberately its own case rather than being folded into `open`. A
- * lookup that failed is not evidence that the issue is open, and treating it as such
- * would make every guard here fail in the direction that lets work through — the
- * failure this repository keeps finding. `guard_comment_during_run.ts` already refuses
- * the same way for the same reason.
+ * "Nobody could read it" is deliberately its own case rather than being folded into
+ * `open`. A lookup that failed is not evidence that the issue is open, and treating
+ * it as such would make every guard here fail in the direction that lets work
+ * through — the failure this repository keeps finding.
+ * `guard_comment_during_run.ts` already refuses the same way for the same reason.
+ *
+ * It is `known: false` rather than a third `kind`, because it answers a different
+ * question. `kind` and `state` say what the target IS; this says whether anybody
+ * found out. Putting them in one enum is what let `state.kind === "unknown"` sit in
+ * the same expression as `state.kind === "closed"` as though they were alternatives
+ * of one thing.
  */
 export type TargetState =
-  | { kind: "open" }
-  /** `merged` matters because GitHub cannot reopen a merged pull request. */
-  | { kind: "closed"; merged: boolean }
-  | { kind: "unknown"; why: string };
+  | { known: true; kind: NodeKind; state: NodeState }
+  | { known: false; why: string };
 
-/** Whether work may be started on a target in this state. Only an open one qualifies. */
-export function mayStartWorkOn(state: TargetState): boolean {
-  return state.kind === "open";
+/**
+ * Whether work may be started on a target in this state. Only an open one qualifies.
+ *
+ * A target nobody could read does not qualify either, and that is what `known`
+ * separates: the answer to "is it open" and the answer to "could anyone tell" are
+ * different, and only one of them is safe to guess.
+ */
+export function mayStartWorkOn(target: TargetState): boolean {
+  return target.known && target.state === "open";
+}
+
+/**
+ * Whether a person could put this target back where work can run.
+ *
+ * Merging is the one ending GitHub makes final. Everything else that ended —
+ * an issue completed or dropped, a pull request closed without merging — reopens.
+ *
+ * Derived rather than stored. This used to be a `merged: boolean` carried beside a
+ * `closed` case, which was the third place in this repository spelling the same
+ * fact its own way: `NodeState` says a pull request that is `done` is one that
+ * merged, and `kind` is already here.
+ */
+export function canBeReopened(target: TargetState): boolean {
+  return target.known && !(target.kind === "pull-request" && target.state === "done");
 }
 
 /**
@@ -45,7 +71,7 @@ export function mayStartWorkOn(state: TargetState): boolean {
  * would read as the machinery not knowing what it was looking at.
  */
 export function recoveryAdvice(state: TargetState, number: number, command: string): string {
-  if (state.kind === "closed" && state.merged) {
+  if (state.known && !canBeReopened(state)) {
     return (
       `#${number} is merged, and GitHub cannot reopen a merged pull request. ` +
       `Open an issue for the follow-up instead.`
@@ -129,13 +155,13 @@ export function commandOnClosedNotice(
   state: TargetState,
   number: number,
 ): string {
-  const what = state.kind === "unknown"
+  const what = !state.known
     ? `Atomaton: \`${command}\` was not run, because the state of #${number} could not be read (${state.why}), and a command is not started on a target that might be closed.`
     : `Atomaton: \`${command}\` was not run, because #${number} is closed.`;
   return [
     `${mentionPrefix(commenter ? [commenter] : [])}${what}`,
     "",
-    state.kind === "unknown"
+    !state.known
       ? "Comment again once it can be read."
       : recoveryAdvice(state, number, command),
   ].join("\n");
@@ -166,7 +192,7 @@ export interface RefusedDispatch {
  */
 export function dispatchRefusedNotice(refused: RefusedDispatch): string {
   const { agent, number, context, state, notify } = refused;
-  const why = state.kind === "unknown"
+  const why = !state.known
     ? `the state of #${number} could not be read (${state.why})`
     : `#${number} is closed`;
   return [
@@ -176,7 +202,7 @@ export function dispatchRefusedNotice(refused: RefusedDispatch): string {
     "",
     "Nothing will retry this.",
     "",
-    state.kind === "unknown"
+    !state.known
       ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.`
       : recoveryAdvice(state, number, `/${agent}`),
   ].join("\n");
