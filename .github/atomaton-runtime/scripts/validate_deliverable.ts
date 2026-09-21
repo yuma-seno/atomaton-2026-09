@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/validate_deliverable.ts
+// src/entrypoints/machinery/validate_deliverable.ts
 import { existsSync, mkdtempSync, readdirSync, readFileSync as readFileSync2, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join as join3 } from "path";
 import { parseArgs } from "util";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -21,8 +21,19 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
+var BUILT_FROM = [
+  [USER_ROOT, "content"],
+  [SCRIPTS_DIR, "entrypoints/machinery"],
+  [TOOLS_DIR, "entrypoints/tools"]
+];
+function sourceOf(deployed) {
+  const found = BUILT_FROM.find(([target]) => target === deployed);
+  if (!found)
+    throw new Error(`machinery-layout: nothing builds ${deployed}`);
+  return found[1];
+}
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
 var NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -113,7 +124,7 @@ function resolveDeclaredSecrets(raw, destination) {
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -126,13 +137,13 @@ var CHECKS_FROM_DEFAULT_BRANCH = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/domain/control-commands.ts
+// src/domain/work/control-commands.ts
 var CONTROL_COMMAND_NAMES = ["stop", "resume"];
 function isControlCommand(name) {
   return CONTROL_COMMAND_NAMES.includes(name);
 }
 
-// src/domain/runner-label.ts
+// src/domain/delivery/runner-label.ts
 var DEFAULT_RUNNER = "ubuntu-latest";
 function resolveRunsOn(configured) {
   if (configured === undefined || configured === null)
@@ -157,7 +168,7 @@ function resolveRunsOn(configured) {
   return { labels: [DEFAULT_RUNNER], problems: [`runs_on must be a string or a list of strings; using ${DEFAULT_RUNNER}`] };
 }
 
-// src/domain/declared-jobs.ts
+// src/domain/delivery/declared-jobs.ts
 var NAME_PATTERN2 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
 function isRecord(value) {
@@ -233,7 +244,7 @@ function readSecrets(raw, rule, path, where, problems) {
   return found.length > 0 ? null : names;
 }
 
-// src/domain/deploy-jobs.ts
+// src/domain/delivery/deploy-jobs.ts
 function refPatternProblem(pattern) {
   const body = pattern.endsWith("*") ? pattern.slice(0, -1) : pattern;
   if (body.includes("*")) {
@@ -324,7 +335,7 @@ function resolveDeployJobs(deploy) {
   return problems.length > 0 ? { jobs: [], problems } : { jobs, problems };
 }
 
-// src/domain/path-patterns.ts
+// src/domain/delivery/path-patterns.ts
 var GLOB_CHARACTERS = /[*?[\]{}]/;
 function pathPatternProblem(pattern) {
   if (typeof pattern !== "string" || pattern.trim() === "") {
@@ -347,7 +358,7 @@ function pathPatternProblem(pattern) {
   return "";
 }
 
-// src/domain/merge-gates.ts
+// src/domain/delivery/merge-gates.ts
 var CONDITION_KEYS = [
   "files_added",
   "files_removed",
@@ -467,11 +478,11 @@ function resolveMergeGates(raw) {
   return problems.length > 0 ? { gates: [], problems } : { gates, problems };
 }
 
-// src/domain/shipped-workflows.ts
+// src/domain/delivery/shipped-workflows.ts
 var DEFAULT_CI_WORKFLOW = "atomaton-check.yml";
 var DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";
 
-// src/domain/deliverable-integrity.ts
+// src/domain/delivery/deliverable-integrity.ts
 var CONFIG_SCHEMA = {
   children: {
     base_branch: null,
@@ -597,7 +608,7 @@ function configProblems(facts) {
   return problems;
 }
 
-// src/domain/generated-file-hint.ts
+// src/domain/machinery/generated-file-hint.ts
 var EDITABLE_SOURCE = "`tools.servers` in .github/atomaton/config.yaml";
 function withEditableSource(problem) {
   if (problem.includes("tools.yaml")) {
@@ -609,16 +620,16 @@ function withEditableSource(problem) {
   return problem;
 }
 
-// src/domain/tools-file.ts
+// src/domain/machinery/tools-file.ts
 import { isAbsolute, join as join2, resolve } from "path";
 
-// src/domain/shipped-servers.ts
+// src/domain/machinery/shipped-servers.ts
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
+import { basename, dirname, join } from "path";
 import { fileURLToPath } from "url";
 function defaultPath() {
-  const belowRoot = TOOL_DEFAULTS_FILE.slice(TOOL_DEFAULTS_FILE.indexOf("/") + 1);
-  return join(dirname(fileURLToPath(import.meta.url)), "..", ...belowRoot.split("/"));
+  const belowSrc = sourceOf(TOOLS_DIR).split("/");
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", ...belowSrc, basename(TOOL_DEFAULTS_FILE));
 }
 var cached;
 function toolDefaults(path = defaultPath()) {
@@ -629,7 +640,7 @@ function toolDefaults(path = defaultPath()) {
   return cached;
 }
 
-// src/domain/tools-file.ts
+// src/domain/machinery/tools-file.ts
 function toolsFileFrom(tools, hookBase, defaultsPath) {
   const out = {};
   const defaults = toolDefaults(defaultsPath);
@@ -693,14 +704,14 @@ function reservedServerNames(tools) {
   return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
 }
 
-// src/scripts/lib/script-ref.ts
-import { basename } from "path";
+// src/entrypoints/machinery/lib/script-ref.ts
+import { basename as basename2 } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath2(importMetaUrl))}` };
+  return { runtimePath: `${SCRIPTS_DIR}/${basename2(fileURLToPath2(importMetaUrl))}` };
 }
 
-// src/scripts/validate_deliverable.ts
+// src/entrypoints/machinery/validate_deliverable.ts
 var ref = defineScript(import.meta.url);
 
 class CannotCheck extends Error {

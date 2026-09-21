@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/read_secret_names.ts
+// src/entrypoints/machinery/read_secret_names.ts
 import { appendFileSync, readFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -20,7 +20,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
 var NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -111,14 +111,14 @@ function resolveDeclaredSecrets(raw, destination) {
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/read_secret_names.ts
+// src/entrypoints/machinery/read_secret_names.ts
 var ref = defineScript(import.meta.url);
 function declarationIn(configText) {
   const config = Bun.YAML.parse(configText);

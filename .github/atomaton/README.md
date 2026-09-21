@@ -11,6 +11,16 @@ is how you know what it is.
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |
 | `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |
+| `scripts/` | Yours to create: the commands `config.yaml` names under `checks` and `deploy`. Nothing ships here, and nothing replaces it on upgrade. |
+
+Atomaton's own repository keeps its release scripts at exactly that path, so
+`./.github/atomaton/scripts/tag-release.sh` in its `deploy` is a line you can
+copy rather than translate.
+
+A command may of course live anywhere in your repository — `config.yaml` names a
+path and does not care which. This is where to put one when you have no reason to
+prefer somewhere else, and the reason to prefer this one is that it sits beside
+the file that names it.
 
 ## What is not here
 

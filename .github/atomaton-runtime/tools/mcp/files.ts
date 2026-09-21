@@ -6600,7 +6600,7 @@ var require_dist = __commonJS(function(exports, module) {
   exports.default = formatsPlugin;
 });
 
-// src/atomaton-runtime/tools/mcp/files.ts
+// src/entrypoints/tools/mcp/files.ts
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync as statSync2, existsSync } from "fs";
 import { isAbsolute, resolve, relative, sep, dirname } from "path";
 import { spawnSync } from "child_process";
@@ -17396,7 +17396,7 @@ class Server extends Protocol {
   }
 }
 
-// src/lib/mcp-report.ts
+// src/adapters/mcp/mcp-report.ts
 var MAX_HELD = 20;
 var sink;
 var held = [];
@@ -17427,11 +17427,11 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -17558,7 +17558,7 @@ class StdioServerTransport {
   }
 }
 
-// src/lib/mcp-tool.ts
+// src/adapters/mcp/mcp-tool.ts
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17631,14 +17631,14 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/domain/tool-output.ts
+// src/shared/tool-output.ts
 var TOOL_OUTPUT_BUDGET = 50000;
 
-// src/domain/workspace.ts
+// src/domain/work/workspace.ts
 var WORKSPACE_PATH = "/tmp/atomaton-workspace";
 var WORKSPACE_SENTENCE = `Anything under ${WORKSPACE_PATH} survives into the next run on this issue and is shared with the other ` + `agents working on it. Nothing else outside the repository survives. Put notes, scratch scripts and ` + `intermediate output there rather than in the repository, where they would be committed as part of the work.`;
 
-// src/lib/issue-images.ts
+// src/adapters/github/issue-images.ts
 var MAX_IMAGE_BYTES = 4000000;
 function sniffMimeType(bytes) {
   const starts = (...sig) => sig.every((b, i) => bytes[i] === b);
@@ -17654,10 +17654,10 @@ function sniffMimeType(bytes) {
   return "";
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 import { statSync } from "fs";
 
-// src/domain/tool-hardening.ts
+// src/domain/machinery/tool-hardening.ts
 function pathWithoutWorldWritable(path, isWorldWritable) {
   return path.split(":").filter((entry) => entry !== "" && entry !== "." && !isWorldWritable(entry)).join(":");
 }
@@ -17678,7 +17678,7 @@ function classifyPathEntries(path, inspect) {
   return { writable, unreadable };
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 var PR_SET_DUMPABLE = 4;
 var PR_GET_DUMPABLE = 3;
 function inspect(directory) {
@@ -17722,7 +17722,7 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/atomaton-runtime/tools/mcp/files.ts
+// src/entrypoints/tools/mcp/files.ts
 function log(message) {
   console.error(`[atomaton-files] ${message}`);
 }

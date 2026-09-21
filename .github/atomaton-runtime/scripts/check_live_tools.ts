@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/check_live_tools.ts
+// src/entrypoints/machinery/check_live_tools.ts
 import { existsSync, readdirSync } from "fs";
 import { mkdtempSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -22,7 +22,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -31,14 +31,14 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/check_live_tools.ts
+// src/entrypoints/machinery/check_live_tools.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const defs = machineryPath(AGENT_DEFINITIONS_DIR);

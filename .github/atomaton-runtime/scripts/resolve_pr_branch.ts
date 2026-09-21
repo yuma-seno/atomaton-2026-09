@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/resolve_pr_branch.ts
+// src/entrypoints/machinery/resolve_pr_branch.ts
 import { appendFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -29,11 +29,11 @@ function gitRun(...args) {
   return run(["git", ...args]);
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -47,12 +47,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/resolve_pr_branch.ts
+// src/entrypoints/machinery/resolve_pr_branch.ts
 var ref = defineScript(import.meta.url);
 function log(message) {
   console.error(`[atomaton-pr-branch] ${message}`);

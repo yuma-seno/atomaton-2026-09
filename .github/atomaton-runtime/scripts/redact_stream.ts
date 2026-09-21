@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/domain/redaction.ts
+// src/shared/redaction.ts
 var PATTERNS = [
   /\bsk-[A-Za-z0-9_-]{16,}/g,
   /\bsk-ant-[A-Za-z0-9_-]{16,}/g,
@@ -23,11 +23,11 @@ function redact(text, literals = []) {
   return out;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -41,12 +41,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/redact_stream.ts
+// src/entrypoints/machinery/redact_stream.ts
 var ref = defineScript(import.meta.url);
 async function main() {
   const input = await new Response(Bun.stdin.stream()).text();

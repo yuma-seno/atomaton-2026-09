@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/manage_dispatch_loop.ts
+// src/entrypoints/machinery/manage_dispatch_loop.ts
 import { appendFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/domain/dispatch-chain.ts
+// src/domain/work/dispatch-chain.ts
 var DEFAULT_HANDOFF_LIMIT = 5;
 function isPerson(comment) {
   return comment.authorType === "User";
@@ -26,7 +26,7 @@ function resolveHandoffLimit(configured) {
   return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_HANDOFF_LIMIT;
 }
 
-// src/domain/progress.ts
+// src/domain/work/progress.ts
 var DEFAULT_NO_PROGRESS_LIMIT = 2;
 function runsWithoutChange(comments, isNoChangeResult) {
   let runs = 0;
@@ -63,10 +63,10 @@ function stopReason(counts) {
   return { stop: false };
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -78,7 +78,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -93,7 +93,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -141,7 +141,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -150,7 +150,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -159,7 +159,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -177,7 +177,7 @@ function getNoProgressLimit() {
   return loadConfig().chain?.after_runs_without_change;
 }
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -198,11 +198,11 @@ function gh(...args) {
   return run([...ghCommand(), ...args]);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -238,14 +238,14 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/manage_dispatch_loop.ts
+// src/entrypoints/machinery/manage_dispatch_loop.ts
 var ref = defineScript(import.meta.url);
 function readComments(repo, number) {
   const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments?per_page=100`, "--paginate", "--jq", ".[] | {authorType: .user.type, body: .body}");

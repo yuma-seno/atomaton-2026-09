@@ -6600,7 +6600,7 @@ var require_dist = __commonJS(function(exports, module) {
   exports.default = formatsPlugin;
 });
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -6676,10 +6676,10 @@ function dispatchWorkflow(context, workflow, args = [], log = (m) => console.err
   return true;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/path-patterns.ts
+// src/domain/delivery/path-patterns.ts
 function pathMatches(file, pattern) {
   return pattern.endsWith("/**") ? file.startsWith(pattern.slice(0, -2)) : file === pattern;
 }
@@ -6705,7 +6705,7 @@ function pathPatternProblem(pattern) {
   return "";
 }
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -6857,7 +6857,7 @@ function formatBlockers(blockers) {
 `);
 }
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -6872,7 +6872,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
 var NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -6963,7 +6963,7 @@ function resolveDeclaredSecrets(raw, destination) {
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -6972,7 +6972,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/domain/runner-label.ts
+// src/domain/delivery/runner-label.ts
 var DEFAULT_RUNNER = "ubuntu-latest";
 function resolveRunsOn(configured) {
   if (configured === undefined || configured === null)
@@ -6997,7 +6997,7 @@ function resolveRunsOn(configured) {
   return { labels: [DEFAULT_RUNNER], problems: [`runs_on must be a string or a list of strings; using ${DEFAULT_RUNNER}`] };
 }
 
-// src/domain/declared-jobs.ts
+// src/domain/delivery/declared-jobs.ts
 var NAME_PATTERN2 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
 function isRecord(value) {
@@ -7073,7 +7073,7 @@ function readSecrets(raw, rule, path, where, problems) {
   return found.length > 0 ? null : names;
 }
 
-// src/domain/merge-gates.ts
+// src/domain/delivery/merge-gates.ts
 var CONDITION_KEYS = [
   "files_added",
   "files_removed",
@@ -7238,7 +7238,7 @@ function matchMergeGates(gates, facts) {
   return matches;
 }
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -7247,7 +7247,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -7292,11 +7292,11 @@ function getWorkflowName(kind, fallback = "") {
   return (section?.your_workflow ?? "").trim() || fallback;
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -7337,7 +7337,7 @@ function withoutTags(text) {
   return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
 }
 
-// src/lib/parent-issue.ts
+// src/adapters/github/parent-issue.ts
 function log(message) {
   console.error(`[atomaton-parent] ${message}`);
 }
@@ -7358,7 +7358,7 @@ function parentIssueOf(repo, issue) {
   }
 }
 
-// src/lib/notify.ts
+// src/adapters/github/notify.ts
 function log2(message) {
   console.error(`[atomaton-notify] ${message}`);
 }
@@ -7412,7 +7412,19 @@ function resolveNotify(repo, number) {
   return owner;
 }
 
-// src/domain/issue-links.ts
+// src/adapters/github/outcome.ts
+function issueOutcome(reason) {
+  const said = (reason ?? "").toLowerCase();
+  return said === "not_planned" || said === "duplicate" ? "abandoned" : "done";
+}
+function pullRequestOutcome(merged) {
+  return merged ? "done" : "abandoned";
+}
+function saysOpen(state) {
+  return (state ?? "").toLowerCase() === "open";
+}
+
+// src/domain/work/issue-links.ts
 var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
 function claimsToClose(body, issue) {
   return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
@@ -7456,7 +7468,7 @@ function dedupeByNumber(...lists) {
   return [...seen.values()].sort((a, b) => a.number - b.number);
 }
 
-// src/lib/issue-links.ts
+// src/adapters/github/issue-links.ts
 var LINK_LIMIT = 50;
 var LABEL_LIMIT = 20;
 var QUERY = `
@@ -7465,8 +7477,8 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
     issueOrPullRequest(number:$number) {
       __typename
       ... on Issue {
-        parent { number title state }
-        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        parent { number title state stateReason }
+        subIssues(first:$limit) { nodes { number title state stateReason labels(first:$labelLimit) { nodes { name } } } }
         closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
           nodes { number title state merged body }
         }
@@ -7475,19 +7487,27 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
         }
       }
       ... on PullRequest {
-        closingIssuesReferences(first:$limit) { nodes { number title state } }
+        closingIssuesReferences(first:$limit) { nodes { number title state stateReason } }
       }
     }
   }
 }`;
 function normalise(node) {
-  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : issueOutcome(node.stateReason)
+  };
 }
 function asChild(node) {
   return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
 }
 function asPr(node) {
-  return { ...normalise(node), merged: Boolean(node.merged) };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : pullRequestOutcome(Boolean(node.merged))
+  };
 }
 function issueLinks(repo, number) {
   const [owner, name] = repo.split("/");
@@ -7521,7 +7541,7 @@ function issueLinks(repo, number) {
   };
 }
 
-// src/lib/sibling-check.ts
+// src/adapters/github/sibling-check.ts
 function countOpenSiblings(opts) {
   const label = opts.label || getLabel("sub_issue");
   const launchedLabel = opts.launchedLabel || getLabel("launched");
@@ -7532,7 +7552,7 @@ function countOpenSiblings(opts) {
   return links.children.filter((child) => child.state === "open" && child.labels.includes(label) && child.labels.includes(launchedLabel) && child.number !== opts.exclude).length;
 }
 
-// src/lib/ops-log.ts
+// src/adapters/runner/ops-log.ts
 import { appendFileSync } from "fs";
 var OPS_LOG_PATH = process.env.ATOMATON_OPS_LOG ?? "/tmp/atomaton_ops.log";
 function logOp(op, payload = {}) {
@@ -7548,33 +7568,43 @@ function logDispatch(target, agent, extra = {}) {
   logOp("dispatch", { target, agent, ...extra });
 }
 
-// src/lib/target-state.ts
+// src/adapters/github/target-state.ts
 function readTargetState(number, repo) {
   const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;
   const { code, stdout, stderr } = ghRead("api", path);
   if (code !== 0) {
-    return { kind: "unknown", why: (stderr || stdout || `gh exited ${code}`).trim().split(`
+    return { known: false, why: (stderr || stdout || `gh exited ${code}`).trim().split(`
 `)[0] ?? "" };
   }
   let parsed;
   try {
     parsed = JSON.parse(stdout);
   } catch {
-    return { kind: "unknown", why: "the response was not JSON" };
+    return { known: false, why: "the response was not JSON" };
   }
+  const isPr = parsed.pull_request !== undefined;
+  const kind = isPr ? "pull-request" : "issue";
   if (parsed.state === "open")
-    return { kind: "open" };
-  if (parsed.state === "closed")
-    return { kind: "closed", merged: Boolean(parsed.pull_request?.merged_at) };
-  return { kind: "unknown", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
+    return { known: true, kind, state: "open" };
+  if (parsed.state === "closed") {
+    return {
+      known: true,
+      kind,
+      state: isPr ? pullRequestOutcome(Boolean(parsed.pull_request?.merged_at)) : issueOutcome(parsed.state_reason)
+    };
+  }
+  return { known: false, why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
 }
 
-// src/domain/closed-issue.ts
-function mayStartWorkOn(state) {
-  return state.kind === "open";
+// src/domain/work/closed-issue.ts
+function mayStartWorkOn(target) {
+  return target.known && target.state === "open";
+}
+function canBeReopened(target) {
+  return target.known && !(target.kind === "pull-request" && target.state === "done");
 }
 function recoveryAdvice(state, number, command) {
-  if (state.kind === "closed" && state.merged) {
+  if (state.known && !canBeReopened(state)) {
     return `#${number} is merged, and GitHub cannot reopen a merged pull request. ` + `Open an issue for the follow-up instead.`;
   }
   return `Reopen #${number} and comment \`${command}\` to run it.`;
@@ -7584,7 +7614,7 @@ function mentionPrefix(logins) {
 }
 function dispatchRefusedNotice(refused) {
   const { agent, number, context, state, notify } = refused;
-  const why = state.kind === "unknown" ? `the state of #${number} could not be read (${state.why})` : `#${number} is closed`;
+  const why = !state.known ? `the state of #${number} could not be read (${state.why})` : `#${number} is closed`;
   return [
     `${mentionPrefix(notify ? [notify] : [])}Atomaton: \`${agent}\` was not started on #${number}, because ${why}.`,
     "",
@@ -7592,12 +7622,12 @@ function dispatchRefusedNotice(refused) {
     "",
     "Nothing will retry this.",
     "",
-    state.kind === "unknown" ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.` : recoveryAdvice(state, number, `/${agent}`)
+    !state.known ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.` : recoveryAdvice(state, number, `/${agent}`)
   ].join(`
 `);
 }
 
-// src/lib/dispatch.ts
+// src/adapters/actions/dispatch.ts
 function runnerWorkflow() {
   return process.env.ATOMATON_DISPATCH_WORKFLOW || "atomaton-runner.yml";
 }
@@ -7641,7 +7671,7 @@ function dispatchRunner(d) {
   return "dispatched";
 }
 
-// src/lib/aggregation.ts
+// src/app/aggregation.ts
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -7736,7 +7766,7 @@ async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
   return dispatchOrchestratorIfReady({ repo, parent: found.parent, closedNum: subIssueNum, retry: true });
 }
 
-// src/lib/mcp-report.ts
+// src/adapters/mcp/mcp-report.ts
 var MAX_HELD = 20;
 var sink;
 var held = [];
@@ -7767,7 +7797,7 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
-// src/lib/participants.ts
+// src/adapters/github/participants.ts
 function knownParticipants(repo, number) {
   if (!repo || !String(number).trim())
     return [];
@@ -7791,7 +7821,7 @@ function knownParticipants(repo, number) {
   return [...logins];
 }
 
-// src/domain/mention.ts
+// src/domain/work/mention.ts
 var MENTION = /(^|[^\w@/-])@([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\b(?!\/)/g;
 var CODE2 = /```[\s\S]*?```|`[^`\n]*`/g;
 function escapeUnknownMentions(text, known) {
@@ -18716,7 +18746,7 @@ class StdioServerTransport {
   }
 }
 
-// src/lib/mcp-tool.ts
+// src/adapters/mcp/mcp-tool.ts
 function positiveInt(description) {
   return coerce.number().int().positive().describe(description);
 }
@@ -18804,26 +18834,29 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/domain/tool-output.ts
+// src/shared/tool-output.ts
 var TOOL_OUTPUT_BUDGET = 50000;
 function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
   if (text.length <= budget)
     return { text, dropped: 0 };
-  const dropped = text.length - budget;
-  const note = (where) => `
+  const note = (where, howMany) => `
 
-[${dropped} characters ${where}; ${budget} shown]
+[${howMany} characters ${where}; ${budget} shown]
 
 `;
+  const room = budget - note("dropped from the middle", text.length).length;
+  const dropped = text.length - room;
+  if (room <= 0)
+    return { text: keep === "tail" ? text.slice(-budget) : text.slice(0, budget), dropped: text.length - budget };
   if (keep === "tail") {
-    return { text: note("dropped from the start").trimStart() + text.slice(-budget), dropped };
+    return { text: note("dropped from the start", dropped).trimStart() + text.slice(-room), dropped };
   }
   if (keep === "head") {
-    return { text: text.slice(0, budget) + note("dropped from the end").trimEnd(), dropped };
+    return { text: text.slice(0, room) + note("dropped from the end", dropped).trimEnd(), dropped };
   }
-  const head = Math.floor(budget / 4);
-  const tail = budget - head;
-  return { text: text.slice(0, head) + note("dropped from the middle") + text.slice(-tail), dropped };
+  const head = Math.floor(room / 4);
+  const tail = room - head;
+  return { text: text.slice(0, head) + note("dropped from the middle", dropped) + text.slice(-tail), dropped };
 }
 function fitItems(items, budget = TOOL_OUTPUT_BUDGET) {
   const kept = [];
@@ -18838,7 +18871,7 @@ function fitItems(items, budget = TOOL_OUTPUT_BUDGET) {
   return { kept, omitted: items.length - kept.length };
 }
 
-// src/domain/handoff.ts
+// src/domain/work/handoff.ts
 function decidePostMergeHandoff(signals) {
   if (signals.parentIssue === undefined)
     return { kind: "no-parent" };
@@ -18850,9 +18883,9 @@ function decidePostMergeHandoff(signals) {
   return { kind: "close-directly", parentIssue: signals.parentIssue };
 }
 
-// src/domain/unattended-pull-request.ts
+// src/domain/work/unattended-pull-request.ts
 function isAttended(attendance) {
-  if (attendance.reviewer.trim() !== "")
+  if (attendance.next)
     return true;
   return mentionsSomeone(attendance.body);
 }
@@ -18864,32 +18897,48 @@ function unattendedNotice(notify, agent) {
   return `${mention}This pull request was opened by \`${agent}\` with no reviewer named and nobody mentioned, ` + `so nothing is scheduled to look at it. CI still runs and its result stands. ` + `Comment \`/reviewer\` to have it reviewed, or take it from here.`;
 }
 
-// src/domain/issue-branch.ts
+// src/domain/work/issue-branch.ts
+function newestFirst(owned) {
+  return [...owned].sort((a, b) => b.ordinal - a.ordinal);
+}
+function nextOrdinal(owned) {
+  const highest = newestFirst(owned)[0];
+  return highest === undefined ? 1 : highest.ordinal + 1;
+}
+
+// src/adapters/github/branch-names.ts
+var BRANCH_PREFIX = "atomaton/issue-";
 var OWNED_SUFFIX = /^-(\d+)$/;
-function ordinalOf(rest) {
+function branchNameFor(issue, ordinal) {
+  const base = `${BRANCH_PREFIX}${issue}`;
+  return ordinal <= 1 ? base : `${base}-${ordinal}`;
+}
+function branchOfIssue(issue) {
+  return branchNameFor(issue, 1);
+}
+function isIssueBranch(name) {
+  return name.startsWith(BRANCH_PREFIX);
+}
+function ordinalOfBranch(name, issue) {
+  const base = `${BRANCH_PREFIX}${issue}`;
+  if (!name.startsWith(base))
+    return 0;
+  const rest = name.slice(base.length);
   if (rest === "")
     return 1;
   const match = OWNED_SUFFIX.exec(rest);
   return match ? Number(match[1]) : 0;
 }
-function ownedBranches(branches, issueNumber) {
-  const prefix = `atomaton/issue-${issueNumber}`;
-  return branches.filter((branch) => branch.name.startsWith(prefix)).map((branch) => ({ branch, ordinal: ordinalOf(branch.name.slice(prefix.length)) })).filter((entry) => entry.ordinal > 0).sort((a, b) => b.ordinal - a.ordinal);
-}
-function nextBranchName(branches, issueNumber) {
-  const prefix = `atomaton/issue-${issueNumber}`;
-  const owned = ownedBranches(branches, issueNumber);
-  if (owned.length === 0)
-    return prefix;
-  return `${prefix}-${(owned[0]?.ordinal ?? 1) + 1}`;
+function matchingRefsPath(repo, issue) {
+  return `repos/${repo}/git/matching-refs/heads/${BRANCH_PREFIX}${issue}`;
 }
 
-// src/lib/issue-branches.ts
+// src/adapters/github/issue-branches.ts
 function log3(message) {
   console.error(`[atomaton-issue-branch] ${message}`);
 }
 function collectIssueBranches(repo, issueNumber) {
-  const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
+  const refs = gh("api", matchingRefsPath(repo, issueNumber));
   if (refs.code) {
     const why = `could not list the branches of #${issueNumber}: ${(refs.stderr || refs.stdout).trim()}`;
     log3(`WARN ${why}`);
@@ -18905,7 +18954,8 @@ function collectIssueBranches(repo, issueNumber) {
     return { known: false, why };
   }
   const owner = repo.split("/", 1)[0] ?? "";
-  return { known: true, branches: names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) })) };
+  const branches = names.map((name) => ({ name, ordinal: ordinalOfBranch(name, issueNumber) })).filter((entry) => entry.ordinal > 0).map((entry) => ({ ...entry, merged: headBranchMerged(repo, owner, entry.name) }));
+  return { known: true, branches };
 }
 function headBranchMerged(repo, owner, branch) {
   const prs = gh("api", `repos/${repo}/pulls?state=all&per_page=100&head=${owner}:${branch}`);
@@ -18921,17 +18971,9 @@ function headBranchMerged(repo, owner, branch) {
     return false;
   }
 }
-
-// src/lib/branch-placement.ts
+// src/adapters/github/branch-placement.ts
 function log4(message) {
   console.error(`[atomaton-github] ${message}`);
-}
-var BRANCH_PREFIX = "atomaton/issue-";
-function branchOfIssue(issue) {
-  return `${BRANCH_PREFIX}${issue}`;
-}
-function isIssueBranch(name) {
-  return name.startsWith(BRANCH_PREFIX);
 }
 var NO_BRANCH_MESSAGE = "This run is on a detached checkout with no local branch, so there is no branch to push: " + "commit_and_push and create_pr cannot publish this run's work. Report the work on the issue instead.";
 function isLocalBranch(name) {
@@ -19003,7 +19045,7 @@ function branchForCommit(repo) {
   if (!listed.known) {
     throw new Error(`${listed.why}, so a new branch for #${issue} cannot be named without risking one that already exists.`);
   }
-  const name = nextBranchName(listed.branches, issue);
+  const name = branchNameFor(issue, nextOrdinal(listed.branches));
   const created = from ? gitRun("checkout", "-b", name, `origin/${from}`) : gitRun("checkout", "-b", name);
   if (created.code)
     throw new Error(`Could not create branch '${name}': ${created.stderr || created.stdout}`);
@@ -19031,7 +19073,7 @@ function runIssueNumber() {
   return Number.isInteger(issue) && issue > 0 ? issue : undefined;
 }
 
-// src/domain/deploy-jobs.ts
+// src/domain/delivery/deploy-jobs.ts
 function refMatches(pattern, ref) {
   return pattern.endsWith("*") ? ref.startsWith(pattern.slice(0, -1)) : ref === pattern;
 }
@@ -19128,11 +19170,11 @@ function mergeMightDeploy(jobs, branch) {
   return jobs.some((job) => job.trigger === "merge" && (job.branches.length === 0 || !branch || job.branches.some((pattern) => refMatches(pattern, branch))));
 }
 
-// src/domain/shipped-workflows.ts
+// src/domain/delivery/shipped-workflows.ts
 var DEFAULT_CI_WORKFLOW = "atomaton-check.yml";
 var DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";
 
-// src/lib/dispatch-targets.ts
+// src/adapters/actions/dispatch-targets.ts
 function log5(message) {
   console.error(`[atomaton-github] ${message}`);
 }
@@ -19194,7 +19236,7 @@ function dispatchDeploy(context, trigger, ref, repo) {
   return dispatchWorkflow(context, configured || DEFAULT_CD_WORKFLOW, args, log5);
 }
 
-// src/lib/branch-rules.ts
+// src/adapters/github/branch-rules.ts
 var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
 function readBranchRules(repo, baseRef) {
   if (!baseRef)
@@ -19225,7 +19267,7 @@ function readBranchRules(repo, baseRef) {
   }
 }
 
-// src/lib/merge-signals.ts
+// src/adapters/github/merge-signals.ts
 function log6(message) {
   console.error(`[atomaton-merge-signals] ${message}`);
 }
@@ -19339,7 +19381,7 @@ function gatherMergeSignals(repo, num, throwOnFailure) {
   };
 }
 
-// src/domain/comment-range.ts
+// src/domain/work/comment-range.ts
 var DEFAULT_COMMENT_WINDOW = 5;
 var EMPTY = (showing) => ({ from: 0, to: 0, count: 0, showing });
 function selectCommentRange(total, from, to) {
@@ -19365,10 +19407,10 @@ function selectCommentRange(total, from, to) {
   };
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 import { statSync } from "fs";
 
-// src/domain/tool-hardening.ts
+// src/domain/machinery/tool-hardening.ts
 function pathWithoutWorldWritable(path, isWorldWritable) {
   return path.split(":").filter((entry) => entry !== "" && entry !== "." && !isWorldWritable(entry)).join(":");
 }
@@ -19389,7 +19431,7 @@ function classifyPathEntries(path, inspect) {
   return { writable, unreadable };
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 var PR_SET_DUMPABLE = 4;
 var PR_GET_DUMPABLE = 3;
 function inspect(directory) {
@@ -19433,7 +19475,7 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/atomaton-runtime/tools/mcp/github.ts
+// src/entrypoints/tools/mcp/github.ts
 function log7(msg) {
   console.error(`[atomaton-github] ${msg}`);
 }
@@ -19778,7 +19820,7 @@ function createPr(a) {
     gh("issue", "comment", currentIssue, "--repo", REPO, "--body", `${LLM_CONTEXT_TAG.write("exclude")}
 Atomaton: PR #${num} created (${stdout.trim()}). ${next}`);
   }
-  if (!isAttended({ reviewer, body: body ?? "" })) {
+  if (!isAttended({ ...reviewer ? { next: { agent: reviewer } } : {}, body: body ?? "" })) {
     const openedBy = (process.env.AGENT ?? "").trim() || "an agent";
     const notify = resolveNotify(REPO, num);
     log7(`createPr: PR #${num} has no reviewer and mentions nobody; leaving a notice for ${notify || "(nobody resolved)"}`);

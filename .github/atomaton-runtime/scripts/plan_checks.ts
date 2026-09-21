@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -16,7 +16,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var SECRET_SLOTS = 10;
 var SECRET_SLOT_PREFIX = "ATOMATON_SECRET_";
 var NAME_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -107,7 +107,7 @@ function resolveDeclaredSecrets(raw, destination) {
   return problems.length > 0 ? { names: [], problems } : { names, problems };
 }
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -120,10 +120,10 @@ var CHECKS_FROM_DEFAULT_BRANCH = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -135,7 +135,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/runner-label.ts
+// src/domain/delivery/runner-label.ts
 var DEFAULT_RUNNER = "ubuntu-latest";
 function resolveRunsOn(configured) {
   if (configured === undefined || configured === null)
@@ -163,7 +163,7 @@ function runsOnOutput(labels) {
   return JSON.stringify(labels);
 }
 
-// src/domain/declared-jobs.ts
+// src/domain/delivery/declared-jobs.ts
 var NAME_PATTERN2 = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 var SHARED_KEYS = ["name", "runs_on", "commands", "secrets"];
 function isRecord(value) {
@@ -239,7 +239,7 @@ function readSecrets(raw, rule, path, where, problems) {
   return found.length > 0 ? null : names;
 }
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -248,7 +248,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -266,7 +266,7 @@ function getDefaultBranchChecks() {
   return resolveDeclaredJobs(loadConfig().checks?.from_default_branch, CHECKS_FROM_DEFAULT_BRANCH);
 }
 
-// src/scripts/lib/cli.ts
+// src/entrypoints/machinery/lib/cli.ts
 function parseAcrossReleases(names, argv) {
   const known = new Set(names);
   const values = Object.fromEntries(names.map((name) => [name, ""]));
@@ -294,7 +294,7 @@ function splitFlag(token) {
   return at === -1 ? [token, undefined] : [token.slice(0, at), token.slice(at + 1)];
 }
 
-// src/scripts/lib/publish-matrix.ts
+// src/entrypoints/machinery/lib/publish-matrix.ts
 import { appendFileSync } from "fs";
 function partsOf(entry) {
   return "job" in entry ? entry : { job: entry, ref: "" };
@@ -321,14 +321,14 @@ function publishMatrix(jobs, options) {
   console.error(`${include.length} ${options.what}(s): ${include.map((job) => job.name).join(", ")}`);
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/plan_checks.ts
+// src/entrypoints/machinery/plan_checks.ts
 var ref = defineScript(import.meta.url);
 var ARMS = {
   "pull-request": { read: getPullRequestChecks, key: CHECKS_FROM_PULL_REQUEST.where, warnWhenEmpty: NO_PULL_REQUEST_CHECKS },

@@ -1,68 +1,62 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/validate_pull_request.ts
+// src/entrypoints/machinery/validate_pull_request.ts
 import { appendFileSync, existsSync, readFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/domain/pr-validation.ts
+// src/domain/work/pr-validation.ts
 var PASSING = new Set(["success", "skipped", "neutral"]);
 var CI_RETRY_LIMIT = 3;
+function contextsPassed(verdict) {
+  return verdict === "passed";
+}
+function handTo(agent) {
+  const named = agent.trim();
+  return named === "" ? {} : { next: { agent: named } };
+}
 function decideValidationOutcome(input) {
-  const { conclusion, requiredContexts, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
-  const failing = requiredContexts.map((name) => ({ name, conclusion: "failure" }));
+  const { conclusion, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
   const deliverableProblems = input.deliverableProblems ?? [];
   if (deliverableProblems.length > 0) {
     const count = `${deliverableProblems.length} problem${deliverableProblems.length === 1 ? "" : "s"}`;
     if (priorRetries >= CI_RETRY_LIMIT) {
       return {
         verdict: "retries-exhausted",
-        checks: failing,
-        nextAgent: "",
         summary: `The deliverable is still not internally consistent (${count}) after ${priorRetries} attempts. ` + `Stopping rather than dispatching the engineer again; a human should look.`
       };
     }
     return {
       verdict: "deliverable-invalid",
-      checks: failing,
-      nextAgent: engineerAgent,
+      ...handTo(engineerAgent),
       summary: `.github/atomaton/ is not internally consistent (${count}), so CI was not run.`
     };
   }
   const normalised = conclusion.trim().toLowerCase();
   const passed = PASSING.has(normalised);
-  const checks = requiredContexts.map((name) => ({
-    name,
-    conclusion: passed ? "success" : "failure"
-  }));
   if (passed) {
-    return { verdict: "passed", checks, nextAgent: reviewerAgent, summary: `CI concluded ${normalised}.` };
+    return { verdict: "passed", ...handTo(reviewerAgent), summary: `CI concluded ${normalised}.` };
   }
   if (!normalised) {
     return {
       verdict: "no-conclusion",
-      checks,
-      nextAgent: "",
       summary: "CI never reported a conclusion. Nothing was dispatched; a human should look."
     };
   }
   if (priorRetries >= CI_RETRY_LIMIT) {
     return {
       verdict: "retries-exhausted",
-      checks,
-      nextAgent: "",
       summary: `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` + `Stopping rather than dispatching the engineer again; a human should look.`
     };
   }
   return {
     verdict: "failed",
-    checks,
-    nextAgent: engineerAgent,
+    ...handTo(engineerAgent),
     summary: `CI concluded ${normalised}. Returning to the engineer with the failing job.`
   };
 }
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -92,7 +86,7 @@ function dispatchWorkflow(context, workflow, args = [], log = (m) => console.err
   return true;
 }
 
-// src/lib/branch-rules.ts
+// src/adapters/github/branch-rules.ts
 var FEATURE_UNAVAILABLE = /upgrade to github|make this repository public/i;
 function readBranchRules(repo, baseRef) {
   if (!baseRef)
@@ -123,11 +117,11 @@ function readBranchRules(repo, baseRef) {
   }
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -163,11 +157,11 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -181,12 +175,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/validate_pull_request.ts
+// src/entrypoints/machinery/validate_pull_request.ts
 var ref = defineScript(import.meta.url);
 function log(message) {
   console.error(`[atomaton-validate-pr] ${message}`);
@@ -307,13 +301,13 @@ function main() {
   const priorRetries = countPriorRetries(repo, values.number ?? "");
   const outcome = decideValidationOutcome({
     conclusion,
-    requiredContexts,
     reviewerAgent: values.reviewer ?? "",
     engineerAgent: values.engineer ?? "",
     priorRetries,
     deliverableProblems
   });
-  for (const check of outcome.checks) {
+  const conclusionForContexts = contextsPassed(outcome.verdict) ? "success" : "failure";
+  for (const check of requiredContexts.map((name) => ({ name, conclusion: conclusionForContexts }))) {
     const created = gh("api", "--method", "POST", `repos/${repo}/check-runs`, "-f", `name=${check.name}`, "-f", `head_sha=${headSha}`, "-f", "status=completed", "-f", `conclusion=${check.conclusion}`);
     if (created.code)
       log(`WARN could not write check "${check.name}": ${created.stderr}`);
@@ -323,7 +317,7 @@ function main() {
   if (outcome.verdict !== "passed") {
     reportFailure(repo, values.number ?? "", priorRetries + 1, runUrl, outcome.summary, deliverableProblems);
   }
-  write(`next_agent=${outcome.nextAgent}`);
+  write(`next_agent=${outcome.next?.agent ?? ""}`);
   write(`conclusion=${conclusion}`);
   write(`summary=${outcome.summary}`);
 }

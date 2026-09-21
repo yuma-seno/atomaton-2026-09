@@ -1,15 +1,15 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/atomaton-runtime/tools/hooks/workspace_guard.ts
+// src/entrypoints/tools/hooks/workspace_guard.ts
 import { readdirSync, statSync } from "fs";
 import { join } from "path";
 
-// src/domain/workspace.ts
+// src/domain/work/workspace.ts
 var WORKSPACE_PATH = "/tmp/atomaton-workspace";
 var WORKSPACE_SENTENCE = `Anything under ${WORKSPACE_PATH} survives into the next run on this issue and is shared with the other ` + `agents working on it. Nothing else outside the repository survives. Put notes, scratch scripts and ` + `intermediate output there rather than in the repository, where they would be committed as part of the work.`;
 
-// src/domain/workspace-size.ts
+// src/domain/work/workspace-size.ts
 var MAX_TOTAL_BYTES = 5 * 1024 * 1024;
 var MAX_FILE_BYTES = 1024 * 1024;
 var MAX_FILES = 200;
@@ -50,7 +50,7 @@ function overLimitNotice(usage, path) {
 `);
 }
 
-// src/atomaton-runtime/tools/hooks/workspace_guard.ts
+// src/entrypoints/tools/hooks/workspace_guard.ts
 var WALK_CEILING = MAX_FILES + 1;
 var KEEP_LARGEST = 5;
 function measure(root) {

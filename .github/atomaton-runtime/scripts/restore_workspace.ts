@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/restore_workspace.ts
+// src/entrypoints/machinery/restore_workspace.ts
 import { appendFileSync, mkdirSync as mkdirSync2 } from "fs";
 import { parseArgs } from "util";
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -69,7 +69,7 @@ function gitRun(...args) {
   return run(["git", ...args]);
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 function workspaceTargetPrefix(rootIssue) {
   return `workspace/issue-${rootIssue}`;
 }
@@ -101,7 +101,7 @@ function restoreWorkspace(prefix, destDir) {
   return true;
 }
 
-// src/lib/parent-issue.ts
+// src/adapters/github/parent-issue.ts
 function log(message) {
   console.error(`[atomaton-parent] ${message}`);
 }
@@ -122,11 +122,11 @@ function parentIssueOf(repo, issue) {
   }
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -162,7 +162,7 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/domain/workspace.ts
+// src/domain/work/workspace.ts
 var WORKSPACE_PATH = "/tmp/atomaton-workspace";
 var WORKSPACE_SENTENCE = `Anything under ${WORKSPACE_PATH} survives into the next run on this issue and is shared with the other ` + `agents working on it. Nothing else outside the repository survives. Put notes, scratch scripts and ` + `intermediate output there rather than in the repository, where they would be committed as part of the work.`;
 function workspaceScope(target, parents, why = "") {
@@ -173,7 +173,7 @@ function workspaceScope(target, parents, why = "") {
   return { rootIssue: String(root), resolved: true, why: "" };
 }
 
-// src/lib/workspace-scope.ts
+// src/adapters/github/workspace-scope.ts
 var MAX_HOPS = 6;
 function log2(message) {
   console.error(`[atomaton-workspace] ${message}`);
@@ -226,11 +226,11 @@ function resolveWorkspaceScope(repo, type, number) {
   return scope;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -244,12 +244,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/restore_workspace.ts
+// src/entrypoints/machinery/restore_workspace.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({

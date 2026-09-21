@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/save_workspace.ts
+// src/entrypoints/machinery/save_workspace.ts
 import { existsSync as existsSync2, readdirSync as readdirSync2 } from "fs";
 import { parseArgs } from "util";
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -27,7 +27,7 @@ function gitRun(...args) {
   return run(["git", ...args]);
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 function gitIn(cwd, ...args) {
   const proc = Bun.spawnSync({ cmd: ["git", ...args], cwd, stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode ?? 1, stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "" };
@@ -76,11 +76,11 @@ function saveWorkspace(prefix, sourceDir, commitMessage) {
   return saved;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -94,12 +94,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/save_workspace.ts
+// src/entrypoints/machinery/save_workspace.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({

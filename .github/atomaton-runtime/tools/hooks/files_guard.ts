@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/domain/search-streak.ts
+// src/domain/work/search-streak.ts
 var MAX_SEARCHES_WITHOUT_OPENING = 15;
 function nextStreak(streak, act) {
   if (act === "search")
@@ -16,7 +16,7 @@ function refusalReason(streak, limit = MAX_SEARCHES_WITHOUT_OPENING) {
   return `${streak} searches in a row without opening any of the files they found. A search returns ` + "where something is, not what it is, so nothing found so far has been read. Do one of two " + "things before searching again: open the most promising result \u2014 with `read`, or `sed -n` " + "for a range \u2014 or, if you are guessing at what the thing is called, ask " + "search__search_code the same question in a sentence. Measured, that finds the right file " + "in the top five 70% of the time, against 41.5% for the regex patterns agents search with.";
 }
 
-// src/atomaton-runtime/tools/lib/search-streak-file.ts
+// src/entrypoints/tools/lib/search-streak-file.ts
 import { readFileSync, writeFileSync } from "fs";
 function streakFile() {
   const opsLog = process.env.ATOMATON_OPS_LOG;
@@ -43,7 +43,7 @@ function writeStreak(file, streak) {
   } catch {}
 }
 
-// src/atomaton-runtime/tools/hooks/files_guard.ts
+// src/entrypoints/tools/hooks/files_guard.ts
 var SEARCHES = new Set(["grep", "glob", "list"]);
 function allow() {
   console.log(JSON.stringify({ allow: true }));

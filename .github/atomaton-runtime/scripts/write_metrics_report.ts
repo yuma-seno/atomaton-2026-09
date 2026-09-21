@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/write_metrics_report.ts
+// src/entrypoints/machinery/write_metrics_report.ts
 import { parseArgs } from "util";
 import { readFileSync, readdirSync as readdirSync2 } from "fs";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -78,11 +78,11 @@ function ghPaginated(...args) {
   return flat;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -97,12 +97,12 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
@@ -150,7 +150,7 @@ function saveSession(targetPath, content, commitMessage) {
   return saved;
 }
 
-// src/domain/search-streak.ts
+// src/domain/work/search-streak.ts
 var SEARCHES = /^(grep|egrep|fgrep|rg|ag|ack|ugrep|find)$/;
 var OPENS = /^(cat|bat|head|tail|sed|less|more|nl|od|xxd)$/;
 function classifyShellAct(command) {
@@ -165,7 +165,7 @@ function classifyShellAct(command) {
   return "other";
 }
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -174,7 +174,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/domain/metrics.ts
+// src/domain/record/metrics.ts
 function distributionOf(values) {
   if (values.length === 0)
     return { p50: 0, p90: 0, p99: 0, max: 0, total: 0 };
@@ -260,7 +260,7 @@ function tokenSummary(tokens) {
   };
 }
 
-// src/domain/metrics-windows.ts
+// src/domain/record/metrics-windows.ts
 var WINDOWS = [
   { label: "Last 7 days", days: 7 },
   { label: "Last 30 days", days: 30 },
@@ -292,7 +292,7 @@ function gaveUpShare(runs) {
   return runs.filter((r) => r.ended_because !== "completed").length / runs.length;
 }
 
-// src/domain/metrics-report.ts
+// src/domain/record/metrics-report.ts
 function n(value) {
   return value.toLocaleString("en-US");
 }
@@ -441,7 +441,7 @@ function renderReport(all, forWindow, now) {
 `);
 }
 
-// src/domain/token-line.ts
+// src/domain/record/token-line.ts
 var PATTERN = /_Tokens:\s*([\d,]+)\s*total\s*\(([\d,]+)\s*prompt\s*\+\s*([\d,]+)\s*completion(?:,\s*([\d,]+)\s*of the prompt cached)?\)_/;
 function parseTokenLine(body) {
   const match = PATTERN.exec(body);
@@ -456,7 +456,7 @@ function parseTokenLine(body) {
   };
 }
 
-// src/scripts/write_metrics_report.ts
+// src/entrypoints/machinery/write_metrics_report.ts
 var ref = defineScript(import.meta.url);
 var BRANCH = "atomaton-data";
 var REPORT_PATH = "metrics/report.md";

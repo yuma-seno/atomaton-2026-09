@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/save_agent_session.ts
+// src/entrypoints/machinery/save_agent_session.ts
 import { existsSync as existsSync2, readFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -27,7 +27,7 @@ function gitRun(...args) {
   return run(["git", ...args]);
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 function sessionTargetPath(type, number, agent) {
   return `sessions/${type}-${number}/${agent}.json`;
 }
@@ -75,7 +75,32 @@ function saveSession(targetPath, content, commitMessage) {
   return saved;
 }
 
-// src/domain/session-size.ts
+// src/shared/tool-output.ts
+var TOOL_OUTPUT_BUDGET = 50000;
+function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
+  if (text.length <= budget)
+    return { text, dropped: 0 };
+  const note = (where, howMany) => `
+
+[${howMany} characters ${where}; ${budget} shown]
+
+`;
+  const room = budget - note("dropped from the middle", text.length).length;
+  const dropped = text.length - room;
+  if (room <= 0)
+    return { text: keep === "tail" ? text.slice(-budget) : text.slice(0, budget), dropped: text.length - budget };
+  if (keep === "tail") {
+    return { text: note("dropped from the start", dropped).trimStart() + text.slice(-room), dropped };
+  }
+  if (keep === "head") {
+    return { text: text.slice(0, room) + note("dropped from the end", dropped).trimEnd(), dropped };
+  }
+  const head = Math.floor(room / 4);
+  const tail = room - head;
+  return { text: text.slice(0, head) + note("dropped from the middle", dropped) + text.slice(-tail), dropped };
+}
+
+// src/domain/work/session-size.ts
 var TOOL_RESULT_CAP = 4000;
 var TOOL_CALL_ARGS_CAP = 20000;
 var CHARS_PER_TOKEN = 4;
@@ -90,17 +115,8 @@ function contentText(content) {
     return content;
   return;
 }
-function capText(text, limit) {
-  if (text.length <= limit)
-    return text;
-  const head = Math.floor(limit / 4);
-  const tail = limit - head;
-  const dropped = text.length - limit;
-  return text.slice(0, head) + `
-
-[atomaton] ${dropped} characters dropped from the middle; ${limit} shown
-
-` + text.slice(text.length - tail);
+function capText2(text, limit) {
+  return capText(text, limit, "both").text;
 }
 function capToolResults(session, limit = TOOL_RESULT_CAP) {
   const messages = session.messages ?? [];
@@ -112,7 +128,7 @@ function capToolResults(session, limit = TOOL_RESULT_CAP) {
       if (text === undefined || text.length <= limit)
         return message;
       changed += 1;
-      return { ...message, content: capText(text, limit) };
+      return { ...message, content: capText2(text, limit) };
     }
     const calls = message.tool_calls;
     if (!Array.isArray(calls))
@@ -124,7 +140,7 @@ function capToolResults(session, limit = TOOL_RESULT_CAP) {
       if (typeof args !== "string" || args.length <= TOOL_CALL_ARGS_CAP)
         return call;
       touched = true;
-      return { ...call, function: { ...fn, arguments: capText(args, TOOL_CALL_ARGS_CAP) } };
+      return { ...call, function: { ...fn, arguments: capText2(args, TOOL_CALL_ARGS_CAP) } };
     });
     if (!touched)
       return message;
@@ -143,11 +159,11 @@ function shrinkLogLine(outcome, what = "tool results replaced") {
   return `session shrunk: ${outcome.changed} ${what}, ` + `~${Math.round(outcome.tokensBefore / 1000)}k -> ~${Math.round(outcome.tokensAfter / 1000)}k estimated tokens`;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -161,12 +177,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/save_agent_session.ts
+// src/entrypoints/machinery/save_agent_session.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({

@@ -1,28 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/resolve_issue_branch.ts
+// src/entrypoints/machinery/resolve_issue_branch.ts
 import { appendFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/domain/issue-branch.ts
-var OWNED_SUFFIX = /^-(\d+)$/;
-function ordinalOf(rest) {
-  if (rest === "")
-    return 1;
-  const match = OWNED_SUFFIX.exec(rest);
-  return match ? Number(match[1]) : 0;
-}
-function ownedBranches(branches, issueNumber) {
-  const prefix = `atomaton/issue-${issueNumber}`;
-  return branches.filter((branch) => branch.name.startsWith(prefix)).map((branch) => ({ branch, ordinal: ordinalOf(branch.name.slice(prefix.length)) })).filter((entry) => entry.ordinal > 0).sort((a, b) => b.ordinal - a.ordinal);
-}
-function branchToResume(branches, issueNumber) {
-  const unmerged = ownedBranches(branches, issueNumber).find((entry) => !entry.branch.merged);
-  return unmerged?.branch.name ?? "";
-}
-
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -43,12 +26,37 @@ function gh(...args) {
   return run([...ghCommand(), ...args]);
 }
 
-// src/lib/issue-branches.ts
+// src/adapters/github/branch-names.ts
+var BRANCH_PREFIX = "atomaton/issue-";
+var OWNED_SUFFIX = /^-(\d+)$/;
+function ordinalOfBranch(name, issue) {
+  const base = `${BRANCH_PREFIX}${issue}`;
+  if (!name.startsWith(base))
+    return 0;
+  const rest = name.slice(base.length);
+  if (rest === "")
+    return 1;
+  const match = OWNED_SUFFIX.exec(rest);
+  return match ? Number(match[1]) : 0;
+}
+function matchingRefsPath(repo, issue) {
+  return `repos/${repo}/git/matching-refs/heads/${BRANCH_PREFIX}${issue}`;
+}
+
+// src/domain/work/issue-branch.ts
+function newestFirst(owned) {
+  return [...owned].sort((a, b) => b.ordinal - a.ordinal);
+}
+function ordinalToResume(owned) {
+  return newestFirst(owned).find((branch) => !branch.merged)?.ordinal;
+}
+
+// src/adapters/github/issue-branches.ts
 function log(message) {
   console.error(`[atomaton-issue-branch] ${message}`);
 }
 function collectIssueBranches(repo, issueNumber) {
-  const refs = gh("api", `repos/${repo}/git/matching-refs/heads/atomaton/issue-${issueNumber}`);
+  const refs = gh("api", matchingRefsPath(repo, issueNumber));
   if (refs.code) {
     const why = `could not list the branches of #${issueNumber}: ${(refs.stderr || refs.stdout).trim()}`;
     log(`WARN ${why}`);
@@ -64,7 +72,8 @@ function collectIssueBranches(repo, issueNumber) {
     return { known: false, why };
   }
   const owner = repo.split("/", 1)[0] ?? "";
-  return { known: true, branches: names.map((name) => ({ name, merged: headBranchMerged(repo, owner, name) })) };
+  const branches = names.map((name) => ({ name, ordinal: ordinalOfBranch(name, issueNumber) })).filter((entry) => entry.ordinal > 0).map((entry) => ({ ...entry, merged: headBranchMerged(repo, owner, entry.name) }));
+  return { known: true, branches };
 }
 function headBranchMerged(repo, owner, branch) {
   const prs = gh("api", `repos/${repo}/pulls?state=all&per_page=100&head=${owner}:${branch}`);
@@ -80,12 +89,16 @@ function headBranchMerged(repo, owner, branch) {
     return false;
   }
 }
+function resumableBranch(branches) {
+  const ordinal = ordinalToResume(branches);
+  return branches.find((branch) => branch.ordinal === ordinal)?.name ?? "";
+}
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -99,12 +112,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/resolve_issue_branch.ts
+// src/entrypoints/machinery/resolve_issue_branch.ts
 var ref = defineScript(import.meta.url);
 function log2(message) {
   console.error(`[atomaton-issue-branch] ${message}`);
@@ -121,7 +134,7 @@ function main() {
   if (repo && Number.isInteger(issue) && issue > 0) {
     const listed = collectIssueBranches(repo, issue);
     if (listed.known)
-      branch = branchToResume(listed.branches, issue);
+      branch = resumableBranch(listed.branches);
     else
       log2(`${listed.why}; staying on the base branch`);
   } else {

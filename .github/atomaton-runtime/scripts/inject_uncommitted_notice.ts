@@ -1,15 +1,15 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/inject_uncommitted_notice.ts
+// src/entrypoints/machinery/inject_uncommitted_notice.ts
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -23,12 +23,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/inject_uncommitted_notice.ts
+// src/entrypoints/machinery/inject_uncommitted_notice.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { session: { type: "string" } } });
