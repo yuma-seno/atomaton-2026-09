@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/guard_command_on_closed.ts
+// src/entrypoints/machinery/guard_command_on_closed.ts
 import { appendFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -43,11 +43,11 @@ function looksTransient(result) {
   return /(timeout|timed out|connection reset|unexpected EOF|TLS handshake|temporary failure)/i.test(text);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -83,33 +83,52 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/lib/target-state.ts
+// src/adapters/github/outcome.ts
+function issueOutcome(reason) {
+  const said = (reason ?? "").toLowerCase();
+  return said === "not_planned" || said === "duplicate" ? "abandoned" : "done";
+}
+function pullRequestOutcome(merged) {
+  return merged ? "done" : "abandoned";
+}
+
+// src/adapters/github/target-state.ts
 function readTargetState(number, repo) {
   const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;
   const { code, stdout, stderr } = ghRead("api", path);
   if (code !== 0) {
-    return { kind: "unknown", why: (stderr || stdout || `gh exited ${code}`).trim().split(`
+    return { known: false, why: (stderr || stdout || `gh exited ${code}`).trim().split(`
 `)[0] ?? "" };
   }
   let parsed;
   try {
     parsed = JSON.parse(stdout);
   } catch {
-    return { kind: "unknown", why: "the response was not JSON" };
+    return { known: false, why: "the response was not JSON" };
   }
+  const isPr = parsed.pull_request !== undefined;
+  const kind = isPr ? "pull-request" : "issue";
   if (parsed.state === "open")
-    return { kind: "open" };
-  if (parsed.state === "closed")
-    return { kind: "closed", merged: Boolean(parsed.pull_request?.merged_at) };
-  return { kind: "unknown", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
+    return { known: true, kind, state: "open" };
+  if (parsed.state === "closed") {
+    return {
+      known: true,
+      kind,
+      state: isPr ? pullRequestOutcome(Boolean(parsed.pull_request?.merged_at)) : issueOutcome(parsed.state_reason)
+    };
+  }
+  return { known: false, why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
 }
 
-// src/domain/closed-issue.ts
-function mayStartWorkOn(state) {
-  return state.kind === "open";
+// src/domain/work/closed-issue.ts
+function mayStartWorkOn(target) {
+  return target.known && target.state === "open";
+}
+function canBeReopened(target) {
+  return target.known && !(target.kind === "pull-request" && target.state === "done");
 }
 function recoveryAdvice(state, number, command) {
-  if (state.kind === "closed" && state.merged) {
+  if (state.known && !canBeReopened(state)) {
     return `#${number} is merged, and GitHub cannot reopen a merged pull request. ` + `Open an issue for the follow-up instead.`;
   }
   return `Reopen #${number} and comment \`${command}\` to run it.`;
@@ -118,20 +137,20 @@ function mentionPrefix(logins) {
   return logins.length > 0 ? `${logins.map((l) => `@${l}`).join(" ")} ` : "";
 }
 function commandOnClosedNotice(commenter, command, state, number) {
-  const what = state.kind === "unknown" ? `Atomaton: \`${command}\` was not run, because the state of #${number} could not be read (${state.why}), and a command is not started on a target that might be closed.` : `Atomaton: \`${command}\` was not run, because #${number} is closed.`;
+  const what = !state.known ? `Atomaton: \`${command}\` was not run, because the state of #${number} could not be read (${state.why}), and a command is not started on a target that might be closed.` : `Atomaton: \`${command}\` was not run, because #${number} is closed.`;
   return [
     `${mentionPrefix(commenter ? [commenter] : [])}${what}`,
     "",
-    state.kind === "unknown" ? "Comment again once it can be read." : recoveryAdvice(state, number, command)
+    !state.known ? "Comment again once it can be read." : recoveryAdvice(state, number, command)
   ].join(`
 `);
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -145,12 +164,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/guard_command_on_closed.ts
+// src/entrypoints/machinery/guard_command_on_closed.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({
@@ -185,7 +204,7 @@ function main() {
     console.error(`Warning: could not post the refusal on #${number}: ${posted.stderr || posted.stdout}`);
   }
   say(true);
-  console.error(`Refused '${command}' on #${number}: ${state.kind === "unknown" ? `state unreadable (${state.why})` : "not open"}.`);
+  console.error(`Refused '${command}' on #${number}: ${!state.known ? `state unreadable (${state.why})` : "not open"}.`);
 }
 if (import.meta.main)
   main();

@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/prune_atomaton_data.ts
+// src/entrypoints/machinery/prune_atomaton_data.ts
 import { parseArgs } from "util";
 import { existsSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -80,10 +80,10 @@ function ghPaginated(...args) {
   return flat;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -95,7 +95,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -110,7 +110,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -158,7 +158,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -167,7 +167,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -176,7 +176,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -196,7 +196,7 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-// src/domain/atomaton-data-pruning.ts
+// src/domain/machinery/atomaton-data-pruning.ts
 var OWNED_TREES = ["workspace/"];
 function issueNumberOf(path) {
   const tree = OWNED_TREES.find((prefix) => path.startsWith(prefix));
@@ -232,14 +232,14 @@ function pruneCommitMessage(decision) {
   return `atomaton: prune ${files} from closed issues (${listed})`;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/prune_atomaton_data.ts
+// src/entrypoints/machinery/prune_atomaton_data.ts
 var ref = defineScript(import.meta.url);
 var BRANCH = "atomaton-data";
 function log(message) {

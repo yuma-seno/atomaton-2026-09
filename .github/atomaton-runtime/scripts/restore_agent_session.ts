@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/restore_agent_session.ts
+// src/entrypoints/machinery/restore_agent_session.ts
 import { writeFileSync as writeFileSync2 } from "fs";
 import { parseArgs } from "util";
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -27,7 +27,7 @@ function gitRun(...args) {
   return run(["git", ...args]);
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 function sessionTargetPath(type, number, agent) {
   return `sessions/${type}-${number}/${agent}.json`;
 }
@@ -87,11 +87,11 @@ function archiveSession(type, number, agent, content) {
   return archivedPath;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -105,12 +105,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/domain/session-size.ts
+// src/domain/work/session-size.ts
 var KEEP_RECENT_RESULTS = 10;
 var SESSION_TOKEN_LIMIT = 1e5;
 var CHARS_PER_TOKEN = 4;
@@ -182,7 +182,7 @@ function stillTooBigLine(outcome, limit = SESSION_TOKEN_LIMIT) {
   return `session is still ~${Math.round(outcome.tokensAfter / 1000)}k estimated tokens after shrinking, ` + `over the ~${Math.round(limit / 1000)}k this run allows. What is left is the conversation itself, ` + "which nothing here can shorten. This run will likely be refused by the provider; start the agent " + "again with a recover run (for example `/engineer recover`), which archives the session and begins fresh.";
 }
 
-// src/scripts/restore_agent_session.ts
+// src/entrypoints/machinery/restore_agent_session.ts
 var ref = defineScript(import.meta.url);
 function findAgentSession(type, number, agent, load = restoreSession) {
   const target = sessionTargetPath(type, number, agent);

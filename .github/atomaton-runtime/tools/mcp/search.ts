@@ -17401,7 +17401,7 @@ class Server extends Protocol {
   }
 }
 
-// src/lib/mcp-report.ts
+// src/adapters/mcp/mcp-report.ts
 var MAX_HELD = 20;
 var sink;
 var held = [];
@@ -17432,11 +17432,11 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -17568,7 +17568,7 @@ class StdioServerTransport {
   }
 }
 
-// src/lib/mcp-tool.ts
+// src/adapters/mcp/mcp-tool.ts
 function positiveInt(description) {
   return coerce.number().int().positive().describe(description);
 }
@@ -17653,7 +17653,7 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/domain/bm25.ts
+// src/shared/bm25.ts
 var CHUNK_LIMIT = 700;
 var MIN_CHUNK = 40;
 function splitBody(text, limit = CHUNK_LIMIT) {
@@ -17766,7 +17766,7 @@ function rankIssues(chunks, scores, limit) {
   return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
 }
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -17781,7 +17781,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/code-corpus.ts
+// src/domain/machinery/code-corpus.ts
 var DEPLOYED_ROOTS = [USER_ROOT, RUNTIME_ROOT].map((root) => new RegExp(`^${root.replaceAll(".", String.raw`\.`)}/`));
 var INDEXED = /\.(ts|tsx|js|jsx|mjs|cjs|rs|py|go|rb|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|bash|sql|md|mdx|yaml|yml|toml|json|jsonc)$/i;
 var EXCLUDED = [
@@ -17800,7 +17800,7 @@ function corpusFrom(tracked) {
   return tracked.map((line) => line.trim().replace(/\\/g, "/")).filter((path) => path.length > 0 && shouldIndex(path)).sort();
 }
 
-// src/domain/code-search.ts
+// src/shared/code-search.ts
 var CANDIDATES = 20;
 var MIN_QUERY_COVERAGE = 0.4;
 function queryCoverage(index, query) {
@@ -17886,10 +17886,10 @@ function resultsOf(passages, matches, excerptBudget) {
   });
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -17901,7 +17901,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -17949,7 +17949,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -17958,7 +17958,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -17967,7 +17967,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -17984,13 +17984,13 @@ function getRerankerModel() {
   return settings?.reranker_model?.trim() || DEFAULT_RERANKER;
 }
 
-// src/domain/model-cache.ts
+// src/domain/machinery/model-cache.ts
 var MODEL_CACHE_DIR = "atomaton-transformers";
 
-// src/atomaton-runtime/tools/mcp/search.ts
+// src/entrypoints/tools/mcp/search.ts
 import { readFileSync as readFileSync2 } from "fs";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -18063,7 +18063,7 @@ function ghPaginated(...args) {
   return flat;
 }
 
-// src/lib/issue-index.ts
+// src/adapters/github/issue-index.ts
 var INDEX_BRANCH = "atomaton-index";
 var INDEX_PATH = "issue-index.json";
 var INDEX_VERSION = 2;
@@ -18150,7 +18150,7 @@ ${chunk.text}`);
   return { ...index, chunks, bm25: buildIndex(documents) };
 }
 
-// src/scripts/lib/atomaton-data.ts
+// src/entrypoints/machinery/lib/atomaton-data.ts
 function gitPipe(input, ...args) {
   const proc = Bun.spawnSync({ cmd: ["git", ...args], stdin: Buffer.from(input), stdout: "pipe", stderr: "pipe" });
   return { code: proc.exitCode ?? 1, stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "" };
@@ -18179,10 +18179,10 @@ function saveAsOnlyCommit(branch, targetPath, content, commitMessage) {
   return gitRun("push", "--force", "origin", `${commit.stdout}:refs/heads/${branch}`).code === 0;
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 import { statSync } from "fs";
 
-// src/domain/tool-hardening.ts
+// src/domain/machinery/tool-hardening.ts
 function pathWithoutWorldWritable(path, isWorldWritable) {
   return path.split(":").filter((entry) => entry !== "" && entry !== "." && !isWorldWritable(entry)).join(":");
 }
@@ -18203,7 +18203,7 @@ function classifyPathEntries(path, inspect) {
   return { writable, unreadable };
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 var PR_SET_DUMPABLE = 4;
 var PR_GET_DUMPABLE = 3;
 function inspect(directory) {
@@ -18247,7 +18247,7 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/atomaton-runtime/tools/mcp/search.ts
+// src/entrypoints/tools/mcp/search.ts
 var REPO = process.env.GITHUB_REPOSITORY ?? "";
 var CANDIDATES2 = 20;
 var DOCUMENT_BUDGET2 = 1800;

@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/post_result_comment.ts
+// src/entrypoints/machinery/post_result_comment.ts
 import { appendFileSync, existsSync, readFileSync } from "fs";
 import { parseArgs } from "util";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -63,11 +63,11 @@ function ghGraphqlRead(query, variables = {}) {
   return graphqlResult(ghRead(...graphqlArgs(query, variables)));
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -103,7 +103,7 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/lib/parent-issue.ts
+// src/adapters/github/parent-issue.ts
 function log(message) {
   console.error(`[atomaton-parent] ${message}`);
 }
@@ -124,12 +124,11 @@ function parentIssueOf(repo, issue) {
   }
 }
 
-// src/domain/completion-mention.ts
+// src/domain/work/completion-mention.ts
 function shouldMentionOnCompletion(signals) {
   if (!signals.notify)
     return false;
-  const handoffWillRun = !signals.stopRequested && !signals.limitReached;
-  if (signals.directive && handoffWillRun)
+  if (signals.ending.next)
     return false;
   if (signals.chainContinues)
     return false;
@@ -138,7 +137,24 @@ function shouldMentionOnCompletion(signals) {
   return true;
 }
 
-// src/domain/redaction.ts
+// src/domain/work/turn.ts
+function endingOf(signals) {
+  const named = signals.directive.trim();
+  const next = named === "" ? undefined : { agent: named };
+  if (!signals.succeeded || signals.endedBecause === "failed")
+    return { ended: "failed" };
+  if (signals.endedBecause === "stopped")
+    return { ended: "stopped" };
+  if (signals.endedBecause === "iterations" || signals.endedBecause === "runtime")
+    return { ended: "spent" };
+  if (signals.loopLimitReached)
+    return { ended: "chain-over", ...next ? { next } : {} };
+  if (next || signals.chainContinues)
+    return { ended: "handed-off", ...next ? { next } : {} };
+  return { ended: "finished" };
+}
+
+// src/shared/redaction.ts
 var PATTERNS = [
   /\bsk-[A-Za-z0-9_-]{16,}/g,
   /\bsk-ant-[A-Za-z0-9_-]{16,}/g,
@@ -160,14 +176,14 @@ function redact(text, literals = []) {
   return out;
 }
 
-// src/domain/token-line.ts
+// src/domain/record/token-line.ts
 function renderTokenLine(u) {
   const split = `${u.prompt ?? "?"} prompt + ${u.completion ?? "?"} completion`;
   const share = u.cached === undefined ? "" : `, ${u.cached} of the prompt cached`;
   return `_Tokens: ${u.total ?? "?"} total (${split}${share})_`;
 }
 
-// src/domain/mention.ts
+// src/domain/work/mention.ts
 var MENTION = /(^|[^\w@/-])@([A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\b(?!\/)/g;
 var CODE = /```[\s\S]*?```|`[^`\n]*`/g;
 function escapeUnknownMentions(text, known) {
@@ -200,7 +216,7 @@ function escapedMentionNotice(escaped) {
 ` + `> ${names} ${escaped.length === 1 ? "was" : "were"} written as ${escaped.length === 1 ? "a mention" : "mentions"} ` + `and had the notification removed: this run could not confirm ${escaped.length === 1 ? "that account" : "those accounts"} ` + `as a participant in this repository or this thread. Nobody was notified. If the mention was meant, mention them yourself.`;
 }
 
-// src/lib/participants.ts
+// src/adapters/github/participants.ts
 function knownParticipants(repo, number) {
   if (!repo || !String(number).trim())
     return [];
@@ -224,11 +240,11 @@ function knownParticipants(repo, number) {
   return [...logins];
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -242,12 +258,12 @@ var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/post_result_comment.ts
+// src/entrypoints/machinery/post_result_comment.ts
 var ref = defineScript(import.meta.url);
 function tokenUsageLines(logsFile) {
   if (!existsSync(logsFile))
@@ -300,11 +316,33 @@ function lastAgentText(sessionPath, from) {
   }
   return;
 }
+function endedTag(ending) {
+  if (ending.ended === "stopped")
+    return "stopped";
+  return ending.ended === "spent" ? "limit" : "done";
+}
+function cutShort(endedBecause) {
+  return endedBecause === "stopped" || endedBecause === "runtime" || endedBecause === "iterations";
+}
+function howItWasCutShort(endedBecause) {
+  if (endedBecause === "stopped")
+    return "was stopped";
+  return endedBecause === "iterations" ? "ran out of iterations" : "ran out of time";
+}
+function endingHere(args) {
+  return endingOf({
+    succeeded: true,
+    endedBecause: args.endedBecause ?? "",
+    loopLimitReached: false,
+    chainContinues: args.chainContinues === "true",
+    directive: args.directive ?? ""
+  });
+}
 function buildCommentBody(args) {
   const lines = [
     AGENT_TAG.write(args.agent),
     CHANGED_TAG.write(args.changed === true ? "yes" : "no"),
-    ENDED_TAG.write(args.stopRequested === "true" ? "stopped" : args.limitReached === "true" ? "limit" : "done")
+    ENDED_TAG.write(endedTag(endingHere(args)))
   ];
   if (args.salvaged === true) {
     lines.push("> [!WARNING]", "> This run ended before it wrote a report. Below is the last thing it said,", "> from the middle of the work \u2014 not a conclusion, and not a summary of what it found.", "");
@@ -316,22 +354,20 @@ function buildCommentBody(args) {
   if (escapedNotice !== undefined)
     lines.push("", escapedNotice, "");
   if (shouldMentionOnCompletion({
-    directive: args.directive,
+    ending: endingHere(args),
     chainContinues: args.chainContinues === "true",
     notify: args.notify,
     isSubIssue: args.isSubIssue ?? false,
-    issueClosed: args.issueClosed ?? false,
-    stopRequested: args.stopRequested === "true",
-    limitReached: args.limitReached === "true"
+    issueClosed: args.issueClosed ?? false
   })) {
-    lines.push(args.stopRequested === "true" || args.limitReached === "true" ? `@${args.notify} \u2014 **${args.agent}** ${args.stopRequested === "true" ? "was stopped" : "ran out of iterations"} ` + `before it finished, and no agent will run next. Resume it, or say what to do instead.` : `@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
+    lines.push(cutShort(args.endedBecause) ? `@${args.notify} \u2014 **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` + `before it finished, and no agent will run next. Resume it, or say what to do instead.` : `@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
   }
   const metrics = args.repo ? ` \xB7 [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)` : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
-  if (args.stopRequested === "true") {
+  if (args.endedBecause === "stopped") {
     lines.push(`\u23F8\uFE0F _Stopped on request. **The session is saved.** Comment \`/resume\` to continue ` + `from here, or \`/${args.agent}\` with an instruction on the following lines._`);
-  } else if (args.limitReached === "true") {
-    lines.push(`\u26A0\uFE0F _The run reached its limit. Comment \`/${args.agent}\` to continue._`);
+  } else if (cutShort(args.endedBecause)) {
+    lines.push(`\u26A0\uFE0F _The run ${howItWasCutShort(args.endedBecause)}. Comment \`/${args.agent}\` to continue._`);
   }
   return lines.join(`
 `);
@@ -346,8 +382,7 @@ function main() {
       notify: { type: "string" },
       directive: { type: "string" },
       "chain-continues": { type: "string" },
-      "limit-reached": { type: "string" },
-      "stop-requested": { type: "string" },
+      "ended-because": { type: "string" },
       "messages-before": { type: "string" },
       "run-url": { type: "string" },
       changed: { type: "string" },
@@ -366,11 +401,11 @@ function main() {
     process.exit(2);
   }
   const redacted = redact(existsSync(outputFile) ? readFileSync(outputFile, "utf8") : "");
-  const cutShort = values["limit-reached"] === "true" || values["stop-requested"] === "true";
+  const endedEarly = cutShort(values["ended-because"]);
   let output = redacted;
   let salvaged = false;
   let wroteNothing = false;
-  if (!output.trim() && cutShort) {
+  if (!output.trim() && endedEarly) {
     const last = lastAgentText(values.session, Number(values["messages-before"]));
     if (last !== undefined) {
       output = redact(last);
@@ -379,12 +414,12 @@ function main() {
     }
   }
   if (!output.trim()) {
-    if (!cutShort) {
+    if (!endedEarly) {
       console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
       return;
     }
     wroteNothing = true;
-    output = values["stop-requested"] === "true" ? "_This run was stopped before it said anything._" : "_This run reached its limit before it said anything._";
+    output = values["ended-because"] === "stopped" ? "_This run was stopped before it said anything._" : `_This run ${howItWasCutShort(values["ended-because"])} before it said anything._`;
     console.error("the run was cut short with nothing to report -- posting the notice rather than nothing.");
   }
   const checked = escapeUnknownMentions(output, knownParticipants(process.env.GITHUB_REPOSITORY ?? "", values.number));
@@ -398,8 +433,7 @@ function main() {
     notify: values.notify,
     directive: values.directive,
     chainContinues: values["chain-continues"],
-    limitReached: values["limit-reached"],
-    stopRequested: values["stop-requested"],
+    endedBecause: values["ended-because"],
     runUrl: values["run-url"],
     repo: process.env.GITHUB_REPOSITORY ?? "",
     output: checked.text,

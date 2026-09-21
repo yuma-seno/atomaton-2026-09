@@ -17391,7 +17391,7 @@ class Server extends Protocol {
   }
 }
 
-// src/lib/mcp-report.ts
+// src/adapters/mcp/mcp-report.ts
 var MAX_HELD = 20;
 var sink;
 var held = [];
@@ -17422,11 +17422,11 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -17553,7 +17553,7 @@ class StdioServerTransport {
   }
 }
 
-// src/lib/mcp-tool.ts
+// src/adapters/mcp/mcp-tool.ts
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17626,7 +17626,7 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/domain/html-to-markdown.ts
+// src/shared/html-to-markdown.ts
 var ENTITIES = {
   amp: "&",
   lt: "<",
@@ -17692,7 +17692,7 @@ ${code.replace(/<[^>]+>/g, "")}
 `).trim();
 }
 
-// src/lib/issue-images.ts
+// src/adapters/github/issue-images.ts
 var MAX_IMAGE_BYTES = 4000000;
 function sniffMimeType(bytes) {
   const starts = (...sig) => sig.every((b, i) => bytes[i] === b);
@@ -17708,13 +17708,13 @@ function sniffMimeType(bytes) {
   return "";
 }
 
-// src/domain/tool-output.ts
+// src/shared/tool-output.ts
 var TOOL_OUTPUT_BUDGET = 50000;
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 import { statSync } from "fs";
 
-// src/domain/tool-hardening.ts
+// src/domain/machinery/tool-hardening.ts
 function pathWithoutWorldWritable(path, isWorldWritable) {
   return path.split(":").filter((entry) => entry !== "" && entry !== "." && !isWorldWritable(entry)).join(":");
 }
@@ -17735,7 +17735,7 @@ function classifyPathEntries(path, inspect) {
   return { writable, unreadable };
 }
 
-// src/atomaton-runtime/tools/lib/harden.ts
+// src/entrypoints/tools/lib/harden.ts
 var PR_SET_DUMPABLE = 4;
 var PR_GET_DUMPABLE = 3;
 function inspect(directory) {
@@ -17779,7 +17779,7 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/atomaton-runtime/tools/mcp/web.ts
+// src/entrypoints/tools/mcp/web.ts
 var MAX_TEXT_CHARS = TOOL_OUTPUT_BUDGET;
 var REQUEST_TIMEOUT_MS = 30000;
 var FETCHABLE_SCHEMES = new Set(["http:", "https:"]);

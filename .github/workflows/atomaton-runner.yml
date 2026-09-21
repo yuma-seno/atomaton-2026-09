@@ -771,7 +771,7 @@ jobs:
           # would defeat the guard above and point every request at "/chat/completions".
           #
           # Adding a name here means adding it to `AGENT_ENV_NAMES` in
-          # domain/declared-secrets.ts as well: a name the agent's process already means
+          # domain/delivery/declared-secrets.ts as well: a name the agent's process already means
           # something by is a name `tools.secrets` must not be able to mean something else
           # by. This is not an import -- the values below are shell and belong here -- so
           # tests/contract/agent-environment.test.ts is what holds the two together. It has
@@ -843,17 +843,17 @@ jobs:
             kill "$(cat "${RUNNER_TEMP}/atomaton-run/stop-watch.pid")" 2>/dev/null || true
           fi
 
-          # Both a limit and a stop leave atoma at status 2, because to atoma they are the
-          # same thing: an ending somebody asked for, with the session written. Only this job
-          # can tell them apart, because only this job asked -- the file is the record of it.
-          if [ "$EXIT_CODE" = "2" ]; then
-            if [ -f "${RUNNER_TEMP}/atomaton-run/stop-requested" ]; then
-              echo "::notice::Stopped on request — session saved"
-              echo "stop_requested=true" >> "$GITHUB_OUTPUT"
-            else
-              echo "::notice::The run reached its limit — session saved for next run"
-              echo "limit_reached=true" >> "$GITHUB_OUTPUT"
-            fi
+          # How the run ended, asked of the run. The core classifies its own ending and
+          # writes it into the session it just saved; this reads that record. It used to be
+          # guessed here -- status 2 and then a test for the stop file -- which collapsed two
+          # different ceilings into one and raced the watcher that writes that file. See
+          # read_run_ending.ts.
+          #
+          # A non-zero status that is not the soft stop is still a failure and still ends the
+          # step, so nothing below it runs and no ending is published: the turn failed, and
+          # decide_turn_ending.ts reads that from the step's own outcome.
+          if [ "$EXIT_CODE" = "2" ] || [ "$EXIT_CODE" = "0" ]; then
+            bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/read_run_ending.ts" --session "${RUNNER_TEMP}/atomaton-run/session.json" --exit-code "${EXIT_CODE}" --stop-file "${RUNNER_TEMP}/atomaton-run/stop-requested"
           elif [ "$EXIT_CODE" != "0" ]; then
             exit $EXIT_CODE
           fi
@@ -888,7 +888,7 @@ jobs:
           echo "chain_continues=${CHAIN_CONTINUES}" >> "$GITHUB_OUTPUT"
 
           # Whether this run changed anything, read from the same log and for a related
-          # reason: domain/progress.ts stops a chain that is not getting anywhere, and the
+          # reason: domain/work/progress.ts stops a chain that is not getting anywhere, and the
           # most direct signal of that is a run that pushed nothing.
           #
           # Three ops count as progress. A commit is the obvious one; opening a pull request
@@ -928,7 +928,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atomaton-run/session.json" --output "${RUNNER_TEMP}/atomaton-run/atomaton_output.txt" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atomaton-run/session.json" --output "${RUNNER_TEMP}/atomaton-run/atomaton_output.txt" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
       - name: Record run metadata
         if: steps.atoma.outcome == 'success' && steps.post-result.outputs.comment_id != ''
         shell: bash
@@ -977,7 +977,7 @@ jobs:
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/inject_uncommitted_notice.ts" --session "${RUNNER_TEMP}/atomaton-run/session.json"
       - name: Notify that the run reached its limit
-        if: steps.atoma.outputs.limit_reached == 'true'
+        if: steps.atoma.outputs.ended_because == 'runtime' || steps.atoma.outputs.ended_because == 'iterations'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -994,14 +994,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_dispatch_loop.ts" --number "${{ inputs.number }}"
-      - name: Decide whether to release the in-progress guard
-        id: decide-guard-release
+      - name: Decide how this turn ended
+        id: turn-ending
         if: always()
         shell: bash
         run: |
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/decide_guard_release.ts" --outcome "${{ steps.atoma.outcome }}" --limit-reached "${{ steps.atoma.outputs.limit_reached }}" --stop-requested "${{ steps.atoma.outputs.stop_requested }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/decide_turn_ending.ts" --outcome "${{ steps.atoma.outcome }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}"
       - name: Remove atomaton/in-progress label on completion
-        if: always() && steps.decide-guard-release.outputs.should_release == 'true'
+        if: always() && steps.turn-ending.outputs.should_release == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1009,24 +1009,24 @@ jobs:
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_in_progress_label.ts" --action "remove" --number "${NUMBER}"
       - name: Dispatch next agent
-        if: steps.atoma.outcome == 'success' && steps.atoma.outputs.directive != '' && steps.atoma.outputs.limit_reached != 'true' && steps.atoma.outputs.stop_requested != 'true' && steps.loop-control.outputs.loop_limit_reached != 'true'
+        if: steps.turn-ending.outputs.dispatch_to != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           ATOMATON_OPS_LOG: ${{ runner.temp }}/atomaton-run/atomaton_ops.log
-          DIRECTIVE: ${{ steps.atoma.outputs.directive }}
+          DIRECTIVE: ${{ steps.turn-ending.outputs.dispatch_to }}
           NUMBER: ${{ inputs.number }}
           TYPE: ${{ inputs.type }}
           NOTIFY: ${{ steps.notify.outputs.notify }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_agent.ts" --agent "${DIRECTIVE}" --number "${NUMBER}" --type "${TYPE}" --notify "${NOTIFY}" --context "the agent on ${TYPE} #${NUMBER} handed off to ${DIRECTIVE}"
       - name: Comment on loop limit reached
-        if: steps.atoma.outcome == 'success' && steps.atoma.outputs.directive != '' && steps.atoma.outputs.limit_reached != 'true' && steps.atoma.outputs.stop_requested != 'true' && steps.loop-control.outputs.loop_limit_reached == 'true'
+        if: steps.turn-ending.outputs.chain_over_to != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
-          DIRECTIVE: ${{ steps.atoma.outputs.directive }}
+          DIRECTIVE: ${{ steps.turn-ending.outputs.chain_over_to }}
           NOTIFY: ${{ steps.notify.outputs.notify }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REASON: ${{ steps.loop-control.outputs.stop_reason }}

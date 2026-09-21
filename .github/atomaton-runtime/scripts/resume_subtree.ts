@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/resume_subtree.ts
+// src/entrypoints/machinery/resume_subtree.ts
 import { parseArgs } from "util";
 
-// src/domain/work-tree.ts
+// src/domain/work/work-tree.ts
 var MAX_DEPTH = 10;
 function subtree(nodes, root) {
   const byParent = new Map;
@@ -38,14 +38,17 @@ function subtree(nodes, root) {
   }
   return found;
 }
-function nodesToResume(nodes) {
-  return nodes.filter((node) => node.state === "open" && !node.running && node.stoppedLast === true);
+function resumeCandidates(nodes) {
+  return nodes.filter((node) => node.state === "open" && !node.running);
+}
+function nodesToResume(candidates, stoppedLast) {
+  return candidates.filter((node) => stoppedLast.has(node.number));
 }
 function descendants(nodes, root) {
   return nodes.filter((node) => node.number !== root);
 }
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -112,7 +115,7 @@ function dispatchWorkflow(context, workflow, args = [], log = (m) => console.err
   return true;
 }
 
-// src/lib/ops-log.ts
+// src/adapters/runner/ops-log.ts
 import { appendFileSync } from "fs";
 var OPS_LOG_PATH = process.env.ATOMATON_OPS_LOG ?? "/tmp/atomaton_ops.log";
 function logOp(op, payload = {}) {
@@ -128,33 +131,55 @@ function logDispatch(target, agent, extra = {}) {
   logOp("dispatch", { target, agent, ...extra });
 }
 
-// src/lib/target-state.ts
+// src/adapters/github/outcome.ts
+function issueOutcome(reason) {
+  const said = (reason ?? "").toLowerCase();
+  return said === "not_planned" || said === "duplicate" ? "abandoned" : "done";
+}
+function pullRequestOutcome(merged) {
+  return merged ? "done" : "abandoned";
+}
+function saysOpen(state) {
+  return (state ?? "").toLowerCase() === "open";
+}
+
+// src/adapters/github/target-state.ts
 function readTargetState(number, repo) {
   const path = repo ? `repos/${repo}/issues/${number}` : `repos/{owner}/{repo}/issues/${number}`;
   const { code, stdout, stderr } = ghRead("api", path);
   if (code !== 0) {
-    return { kind: "unknown", why: (stderr || stdout || `gh exited ${code}`).trim().split(`
+    return { known: false, why: (stderr || stdout || `gh exited ${code}`).trim().split(`
 `)[0] ?? "" };
   }
   let parsed;
   try {
     parsed = JSON.parse(stdout);
   } catch {
-    return { kind: "unknown", why: "the response was not JSON" };
+    return { known: false, why: "the response was not JSON" };
   }
+  const isPr = parsed.pull_request !== undefined;
+  const kind = isPr ? "pull-request" : "issue";
   if (parsed.state === "open")
-    return { kind: "open" };
-  if (parsed.state === "closed")
-    return { kind: "closed", merged: Boolean(parsed.pull_request?.merged_at) };
-  return { kind: "unknown", why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
+    return { known: true, kind, state: "open" };
+  if (parsed.state === "closed") {
+    return {
+      known: true,
+      kind,
+      state: isPr ? pullRequestOutcome(Boolean(parsed.pull_request?.merged_at)) : issueOutcome(parsed.state_reason)
+    };
+  }
+  return { known: false, why: `unrecognised state ${JSON.stringify(parsed.state ?? null)}` };
 }
 
-// src/domain/closed-issue.ts
-function mayStartWorkOn(state) {
-  return state.kind === "open";
+// src/domain/work/closed-issue.ts
+function mayStartWorkOn(target) {
+  return target.known && target.state === "open";
+}
+function canBeReopened(target) {
+  return target.known && !(target.kind === "pull-request" && target.state === "done");
 }
 function recoveryAdvice(state, number, command) {
-  if (state.kind === "closed" && state.merged) {
+  if (state.known && !canBeReopened(state)) {
     return `#${number} is merged, and GitHub cannot reopen a merged pull request. ` + `Open an issue for the follow-up instead.`;
   }
   return `Reopen #${number} and comment \`${command}\` to run it.`;
@@ -164,7 +189,7 @@ function mentionPrefix(logins) {
 }
 function dispatchRefusedNotice(refused) {
   const { agent, number, context, state, notify } = refused;
-  const why = state.kind === "unknown" ? `the state of #${number} could not be read (${state.why})` : `#${number} is closed`;
+  const why = !state.known ? `the state of #${number} could not be read (${state.why})` : `#${number} is closed`;
   return [
     `${mentionPrefix(notify ? [notify] : [])}Atomaton: \`${agent}\` was not started on #${number}, because ${why}.`,
     "",
@@ -172,12 +197,12 @@ function dispatchRefusedNotice(refused) {
     "",
     "Nothing will retry this.",
     "",
-    state.kind === "unknown" ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.` : recoveryAdvice(state, number, `/${agent}`)
+    !state.known ? `Start it by hand once #${number} can be read: comment \`/${agent}\` on it.` : recoveryAdvice(state, number, `/${agent}`)
   ].join(`
 `);
 }
 
-// src/lib/dispatch.ts
+// src/adapters/actions/dispatch.ts
 function runnerWorkflow() {
   return process.env.ATOMATON_DISPATCH_WORKFLOW || "atomaton-runner.yml";
 }
@@ -221,10 +246,10 @@ function dispatchRunner(d) {
   return "dispatched";
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -236,7 +261,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -251,7 +276,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -299,7 +324,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -308,7 +333,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -317,7 +342,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -337,7 +362,7 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-// src/domain/issue-links.ts
+// src/domain/work/issue-links.ts
 var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
 function claimsToClose(body, issue) {
   return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
@@ -351,7 +376,7 @@ function dedupeByNumber(...lists) {
   return [...seen.values()].sort((a, b) => a.number - b.number);
 }
 
-// src/lib/issue-links.ts
+// src/adapters/github/issue-links.ts
 var LINK_LIMIT = 50;
 var LABEL_LIMIT = 20;
 var QUERY = `
@@ -360,8 +385,8 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
     issueOrPullRequest(number:$number) {
       __typename
       ... on Issue {
-        parent { number title state }
-        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        parent { number title state stateReason }
+        subIssues(first:$limit) { nodes { number title state stateReason labels(first:$labelLimit) { nodes { name } } } }
         closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
           nodes { number title state merged body }
         }
@@ -370,19 +395,27 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
         }
       }
       ... on PullRequest {
-        closingIssuesReferences(first:$limit) { nodes { number title state } }
+        closingIssuesReferences(first:$limit) { nodes { number title state stateReason } }
       }
     }
   }
 }`;
 function normalise(node) {
-  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : issueOutcome(node.stateReason)
+  };
 }
 function asChild(node) {
   return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
 }
 function asPr(node) {
-  return { ...normalise(node), merged: Boolean(node.merged) };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : pullRequestOutcome(Boolean(node.merged))
+  };
 }
 function issueLinks(repo, number) {
   const [owner, name] = repo.split("/");
@@ -416,11 +449,11 @@ function issueLinks(repo, number) {
   };
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -456,7 +489,7 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/lib/work-tree.ts
+// src/adapters/github/work-tree.ts
 function labelNames(labels) {
   return (labels ?? []).map((l) => typeof l === "string" ? l : l.name ?? "");
 }
@@ -480,11 +513,10 @@ function readNode(repo, number) {
     return { problem: `the response for #${number} was not JSON` };
   }
   const isPr = raw.pull_request !== undefined;
-  const merged = Boolean(raw.pull_request?.merged_at);
-  const state = merged ? "merged" : raw.state === "open" ? "open" : "closed";
   if (raw.state !== "open" && raw.state !== "closed") {
     return { problem: `#${number} reported an unrecognised state ${JSON.stringify(raw.state ?? null)}` };
   }
+  const state = raw.state === "open" ? "open" : isPr ? pullRequestOutcome(Boolean(raw.pull_request?.merged_at)) : issueOutcome(raw.state_reason);
   return {
     node: {
       number,
@@ -511,7 +543,7 @@ function readChildren(repo, parent) {
     nodes.push({
       number: found.number,
       kind: "pull-request",
-      state: found.state === "OPEN" ? "open" : found.state === "MERGED" ? "merged" : "closed",
+      state: saysOpen(found.state) ? "open" : pullRequestOutcome(found.state === "MERGED"),
       parent,
       running: labelNames(found.labels).includes(label)
     });
@@ -528,7 +560,7 @@ function readChildren(repo, parent) {
     nodes.push({
       number: child.number,
       kind: "issue",
-      state: child.state === "open" ? "open" : "closed",
+      state: child.state,
       parent,
       running: child.labels.includes(label)
     });
@@ -586,14 +618,14 @@ function lastEnding(repo, number) {
   return;
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/resolve_resume_agent.ts
+// src/entrypoints/machinery/resolve_resume_agent.ts
 var ref = defineScript(import.meta.url);
 function mostRecentAgent(bodies) {
   for (let i = bodies.length - 1;i >= 0; i--) {
@@ -616,7 +648,7 @@ function mostRecentAgentOn(repo, number) {
 if (false)
   ;
 
-// src/scripts/resume_subtree.ts
+// src/entrypoints/machinery/resume_subtree.ts
 var ref2 = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({
@@ -636,8 +668,9 @@ function main() {
     console.error(`Could not read the work under #${root}; nothing beyond it was resumed.`);
     return;
   }
-  const candidates = descendants(subtree(nodes, root), root).filter((node) => node.state === "open" && !node.running);
-  const resumable = nodesToResume(candidates.map((node) => ({ ...node, stoppedLast: lastEnding(repo, node.number) === "stopped" })));
+  const candidates = resumeCandidates(descendants(subtree(nodes, root), root));
+  const stoppedLast = new Set(candidates.filter((node) => lastEnding(repo, node.number) === "stopped").map((node) => node.number));
+  const resumable = nodesToResume(candidates, stoppedLast);
   if (resumable.length === 0) {
     console.error(`Nothing under #${root} was waiting to be resumed.`);
     return;

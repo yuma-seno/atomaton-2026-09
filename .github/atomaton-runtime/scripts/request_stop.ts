@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/request_stop.ts
+// src/entrypoints/machinery/request_stop.ts
 import { parseArgs } from "util";
 
-// src/lib/gh.ts
+// src/adapters/github/gh.ts
 function run(cmd) {
   const proc = Bun.spawnSync({
     cmd,
@@ -62,11 +62,11 @@ function ghGraphqlRead(query, variables = {}) {
   return graphqlResult(ghRead(...graphqlArgs(query, variables)));
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -102,7 +102,7 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
-// src/domain/work-tree.ts
+// src/domain/work/work-tree.ts
 var MAX_DEPTH = 10;
 function subtree(nodes, root) {
   const byParent = new Map;
@@ -153,10 +153,10 @@ function stopReachedNotice(root) {
 `);
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 import { readFileSync } from "fs";
 
-// src/domain/merge-readiness.ts
+// src/domain/delivery/merge-readiness.ts
 var CI_WOULD_BE_WASTED = new Set([
   "not-open",
   "draft",
@@ -168,7 +168,7 @@ var CI_WOULD_BE_WASTED = new Set([
 ]);
 var PASSING = new Set(["success", "neutral", "skipped"]);
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -183,7 +183,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -231,7 +231,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/domain/check-jobs.ts
+// src/domain/delivery/check-jobs.ts
 var CHECKS_FROM_PULL_REQUEST = {
   where: "checks.from_pull_request",
   secrets: {
@@ -240,7 +240,7 @@ var CHECKS_FROM_PULL_REQUEST = {
 };
 var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
 
-// src/lib/machinery.ts
+// src/adapters/runner/machinery.ts
 function machineryRoot() {
   return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
@@ -249,7 +249,7 @@ function machineryPath(relative) {
   return root ? `${root}/${relative}` : relative;
 }
 
-// src/lib/config.ts
+// src/adapters/runner/config.ts
 function configPath() {
   return machineryPath(CONFIG_FILE);
 }
@@ -269,7 +269,19 @@ function getLabel(key) {
   return loadConfig().chain?.labels?.[key] ?? DEFAULT_LABELS[key];
 }
 
-// src/domain/issue-links.ts
+// src/adapters/github/outcome.ts
+function issueOutcome(reason) {
+  const said = (reason ?? "").toLowerCase();
+  return said === "not_planned" || said === "duplicate" ? "abandoned" : "done";
+}
+function pullRequestOutcome(merged) {
+  return merged ? "done" : "abandoned";
+}
+function saysOpen(state) {
+  return (state ?? "").toLowerCase() === "open";
+}
+
+// src/domain/work/issue-links.ts
 var CLOSING_KEYWORDS = "close[sd]?|fix(?:e[sd])?|resolve[sd]?";
 function claimsToClose(body, issue) {
   return new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#${issue}\\b`, "i").test(body);
@@ -283,7 +295,7 @@ function dedupeByNumber(...lists) {
   return [...seen.values()].sort((a, b) => a.number - b.number);
 }
 
-// src/lib/issue-links.ts
+// src/adapters/github/issue-links.ts
 var LINK_LIMIT = 50;
 var LABEL_LIMIT = 20;
 var QUERY = `
@@ -292,8 +304,8 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
     issueOrPullRequest(number:$number) {
       __typename
       ... on Issue {
-        parent { number title state }
-        subIssues(first:$limit) { nodes { number title state labels(first:$labelLimit) { nodes { name } } } }
+        parent { number title state stateReason }
+        subIssues(first:$limit) { nodes { number title state stateReason labels(first:$labelLimit) { nodes { name } } } }
         closedByPullRequestsReferences(first:$limit, includeClosedPrs:true) {
           nodes { number title state merged body }
         }
@@ -302,19 +314,27 @@ query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!
         }
       }
       ... on PullRequest {
-        closingIssuesReferences(first:$limit) { nodes { number title state } }
+        closingIssuesReferences(first:$limit) { nodes { number title state stateReason } }
       }
     }
   }
 }`;
 function normalise(node) {
-  return { number: node.number, title: node.title, state: node.state.toLowerCase() };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : issueOutcome(node.stateReason)
+  };
 }
 function asChild(node) {
   return { ...normalise(node), labels: (node.labels?.nodes ?? []).map((label) => label.name) };
 }
 function asPr(node) {
-  return { ...normalise(node), merged: Boolean(node.merged) };
+  return {
+    number: node.number,
+    title: node.title,
+    state: saysOpen(node.state) ? "open" : pullRequestOutcome(Boolean(node.merged))
+  };
 }
 function issueLinks(repo, number) {
   const [owner, name] = repo.split("/");
@@ -348,7 +368,7 @@ function issueLinks(repo, number) {
   };
 }
 
-// src/lib/work-tree.ts
+// src/adapters/github/work-tree.ts
 function labelNames(labels) {
   return (labels ?? []).map((l) => typeof l === "string" ? l : l.name ?? "");
 }
@@ -372,11 +392,10 @@ function readNode(repo, number) {
     return { problem: `the response for #${number} was not JSON` };
   }
   const isPr = raw.pull_request !== undefined;
-  const merged = Boolean(raw.pull_request?.merged_at);
-  const state = merged ? "merged" : raw.state === "open" ? "open" : "closed";
   if (raw.state !== "open" && raw.state !== "closed") {
     return { problem: `#${number} reported an unrecognised state ${JSON.stringify(raw.state ?? null)}` };
   }
+  const state = raw.state === "open" ? "open" : isPr ? pullRequestOutcome(Boolean(raw.pull_request?.merged_at)) : issueOutcome(raw.state_reason);
   return {
     node: {
       number,
@@ -403,7 +422,7 @@ function readChildren(repo, parent) {
     nodes.push({
       number: found.number,
       kind: "pull-request",
-      state: found.state === "OPEN" ? "open" : found.state === "MERGED" ? "merged" : "closed",
+      state: saysOpen(found.state) ? "open" : pullRequestOutcome(found.state === "MERGED"),
       parent,
       running: labelNames(found.labels).includes(label)
     });
@@ -420,7 +439,7 @@ function readChildren(repo, parent) {
     nodes.push({
       number: child.number,
       kind: "issue",
-      state: child.state === "open" ? "open" : "closed",
+      state: child.state,
       parent,
       running: child.labels.includes(label)
     });
@@ -487,14 +506,14 @@ function requestStopAcross(repo, root, rootBody) {
   return { stopped, rootNotified, problems };
 }
 
-// src/scripts/lib/script-ref.ts
+// src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
 function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/scripts/request_stop.ts
+// src/entrypoints/machinery/request_stop.ts
 var ref = defineScript(import.meta.url);
 function stopRequestedNotice(commenter, deleted, alsoReached) {
   const whose = commenter ? `${commenter}'s` : "The";

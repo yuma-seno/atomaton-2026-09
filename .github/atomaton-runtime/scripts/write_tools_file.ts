@@ -1,20 +1,20 @@
 #!/usr/bin/env bun
 // @bun
 
-// src/scripts/write_tools_file.ts
+// src/entrypoints/machinery/write_tools_file.ts
 import { mkdirSync, readFileSync as readFileSync2, writeFileSync } from "fs";
 import { dirname as dirname2 } from "path";
 import { parseArgs } from "util";
 
-// src/domain/tools-file.ts
+// src/domain/machinery/tools-file.ts
 import { isAbsolute, join as join2, resolve } from "path";
 
-// src/domain/shipped-servers.ts
+// src/domain/machinery/shipped-servers.ts
 import { readFileSync } from "fs";
-import { dirname, join } from "path";
+import { basename, dirname, join } from "path";
 import { fileURLToPath } from "url";
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -27,11 +27,22 @@ var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var BUILT_FROM = [
+  [USER_ROOT, "content"],
+  [SCRIPTS_DIR, "entrypoints/machinery"],
+  [TOOLS_DIR, "entrypoints/tools"]
+];
+function sourceOf(deployed) {
+  const found = BUILT_FROM.find(([target]) => target === deployed);
+  if (!found)
+    throw new Error(`machinery-layout: nothing builds ${deployed}`);
+  return found[1];
+}
 
-// src/domain/shipped-servers.ts
+// src/domain/machinery/shipped-servers.ts
 function defaultPath() {
-  const belowRoot = TOOL_DEFAULTS_FILE.slice(TOOL_DEFAULTS_FILE.indexOf("/") + 1);
-  return join(dirname(fileURLToPath(import.meta.url)), "..", ...belowRoot.split("/"));
+  const belowSrc = sourceOf(TOOLS_DIR).split("/");
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "..", ...belowSrc, basename(TOOL_DEFAULTS_FILE));
 }
 var cached;
 function toolDefaults(path = defaultPath()) {
@@ -42,7 +53,7 @@ function toolDefaults(path = defaultPath()) {
   return cached;
 }
 
-// src/domain/tools-file.ts
+// src/domain/machinery/tools-file.ts
 function toolsFileFrom(tools, hookBase, defaultsPath) {
   const out = {};
   const defaults = toolDefaults(defaultsPath);
@@ -106,14 +117,14 @@ function reservedServerNames(tools) {
   return Object.keys(tools?.servers ?? {}).filter((name) => name === "hooks");
 }
 
-// src/scripts/lib/script-ref.ts
-import { basename } from "path";
+// src/entrypoints/machinery/lib/script-ref.ts
+import { basename as basename2 } from "path";
 import { fileURLToPath as fileURLToPath2 } from "url";
 function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath2(importMetaUrl))}` };
+  return { runtimePath: `${SCRIPTS_DIR}/${basename2(fileURLToPath2(importMetaUrl))}` };
 }
 
-// src/scripts/write_tools_file.ts
+// src/entrypoints/machinery/write_tools_file.ts
 var ref = defineScript(import.meta.url);
 function main() {
   const { values } = parseArgs({

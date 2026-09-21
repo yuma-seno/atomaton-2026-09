@@ -17390,7 +17390,7 @@ class Server extends Protocol {
   }
 }
 
-// src/lib/mcp-report.ts
+// src/adapters/mcp/mcp-report.ts
 var sink;
 var held = [];
 function deliver(to, level, message) {
@@ -17409,11 +17409,11 @@ function attachReportChannel(next) {
     deliver(next, level, message);
 }
 
-// src/lib/agent-name.ts
+// src/domain/work/agent-name.ts
 var AGENT_NAME_PATTERN = "[a-z][a-z0-9-]*";
 var AGENT_NAME_RE = new RegExp(`^${AGENT_NAME_PATTERN}$`);
 
-// src/lib/tags.ts
+// src/adapters/github/tags.ts
 var TAG_PREFIX = `atomaton:`;
 var EVERY_TAG_PATTERN = [];
 function makeTag(key, valuePattern, parse, render) {
@@ -17540,7 +17540,7 @@ class StdioServerTransport {
   }
 }
 
-// src/lib/mcp-tool.ts
+// src/adapters/mcp/mcp-tool.ts
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17613,7 +17613,7 @@ async function serveMcpServer(options) {
   await server.connect(new StdioServerTransport);
 }
 
-// src/domain/redaction.ts
+// src/shared/redaction.ts
 var PATTERNS = [
   /\bsk-[A-Za-z0-9_-]{16,}/g,
   /\bsk-ant-[A-Za-z0-9_-]{16,}/g,
@@ -17639,29 +17639,32 @@ function redact(text, literals = []) {
   return out;
 }
 
-// src/domain/tool-output.ts
+// src/shared/tool-output.ts
 var TOOL_OUTPUT_BUDGET = 50000;
 function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
   if (text.length <= budget)
     return { text, dropped: 0 };
-  const dropped = text.length - budget;
-  const note = (where) => `
+  const note = (where, howMany) => `
 
-[${dropped} characters ${where}; ${budget} shown]
+[${howMany} characters ${where}; ${budget} shown]
 
 `;
+  const room = budget - note("dropped from the middle", text.length).length;
+  const dropped = text.length - room;
+  if (room <= 0)
+    return { text: keep === "tail" ? text.slice(-budget) : text.slice(0, budget), dropped: text.length - budget };
   if (keep === "tail") {
-    return { text: note("dropped from the start").trimStart() + text.slice(-budget), dropped };
+    return { text: note("dropped from the start", dropped).trimStart() + text.slice(-room), dropped };
   }
   if (keep === "head") {
-    return { text: text.slice(0, budget) + note("dropped from the end").trimEnd(), dropped };
+    return { text: text.slice(0, room) + note("dropped from the end", dropped).trimEnd(), dropped };
   }
-  const head = Math.floor(budget / 4);
-  const tail = budget - head;
-  return { text: text.slice(0, head) + note("dropped from the middle") + text.slice(-tail), dropped };
+  const head = Math.floor(room / 4);
+  const tail = room - head;
+  return { text: text.slice(0, head) + note("dropped from the middle", dropped) + text.slice(-tail), dropped };
 }
 
-// src/domain/machinery-layout.ts
+// src/domain/machinery/machinery-layout.ts
 var USER_ROOT = ".github/atomaton";
 var RUNTIME_ROOT = ".github/atomaton-runtime";
 var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
@@ -17676,7 +17679,7 @@ var RULESETS_DIR = `${USER_ROOT}/rulesets`;
 var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
 var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-// src/domain/declared-secrets.ts
+// src/domain/delivery/declared-secrets.ts
 var RUN_CREDENTIALS = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
@@ -17724,7 +17727,7 @@ var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
 var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
 var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
 
-// src/atomaton-runtime/tools/mcp/shell.ts
+// src/entrypoints/tools/mcp/shell.ts
 function log(message) {
   console.error(`[atomaton-shell] ${message}`);
 }
