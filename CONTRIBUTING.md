@@ -252,20 +252,18 @@ compares the count against anything — nobody knows what the number should be.
 `test` scripts name actually exists, which is the check that has an answer. If you
 move test files, update the `test` script in the same change.
 
-### Windows
+### What `synth` reads
 
-`bun run synth` does not work out of the box on Windows: `gwf` launches `node`
-through a shell without quoting the space in `C:\Program Files\...`, so it fails
-with `'C:\Program' is not recognized`. Run the two halves by hand, reaching node
-through its 8.3 short path:
+Workflow generation reads `src/workflows/` and nothing else on the disk, which is
+`src/synth-workflows.ts`'s only reason to exist. The
+`github-actions-workflow-ts` CLI finds its input by globbing the whole working
+directory for `*.wac.ts`, dotfiles included, with no setting that narrows it —
+so a sibling agent worktree under `.claude/worktrees/` was another branch's copy
+of every workflow, writing over `dist/.github/workflows/` with no error and no
+warning. `tests/contract/workflow-sources.test.ts` holds the bound.
 
-```bash
-"/c/PROGRA~1/nodejs/node.exe" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build
-bun run src/build-dist.ts
-```
-
-Without this, the contract tests that read `dist/` fail for a reason unrelated to
-your change and the whole suite looks broken.
+This is also why `bun run synth` works on Windows: nothing spawns `node` through
+a shell any more.
 
 ## Generated-file discipline
 
