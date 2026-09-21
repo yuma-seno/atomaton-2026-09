@@ -73,7 +73,18 @@
 #   ATOMA_BIN=/path/to/atoma   check with this binary instead of downloading the pin
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Asked of git rather than counted from this file's own location.
+#
+# It was `dirname "${BASH_SOURCE[0]}"/..`, which was right while this script sat in
+# `scripts/` at the root and wrong the moment it moved to
+# `.github/atomaton/scripts/`: the parent of its directory became `.github/atomaton/`,
+# the `cd` landed there, and the first thing that reads `src/` failed. Nothing caught
+# it, because every REFERENCE to this script was updated -- what moved silently was
+# the path it derives from itself.
+#
+# A count of `..` is a claim about where a file lives. `--show-toplevel` is a
+# question, and it has the same answer from anywhere in the checkout.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
 # The version a run installs, read from where the runner reads it. The checks below
