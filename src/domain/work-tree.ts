@@ -72,10 +72,8 @@ export interface WorkNode {
   state: NodeState;
   /** What this node is under. Absent at a root, whatever the wire spelling was. */
   parent?: number;
-  /** A run holds this node now — the in-progress label is on it. */
+  /** A turn is in flight here: something is working on this node and nothing else may. */
   running: boolean;
-  /** Its last run ended because somebody stopped it, so `/resume` has something to continue. */
-  stoppedLast?: boolean;
 }
 
 /** How deep a chain this will walk before deciding it has found a cycle. */
@@ -148,16 +146,35 @@ export function nodesToClose(nodes: readonly WorkNode[]): WorkNode[] {
 }
 
 /**
- * The nodes a `/resume` has to restart.
+ * The nodes a `/resume` could reach on the tree alone.
  *
- * Three conditions, and each one excludes work that a resume would damage rather than
- * continue. Still open, because closed work is over. Nothing running, because a second
- * run on a live node is the race the in-progress guard exists to prevent. And its last
- * run ended on a stop, because otherwise there is nothing interrupted to continue —
- * without that a resume over a subtree would restart every node that had ever run.
+ * Two of the three conditions, and both are answerable from a node as it is read.
+ * Still open, because closed work is over. Nothing running, because a second run on a
+ * live node is the race the in-progress guard exists to prevent.
+ *
+ * Separate from `nodesToResume` because the third condition is not a property of the
+ * tree: how a node's last turn ended is one request per node, and asking it of a whole
+ * subtree would be a request each for an answer most of them cannot use. So the rule
+ * is in two halves, in the order a caller can afford to ask them.
  */
-export function nodesToResume(nodes: readonly WorkNode[]): WorkNode[] {
-  return nodes.filter((node) => node.state === "open" && !node.running && node.stoppedLast === true);
+export function resumeCandidates(nodes: readonly WorkNode[]): WorkNode[] {
+  return nodes.filter((node) => node.state === "open" && !node.running);
+}
+
+/**
+ * Of those candidates, the ones a resume has something to continue.
+ *
+ * The third condition: the last turn on this node ended on a stop. Without it a resume
+ * over a subtree would restart every node that had ever run.
+ *
+ * It arrives as an argument rather than as a field on `WorkNode` because it is not a
+ * fact about the tree — it is how the last turn ended, which lives in the thread. It
+ * WAS a field, `stoppedLast?: boolean`, and `readWorkTree` had no way to fill it: the
+ * one caller patched each node before calling this, and anyone else passing a tree
+ * straight in got an empty list with nothing to say why.
+ */
+export function nodesToResume(candidates: readonly WorkNode[], stoppedLast: ReadonlySet<number>): WorkNode[] {
+  return candidates.filter((node) => stoppedLast.has(node.number));
 }
 
 /** Every node but the one the person named. */
