@@ -96,7 +96,16 @@ export function sessionEndedAt(runs: readonly RunRecord[]): string | undefined {
   return runs.length === 0 ? undefined : runs[runs.length - 1]?.ended;
 }
 
-/** How runs ended, most common first. The rows that are not `completed` are the point. */
+/**
+ * How runs ended, most common first, in the core's own words.
+ *
+ * The rows that are not `completed` used to be described here as "the point", which
+ * put the assumption this whole table was read on into one line: that the `completed`
+ * row needs no further looking at. It does. `completed` says the inference loop ended
+ * on its own and nothing more — three runs in the stored history sit in that row
+ * having made 313, 173 and 110 tool calls without writing a word. `CompletionTally`
+ * is what asks the rest of that question, because this word cannot.
+ */
 export function endings(runs: readonly RunRecord[]): { name: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const run of runs) counts.set(run.ended_because, (counts.get(run.ended_because) ?? 0) + 1);

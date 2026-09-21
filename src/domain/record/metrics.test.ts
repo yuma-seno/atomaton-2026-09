@@ -27,6 +27,7 @@ const SESSIONS: SessionRecord[] = [
     agent: "engineer",
     messages: 10,
     runs: [],
+    reported: true,
     calls: [
       call("shell__shell_execute", { act: "search" }),
       call("shell__shell_execute", { act: "open" }),
@@ -36,7 +37,7 @@ const SESSIONS: SessionRecord[] = [
       call("shell__shell_execute", { act: "edit", refused: true }),
     ],
   },
-  { path: "sessions/issue-2/reviewer.json", agent: "reviewer", messages: 40, runs: [], calls: [call("github__get_pr")] },
+  { path: "sessions/issue-2/reviewer.json", agent: "reviewer", messages: 40, runs: [], reported: true, calls: [call("github__get_pr")] },
 ];
 
 const SERVERS = [
@@ -115,6 +116,7 @@ describe("metricsOf", () => {
         messages: 10,
         runs: [],
         calls: [call("read"), call("grep"), call("github__get_pr")],
+        reported: true,
       },
     ];
 
@@ -205,7 +207,7 @@ describe("renderReport", () => {
     const withCount = { started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20, iterations: 10 };
     const without = { started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20 };
     const sessions: SessionRecord[] = [
-      { path: "sessions/issue-9/engineer.json", agent: "engineer", messages: 20, calls: [], runs: [withCount, without] },
+      { path: "sessions/issue-9/engineer.json", agent: "engineer", messages: 20, calls: [], reported: true, runs: [withCount, without] },
     ];
 
     const text = render(metricsOf(sessions, [], [], []), NOW);
@@ -223,6 +225,7 @@ describe("renderReport", () => {
         messages: 20,
         calls: [],
         runs: [{ started: at, ended: at, seconds: 100, ended_because: "completed", messages: 20 }],
+        reported: true,
       },
     ];
     expect(render(metricsOf(sessions, [], [], []), NOW)).toContain("| — | — |");
@@ -273,7 +276,7 @@ describe("renderReport", () => {
   test("a count of one is singular", () => {
     const one = render(
       metricsOf(
-        [{ path: "sessions/issue-1/engineer.json", agent: "engineer", messages: 10, runs: [], calls: [] }],
+        [{ path: "sessions/issue-1/engineer.json", agent: "engineer", messages: 10, runs: [], reported: true, calls: [] }],
         [],
         [],
         [{ issue: 1, total: 1000, prompt: 980, completion: 20 }],
@@ -297,6 +300,103 @@ describe("renderReport", () => {
 });
 
 /**
+ * The number #938 was opened for, and the last place it was still false.
+ *
+ * Three runs made 313, 173 and 110 tool calls, wrote not one line of closing text, and
+ * the core recorded all three as `completed`. The result comment now says so. This
+ * report -- the thing somebody reads to ask how the agents are doing -- went on calling
+ * them successes, because `ended_because` is all it read and `completed` is all the
+ * core has to say.
+ */
+describe("sessions that ran to an end without a report", () => {
+  const NOW = new Date("2026-09-13T12:00:00Z");
+  const ran = (why: string, ended = "2026-09-13T00:00:00Z") => ({
+    started: ended,
+    ended,
+    seconds: 60,
+    ended_because: why,
+    messages: 20,
+  });
+  const session = (reported: boolean, runs: ReturnType<typeof ran>[]): SessionRecord => ({
+    path: `s${runs.length}-${reported}`,
+    agent: "engineer",
+    messages: 10,
+    runs,
+    reported,
+    calls: [],
+  });
+
+  test("a completed session that said nothing is counted apart from one that reported", () => {
+    const m = metricsOf([session(true, [ran("completed")]), session(false, [ran("completed")])], [], [], []);
+    expect(m.completions).toEqual({ completed: 2, silent: 1, unknown: 0 });
+  });
+
+  /**
+   * Counted once, under the heading that fits. A run that was stopped or ran out of
+   * time also leaves no report, and it is already in `gave up` -- putting it here too
+   * would report one event twice and make both numbers unreadable.
+   */
+  test("a run that was stopped is not counted here, having already been counted there", () => {
+    const m = metricsOf([session(false, [ran("stopped")]), session(false, [ran("runtime")])], [], [], []);
+    expect(m.completions).toEqual({ completed: 0, silent: 0, unknown: 0 });
+  });
+
+  /** `reported` is about the newest message, so it is the newest run it can speak for. */
+  test("the last run decides, because it is the one the last message belongs to", () => {
+    const m = metricsOf([session(false, [ran("completed", "2026-09-11T00:00:00Z"), ran("stopped")])], [], [], []);
+    expect(m.completions.completed).toBe(0);
+  });
+
+  /**
+   * Everything from before atoma v0.1.28 is in here. Folding it into either side would
+   * put a share on a denominator that is not the one shown -- the failure this file has
+   * already had once, when a list that could not be read passed as a list that was empty.
+   */
+  test("a session with no run record is neither, and says so", () => {
+    const m = metricsOf([session(false, []), session(true, [ran("completed")])], [], [], []);
+    expect(m.completions).toEqual({ completed: 1, silent: 0, unknown: 1 });
+    expect(render(m, NOW)).toContain("Neither figure covers 1 session with no run record at all");
+  });
+
+  test("the report says the share, and what it does not mean", () => {
+    const text = render(metricsOf([session(false, [ran("completed")]), session(true, [ran("completed")])], [], [], []), NOW);
+    expect(text).toContain("**Ran to an end without a report:** 1 of 2 sessions");
+    expect(text).toContain("50%");
+    expect(text).toContain("These are not runs that gave up");
+  });
+
+  /**
+   * Said in a window where it is zero too. A section that appears only when something
+   * is wrong reads, when absent, as a question nobody asked -- and this is the question
+   * that went unasked for 396 sessions.
+   */
+  test("a window where nothing went silent still says so", () => {
+    const text = render(metricsOf([session(true, [ran("completed")])], [], [], []), NOW);
+    expect(text).toContain("**Ran to an end without a report:** 0 of 1 session");
+  });
+
+  /**
+   * The number a reader has been watching does not move. `gave up` counts runs that
+   * were stopped; this counts sessions that were not. Folding the new fact into the old
+   * number would have changed what it counts without saying so.
+   */
+  test("it does not disturb what gave up counts", () => {
+    const text = render(metricsOf([session(false, [ran("completed")])], [], [], []), NOW);
+    expect(text).toContain("| All time | 1 | 0% |");
+  });
+
+  /**
+   * The premise the `gave up` column was read on, now stated beside it. Without this
+   * sentence a reader takes the remainder for work delivered, which is exactly how
+   * three silent runs passed as successes.
+   */
+  test("the runs section says what completed does not mean", () => {
+    const text = render(metricsOf([session(true, [ran("completed")])], [], [], []), NOW);
+    expect(text).toContain("is not the same as work delivered");
+  });
+});
+
+/**
  * The section that answers "is this getting better or worse", which is the question
  * dogfooding exists to ask and the only one an all-time table cannot answer.
  */
@@ -310,7 +410,7 @@ describe("the run windows", () => {
     messages: 20,
   });
   const withRuns = (runs: ReturnType<typeof run>[]) => [
-    { path: "a", agent: "engineer", messages: 10, runs, calls: [] },
+    { path: "a", agent: "engineer", messages: 10, runs, reported: true, calls: [] },
   ];
 
   /**
@@ -370,6 +470,7 @@ describe("what a window is for, beyond trend", () => {
   const sessions: SessionRecord[] = [
     {
       path: "old",
+      reported: true,
       agent: "engineer",
       messages: 300,
       runs: [],
@@ -378,6 +479,7 @@ describe("what a window is for, beyond trend", () => {
     {
       path: "new",
       agent: "engineer",
+      reported: true,
       messages: 10,
       runs: [
         { started: "2026-09-13T00:00:00Z", ended: "2026-09-13T00:01:00Z", seconds: 60, ended_because: "completed", messages: 10 },
@@ -430,6 +532,7 @@ describe("degraded answers", () => {
     agent: "engineer",
     messages: 10,
     runs: [],
+    reported: true,
     calls,
     at,
   });

@@ -105,6 +105,14 @@ export interface SessionRecord {
    */
   runs: RunRecord[];
   /**
+   * Whether the last run to touch this session left a report — see `closing-report.ts`.
+   *
+   * Required rather than optional, because an absent measurement that defaults to
+   * `false` is a session counted as silent on no evidence. Every real record gets it
+   * from the session's own messages, which every stored session has, however old.
+   */
+  reported: boolean;
+  /**
    * When this session was last written, from the commit that wrote it.
    *
    * Not used to place a session in a window -- that stays on the run records, which say
@@ -159,6 +167,35 @@ export interface DeclaredServer {
   unprefixed?: boolean;
 }
 
+/**
+ * Sessions the core called completed, and how many of them said nothing.
+ *
+ * The number this exists for. `ended_because: completed` is the core saying its
+ * inference loop ended on its own rather than against a ceiling — it is not a claim
+ * that anything was delivered, and `gaveUpShare` reads it as one because there was
+ * nothing else to read. Measured over 396 stored sessions: three ran to `completed`
+ * after 313, 173 and 110 tool calls without writing a single line of closing text,
+ * and the report called all three a success.
+ *
+ * Counted per session rather than per run, and that is a limit rather than a choice:
+ * a session accumulates across runs, so the only silence still visible in it is the
+ * last one's. An earlier run's is buried under everything said since.
+ */
+export interface CompletionTally {
+  /** Sessions whose LAST recorded run the core called `completed`. The denominator. */
+  completed: number;
+  /** Of those, the ones whose last assistant message carried no words at all. */
+  silent: number;
+  /**
+   * Sessions with no run record, so neither question can be asked of them.
+   *
+   * Said rather than folded into either side. Everything written before atoma v0.1.28
+   * is in here, and a check whose input is missing has to say so: this file has
+   * already had "the list could not be read" pass as "nothing is unused" once.
+   */
+  unknown: number;
+}
+
 /** Everything the report is rendered from. */
 export interface Metrics {
   sessions: number;
@@ -189,6 +226,8 @@ export interface Metrics {
   refusals: number;
   /** Answers that arrived degraded, worst-recurring first. See `DegradedTally`. */
   degraded: DegradedTally[];
+  /** How many completed sessions completed in silence. See `CompletionTally`. */
+  completions: CompletionTally;
   /** Every run every session recorded, flattened. Empty until atoma v0.1.28 wrote any. */
   runs: RunRecord[];
   tokens?: TokenSummary;
@@ -344,6 +383,7 @@ export function metricsOf(
       .sort(),
     neverLoaded: declaredSkills?.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
+    completions: completionsOf(sessions),
     degraded: [...degraded.values()]
       .map(({ seen, ...row }) => ({ ...row, sessions: seen.size }))
       // Recency first: a fault last seen today outranks a louder one from August.
@@ -351,6 +391,32 @@ export function metricsOf(
     runs: sessions.flatMap((s) => s.runs),
     tokens: tokens.length === 0 ? undefined : tokenSummary(tokens),
   };
+}
+
+/**
+ * Completed sessions, and the silent ones among them.
+ *
+ * The LAST run, because that is the one `reported` is about: the session's newest
+ * assistant message belongs to whichever run wrote it last. A session whose last run
+ * was stopped or spent is not counted here at all — it is already visible as a run
+ * that gave up, and counting it again under a different heading would report one
+ * event twice.
+ */
+function completionsOf(sessions: readonly SessionRecord[]): CompletionTally {
+  let completed = 0;
+  let silent = 0;
+  let unknown = 0;
+  for (const session of sessions) {
+    const last = session.runs[session.runs.length - 1];
+    if (last === undefined) {
+      unknown += 1;
+      continue;
+    }
+    if (last.ended_because !== "completed") continue;
+    completed += 1;
+    if (!session.reported) silent += 1;
+  }
+  return { completed, silent, unknown };
 }
 
 function tokenSummary(tokens: readonly TokenRecord[]): TokenSummary {

@@ -3,8 +3,11 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { endingFromSession, reportedInSession } from "./read_run_ending.ts";
+import { endingFromSession, parseSession } from "./read_run_ending.ts";
 import { parseGithubOutput, scriptPath } from "./testing/harness.ts";
+
+/** What the script does with the bytes it read, so these exercise the real path. */
+const endingOfText = (raw: string) => endingFromSession(parseSession(raw));
 
 /** A session as the core leaves it, with the run records it appends. */
 const sessionWith = (...endings: string[]) =>
@@ -23,88 +26,29 @@ const sessionWith = (...endings: string[]) =>
 describe("endingFromSession", () => {
   /** The LAST record: earlier ones are previous runs on the same session. */
   test("reads the ending the run that just finished recorded", () => {
-    expect(endingFromSession(sessionWith("completed", "stopped", "runtime"))).toBe("runtime");
+    expect(endingOfText(sessionWith("completed", "stopped", "runtime"))).toBe("runtime");
   });
 
   test("a session with no records has nothing to say", () => {
-    expect(endingFromSession(JSON.stringify({ messages: [] }))).toBeUndefined();
-    expect(endingFromSession(JSON.stringify({ atoma_runs: [] }))).toBeUndefined();
+    expect(endingOfText(JSON.stringify({ messages: [] }))).toBeUndefined();
+    expect(endingOfText(JSON.stringify({ atoma_runs: [] }))).toBeUndefined();
+    expect(endingFromSession(undefined)).toBeUndefined();
   });
 
   /** Anything unreadable is "no record", not a failure: the caller has a fallback. */
   test("nothing readable is nothing said", () => {
-    expect(endingFromSession("not json")).toBeUndefined();
-    expect(endingFromSession(JSON.stringify({ atoma_runs: "surely not" }))).toBeUndefined();
-    expect(endingFromSession(JSON.stringify({ atoma_runs: [{ ended_because: "" }] }))).toBeUndefined();
-    expect(endingFromSession(JSON.stringify({ atoma_runs: [{ seconds: 1 }] }))).toBeUndefined();
+    expect(parseSession("not json")).toBeUndefined();
+    expect(endingOfText("not json")).toBeUndefined();
+    expect(endingOfText(JSON.stringify({ atoma_runs: "surely not" }))).toBeUndefined();
+    expect(endingOfText(JSON.stringify({ atoma_runs: [{ ended_because: "" }] }))).toBeUndefined();
+    expect(endingOfText(JSON.stringify({ atoma_runs: [{ seconds: 1 }] }))).toBeUndefined();
   });
 });
 
-/** A session as the core leaves it, messages only: what the run actually said. */
-const sessionOf = (...messages: { role: string; content?: unknown; tool_calls?: unknown }[]) =>
-  JSON.stringify({ messages, atoma_runs: [] });
-
-describe("reportedInSession", () => {
-  test("a closing message with words in it is a report", () => {
-    expect(reportedInSession(sessionOf({ role: "user", content: "do it" }, { role: "assistant", content: "Done: ..." }))).toBe(
-      true,
-    );
-  });
-
-  /**
-   * The measured shape. 313, 173 and 110 tool calls, a last turn that is another tool
-   * call, and nothing said -- and this used to come out as a completed run.
-   */
-  test("a last turn of tool calls and no words is not", () => {
-    expect(
-      reportedInSession(
-        sessionOf(
-          { role: "assistant", content: "" },
-          { role: "tool", content: "ok" },
-          { role: "assistant", content: "", tool_calls: [{ function: { name: "shell__shell_execute" } }] },
-          { role: "tool", content: "ok" },
-        ),
-      ),
-    ).toBe(false);
-  });
-
-  /**
-   * The LAST assistant message, not any of them. These agents write prose exactly
-   * once, in their final turn, so a sentence from earlier is from the middle of the
-   * work -- and `post_result_comment.ts` labels one as such rather than showing it as
-   * a conclusion. Counting it here would call a silent run reported.
-   */
-  test("something said in the middle of the work is not a report", () => {
-    expect(
-      reportedInSession(
-        sessionOf(
-          { role: "assistant", content: "Right, the failure is in the parser." },
-          { role: "tool", content: "ok" },
-          { role: "assistant", content: "", tool_calls: [{ function: { name: "filesystem__read_text_file" } }] },
-        ),
-      ),
-    ).toBe(false);
-  });
-
-  /** A picture travels as blocks; only the words in it are a report. */
-  test("reads the block form, and a picture alone is not words", () => {
-    const withText = sessionOf({ role: "assistant", content: [{ type: "text", text: "Here is what I found." }] });
-    const pictureOnly = sessionOf({ role: "assistant", content: [{ type: "image", data: "...", mimeType: "image/png" }] });
-    expect(reportedInSession(withText)).toBe(true);
-    expect(reportedInSession(pictureOnly)).toBe(false);
-  });
-
-  test("whitespace is not words", () => {
-    expect(reportedInSession(sessionOf({ role: "assistant", content: "  \n " }))).toBe(false);
-  });
-
-  /** Nothing readable is not a report: a run that wrote no session wrote no report. */
-  test("an unreadable or wordless session reported nothing", () => {
-    expect(reportedInSession("not json")).toBe(false);
-    expect(reportedInSession(JSON.stringify({}))).toBe(false);
-    expect(reportedInSession(sessionOf({ role: "user", content: "do it" }))).toBe(false);
-  });
-});
+// `reportedInSession` used to be here beside `endingFromSession`. Both facts are still
+// read out of one session in one place, but the reading itself moved to
+// `domain/record/closing-report.ts` once the metrics report needed the same answer --
+// its tests went with it. The script's own output is asserted below.
 
 describe("read_run_ending.ts", () => {
   function run(files: { session?: string; stopFile?: boolean }, exitCode: string) {
