@@ -1,19 +1,17 @@
 import { describe, expect, test } from "bun:test";
-import { CI_RETRY_LIMIT, decideValidationOutcome } from "./pr-validation.ts";
-
-const contexts = ["check"];
+import { CI_RETRY_LIMIT, contextsPassed, decideValidationOutcome } from "./pr-validation.ts";
 
 /** The two agents, named once: every case here routes between the same pair. */
 const agents = { reviewerAgent: "reviewer", engineerAgent: "engineer" };
 
-const decide = (conclusion: string, requiredContexts: string[] = contexts, priorRetries = 0) =>
-  decideValidationOutcome({ conclusion, requiredContexts, ...agents, priorRetries });
+const decide = (conclusion: string, priorRetries = 0) =>
+  decideValidationOutcome({ conclusion, ...agents, priorRetries });
 
 describe("decideValidationOutcome", () => {
   test("a successful run writes passing checks and hands to the reviewer", () => {
     const outcome = decide("success");
     expect(outcome.verdict).toBe("passed");
-    expect(outcome.checks).toEqual([{ name: "check", conclusion: "success" }]);
+    expect(contextsPassed(outcome.verdict)).toBe(true);
     expect(outcome.next?.agent).toBe("reviewer");
   });
 
@@ -24,14 +22,14 @@ describe("decideValidationOutcome", () => {
       const outcome = decide(conclusion);
       expect(outcome.verdict, conclusion).toBe("passed");
       expect(outcome.next?.agent, conclusion).toBe("reviewer");
-      expect(outcome.checks[0]?.conclusion, conclusion).toBe("success");
+      expect(contextsPassed(outcome.verdict), conclusion).toBe(true);
     }
   });
 
   test("a failing run writes failing checks and returns to the engineer", () => {
     const outcome = decide("failure");
     expect(outcome.verdict).toBe("failed");
-    expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
+    expect(contextsPassed(outcome.verdict)).toBe(false);
     expect(outcome.next?.agent).toBe("engineer");
     expect(outcome.summary).toContain("failure");
   });
@@ -48,35 +46,27 @@ describe("decideValidationOutcome", () => {
   test("no conclusion writes a failing check but dispatches nobody", () => {
     const outcome = decide("");
     expect(outcome.verdict).toBe("no-conclusion");
-    expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
+    expect(contextsPassed(outcome.verdict)).toBe(false);
     expect(outcome.next).toBeUndefined();
     expect(outcome.summary).toContain("human");
   });
 
-  test("every required context gets its own check", () => {
-    const outcome = decide("success", ["check", "lint", "build"]);
-    expect(outcome.checks.map((c) => c.name)).toEqual(["check", "lint", "build"]);
-  });
-
-  // A ruleset with no required checks still has to route the agents; it just has
-  // nothing to write.
-  test("no required contexts still routes", () => {
-    const outcome = decide("success", []);
-    expect(outcome.verdict).toBe("passed");
-    expect(outcome.checks).toEqual([]);
-    expect(outcome.next?.agent).toBe("reviewer");
-  });
-
-  // The reason `verdict` exists. `validate_pull_request.ts` used to ask
-  // `checks.every((c) => c.conclusion === "success")`, and an empty array answers
-  // `true` -- so a failing run on a base branch requiring no checks posted no
-  // failure comment, dispatched the engineer with no brief, and never advanced
-  // the tally that bounds the retry loop. The verdict cannot be read that way.
-  test("a failing run with no required contexts is still a failure", () => {
-    const outcome = decide("failure", []);
-    expect(outcome.verdict).toBe("failed");
-    expect(outcome.checks).toEqual([]);
-    expect(outcome.checks.every((c) => c.conclusion === "success")).toBe(true);
+  /**
+   * The reason `verdict` exists, and why the check runs are no longer built here.
+   *
+   * `validate_pull_request.ts` used to ask `checks.every((c) => c.conclusion ===
+   * "success")` of a list this function returned, one entry per required context.
+   * An empty array answers `true` — so a failing run on a base branch requiring no
+   * checks posted no failure comment, dispatched the engineer with no brief, and
+   * never advanced the tally that bounds the retry loop.
+   *
+   * The list is gone: it restated the verdict once per context, and a field
+   * derivable from another field is a second answer to one question. Which
+   * contexts exist is the caller's to know; whether they pass is this.
+   */
+  test("how many contexts there are does not reach this decision at all", () => {
+    expect(contextsPassed(decide("failure").verdict)).toBe(false);
+    expect(decide("failure").verdict).toBe("failed");
   });
 
   test("conclusions are matched case- and space-insensitively", () => {
@@ -89,12 +79,12 @@ describe("decideValidationOutcome", () => {
   describe("retry limit", () => {
     test("keeps returning to the engineer below the limit", () => {
       for (let prior = 0; prior < CI_RETRY_LIMIT; prior++) {
-        expect(decide("failure", contexts, prior).next?.agent, `prior=${prior}`).toBe("engineer");
+        expect(decide("failure", prior).next?.agent, `prior=${prior}`).toBe("engineer");
       }
     });
 
     test("stops dispatching at the limit and says why", () => {
-      const outcome = decide("failure", contexts, CI_RETRY_LIMIT);
+      const outcome = decide("failure", CI_RETRY_LIMIT);
       expect(outcome.verdict).toBe("retries-exhausted");
       expect(outcome.next).toBeUndefined();
       expect(outcome.summary).toContain("human");
@@ -103,12 +93,12 @@ describe("decideValidationOutcome", () => {
     // The check still has to be written, or the pull request would look
     // unvalidated rather than failing.
     test("still writes a failing check when it gives up", () => {
-      const outcome = decide("failure", contexts, CI_RETRY_LIMIT);
-      expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
+      const outcome = decide("failure", CI_RETRY_LIMIT);
+      expect(contextsPassed(outcome.verdict)).toBe(false);
     });
 
     test("a passing run is unaffected by earlier retries", () => {
-      const outcome = decide("success", contexts, CI_RETRY_LIMIT + 5);
+      const outcome = decide("success", CI_RETRY_LIMIT + 5);
       expect(outcome.verdict).toBe("passed");
       expect(outcome.next?.agent).toBe("reviewer");
     });
@@ -129,7 +119,6 @@ describe("a deliverable that cannot start a run", () => {
   const decideWith = (deliverableProblems: string[], conclusion = "", priorRetries = 0) =>
     decideValidationOutcome({
       conclusion,
-      requiredContexts: contexts,
       ...agents,
       priorRetries,
       deliverableProblems,
@@ -138,7 +127,7 @@ describe("a deliverable that cannot start a run", () => {
   test("blocks the merge and returns to the engineer", () => {
     const outcome = decideWith(problems);
     expect(outcome.verdict).toBe("deliverable-invalid");
-    expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
+    expect(contextsPassed(outcome.verdict)).toBe(false);
     expect(outcome.next?.agent).toBe("engineer");
   });
 
@@ -182,7 +171,7 @@ describe("a deliverable that cannot start a run", () => {
     expect(outcome.verdict).toBe("retries-exhausted");
     expect(outcome.next).toBeUndefined();
     expect(outcome.summary).toContain("human");
-    expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
+    expect(contextsPassed(outcome.verdict)).toBe(false);
   });
 
   test("an empty list is the normal case and changes nothing", () => {
@@ -203,7 +192,6 @@ describe("a role with nobody in it", () => {
   test("hands off to nobody rather than to an agent called \"\"", () => {
     const outcome = decideValidationOutcome({
       conclusion: "success",
-      requiredContexts: ["check"],
       reviewerAgent: "",
       engineerAgent: "engineer",
     });
@@ -214,7 +202,6 @@ describe("a role with nobody in it", () => {
   test("whitespace is not a name either", () => {
     const outcome = decideValidationOutcome({
       conclusion: "failure",
-      requiredContexts: ["check"],
       reviewerAgent: "reviewer",
       engineerAgent: "   ",
     });

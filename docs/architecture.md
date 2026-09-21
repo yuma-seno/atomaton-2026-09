@@ -198,10 +198,13 @@ This is the larger half of the same question, and it reaches the session store,
 the workspace branch and the metrics window. Not a refactor — a decision about
 where the authority for a node's history lives.
 
-### `pr-validation.ts` returns three answers at once
+### The check-run shape is still GitHub's, in a domain that does not build one
 
-Who runs next (work), what the check context is (mechanism), and whether the
-deliverable is trusted (machinery), in one return value.
+`pr-validation.ts` no longer returns check runs — `contextsPassed(verdict)` is the
+rule, and `validate_pull_request.ts` writes one per required context from it. What
+is left is that the caller spells `"success" | "failure"` itself, which is the
+Checks API's vocabulary, in an entrypoint. That is the right layer for it and the
+wrong distance from the rule it comes from. Small, and not obviously worth a type.
 
 ### Three implementations of one cap
 

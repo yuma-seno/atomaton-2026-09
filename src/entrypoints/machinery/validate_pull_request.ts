@@ -83,7 +83,7 @@
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { decideValidationOutcome } from "../../domain/work/pr-validation.ts";
+import { contextsPassed, decideValidationOutcome } from "../../domain/work/pr-validation.ts";
 import { dispatchWorkflow, gh } from "../../adapters/github/gh.ts";
 import { readBranchRules } from "../../adapters/github/branch-rules.ts";
 import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../../adapters/github/tags.ts";
@@ -359,14 +359,21 @@ function main(): void {
 
   const outcome = decideValidationOutcome({
     conclusion,
-    requiredContexts,
     reviewerAgent: values.reviewer ?? "",
     engineerAgent: values.engineer ?? "",
     priorRetries,
     deliverableProblems,
   });
 
-  for (const check of outcome.checks) {
+  // One check run per required context, all carrying the same conclusion. The list
+  // is this script's — it read the ruleset — and the conclusion is the domain's, in
+  // one direction: a context passes when the verdict is `passed` and on no other.
+  //
+  // It used to arrive as a list on the outcome, one entry per context each holding
+  // that same answer, and this script then had two places to read it from. It read
+  // the wrong one; see `contextsPassed`.
+  const conclusionForContexts = contextsPassed(outcome.verdict) ? "success" : "failure";
+  for (const check of requiredContexts.map((name) => ({ name, conclusion: conclusionForContexts }))) {
     // The Checks API, not a workflow's own check. See the header: only this form
     // satisfies a required status check for an agent's pull request.
     const created = gh(
