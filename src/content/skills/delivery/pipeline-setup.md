@@ -161,7 +161,7 @@ project adds, and overrides of the ones Atomaton ships. `slack` above is an addi
 so it declares the server in full, starting with the `command` that starts it.
 
 **To route a credential to a server Atomaton ships** — `shell`, `github`, `web`,
-`search`, `atomaton`, `atomaton_env`, `filesystem`, `filesystem_readonly` — write its
+`search`, `atomaton`, `atomaton_env`, `files`, `files_readonly` — write its
 name with an `env` and nothing else. A shipped name is merged field by field, so
 the command, the hooks and the timeout stay as they ship:
 
