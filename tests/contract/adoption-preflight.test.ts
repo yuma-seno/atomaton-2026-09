@@ -57,8 +57,10 @@
  * here as second copies of pages in the tree. `the checklist copies nothing from
  * the tree` below is the machine-readable half of that: every fenced block on this
  * page has to be an action nowhere else under `docs/` performs. It cannot catch a
- * paragraph restated in different words -- that is what review is for -- but each
- * of the three code blocks it would have caught was carried for years.
+ * paragraph restated in different words -- that is what review is for -- and it
+ * does not read outside `docs/`, so the copy this page shared with the repository's
+ * own README was found by hand. Two of the three blocks it does cover had been
+ * carried for as long as the pages they were copied from had existed.
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync, statSync } from "node:fs";
