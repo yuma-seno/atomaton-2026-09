@@ -504,8 +504,8 @@ describe("issue-branches.ts collectIssueBranches", () => {
     expect(JSON.parse(r.stdout.trim())).toEqual({
       known: true,
       branches: [
-        { name: "atomaton/issue-12", merged: true },
-        { name: "atomaton/issue-12-2", merged: false },
+        { name: "atomaton/issue-12", ordinal: 1, merged: true },
+        { name: "atomaton/issue-12-2", ordinal: 2, merged: false },
       ],
     });
     for (const call of r.ghCalls) {
@@ -534,7 +534,7 @@ describe("issue-branches.ts collectIssueBranches", () => {
     ]);
     expect(JSON.parse(r.stdout.trim())).toEqual({
       known: true,
-      branches: [{ name: "atomaton/issue-12", merged: false }],
+      branches: [{ name: "atomaton/issue-12", ordinal: 1, merged: false }],
     });
   });
 });
