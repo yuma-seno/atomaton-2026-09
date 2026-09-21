@@ -118,3 +118,52 @@ describe("the links between this repository's documents", () => {
     expect(broken, `${file} links to:\n  ${broken.join("\n  ")}`).toEqual([]);
   });
 });
+
+/**
+ * Reachability, which is a different question from whether a link resolves.
+ *
+ * The move that this file was written to guard did not break one link. It deleted
+ * `recipes.md`, whose Contents table was the only thing that named the eighteen
+ * recipes -- and eleven of the files it became were then reachable from nowhere. Every
+ * link in the repository still pointed at something real. The test above passed.
+ *
+ * A document nothing links to is one you find by knowing it is there, which is the
+ * state the documentation issue was opened about.
+ */
+describe("every document under docs/ can be reached from another one", () => {
+  /** `docs/README.md` is the map. It is reached from the repository's own README. */
+  const MAP = "docs/README.md";
+
+  test("nothing under docs/ is orphaned", () => {
+    const linked = new Set<string>();
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const target of linksIn(source)) {
+        if (/^(https?:|mailto:|#)/.test(target)) continue;
+        const resolved = resolve(dirname(file), target.split("#")[0] ?? "");
+        // Relative to the repository, and with the separators git uses, so the
+        // comparison does not depend on which platform ran the test.
+        linked.add(relative(".", resolved).split("\\").join("/"));
+      }
+    }
+
+    const orphans = files
+      .map((f) => f.split("\\").join("/"))
+      .filter((f) => f.startsWith("docs/"))
+      .filter((f) => f !== MAP)
+      .filter((f) => !linked.has(f));
+
+    expect(
+      orphans,
+      "these are reachable only by knowing they exist. Name them from " +
+        `${MAP}, or from the document whose subject they belong to:\n  ` +
+        orphans.join("\n  "),
+    ).toEqual([]);
+  });
+
+  test("the map itself is reached from the repository's README", () => {
+    const readme = readFileSync("README.md", "utf8");
+    const targets = linksIn(readme).map((t) => t.split("#")[0]);
+    expect(targets, `README.md does not link to ${MAP}, so nothing reaches the map`).toContain(MAP);
+  });
+});

@@ -45,6 +45,8 @@ You have succeeded when `Atomaton Entry` routes to `atomaton-runner`, the issue 
 
 ## Where to go next
 
+Everything below is indexed in [docs/README.md](docs/README.md), which says where a page lives and why.
+
 | You want to | Go to |
 | --- | --- |
 | put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |
