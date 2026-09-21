@@ -13,7 +13,7 @@
  * More seriously, two of them ignored the exit code and wrote the ops-log
  * dispatch entry unconditionally. That entry is not bookkeeping: it is the
  * signal `atomaton-runner`'s `chain_continues` output reads to decide whether work
- * is still in flight, and `shouldReleaseGuard` keeps the `atomaton/in-progress`
+ * is still in flight, and a hand-off keeps the `atomaton/in-progress`
  * label held whenever it is set. So a dispatch that failed -- a bad token, a
  * renamed workflow, a rate limit -- reported a chain that had started when none
  * had, and left the issue locked with nothing on the way to unlock it.

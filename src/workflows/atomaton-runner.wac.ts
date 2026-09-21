@@ -49,7 +49,7 @@ import { ref as postResultCommentRef } from "../entrypoints/machinery/post_resul
 import { ref as recordRunMetadataRef } from "../entrypoints/machinery/record_run_metadata.ts";
 import { ref as saveAgentSessionRef } from "../entrypoints/machinery/save_agent_session.ts";
 import { ref as manageDispatchLoopRef } from "../entrypoints/machinery/manage_dispatch_loop.ts";
-import { ref as decideGuardReleaseRef } from "../entrypoints/machinery/decide_guard_release.ts";
+import { ref as decideTurnEndingRef } from "../entrypoints/machinery/decide_turn_ending.ts";
 import { ref as dispatchAgentRef } from "../entrypoints/machinery/dispatch_agent.ts";
 import { runCredentialEnv, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
 import { ref as reportRunFailureRef } from "../entrypoints/machinery/report_run_failure.ts";
@@ -1091,22 +1091,26 @@ const loopControlStep = new TypedOutputsStep(
   ["auto_dispatch_count", "loop_limit_reached", "handoff_limit", "runs_without_change", "stop_reason"] as const,
 );
 
-// Whether the atomaton/in-progress SerializationGuard should be released after
-// this run is a real domain decision (see domain/work/serialization-guard.ts's
-// shouldReleaseGuard() for the actual rule + rationale), not something to
-// express as a hand-built GitHub Actions `if:` boolean expression. This
-// step computes that decision once via the shared, unit-tested domain
-// function and exposes it as a single `should_release` output -- it must
-// run with `always()` since the decision (rule 1: any non-success outcome
-// releases the guard) needs to fire even when "Run agent" itself failed or
-// was skipped.
-const decideGuardReleaseStep = new TypedOutputsStep(
+// How this turn ended is a domain decision -- see `domain/work/turn.ts` for the
+// six endings and what each one means -- and not something to express as
+// hand-built GitHub Actions `if:` expressions. This step reads the signals once,
+// through the shared and unit-tested function, and publishes one output per
+// question the steps below ask.
+//
+// It was two decisions taken two ways. This step computed `should_release`
+// through the domain; `DISPATCH_NEXT_GUARD`, thirty lines down, computed "does the
+// chain continue" from four of the same six signals as a four-term expression, in
+// the syntax `docs/operations.md` forbids, beside the paragraph forbidding it.
+//
+// `always()`, because the first thing it decides is whether a lock comes off, and
+// that has to be decided even when "Run agent" failed or was skipped entirely.
+const turnEndingStep = new TypedOutputsStep(
   {
-    name: "Decide whether to release the in-progress guard",
-    id: "decide-guard-release",
+    name: "Decide how this turn ended",
+    id: "turn-ending",
     if: "always()",
     shell: "bash",
-    run: `${scriptCommandWithArgs(decideGuardReleaseRef, {
+    run: `${scriptCommandWithArgs(decideTurnEndingRef, {
       outcome: runAgentStep.outcome,
       "limit-reached": runAgentStep.outputs.limit_reached,
       "stop-requested": runAgentStep.outputs.stop_requested,
@@ -1115,12 +1119,12 @@ const decideGuardReleaseStep = new TypedOutputsStep(
       directive: runAgentStep.outputs.directive,
     })}\n`,
   },
-  ["should_release"] as const,
+  ["ended", "should_release", "dispatch_to", "chain_over_to"] as const,
 );
 
 const removeLabelStep = new TypedOutputsStep({
   name: "Remove atomaton/in-progress label on completion",
-  if: `always() && ${decideGuardReleaseStep.rawOutputs.should_release} == 'true'`,
+  if: `always() && ${turnEndingStep.rawOutputs.should_release} == 'true'`,
   shell: "bash",
   env: {
     GH_TOKEN: "${{ github.token }}",
@@ -1129,11 +1133,6 @@ const removeLabelStep = new TypedOutputsStep({
   run: `${scriptCommandWithArgs(manageInProgressLabelRef, { action: "remove", number: "\${NUMBER}" })}
 `,
 });
-
-const DISPATCH_NEXT_GUARD =
-  `${runAgentStep.rawOutcome} == 'success' && ${runAgentStep.rawOutputs.directive} != '' && ` +
-  `${runAgentStep.rawOutputs.limit_reached} != 'true' && ` +
-  `${runAgentStep.rawOutputs.stop_requested} != 'true'`;
 
 /**
  * Hand this run's work to the agent its directive named.
@@ -1155,12 +1154,15 @@ const DISPATCH_NEXT_GUARD =
  */
 const dispatchNextAgentStep = new TypedOutputsStep({
   name: "Dispatch next agent",
-  if: `${DISPATCH_NEXT_GUARD} && ${loopControlStep.rawOutputs.loop_limit_reached} != 'true'`,
+  if: `${turnEndingStep.rawOutputs.dispatch_to} != ''`,
   shell: "bash",
   env: {
     GH_TOKEN: "${{ github.token }}",
     ATOMATON_OPS_LOG: `${RUN_DIR_EXPR}/atomaton_ops.log`,
-    DIRECTIVE: runAgentStep.outputs.directive,
+    // The agent the ENDING names, not the raw directive. The two agreed, because
+    // the condition above re-derived the ending from the same directive -- which is
+    // the arrangement this replaces. One decision, one source.
+    DIRECTIVE: turnEndingStep.outputs.dispatch_to,
     NUMBER: "${{ inputs.number }}",
     TYPE: "${{ inputs.type }}",
     NOTIFY: notifyStep.outputs.notify,
@@ -1177,12 +1179,13 @@ const dispatchNextAgentStep = new TypedOutputsStep({
 
 const loopLimitCommentStep = new TypedOutputsStep({
   name: "Comment on loop limit reached",
-  if: `${DISPATCH_NEXT_GUARD} && ${loopControlStep.rawOutputs.loop_limit_reached} == 'true'`,
+  if: `${turnEndingStep.rawOutputs.chain_over_to} != ''`,
   shell: "bash",
   env: {
     GH_TOKEN: "${{ github.token }}",
     NUMBER: "${{ inputs.number }}",
-    DIRECTIVE: runAgentStep.outputs.directive,
+    // Who WOULD have run. The ending carries it for exactly this sentence.
+    DIRECTIVE: turnEndingStep.outputs.chain_over_to,
     NOTIFY: notifyStep.outputs.notify,
     RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
     // The whole sentence, from the step that decided, rather than assembled here.
@@ -1841,7 +1844,7 @@ echo "tool servers will run as ${TOOL_USER} (no sudo), caches in ${TOOL_CACHE}"
 `,
   }),
   loopControlStep,
-  decideGuardReleaseStep,
+  turnEndingStep,
   removeLabelStep,
   dispatchNextAgentStep,
   loopLimitCommentStep,

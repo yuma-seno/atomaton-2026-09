@@ -5,13 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseGithubOutput, scriptPath } from "./testing/harness.ts";
 
-describe("decide_guard_release.ts", () => {
+describe("decide_turn_ending.ts", () => {
   function run(args: string[]) {
-    const dir = mkdtempSync(join(tmpdir(), "atomaton-guard-release-"));
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-turn-ending-"));
     const outputFile = join(dir, "out");
     writeFileSync(outputFile, "");
     try {
-      const r = spawnSync("bun", ["run", scriptPath("decide_guard_release.ts"), ...args], {
+      const r = spawnSync("bun", ["run", scriptPath("decide_turn_ending.ts"), ...args], {
         encoding: "utf8",
         env: { ...process.env, GITHUB_OUTPUT: outputFile },
       });
@@ -58,5 +58,43 @@ describe("decide_guard_release.ts", () => {
     const { status, out } = run([]);
     expect(status).toBe(0);
     expect(out.should_release).toBe("true");
+  });
+
+  /**
+   * The outputs the two dispatch steps read.
+   *
+   * They used to read a four-term Actions expression built from the same signals
+   * this step already had — so the same decision existed twice, and only one copy
+   * could be tested. These assert the published half; `domain/work/turn.ts` holds
+   * the rule.
+   */
+  describe("who runs next", () => {
+    test("a hand-off publishes who to start, and nothing to explain away", () => {
+      const { out } = run(["--outcome", "success", "--directive", "reviewer"]);
+      expect(out.ended).toBe("handed-off");
+      expect(out.dispatch_to).toBe("reviewer");
+      expect(out.chain_over_to).toBe("");
+    });
+
+    test("the chain's limit publishes who would have run, and starts nobody", () => {
+      const { out } = run(["--outcome", "success", "--directive", "reviewer", "--loop-limit-reached", "true"]);
+      expect(out.ended).toBe("chain-over");
+      expect(out.dispatch_to).toBe("");
+      expect(out.chain_over_to).toBe("reviewer");
+    });
+
+    /** A directive from a run that crashed is not a hand-off. */
+    test("a failed run starts nobody, whatever it named", () => {
+      const { out } = run(["--outcome", "failure", "--directive", "reviewer"]);
+      expect(out.ended).toBe("failed");
+      expect(out.dispatch_to).toBe("");
+      expect(out.chain_over_to).toBe("");
+    });
+
+    test("a tool call having already dispatched starts nobody a second time", () => {
+      const { out } = run(["--outcome", "success", "--chain-continues", "true"]);
+      expect(out.ended).toBe("handed-off");
+      expect(out.dispatch_to).toBe("");
+    });
   });
 });

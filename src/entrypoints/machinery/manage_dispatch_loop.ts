@@ -14,7 +14,7 @@
  * Writes `auto_dispatch_count=N`, `loop_limit_reached=true|false`,
  * `handoff_limit=N`, `runs_without_change=N` and `stop_reason=<sentence>` to
  * $GITHUB_OUTPUT. The first two names are unchanged so the workflow's guards and
- * `decide_guard_release`'s input keep working.
+ * `decide_turn_ending`'s input keep working.
  *
  * `loop_limit_reached` now covers two limits: consecutive handoffs and
  * consecutive runs that changed nothing. One guard, because the workflow's

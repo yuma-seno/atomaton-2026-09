@@ -298,7 +298,7 @@ describe("governedPathsIn", () => {
   // already obey it.
   test("covers the runner's own control scripts", () => {
     const files = [
-      ".github/atomaton-runtime/scripts/decide_guard_release.ts",
+      ".github/atomaton-runtime/scripts/decide_turn_ending.ts",
       ".github/atomaton-runtime/scripts/manage_dispatch_loop.ts",
       ".github/atomaton-runtime/scripts/save_agent_session.ts",
     ];
