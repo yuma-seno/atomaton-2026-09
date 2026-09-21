@@ -34,8 +34,9 @@ and they run. There is no `on:` key to get wrong and no combination to remember 
 **the three deploy lists are the trigger.**
 
 An agent can write this file, which is the reason the shape exists at all.
-GitHub refuses to let one write a workflow, so a pipeline expressed as YAML under
-`.github/workflows/` is a pipeline an agent can read and never maintain. Expressed
+GitHub refuses `GITHUB_TOKEN` a write under `.github/workflows/**` by identity, on
+every path and every branch, and no permission grants it — so a pipeline expressed
+as YAML there is a pipeline an agent can read and never maintain. Expressed
 as commands in `config.yaml`, it is a pipeline an agent can extend, and one a
 person still reviews before it merges, because
 [that file is governed](../pull-requests/reference.md#mergegoverned_paths).

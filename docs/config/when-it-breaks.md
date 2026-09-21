@@ -13,4 +13,4 @@ The same check is runnable before you push:
 [check your config before pushing it](tasks/check-your-config-before-pushing-it.md).
 
 What that check looks at, and what it deliberately leaves to CI, is in
-[docs/operations.md](../operations.md#what-a-pull-request-is-checked-against).
+[what a pull request is checked against](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).

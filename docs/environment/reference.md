@@ -45,4 +45,4 @@ carries on. The `chain` counters stop a run and hand the work to a person.
 
 What a reload actually does, what it cannot conjure, and what happens at the cap
 are in
-[docs/operations.md](../operations.md#when-the-environment-is-missing-something).
+[when the environment is missing something](how-it-works.md).

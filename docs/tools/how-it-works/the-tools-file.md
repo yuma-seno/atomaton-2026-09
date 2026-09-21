@@ -21,4 +21,4 @@ second source of truth wearing the clothes of a first.**
 The check on every pull request writes one the same way, from that pull request's
 own config, so what it resolves names against is what the pull request would
 actually run with —
-[what a pull request is checked against](../../operations.md#what-a-pull-request-is-checked-against).
+[what a pull request is checked against](../../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).

@@ -16,15 +16,34 @@ it is handed, and not the gate that is judging it. Adding a name therefore takes
 effect once it is merged, not while the pull request that adds it is being
 reviewed.
 
-The one thing read from the pull request is the pull request's own
-`.github/atomaton/`, by the check whose whole question is whether that tree could
-still start a run. It reads it as data and starts nothing —
-[what a pull request is checked against](../operations.md#what-a-pull-request-is-checked-against).
+Two things are read from the pull request instead, and both are about the pull
+request judging itself. The check whose whole question is whether that tree could
+still start a run reads the pull request's own `.github/atomaton/`, as data,
+starting nothing — [what a pull request is checked
+against](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
+And `atomaton-check` takes `runs_on` and `environment.setup_commands` from the pull
+request's own `config.yaml`, so an agent can change the runner or the setup and
+prove the change in the same pull request rather than waiting for a merge to find
+out. Neither of those reaches a secret: what a run is *handed* still comes from the
+default branch.
+
+**An extra job appears** because of the first of those. `runs-on` cannot read a
+file, so a small `pick-runner` job reads `config.yaml` first and the real job takes
+its output. It costs a few seconds and always runs on `ubuntu-latest` — it is the
+job that finds out what your runner is, so it cannot be on it.
+
+## The two workflows that run it
+
+`atomaton-check.yml` and `atomaton-deploy.yml` are what a section runs when it names
+no `your_workflow`, and neither changes per project. That is the whole point:
+[an agent can write configuration and cannot write a workflow](overview.md), so a
+repository whose pipeline lives in `config.yaml` is one an agent can set up, extend
+and repair, while one whose pipeline lives in workflow YAML always needs a person.
 
 ## What an agent's own merge does not start
 
 An agent merges with `GITHUB_TOKEN`, and
-[GitHub raises no event for its own token](../operations.md#github-raises-no-event-for-its-own-token).
+[GitHub raises no event for its own token](../work/how-it-works/github-raises-no-event-for-its-own-token.md).
 So nothing downstream of that merge fires by itself: a deployment chained off a
 push to the base branch, or off your CI, would silently never run. That is what
 `deploy.your_workflow` exists to be dispatched as.

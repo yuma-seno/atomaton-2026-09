@@ -19,4 +19,4 @@ nothing, and a run of those in a row stops the chain.
 
 Both are counted from comments rather than from anything stored, which is why a
 re-dispatch, a new workflow run or a lost session does not reset either — see
-[what bounds a chain of runs](../operations.md#what-bounds-a-chain-of-runs).
+[what bounds a chain of runs](../boundaries.md#what-bounds-a-chain-of-runs).

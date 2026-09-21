@@ -170,9 +170,16 @@ describe("where it is wired", () => {
     expect(shipped).toContain("self/atomaton/scripts/publish-release.sh");
   });
 
-  /** The same claim, in the guide an adopter operates from. */
-  test("the operations guide says whose release starts the servers", () => {
-    const guide = body("docs/operations.md");
+  /**
+   * The same claim, on the one page that is about this repository's own source.
+   *
+   * It used to live in `docs/operations.md`, which an adopter operated from; the
+   * split moved it to the page whose whole subject is this template rather than
+   * the reader's repository. The negative half below is what covers every page
+   * they do read.
+   */
+  test("the page about this repository's source says whose release starts the servers", () => {
+    const guide = body("docs/template/architecture.md");
     expect(guide).toContain("Atomaton's release starts the servers it would ship");
     expect(
       guide.includes("**A release starts the servers it would ship"),

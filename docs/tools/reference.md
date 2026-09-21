@@ -26,7 +26,8 @@ second entry for a server above with tools withheld — an allowlist, and
 [a pattern with a reason](overview.md#one-server-two-entries).
 
 What each server's tools do in a run is in
-[docs/operations.md](../operations.md#what-the-agents-own-tools-do).
+[searching this repository's issues](how-it-works/searching-the-issues.md) and
+[reading the web](how-it-works/reading-the-web.md).
 
 `files` gives `read` an `offset` and a `limit` in lines, and a result that
 stopped early names the offset to continue from. `read` also returns a picture as

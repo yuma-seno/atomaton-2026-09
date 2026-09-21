@@ -17,10 +17,10 @@ check, naming the section and every list you left behind, rather than resolving 
 precedence rule.
 
 Name `deploy.your_workflow` even when your deployment is already chained off CI or off a
-push to the base branch. An agent merge is performed with `GITHUB_TOKEN`, and GitHub
-starts no workflow run for events its own token triggers — see
-[docs/operations.md](../../operations.md) — so nothing downstream of that merge fires by
-itself and your deployment would silently never run.
+push to the base branch. An agent merge is performed with `GITHUB_TOKEN`, and
+[GitHub raises no event for its own token](../../work/how-it-works/github-raises-no-event-for-its-own-token.md),
+so nothing downstream of that merge fires by itself and your deployment would
+silently never run.
 
 What each arm means, and what the workflow you name has to support, is in
 [the pipeline reference](../reference.md#deployyour_workflow).

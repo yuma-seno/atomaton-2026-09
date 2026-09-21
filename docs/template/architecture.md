@@ -173,6 +173,25 @@ This repository's own release scripts live at `self/atomaton/scripts/`, which is
 the adopter's to create, and this repository keeping its own in it is what makes
 the path in `config.yaml` a line an adopter can copy rather than translate.
 
+**Atomaton's release starts the servers it would ship, and stops before publishing
+if they disagree with it.** `self/atomaton/scripts/publish-release.sh` runs
+`self/atomaton/scripts/check-live-tools.sh` between building `dist/` and creating
+the release. That script starts every tool server the artifact declares and asks
+`atoma validate --with-live-tools` what each one actually advertises, which is what
+decides whether every `tool_allowlist` / `tool_denylist` pattern still names a tool
+that exists, whether two `unprefixed` servers claim one name, and whether a server
+starts at all.
+
+It runs there — on the default branch, against `dist/` — and never on a pull
+request, for one reason: it starts processes, and
+[the check on a pull request starts nothing](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
+What it costs is that a guard which stopped guarding is found after the merge that
+broke it rather than as a red check on its pull request. Both scripts are this
+repository's own and neither ships, so nothing here is a property of an adopted
+repository's release —
+[what nothing checks for them](../pipeline/boundaries.md#nothing-checks-that-your-tool-servers-still-start)
+is the adopter-facing half.
+
 `probes/` is neither. A probe measures something no unit test can reach — whether
 `PR_SET_DUMPABLE(0)` survives `execve`, whether a server's complaint about itself
 reaches the model — and its answer is why a design went the way it did. Probes

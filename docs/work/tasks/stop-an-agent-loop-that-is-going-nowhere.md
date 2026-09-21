@@ -12,4 +12,4 @@ chain:
 work; a person joining the thread resets it. `after_runs_without_change` catches the
 other shape — runs that keep happening and change nothing — which a handoff count does
 not see. What you are shown when either limit fires, and how to resume afterwards, is in
-[docs/operations.md](../../operations.md).
+[what bounds a chain of runs](../boundaries.md#what-bounds-a-chain-of-runs).
