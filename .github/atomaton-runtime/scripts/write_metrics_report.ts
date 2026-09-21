@@ -236,10 +236,29 @@ function metricsOf(sessions, declaredServers, declaredSkills, tokens) {
     unrecognisableServers: declaredServers?.filter((s) => s.unprefixed).map((s) => s.name).sort(),
     neverLoaded: declaredSkills?.filter((s) => !loaded.has(s)).sort(),
     refusals: calls.filter((c) => c.refused).length,
+    completions: completionsOf(sessions),
     degraded: [...degraded.values()].map(({ seen, ...row }) => ({ ...row, sessions: seen.size })).sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? "") || b.count - a.count),
     runs: sessions.flatMap((s) => s.runs),
     tokens: tokens.length === 0 ? undefined : tokenSummary(tokens)
   };
+}
+function completionsOf(sessions) {
+  let completed = 0;
+  let silent = 0;
+  let unknown = 0;
+  for (const session of sessions) {
+    const last = session.runs[session.runs.length - 1];
+    if (last === undefined) {
+      unknown += 1;
+      continue;
+    }
+    if (last.ended_because !== "completed")
+      continue;
+    completed += 1;
+    if (!session.reported)
+      silent += 1;
+  }
+  return { completed, silent, unknown };
 }
 function tokenSummary(tokens) {
   const total = tokens.reduce((sum, t) => sum + t.total, 0);
@@ -258,6 +277,52 @@ function tokenSummary(tokens) {
       ofPrompt: cachedPrompt === 0 ? 0 : cachedTokens / cachedPrompt
     }
   };
+}
+
+// src/domain/record/tool-trouble.ts
+function looksRefused(content) {
+  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
+}
+function looksFailed(content) {
+  if (looksRefused(content))
+    return false;
+  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
+}
+function problemsIn(content) {
+  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
+  if (!marker)
+    return [];
+  const server = marker[1];
+  const out = [];
+  for (const line of content.slice(marker.index).split(`
+`)) {
+    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
+    if (reported)
+      out.push({ server, problem: normaliseProblem(reported[2]) });
+  }
+  return out;
+}
+function normaliseProblem(text) {
+  return text.replace(/\s+/g, " ").replace(/#[0-9]+/g, "#N").replace(/[0-9]{3,}/g, "N").trim().slice(0, 120);
+}
+
+// src/domain/record/closing-report.ts
+function textOf(content) {
+  if (typeof content === "string")
+    return content;
+  if (!Array.isArray(content))
+    return "";
+  return content.map((block) => block.type === "text" ? block.text : "").join("");
+}
+function leftClosingReport(session) {
+  const messages = session?.messages ?? [];
+  for (let i = messages.length - 1;i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message?.role !== "assistant")
+      continue;
+    return textOf(message.content).trim() !== "";
+  }
+  return false;
 }
 
 // src/domain/record/metrics-windows.ts
@@ -340,6 +405,8 @@ function runSection(runs, now) {
   out.push("");
   out.push("**Gave up** is every ending that is not `completed` \u2014 a ceiling reached, a person " + "asking, a provider hanging up, a loop cut short. Each one is a mechanism deciding " + "the run should not continue, which is worth watching whether or not it was right.");
   out.push("");
+  out.push("What is left over is not the same as work delivered. `completed` is the core " + "saying its own loop ended rather than being stopped \u2014 it says nothing about " + "whether the run produced a report. **Ran to an end without a report**, in each " + "window below, is that question asked separately.");
+  out.push("");
   out.push("| ended because | runs |");
   out.push("| --- | ---: |");
   for (const row of endings(runs))
@@ -363,6 +430,16 @@ function degradedSection(metrics) {
   out.push("");
   return out;
 }
+function completionSection(tally) {
+  const out = [];
+  const share = tally.completed === 0 ? 0 : Math.round(tally.silent / tally.completed * 1000) / 10;
+  out.push(`**Ran to an end without a report:** ${n(tally.silent)} of ` + `${plural(tally.completed, "session", "sessions")} whose last run the core recorded as ` + `\`completed\` \u2014 ${share}%. These are not runs that gave up: nothing stopped them, ` + "they simply ended without writing a closing line, so the work is in a saved " + "session and nowhere a person or the next agent reads.");
+  if (tally.unknown > 0) {
+    out.push("", `Neither figure covers ${plural(tally.unknown, "session", "sessions")} with no run record ` + "at all \u2014 without one, neither question can be asked. Everything from before atoma " + "recorded its runs is in there.");
+  }
+  out.push("");
+  return out;
+}
 function windowSection(label, metrics) {
   const out = [`## ${label}`, ""];
   if (metrics.sessions === 0) {
@@ -371,6 +448,7 @@ function windowSection(label, metrics) {
   }
   out.push(`${plural(metrics.sessions, "session", "sessions")}.`);
   out.push("");
+  out.push(...completionSection(metrics.completions));
   if (metrics.tokens) {
     const t = metrics.tokens;
     out.push(`**${n(t.total)} tokens** over ${plural(t.runs, "run", "runs")} that reported them, ` + `**${Math.round(t.promptShare * 1000) / 10}% of it prompt** \u2014 what the agents were ` + "made to read, not what they wrote. Anything spent on making runs cheaper belongs " + "on that side. No money here, deliberately: of the four providers only one reports " + "a cost, and a price table goes quietly stale and then prints confident wrong " + "numbers.");
@@ -478,6 +556,7 @@ function rowsOf(sessions) {
       failed: s.calls.filter((c) => c.failed).length,
       refused: s.calls.filter((c) => c.refused).length,
       skills: s.calls.flatMap((c) => c.skill ? [c.skill] : []),
+      reported: s.reported,
       tools,
       acts,
       runs: s.runs
@@ -490,31 +569,6 @@ function log(message) {
 function agentOf(session) {
   return session.metadata?.github_context?.agent?.trim() || "unknown";
 }
-function looksRefused(content) {
-  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
-}
-function problemsIn(content) {
-  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
-  if (!marker)
-    return [];
-  const server = marker[1];
-  const out = [];
-  for (const line of content.slice(marker.index).split(`
-`)) {
-    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
-    if (reported)
-      out.push({ server, problem: normaliseProblem(reported[2]) });
-  }
-  return out;
-}
-function normaliseProblem(text) {
-  return text.replace(/\s+/g, " ").replace(/#[0-9]+/g, "#N").replace(/[0-9]{3,}/g, "N").trim().slice(0, 120);
-}
-function looksFailed(content) {
-  if (looksRefused(content))
-    return false;
-  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
-}
 function sessionFrom(path, raw) {
   let parsed;
   try {
@@ -526,8 +580,9 @@ function sessionFrom(path, raw) {
   const messages = parsed.messages ?? [];
   const results = new Map;
   for (const message of messages) {
-    if (message.role === "tool" && typeof message.tool_call_id === "string") {
-      results.set(message.tool_call_id, typeof message.content === "string" ? message.content : "");
+    const id = message.tool_call_id;
+    if (message.role === "tool" && typeof id === "string") {
+      results.set(id, typeof message.content === "string" ? message.content : "");
     }
   }
   const calls = [];
@@ -564,7 +619,7 @@ function sessionFrom(path, raw) {
     }
   }
   const runs = Array.isArray(parsed.atoma_runs) ? parsed.atoma_runs : [];
-  return { path, agent, messages: messages.length, calls, runs };
+  return { path, agent, messages: messages.length, calls, runs, reported: leftClosingReport(parsed) };
 }
 function shellAct(command) {
   if (/>\s*[^\s|&>]+/.test(command) && !/>\s*\/dev\/null/.test(command))

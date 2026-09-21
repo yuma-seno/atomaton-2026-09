@@ -110,6 +110,10 @@ function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
+// src/shared/tool-output.ts
+var TOOL_OUTPUT_BUDGET = 50000;
+var TOOL_OUTPUT_BACKSTOP = TOOL_OUTPUT_BUDGET * 2;
+
 // src/domain/work/session-size.ts
 var KEEP_RECENT_RESULTS = 10;
 var SESSION_TOKEN_LIMIT = 1e5;
