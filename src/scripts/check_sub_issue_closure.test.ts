@@ -7,7 +7,7 @@ import { parseGithubOutput, runWithFakeGh, scriptPath } from "./testing/harness.
 /**
  * Two GraphQL calls now, told apart by what they ask for: the parent comes from
  * GitHub's own sub-issue link (the `atomaton:parent` tag it used to read out of the
- * webhook payload is gone — see `lib/parent-issue.ts`), and the second asks whether a
+ * webhook payload is gone — see `adapters/github/parent-issue.ts`), and the second asks whether a
  * merged pull request already closed it.
  */
 const parentIs = (parent: number | null) => ({

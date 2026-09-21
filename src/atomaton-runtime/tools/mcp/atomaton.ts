@@ -19,15 +19,15 @@
  * in-process (dispatchSubAgent/concludeIssue and whatever they import);
  * always `console.error()` (stderr) for logging.
  */
-import { gh } from "../../../lib/gh.ts";
+import { gh } from "../../../adapters/github/gh.ts";
 import { dispatchSubAgent } from "../lib/dispatch_sub_agent.ts";
-import { LLM_CONTEXT_TAG } from "../../../lib/tags.ts";
+import { LLM_CONTEXT_TAG } from "../../../adapters/github/tags.ts";
 import { concludeIssue, type ConcludeIssueResult } from "../lib/conclude_issue.ts";
-import { describeGateResult, needsAttention } from "../../../lib/aggregation.ts";
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { describeGateResult, needsAttention } from "../../../app/aggregation.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, z, type McpToolResult } from "../../../adapters/mcp/mcp-tool.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
-import { dispatchRunner } from "../../../lib/dispatch.ts";
-import { getReloadLimit } from "../../../lib/config.ts";
+import { dispatchRunner } from "../../../adapters/actions/dispatch.ts";
+import { getReloadLimit } from "../../../adapters/runner/config.ts";
 import {
   reloadAccepted,
   reloadRefusal,

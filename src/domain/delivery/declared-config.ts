@@ -14,7 +14,7 @@
 // keep working. `domain/` is the definition; this is a doorway to it, not a
 // second copy.
 /**
- * `.github/atomaton/config.yaml`, as the readers in `lib/config.ts` see it.
+ * `.github/atomaton/config.yaml`, as the readers in `adapters/runner/config.ts` see it.
  *
  * Grouped by who consumes the value. Every field is optional because a project
  * that declares nothing still runs -- the readers carry the defaults, in one place
@@ -113,7 +113,7 @@ export interface AtomaConfig {
    * key the core gains works here the day it ships. A name Atomaton ships is overridden
    * field by field; a name it does not is added. `settings` is the one key this
    * project reserves inside a server entry: the generator strips it, and the server
-   * reads it back through `lib/config.ts`.
+   * reads it back through `adapters/runner/config.ts`.
    */
   tools?: {
     secrets?: string[];
@@ -145,23 +145,3 @@ export interface AtomaConfig {
   };
 }
 
-/** Minimal shape of `gh issue view --json author` (NOT the REST `.user.type` shape). */
-export interface GhIssueAuthor {
-  author?: {
-    is_bot?: boolean;
-    login?: string;
-  };
-}
-
-export interface GhIssueSummary {
-  number: number;
-  title: string;
-  state: string;
-  labels?: { name: string }[];
-}
-
-export interface GhPrSummary {
-  number: number;
-  title: string;
-  url: string;
-}

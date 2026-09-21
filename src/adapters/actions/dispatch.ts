@@ -29,10 +29,10 @@
  * the number it was dispatching onto, and a guard that each of them has to remember is
  * one the fifth will not have. See #827.
  */
-import { dispatchWorkflow, gh } from "./gh.ts";
-import { logDispatch } from "./ops-log.ts";
-import { readTargetState } from "./target-state.ts";
-import { dispatchRefusedNotice, mayStartWorkOn, type TargetState } from "../domain/work/closed-issue.ts";
+import { dispatchWorkflow, gh } from "../../adapters/github/gh.ts";
+import { logDispatch } from "../../adapters/runner/ops-log.ts";
+import { readTargetState } from "../../adapters/github/target-state.ts";
+import { dispatchRefusedNotice, mayStartWorkOn, type TargetState } from "../../domain/work/closed-issue.ts";
 
 /** The reusable workflow every agent run enters through. */
 function runnerWorkflow(): string {
@@ -100,7 +100,7 @@ export type DispatchOutcome =
  *
  * The notice goes on the target itself, because that is where somebody looking for
  * this work will look, and a closed issue is still readable. `notify` carries whoever
- * asked for the run -- see `lib/notify.ts`, which settles that question for every path
+ * asked for the run -- see `adapters/github/notify.ts`, which settles that question for every path
  * that starts one.
  */
 function refuseClosedTarget(d: RunnerDispatch, state: TargetState): "refused-closed" {

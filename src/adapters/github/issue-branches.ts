@@ -9,7 +9,7 @@
  * import another script's entry point.
  */
 import { gh } from "./gh.ts";
-import type { IssueBranch } from "../domain/work/issue-branch.ts";
+import type { IssueBranch } from "../../domain/work/issue-branch.ts";
 
 function log(message: string): void {
   console.error(`[atomaton-issue-branch] ${message}`);

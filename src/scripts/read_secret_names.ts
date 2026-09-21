@@ -18,7 +18,7 @@
  * ## Why this reads a file it is handed, and not the checkout
  *
  * Every other script here reads `.github/atomaton/config.yaml` through
- * `lib/config.ts`, which resolves it against the working tree. This one must
+ * `adapters/runner/config.ts`, which resolves it against the working tree. This one must
  * not. On a pull request run the working tree is the pull request's own head --
  * `atomaton-runner.yml` checks out `refs/pull/N/head` -- so reading the declaration
  * from there would let a pull request decide which of the repository's secrets
@@ -78,7 +78,7 @@ export const ref = defineScript<ReadSecretNamesArgs>(import.meta.url);
 
 /** `tools.secrets` as this text declares it, or undefined when it declares none. */
 export function declarationIn(configText: string): unknown {
-  // Parsed here rather than through `lib/config.ts` on purpose: this text comes
+  // Parsed here rather than through `adapters/runner/config.ts` on purpose: this text comes
   // from the default branch's object store, not from a file on disk, and the
   // separation is what keeps a missing ATOMATON_MACHINERY_ROOT from downgrading a
   // credential decision to the working tree.

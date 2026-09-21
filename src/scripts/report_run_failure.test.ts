@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { failureNotice, logExcerpt } from "./report_run_failure.ts";
-import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
+import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 
 describe("report_run_failure.ts", () => {
   /**

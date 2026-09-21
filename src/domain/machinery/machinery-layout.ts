@@ -192,7 +192,7 @@ export const RELEASE_MANIFEST = ".github/atomaton-release.json";
  *                      nothing, because no credential reaches that arm.
  *   deployment         Unset: the tag, or the default branch. Both are post-merge.
  *
- * So `machineryPath()` (see `lib/machinery.ts`) resolves a path and deliberately does
+ * So `machineryPath()` (see `adapters/runner/machinery.ts`) resolves a path and deliberately does
  * NOT decide trust. The one read that must never accept the job's checkout —
  * the credential declaration — refuses to resolve a path at all and is handed one:
  * see `scripts/read_secret_names.ts`.

@@ -3,7 +3,7 @@
  * dispatch_new_tags.ts — start a deploy run for each tag this run's deployments
  * created.
  *
- * One more stand-in for the hole `lib/dispatch-targets.ts` states once: **GitHub
+ * One more stand-in for the hole `adapters/actions/dispatch-targets.ts` states once: **GitHub
  * starts no workflow run for events its own token triggers.** A deployment that cuts
  * a release creates its tag with GITHUB_TOKEN, from inside a workflow, so no `push`
  * arrives and `on_tag` never fires. A project could write a perfectly good `on_tag`
@@ -52,8 +52,8 @@
  *   ATOMATON_TAGS_BEFORE='["v1.0.0"]' dispatch_new_tags.ts --repo owner/name
  */
 import { parseArgs } from "node:util";
-import { dispatchTagDeploy } from "../lib/dispatch-targets.ts";
-import { readTagNames, tagsAdded } from "../lib/git-tags.ts";
+import { dispatchTagDeploy } from "../adapters/actions/dispatch-targets.ts";
+import { readTagNames, tagsAdded } from "../adapters/github/git-tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface DispatchNewTagsArgs {

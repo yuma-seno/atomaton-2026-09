@@ -14,12 +14,12 @@
  *   aggregate_sub_issues.ts --repo OWNER/REPO --parent N --closed-num N
  */
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
+import { gh } from "../adapters/github/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
-import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../lib/aggregation.ts";
-import { gatherSubResults, injectSummary } from "../lib/inject-sub-results.ts";
+import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../app/aggregation.ts";
+import { gatherSubResults, injectSummary } from "../adapters/atoma/inject-sub-results.ts";
 import type { Session } from "../domain/work/session.ts";
-import { issueLinks } from "../lib/issue-links.ts";
+import { issueLinks } from "../adapters/github/issue-links.ts";
 import { restoreSession, saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 
 export interface AggregateSubIssuesArgs {

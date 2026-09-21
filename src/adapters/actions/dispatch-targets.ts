@@ -35,13 +35,13 @@
  * `scripts/dispatch_new_tags.ts` fails its job, because a deployment nobody starts
  * is one nobody notices.
  */
-import { dispatchWorkflow, gh } from "./gh.ts";
-import { getDeploySection, getWorkflowName } from "./config.ts";
+import { dispatchWorkflow, gh } from "../../adapters/github/gh.ts";
+import { getDeploySection, getWorkflowName } from "../../adapters/runner/config.ts";
 import { dispatchRunner } from "./dispatch.ts";
-import { resolveNotify } from "./notify.ts";
-import { isIssueBranch } from "./branch-placement.ts";
-import { mergeMightDeploy, resolveDeployJobs, type DeployTrigger } from "../domain/delivery/deploy-jobs.ts";
-import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/delivery/shipped-workflows.ts";
+import { resolveNotify } from "../../adapters/github/notify.ts";
+import { isIssueBranch } from "../../adapters/github/branch-placement.ts";
+import { mergeMightDeploy, resolveDeployJobs, type DeployTrigger } from "../../domain/delivery/deploy-jobs.ts";
+import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../../domain/delivery/shipped-workflows.ts";
 
 // The two shipped workflow names now live in `domain/delivery/shipped-workflows.ts`. They were
 // declared here, in a module that runs `gh` and reads config.yaml, and re-exported from

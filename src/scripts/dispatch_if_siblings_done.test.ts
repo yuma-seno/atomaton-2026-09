@@ -4,7 +4,7 @@ import { makeConfigDir, runWithFakeGh, scriptPath, type FakeGhRule } from "./tes
 
 /**
  * The sub-issue links, which is where siblings come from now. `atomaton:parent=N
- * in:body` and the tag behind it are gone -- see `lib/parent-issue.ts`.
+ * in:body` and the tag behind it are gone -- see `adapters/github/parent-issue.ts`.
  */
 const subIssues = (...numbers: number[]): FakeGhRule => ({
   match: ["graphql"],

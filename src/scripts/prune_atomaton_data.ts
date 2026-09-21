@@ -29,8 +29,8 @@ import { parseArgs } from "node:util";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ghPaginated, gitRun } from "../lib/gh.ts";
-import { getLabel } from "../lib/config.ts";
+import { ghPaginated, gitRun } from "../adapters/github/gh.ts";
+import { getLabel } from "../adapters/runner/config.ts";
 import { prunablePaths, pruneCommitMessage } from "../domain/machinery/atomaton-data-pruning.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

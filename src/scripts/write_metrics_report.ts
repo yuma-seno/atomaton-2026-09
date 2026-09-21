@@ -20,12 +20,12 @@
  */
 import { parseArgs } from "node:util";
 import { readFileSync, readdirSync } from "node:fs";
-import { ghPaginated, gitRun } from "../lib/gh.ts";
+import { ghPaginated, gitRun } from "../adapters/github/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atomaton-data.ts";
 import { classifyShellAct } from "../domain/work/search-streak.ts";
 import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery/machinery-layout.ts";
-import { machineryPath } from "../lib/machinery.ts";
+import { machineryPath } from "../adapters/runner/machinery.ts";
 import {
   metricsOf,
   type DeclaredServer,

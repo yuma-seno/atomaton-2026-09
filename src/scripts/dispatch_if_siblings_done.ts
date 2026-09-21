@@ -12,7 +12,7 @@
  */
 import { parseArgs } from "node:util";
 import { defineScript } from "./lib/script-ref.ts";
-import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../lib/aggregation.ts";
+import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../app/aggregation.ts";
 
 export interface DispatchIfSiblingsDoneArgs {
   repo: string;

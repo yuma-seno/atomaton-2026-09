@@ -20,7 +20,7 @@ const HANDOFF = ["--agent", "reviewer", "--number", "12", "--type", "pr", "--con
 /**
  * The two workflow steps this replaces wrote their own `gh workflow run
  * atomaton-runner.yml` in bash, so neither refused a closed target nor wrote an
- * ops-log entry — the guarantees `lib/dispatch.ts` exists to make unforgettable,
+ * ops-log entry — the guarantees `adapters/actions/dispatch.ts` exists to make unforgettable,
  * missing from the busiest hand-off in the system.
  */
 describe("dispatch_agent.ts", () => {

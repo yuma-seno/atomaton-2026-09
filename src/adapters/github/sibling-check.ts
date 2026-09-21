@@ -11,12 +11,12 @@
  * out of a marker `create_issue` wrote once and nothing ever rewrote. A person
  * re-parenting a sub-issue in the web UI moved the native link and not the marker,
  * so this gate went on counting under the old parent while `parentIssueOf` followed
- * the new one. Both confident, neither aware of the other. See `lib/parent-issue.ts`.
+ * the new one. Both confident, neither aware of the other. See `adapters/github/parent-issue.ts`.
  *
  * The labels arrive in the same request, so the change costs no extra call: one
  * GraphQL query where there was one search.
  */
-import { getLabel } from "./config.ts";
+import { getLabel } from "../../adapters/runner/config.ts";
 import { issueLinks } from "./issue-links.ts";
 
 export interface CountOpenSiblingsOptions {

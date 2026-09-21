@@ -53,7 +53,7 @@ export const DEFAULT_NO_PROGRESS_LIMIT = 2;
  * Consecutive agent result comments, newest first, that report changing nothing.
  *
  * `comments` oldest first, as the API returns them. `isNoChangeResult` is passed in
- * so the tag format stays in `lib/tags.ts` and this stays a pure function of its
+ * so the tag format stays in `adapters/github/tags.ts` and this stays a pure function of its
  * inputs.
  */
 export function runsWithoutChange(

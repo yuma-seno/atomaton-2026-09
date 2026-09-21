@@ -22,10 +22,19 @@ Arrows point inward. Nothing in an inner layer may import from an outer one.
 | --- | --- | --- |
 | `src/domain/**` | `shared/` | The rules. Pure: no I/O, no `process`, no clock, no randomness. |
 | `src/shared/**` | nothing | Leaf algorithms that know nothing about this product. |
-| `src/app/**` | `domain/`, `shared/` | Use cases. One scenario per module. |
+| `src/app/**` | `domain/`, `shared/`, `adapters/` | Use cases: one scenario, orchestrating adapters. |
 | `src/adapters/**` | `domain/`, `shared/` | Everything that touches the outside. |
 | `src/entrypoints/**` | everything | Thin CLIs and servers: arguments and exit codes. |
 | `src/content/**` | — | Not code. What ships to an adopter. |
+
+Inside `adapters/`, one folder per thing spoken to: `github/` (the `gh` CLI,
+GraphQL, tags in comment bodies, labels), `actions/` (dispatching a workflow),
+`runner/` (the process we are inside — `config.yaml` on disk, the machinery root
+in the environment, the ops log in temp), `mcp/` (defining a tool, reporting on
+one), `atoma/` (the session file).
+
+`types/` at the repository root holds ambient `.d.ts` declarations. It is not a
+layer, which is why it is not under `src/`.
 
 `tests/contract/layering.test.ts` reads every import and fails on an arrow that
 points the wrong way. It is a ratchet, not a design: it sees imports, not

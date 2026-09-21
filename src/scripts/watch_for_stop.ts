@@ -30,8 +30,8 @@
  */
 import { writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
-import { STOP_TAG } from "../lib/tags.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { STOP_TAG } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface WatchForStopArgs {

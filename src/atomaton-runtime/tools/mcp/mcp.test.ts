@@ -14,7 +14,7 @@ import { removeTemp } from "../../../scripts/testing/harness.ts";
 /**
  * Point this server's `gh` at the fake, and leave the real one unusable.
  *
- * PATH cannot carry this on Windows -- see `ghCommand` in `lib/gh.ts`. It was tried
+ * PATH cannot carry this on Windows -- see `ghCommand` in `adapters/github/gh.ts`. It was tried
  * here too, and the way it failed was to reach the real CLI with the developer's own
  * credentials: a GraphQL fixture in this file was answered by GitHub itself.
  */
@@ -286,7 +286,7 @@ describe("mcp/github.ts", () => {
           { match: ["matching-refs"], stdout: "[]" },
           { match: ["issue", "view", "1"], stdout: "" },
           // Whether #1 is a sub-issue, which decides what its pull request targets.
-          // GitHub's own link, not a body tag -- see `lib/parent-issue.ts`. A read
+          // GitHub's own link, not a body tag -- see `adapters/github/parent-issue.ts`. A read
           // that fails here is a tool error rather than a guessed base branch, so
           // the rule has to be here for the happy path to be the happy path.
           { match: ["graphql"], stdout: JSON.stringify({ data: { repository: { issue: { parent: null } } } }) },
@@ -558,7 +558,7 @@ describe("mcp/github.ts", () => {
       };
       // `branch`, the one name this tool declares. It used to be called with `name`
       // here, exercising a synonym table that folded that in before the schema saw it;
-      // the table is gone -- see `lib/mcp-tool.ts`.
+      // the table is gone -- see `adapters/mcp/mcp-tool.ts`.
       const r = await call("get_branch", { branch: "main" }, [
         { match: ["branches/main"], stdout: JSON.stringify(payload) },
       ]);

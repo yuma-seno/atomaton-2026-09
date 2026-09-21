@@ -1,11 +1,11 @@
-import { gh } from "../../../lib/gh.ts";
-import { resolveNotify } from "../../../lib/notify.ts";
+import { gh } from "../../../adapters/github/gh.ts";
+import { resolveNotify } from "../../../adapters/github/notify.ts";
 import {
   describeGateResult,
   dispatchOrchestratorIfSubIssueReady,
   type DispatchGateResult,
-} from "../../../lib/aggregation.ts";
-import type { GhIssueAuthor } from "../../../lib/types.ts";
+} from "../../../app/aggregation.ts";
+import type { GhIssueAuthor } from "../../../adapters/github/wire-types.ts";
 
 export interface ConcludeIssueResult {
   outcome: "closed" | "escalated";

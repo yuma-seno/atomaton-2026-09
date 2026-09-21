@@ -28,8 +28,8 @@
  * Usage:
  *   scan_secrets.ts
  */
-import { gh, gitRun } from "../lib/gh.ts";
-import { getBaseBranch } from "../lib/config.ts";
+import { gh, gitRun } from "../adapters/github/gh.ts";
+import { getBaseBranch } from "../adapters/runner/config.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

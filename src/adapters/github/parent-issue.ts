@@ -24,7 +24,7 @@
  * cannot establish one, because there is now nothing else recording the edge.
  *
  * The pull request half of the edge — `atomaton:parent-issue` — stays, and that
- * asymmetry is measured too. See `lib/tags.ts`.
+ * asymmetry is measured too. See `adapters/github/tags.ts`.
  *
  * Not `issueLinks`, which answers a much larger question: it pulls fifty children
  * and fifty pull requests, and every caller here wants one number.

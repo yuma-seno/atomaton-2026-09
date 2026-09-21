@@ -9,12 +9,12 @@
 import { gh } from "./gh.ts";
 import { parentIssueOf } from "./parent-issue.ts";
 import { PARENT_ISSUE_TAG } from "./tags.ts";
-import { workspaceScope, type WorkspaceScope } from "../domain/work/workspace.ts";
+import { workspaceScope, type WorkspaceScope } from "../../domain/work/workspace.ts";
 
 /**
  * How far up the chain to walk.
  *
- * Six, matching `lib/notify.ts`'s walk. A cycle is impossible through GitHub's own
+ * Six, matching `adapters/github/notify.ts`'s walk. A cycle is impossible through GitHub's own
  * sub-issue links but not through the body tag, which anything can write -- and an
  * unbounded walk on a cycle is a run that never starts.
  */

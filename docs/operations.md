@@ -407,7 +407,7 @@ question again. There is still no paused state to get stuck in.
 **A merged pull request has left the tree.** GitHub cannot reopen one, so there is
 nothing there to stop and nothing to close, and a close passes over it.
 
-See `domain/work-tree.ts` for the model and `lib/work-tree.ts` for how it is read out
+See `domain/work-tree.ts` for the model and `adapters/github/work-tree.ts` for how it is read out
 of GitHub.
 
 ## Dispatch, handoff, aggregation, idempotency

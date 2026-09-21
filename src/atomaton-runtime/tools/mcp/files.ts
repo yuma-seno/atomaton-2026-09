@@ -35,10 +35,10 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from "node:fs";
 import { isAbsolute, resolve, relative, sep, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
-import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../adapters/mcp/mcp-tool.ts";
 import { TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
 import { WORKSPACE_PATH } from "../../../domain/work/workspace.ts";
-import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../lib/issue-images.ts";
+import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../adapters/github/issue-images.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 function log(message: string): void {

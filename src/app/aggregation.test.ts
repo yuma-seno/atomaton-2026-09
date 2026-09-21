@@ -42,7 +42,7 @@ const wroteMarker = (calls: string[][]) =>
 
 /**
  * The sub-issue links, which is where siblings come from now -- `atomaton:parent=N
- * in:body` and the tag behind it are gone. See `lib/parent-issue.ts`.
+ * in:body` and the tag behind it are gone. See `adapters/github/parent-issue.ts`.
  */
 const subIssues = (...numbers: number[]): FakeGhRule => ({
   match: ["graphql"],

@@ -84,9 +84,9 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { decideValidationOutcome } from "../domain/work/pr-validation.ts";
-import { dispatchWorkflow, gh } from "../lib/gh.ts";
-import { readBranchRules } from "../lib/branch-rules.ts";
-import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../lib/tags.ts";
+import { dispatchWorkflow, gh } from "../adapters/github/gh.ts";
+import { readBranchRules } from "../adapters/github/branch-rules.ts";
+import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ValidatePullRequestArgs {
@@ -216,7 +216,7 @@ function runCiAndWait(
   const since = new Date().toISOString();
   // `dispatchWorkflow` rather than a `gh workflow run` built here. This is the sixth
   // stand-in for the same hole — GitHub starts no workflow run for an event its own
-  // token triggered — and the only one that cannot live in `lib/dispatch-targets.ts`,
+  // token triggered — and the only one that cannot live in `adapters/actions/dispatch-targets.ts`,
   // because it has to RECOGNISE the run it started (see `pickDispatchedRun`: `gh
   // workflow run` returns nothing identifying, so the wait below matches on head sha
   // and start time). What it can share is the call itself.

@@ -25,7 +25,7 @@
 import { existsSync, readFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { AGENT_NAME_PATTERN } from "../lib/agent-name.ts";
+import { AGENT_NAME_PATTERN } from "../domain/work/agent-name.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ExtractDirectiveArgs {
