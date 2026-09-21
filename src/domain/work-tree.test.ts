@@ -5,6 +5,7 @@ import {
   nodesToClose,
   nodesToResume,
   nodesToStop,
+  resumeCandidates,
   subtree,
   type WorkNode,
 } from "./work-tree.ts";
@@ -104,31 +105,45 @@ describe("nodesToClose", () => {
   });
 });
 
-describe("nodesToResume", () => {
+describe("resumeCandidates and nodesToResume", () => {
   const nodes = [
-    issue(1, undefined, { stoppedLast: true }),
-    issue(2, 1, { stoppedLast: true }),
+    issue(1, undefined),
+    issue(2, 1),
     issue(3, 1), // ran and finished
-    issue(4, 1, { stoppedLast: true, state: "closed" }),
-    issue(5, 1, { stoppedLast: true, running: true }),
+    issue(4, 1, { state: "closed" }),
+    issue(5, 1, { running: true }),
   ];
+  /** What the caller learns from the thread, one request per candidate. */
+  const stoppedLast = new Set([1, 2, 4, 5]);
+  const resumable = (): number[] =>
+    nodesToResume(resumeCandidates(subtree(nodes, 1)), stoppedLast).map((n) => n.number);
 
   test("restarts the nodes a stop interrupted", () => {
-    expect(nodesToResume(subtree(nodes, 1)).map((n) => n.number)).toEqual([1, 2]);
+    expect(resumable()).toEqual([1, 2]);
   });
 
   /** Without this a resume over a subtree would restart everything that ever ran. */
   test("does not restart a node whose run finished", () => {
-    expect(nodesToResume(subtree(nodes, 1)).map((n) => n.number)).not.toContain(3);
+    expect(resumable()).not.toContain(3);
   });
 
   test("does not restart closed work", () => {
-    expect(nodesToResume(subtree(nodes, 1)).map((n) => n.number)).not.toContain(4);
+    expect(resumable()).not.toContain(4);
   });
 
   /** A second run on a live node is the race the in-progress guard exists to prevent. */
   test("does not start a second run where one is already going", () => {
-    expect(nodesToResume(subtree(nodes, 1)).map((n) => n.number)).not.toContain(5);
+    expect(resumable()).not.toContain(5);
+  });
+
+  /**
+   * The reason the ending is an argument rather than a field. `stoppedLast?: boolean`
+   * on `WorkNode` was a contract `readWorkTree` could not meet, so a tree handed
+   * straight in came back empty and said nothing about why.
+   */
+  test("asks for the endings separately, so a caller cannot forget them", () => {
+    expect(resumeCandidates(subtree(nodes, 1)).map((n) => n.number)).toEqual([1, 2, 3]);
+    expect(nodesToResume(resumeCandidates(subtree(nodes, 1)), new Set())).toEqual([]);
   });
 });
 

@@ -30,7 +30,7 @@
  *   resume_subtree.ts --number N [--notify LOGIN]
  */
 import { parseArgs } from "node:util";
-import { descendants, nodesToResume, subtree } from "../domain/work-tree.ts";
+import { descendants, nodesToResume, resumeCandidates, subtree } from "../domain/work-tree.ts";
 import { dispatchRunner } from "../lib/dispatch.ts";
 import { lastEnding, readWorkTree } from "../lib/work-tree.ts";
 import { mostRecentAgentOn } from "./resolve_resume_agent.ts";
@@ -66,12 +66,11 @@ function main(): void {
   // The endings come one node at a time, and only for the ones that could still be
   // resumed on structure alone. Asking every node in a large tree how its last run
   // ended would be a request per node for an answer most of them cannot use.
-  const candidates = descendants(subtree(nodes, root), root).filter(
-    (node) => node.state === "open" && !node.running,
+  const candidates = resumeCandidates(descendants(subtree(nodes, root), root));
+  const stoppedLast = new Set(
+    candidates.filter((node) => lastEnding(repo, node.number) === "stopped").map((node) => node.number),
   );
-  const resumable = nodesToResume(
-    candidates.map((node) => ({ ...node, stoppedLast: lastEnding(repo, node.number) === "stopped" })),
-  );
+  const resumable = nodesToResume(candidates, stoppedLast);
 
   if (resumable.length === 0) {
     console.error(`Nothing under #${root} was waiting to be resumed.`);
