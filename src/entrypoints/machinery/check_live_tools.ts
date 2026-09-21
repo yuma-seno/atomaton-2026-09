@@ -136,7 +136,7 @@ function serveStoppingProvider(seen: { tools: string[]; completions: number }) {
  * The stub names ONE server, and that is what makes the answer attributable: every
  * tool in the request is that server's, so nothing has to be keyed on a `server__`
  * prefix — the convention that reads an `unprefixed` server's six tools as zero, and
- * which `probe-tool-servers.ts` has already been caught by once.
+ * which `probes/tool-servers.ts` has already been caught by once.
  *
  * `--max-runtime-secs` is a ceiling on the loop rather than on a server that will not
  * initialise — atoma's own connection timeout answers that one — but it is what keeps
@@ -352,4 +352,12 @@ export async function main(): Promise<void> {
   console.log(`${EXACT_TOOL_SETS.length} server(s) advertise exactly the tools they promise.`);
 }
 
-if (import.meta.main) void main();
+// Awaited rather than fired. `main` became async for the second phase, and an
+// unhandled rejection is a different exit code and a different message than the
+// `::error::` lines above -- which are what a person reads in the job log.
+if (import.meta.main) {
+  main().catch((e: unknown) => {
+    console.error(`::error::${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  });
+}

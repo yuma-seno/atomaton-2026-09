@@ -60,11 +60,13 @@ describe("compareToolSet", () => {
   });
 
   /**
-   * Case 1: the allowlist stopped being applied at all.
+   * Case 1: the registration filter stopped being applied at all.
    *
-   * This is the state atoma was measured in — every hook an `unprefixed` server
-   * declared skipped, no pattern dead, nothing reported. The whole set arrives and
-   * only a comparison against the set says so.
+   * Not a state atoma has been measured in -- said plainly, because a comment that
+   * cites a defect is read as a record of one. The measured `unprefixed` defect
+   * skipped hooks at CALL time and left the advertised set correct, so it is not
+   * this. What this covers is the filter that decides the set, whose failure leaves
+   * no dead pattern behind and so is invisible to every other check here.
    */
   test("an allowlist that stopped applying is caught, with both writers named", () => {
     const mismatch = compareToolSet(READONLY, EVERY_FILE_TOOL);

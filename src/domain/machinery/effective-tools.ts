@@ -13,13 +13,17 @@
  * Two ways that can stop holding, and neither leaves a dead pattern behind, so
  * neither is visible to the check that looks for one:
  *
- *   1. **The list mechanism stops being applied.** Measured, in atoma: a server with
- *      `unprefixed: true` gives its tools their own names, `"read".split("__")` could
- *      not resolve which server a name belonged to, and every hook that server
- *      declared — allowlist and denylist alike — was silently skipped. Every pattern
- *      still matched a tool the server offered, so nothing was dead and nothing was
- *      reported. `files_readonly` is `unprefixed: true`. The fix was to route by name
- *      rather than split it; what is missing here is any way to notice the next one.
+ *   1. **The list mechanism stops being applied at registration.** Not measured --
+ *      said plainly, because this file is read as a record of what went wrong.
+ *      atoma filters the advertised set per CONFIG, not by name
+ *      (`McpRegistry::from_configs` walks `configs.iter().zip(offered)` and asks
+ *      `access_denial_reason` with that config's own hooks), so the one measured
+ *      defect of this shape did NOT widen any server: `unprefixed: true` broke
+ *      `"read".split("__")` at CALL time, silently skipping that server's hooks
+ *      there, while the advertised set stayed right. This phase would have been
+ *      green throughout it, and is blind to that class by construction, since it
+ *      calls no tool. What it holds is the registration filter, which nothing else
+ *      here holds.
  *   2. **An entry is deleted.** A pattern that is not there matches nothing and is
  *      reported as nothing. Removing `read` widens the server by one tool and
  *      produces no finding at all.
@@ -36,10 +40,24 @@
  * it fail when the first one changes. Two spellings that must agree is the mechanism,
  * not a duplication to remove.
  *
- * This is a claim about what Atomaton ships. A project that overrides one of these
- * servers in its own `config.yaml` until it advertises something else fails here, and
- * that is the intent: `files_readonly` is a guarantee an adopter's reviewer agent is
- * relied upon to hold, not a default to be re-pointed quietly.
+ * ## Whose promise this is, and an open question about where it is held
+ *
+ * Atomaton's own. The table says what Atomaton ships, and a project that overrides one
+ * of these servers in its `config.yaml` until it advertises something else is making a
+ * different promise.
+ *
+ * That is not yet reflected in where the check runs. `check_live_tools.ts` is shipped
+ * and runs on an adopter's pull requests, while `tools-file.ts` documents narrowing a
+ * shipped server's `tool_allowlist` as a feature -- so as written, an adopter using
+ * that feature fails a check for it. Gating on the allowlist is not the fix: it would
+ * make the comparison agree with whatever the allowlist has become, which is the one
+ * thing `exact-tool-sets.test.ts` exists to forbid, and would silence the deleted-entry
+ * case entirely.
+ *
+ * The separation that works is by WHERE: the deleted-entry case is static and already
+ * held on every Atomaton pull request by `exact-tool-sets.test.ts`; the live phase
+ * belongs in Atomaton's own release script, which checks what Atomaton is about to
+ * ship. That move is tracked separately and is not in this commit.
  */
 
 /**
@@ -108,7 +126,7 @@ export interface ToolSetMismatch {
  * Takes what the agent was handed for a definition naming ONE server, which is why it
  * can be a filter rather than an attribution: with one server in the definition every
  * remaining name is that server's. Keying on `server__` instead would read an
- * `unprefixed` server's six tools as zero — the shape `probe-tool-servers.ts` was
+ * `unprefixed` server's six tools as zero — the shape `probes/tool-servers.ts` was
  * caught by once already.
  */
 export function serverContributed(advertised: readonly string[]): string[] {
