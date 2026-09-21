@@ -87,7 +87,7 @@ export function matrixJob(
       // Named, because GitHub builds a matrix job's name from EVERY field of its
       // entry when it is not. Measured on the first run of this shape:
       //
-      //   pull-request-checks (verify, ["ubuntu-latest"], bun run src/scripts/scan_…
+      //   pull-request-checks (verify, ["ubuntu-latest"], bun run src/entrypoints/machinery/scan_…
       //
       // — truncated by the UI, and the one part a person needs is the entry's name,
       // which is buried among the commands and the runner. That name is also what a

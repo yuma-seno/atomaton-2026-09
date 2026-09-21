@@ -12,7 +12,7 @@ describe("skill catalog", () => {
         else if (entry.isFile() && entry.name.endsWith(".md")) files.push(path);
       }
     };
-    collect("src/atomaton/skills");
+    collect("src/content/skills");
 
     const names = new Set<string>();
     for (const file of files) {

@@ -15,7 +15,7 @@ import type { AtomaConfig } from "../../src/domain/delivery/declared-config.ts";
  * signature so a test can also ask about a key the interface does NOT have.
  */
 function shippedConfig(): AtomaConfig & Record<string, unknown> {
-  return Bun.YAML.parse(readFileSync("src/atomaton/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
+  return Bun.YAML.parse(readFileSync("src/content/config.yaml", "utf8")) as AtomaConfig & Record<string, unknown>;
 }
 
 describe("config.yaml", () => {
@@ -69,7 +69,7 @@ describe("merge.gates documentation", () => {
   });
 
   test("the reviewer knows what to do with the blockers a gate produces", () => {
-    const reviewer = readFileSync("src/atomaton/agent-definitions/reviewer.md", "utf8");
+    const reviewer = readFileSync("src/content/agent-definitions/reviewer.md", "utf8");
     for (const kind of ["merge-gate", "gate-config-invalid"]) {
       expect(reviewer, `${kind} must be in the reviewer's blocker table`).toContain(`\`${kind}\``);
     }
@@ -289,7 +289,7 @@ describe("config.yaml's recognised keys", () => {
     expect(
       configProblems({
         config: shippedConfig(),
-        agentNames: readdirSync("src/atomaton/agent-definitions")
+        agentNames: readdirSync("src/content/agent-definitions")
           .filter((file) => file.endsWith(".md"))
           .map((file) => file.slice(0, -".md".length)),
         workflowFiles: readdirSync("dist/.github/workflows"),
@@ -338,7 +338,7 @@ describe("the default checks a project inherits", () => {
       expect(command, `${command} should run a script under ${SCRIPTS_DIR}/`).toContain(`${SCRIPTS_DIR}/`);
       const named = new RegExp(`${SCRIPTS_DIR.replaceAll("/", "\\/")}\\/([A-Za-z0-9_-]+\\.ts)`).exec(command);
       expect(named, `${command} names no script under ${SCRIPTS_DIR}/`).not.toBeNull();
-      expect(existsSync(`src/scripts/${named![1]}`), `src/scripts/${named![1]} must exist`).toBe(true);
+      expect(existsSync(`src/entrypoints/machinery/${named![1]}`), `src/entrypoints/machinery/${named![1]} must exist`).toBe(true);
       expect(command, "the machinery root indirection every other invocation uses").toContain(
         "${ATOMATON_MACHINERY_ROOT:-.}",
       );

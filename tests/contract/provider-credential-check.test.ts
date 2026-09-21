@@ -32,7 +32,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { RUN_CREDENTIALS } from "../../src/domain/delivery/declared-secrets.ts";
-import { hermeticEnv } from "../../src/scripts/testing/harness.ts";
+import { hermeticEnv } from "../../src/entrypoints/machinery/testing/harness.ts";
 
 const WORKFLOW = "dist/.github/workflows/atomaton-runner.yml";
 const CHECK_STEP = "Check the resolved provider has a credential";

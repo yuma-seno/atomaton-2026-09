@@ -56,7 +56,7 @@ describe("the test script", () => {
    */
   test("the suites that only CI can run are among them", () => {
     const covered = pathsOf(script.test!);
-    for (const suite of ["src/atomaton-runtime/tools/mcp/mcp.test.ts", "src/atomaton-runtime/tools/hooks/shell_guard.test.ts"]) {
+    for (const suite of ["src/entrypoints/tools/mcp/mcp.test.ts", "src/entrypoints/tools/hooks/shell_guard.test.ts"]) {
       expect(existsSync(suite), `${suite} has moved; this test needs the new path`).toBe(true);
       expect(
         covered.some((path) => suite.startsWith(path.replace(/^\.\//, ""))),

@@ -6,8 +6,8 @@
  * decision logic, testable with plain objects. The actual MECHANISM that
  * enacts this decision (adding/removing the `atomaton/in-progress` label,
  * deleting human comments made during the dispatch-to-label-landing gap)
- * lives in `src/scripts/manage_in_progress_label.ts` and
- * `src/scripts/guard_comment_during_run.ts` -- this is deliberately kept
+ * lives in `src/entrypoints/machinery/manage_in_progress_label.ts` and
+ * `src/entrypoints/machinery/guard_comment_during_run.ts` -- this is deliberately kept
  * separate from those so the RULE (when should the guard release?) has one
  * home, independent of HOW it is currently persisted via a GitHub label.
  *

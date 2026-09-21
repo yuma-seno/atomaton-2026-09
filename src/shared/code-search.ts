@@ -254,7 +254,7 @@ export interface CodePassage {
  *
  * The path is indexed as a passage of its own, spelled out as words. A question like
  * "where is the in-progress label managed" should find
- * `src/scripts/manage_in_progress_label.ts` by its name even when no passage inside it
+ * `src/entrypoints/machinery/manage_in_progress_label.ts` by its name even when no passage inside it
  * says so — and file names in this repository are written to be read that way.
  */
 export function passagesOf(path: string, text: string): CodePassage[] {

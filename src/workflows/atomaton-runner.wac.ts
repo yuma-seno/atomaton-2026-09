@@ -26,35 +26,35 @@ import { SetupBunAction } from "./actions/third-party.ts";
 import { CacheAction } from "./actions/cache.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { providerCredentialCheckStep } from "./actions/provider-credential-check.ts";
-import { ref as resolveNotifyRef } from "../scripts/resolve_notify.ts";
-import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
+import { ref as resolveNotifyRef } from "../entrypoints/machinery/resolve_notify.ts";
+import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../entrypoints/machinery/get_config_value.ts";
 import { DEFAULT_RERANKER } from "../adapters/runner/config.ts";
 import { MODEL_CACHE_DIR } from "../domain/machinery/model-cache.ts";
-import { ref as resolveIssueBranchRef } from "../scripts/resolve_issue_branch.ts";
-import { ref as resolvePrBranchRef } from "../scripts/resolve_pr_branch.ts";
-import { ref as manageInProgressLabelRef } from "../scripts/manage_in_progress_label.ts";
-import { ref as notifyLimitReachedRef } from "../scripts/notify_limit_reached.ts";
-import { ref as injectUncommittedNoticeRef } from "../scripts/inject_uncommitted_notice.ts";
-import { ref as restoreWorkspaceRef } from "../scripts/restore_workspace.ts";
-import { ref as saveWorkspaceRef } from "../scripts/save_workspace.ts";
-import { ref as writeMetricsReportRef } from "../scripts/write_metrics_report.ts";
+import { ref as resolveIssueBranchRef } from "../entrypoints/machinery/resolve_issue_branch.ts";
+import { ref as resolvePrBranchRef } from "../entrypoints/machinery/resolve_pr_branch.ts";
+import { ref as manageInProgressLabelRef } from "../entrypoints/machinery/manage_in_progress_label.ts";
+import { ref as notifyLimitReachedRef } from "../entrypoints/machinery/notify_limit_reached.ts";
+import { ref as injectUncommittedNoticeRef } from "../entrypoints/machinery/inject_uncommitted_notice.ts";
+import { ref as restoreWorkspaceRef } from "../entrypoints/machinery/restore_workspace.ts";
+import { ref as saveWorkspaceRef } from "../entrypoints/machinery/save_workspace.ts";
+import { ref as writeMetricsReportRef } from "../entrypoints/machinery/write_metrics_report.ts";
 import { WORKSPACE_PATH } from "../domain/work/workspace.ts";
-import { ref as fetchEventsRef } from "../scripts/fetch_events.ts";
-import { ref as restoreAgentSessionRef } from "../scripts/restore_agent_session.ts";
-import { ref as reconcileGithubSessionRef } from "../scripts/reconcile_github_session.ts";
-import { ref as mergeToolPackagesRef } from "../scripts/merge_tool_packages.ts";
-import { ref as writeToolsFileRef } from "../scripts/write_tools_file.ts";
-import { ref as extractDirectiveRef } from "../scripts/extract_directive.ts";
-import { ref as postResultCommentRef } from "../scripts/post_result_comment.ts";
-import { ref as recordRunMetadataRef } from "../scripts/record_run_metadata.ts";
-import { ref as saveAgentSessionRef } from "../scripts/save_agent_session.ts";
-import { ref as manageDispatchLoopRef } from "../scripts/manage_dispatch_loop.ts";
-import { ref as decideGuardReleaseRef } from "../scripts/decide_guard_release.ts";
-import { ref as dispatchAgentRef } from "../scripts/dispatch_agent.ts";
+import { ref as fetchEventsRef } from "../entrypoints/machinery/fetch_events.ts";
+import { ref as restoreAgentSessionRef } from "../entrypoints/machinery/restore_agent_session.ts";
+import { ref as reconcileGithubSessionRef } from "../entrypoints/machinery/reconcile_github_session.ts";
+import { ref as mergeToolPackagesRef } from "../entrypoints/machinery/merge_tool_packages.ts";
+import { ref as writeToolsFileRef } from "../entrypoints/machinery/write_tools_file.ts";
+import { ref as extractDirectiveRef } from "../entrypoints/machinery/extract_directive.ts";
+import { ref as postResultCommentRef } from "../entrypoints/machinery/post_result_comment.ts";
+import { ref as recordRunMetadataRef } from "../entrypoints/machinery/record_run_metadata.ts";
+import { ref as saveAgentSessionRef } from "../entrypoints/machinery/save_agent_session.ts";
+import { ref as manageDispatchLoopRef } from "../entrypoints/machinery/manage_dispatch_loop.ts";
+import { ref as decideGuardReleaseRef } from "../entrypoints/machinery/decide_guard_release.ts";
+import { ref as dispatchAgentRef } from "../entrypoints/machinery/dispatch_agent.ts";
 import { runCredentialEnv, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
-import { ref as reportRunFailureRef } from "../scripts/report_run_failure.ts";
-import { ref as writeCredentialsFileRef } from "../scripts/write_credentials_file.ts";
-import { ref as watchForStopRef } from "../scripts/watch_for_stop.ts";
+import { ref as reportRunFailureRef } from "../entrypoints/machinery/report_run_failure.ts";
+import { ref as writeCredentialsFileRef } from "../entrypoints/machinery/write_credentials_file.ts";
+import { ref as watchForStopRef } from "../entrypoints/machinery/watch_for_stop.ts";
 import { AGENT_NAME_PATTERN } from "../domain/work/agent-name.ts";
 import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 
@@ -107,7 +107,7 @@ const RELOAD_COUNT_INPUT_DESC = "How many times this work has already rebuilt it
 // `agent-definitions/*.md` and to the repository's secrets.
 
 // Deployed-repo-relative paths into the `.github/atomaton/` content tree (see
-// src/atomaton/ -- config.yaml and agent-definitions/; tools/tools.yaml is written
+// src/content/ -- config.yaml and agent-definitions/; tools/tools.yaml is written
 // into the deployed tree from config.yaml's `tools.servers` at build time).
 // Referenced from three separate steps below (prepare/run/dispatch-next);
 // centralized here so they can't drift from each other by typo.

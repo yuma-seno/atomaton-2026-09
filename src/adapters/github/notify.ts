@@ -3,7 +3,7 @@
  * PR. The one canonical implementation, used directly (no more subprocess
  * spawn) by every caller: mcp/github.ts, concludeIssue,
  * the aggregation gate (lib/aggregation.ts), and
- * src/scripts/resolve_notify.ts's thin CLI wrapper (kept because
+ * src/entrypoints/machinery/resolve_notify.ts's thin CLI wrapper (kept because
  * atomaton-runner.wac.ts invokes it as a workflow step, via `scriptCommand`).
  *
  * # This is the fallback, not the rule

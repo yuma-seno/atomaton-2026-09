@@ -8,8 +8,8 @@ import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.
 import { renameSecretSlots } from "./actions/secret-slots.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { environmentSetupStep } from "./actions/environment-setup.ts";
-import { ref as checkLiveToolsRef } from "../scripts/check_live_tools.ts";
-import { ref as planChecksRef } from "../scripts/plan_checks.ts";
+import { ref as checkLiveToolsRef } from "../entrypoints/machinery/check_live_tools.ts";
+import { ref as planChecksRef } from "../entrypoints/machinery/plan_checks.ts";
 
 // Runs whatever config.yaml's `checks` says verifies this project.
 //

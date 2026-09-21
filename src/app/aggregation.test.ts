@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../scripts/testing/harness.ts";
+import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../entrypoints/machinery/testing/harness.ts";
 
 const LIB_DIR = import.meta.dir;
 

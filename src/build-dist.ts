@@ -6,12 +6,12 @@
  * The deployed tree has two roots, and which one a thing lands in is the whole
  * layout: `.github/atomaton/` is the adopter's, `.github/atomaton-runtime/` is ours.
  *
- *   - `src/scripts/**` (the glue a `*.wac.ts` file's `run:` step invokes)
+ *   - `src/entrypoints/machinery/**` (the glue a `*.wac.ts` file's `run:` step invokes)
  *     -> `dist/.github/atomaton-runtime/scripts/`.
- *   - `src/atomaton-runtime/tools/**` (the MCP servers and hooks `atoma` starts)
+ *   - `src/entrypoints/tools/**` (the MCP servers and hooks `atoma` starts)
  *     -> `dist/.github/atomaton-runtime/tools/`, with `defaults.yaml` and
  *     `packages.json` copied beside them.
- *   - `src/atomaton/**` (config, prompt template, agent definitions, skills,
+ *   - `src/content/**` (config, prompt template, agent definitions, skills,
  *     rulesets) -> `dist/.github/atomaton/`, copied verbatim.
  *
  * The tools file the core reads is NOT built here and does not ship: it is
@@ -20,8 +20,8 @@
  * first -- see that script for what it cost.
  *
  * Every entry point is bundled with ALL of its imports inlined -- including
- * the shared `src/lib/**` kernel (so `src/scripts/**` and
- * `src/atomaton-runtime/tools/**` can freely import shared code without any
+ * the shared `src/lib/**` kernel (so `src/entrypoints/machinery/**` and
+ * `src/entrypoints/tools/**` can freely import shared code without any
  * hand-duplicated files between them) and npm dependencies like
  * `@modelcontextprotocol/sdk` (so the deployed output needs no
  * `node_modules`/`package.json`/`bun install` step at all -- verified: a
@@ -39,7 +39,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_MANIFEST, RUNTIME_ROOT, USER_ROOT } from "./domain/machinery/machinery-layout.ts";
+import { RELEASE_MANIFEST, SCRIPTS_DIR, sourceOf, TOOLS_DIR, USER_ROOT } from "./domain/machinery/machinery-layout.ts";
 import { buildManifest } from "./domain/machinery/release-manifest.ts";
 
 /**
@@ -62,16 +62,23 @@ const SRC_DIR = join(REPO_ROOT, "src");
 const DIST_GITHUB_DIR = join(REPO_ROOT, "dist", ".github");
 
 /**
- * The two trees, named once.
+ * Both ends of every tree, from the one table that holds them.
  *
- * A tree is `src/<name>` here and `.github/<name>` deployed, so the name is taken
- * from the layout constant rather than spelled again beside it. It WAS spelled
- * again -- `join(SRC_DIR, "atoma-runtime", "tools")` -- and renaming the constants
- * left this file walking a directory that no longer existed. A name broken into
- * path segments is the one form of that duplicate a search for the path cannot find.
+ * A tree used to be `src/<name>` here and `.github/<name>` deployed, so this file
+ * derived one from the other by slicing the string. That stopped being true when the
+ * source was sorted by layer: `content/` deploys to `.github/atomaton/` and
+ * `entrypoints/machinery/` to `.github/atomaton-runtime/scripts/`, and neither name
+ * appears in the other.
+ *
+ * The correspondence is `BUILT_FROM` in `domain/machinery/machinery-layout.ts`, which
+ * is where the deployed side was already named. Taken from there rather than spelled
+ * again beside it: it WAS spelled again -- `join(SRC_DIR, "atoma-runtime", "tools")`
+ * -- and renaming the constants left this file walking a directory that no longer
+ * existed. A name broken into path segments is the one form of that duplicate a
+ * search for the path cannot find.
  */
-const USER_DIR = USER_ROOT.slice(USER_ROOT.indexOf("/") + 1);
-const RUNTIME_DIR = RUNTIME_ROOT.slice(RUNTIME_ROOT.indexOf("/") + 1);
+const from = (deployed: string): string => join(SRC_DIR, ...sourceOf(deployed).split("/"));
+const into = (deployed: string): string => join(REPO_ROOT, "dist", ...deployed.split("/"));
 
 /** Recursively collects every entry-point `*.ts` file under `dir`, skipping `excludeDirs` (by name, at any depth) and `*.test.ts` files. */
 function collectEntryPoints(dir: string, excludeDirs: ReadonlySet<string>): string[] {
@@ -120,14 +127,14 @@ function copyDirectoryFresh(source: string, destination: string): void {
 }
 
 function copyStaticAtomatonContent(): void {
-  const srcAtomatonDir = join(SRC_DIR, USER_DIR);
-  const distAtomatonDir = join(DIST_GITHUB_DIR, USER_DIR);
+  const srcAtomatonDir = from(USER_ROOT);
+  const distAtomatonDir = into(USER_ROOT);
 
   // Every static file the generated workflows read at runtime must be listed
   // here, or it never reaches `dist/` and so never reaches an adopter. A file
   // missing from this list is invisible in review: it keeps working in whatever
   // `.github/` already has it and is simply absent from everyone else's.
-  // `deployment-contract.test.ts` keeps this list in step with `src/atomaton/`.
+  // `deployment-contract.test.ts` keeps this list in step with `src/content/`.
   // README.md is here for the same reason the rest is: an adopter who opens this
   // directory should find out what each path means without leaving it.
   const filesCopiedVerbatim = ["README.md", "config.yaml", "prompt-template.md"];
@@ -172,8 +179,8 @@ function copyStaticAtomatonContent(): void {
   // an adopter edits. `defaults.yaml` is read by `write_tools_file.ts` at the start of
   // every run and by `validate_deliverable.ts` on every pull request; `packages.json`
   // is what the install step reads. Neither is a copy of anything in `.github/atomaton/`.
-  const srcRuntimeTools = join(SRC_DIR, RUNTIME_DIR, "tools");
-  const distRuntimeTools = join(DIST_GITHUB_DIR, RUNTIME_DIR, "tools");
+  const srcRuntimeTools = from(TOOLS_DIR);
+  const distRuntimeTools = into(TOOLS_DIR);
   mkdirSync(distRuntimeTools, { recursive: true });
   for (const file of ["defaults.yaml", "packages.json"]) {
     cpSync(join(srcRuntimeTools, file), join(distRuntimeTools, file));
@@ -222,16 +229,8 @@ function writeManifest(): void {
 }
 
 async function main(): Promise<void> {
-  await bundleTree(
-    join(SRC_DIR, "scripts"),
-    join(DIST_GITHUB_DIR, RUNTIME_DIR, "scripts"),
-    new Set(["lib", "testing"]),
-  );
-  await bundleTree(
-    join(SRC_DIR, RUNTIME_DIR, "tools"),
-    join(DIST_GITHUB_DIR, RUNTIME_DIR, "tools"),
-    new Set(["lib"]),
-  );
+  await bundleTree(from(SCRIPTS_DIR), into(SCRIPTS_DIR), new Set(["lib", "testing"]));
+  await bundleTree(from(TOOLS_DIR), into(TOOLS_DIR), new Set(["lib"]));
   copyStaticAtomatonContent();
   writeManifest();
 }

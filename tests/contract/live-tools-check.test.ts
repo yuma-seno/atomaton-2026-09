@@ -34,7 +34,7 @@ import { resolveDeployJobs } from "../../src/domain/delivery/deploy-jobs.ts";
 
 const CHECK = "scripts/check-live-tools.sh";
 const RELEASE = "scripts/publish-release.sh";
-const DELIVERABLE_VALIDATOR = "src/scripts/validate_deliverable.ts";
+const DELIVERABLE_VALIDATOR = "src/entrypoints/machinery/validate_deliverable.ts";
 
 function body(path: string): string {
   return readFileSync(path, "utf8").replaceAll("\r\n", "\n");
@@ -161,7 +161,7 @@ describe("where it is wired", () => {
    * reader believes they have.
    */
   test("what ships does not promise the reader a check only Atomaton's release runs", () => {
-    const shipped = body("src/atomaton-runtime/tools/defaults.yaml");
+    const shipped = body("src/entrypoints/tools/defaults.yaml");
     expect(
       shipped.includes("before a release ships"),
       "a shipped file must not say the reader's release checks this: theirs ships with " +
@@ -188,7 +188,7 @@ describe("where it is wired", () => {
    * and a string check cannot tell a live entry from one behind a `#`.
    */
   test("the shipped config wires no deployment", () => {
-    const config = Bun.YAML.parse(body("src/atomaton/config.yaml")) as { deploy?: unknown };
+    const config = Bun.YAML.parse(body("src/content/config.yaml")) as { deploy?: unknown };
     expect(resolveDeployJobs(config.deploy)).toEqual({ jobs: [], problems: [] });
   });
 

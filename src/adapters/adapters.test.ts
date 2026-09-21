@@ -11,7 +11,7 @@
  * Since these are plain functions (no `main()`/CLI), each test spawns a
  * tiny generated shim script that imports and calls the target function,
  * reusing the SAME fake-`gh`-via-PATH test harness used for real CLI
- * scripts (src/scripts/testing/harness.ts) -- subprocess isolation is
+ * scripts (src/entrypoints/machinery/testing/harness.ts) -- subprocess isolation is
  * required here, not just convenient: mutating process.env.PATH/
  * FAKE_GH_RESPONSES and calling a gh()-shelling function in the SAME
  * long-lived bun:test process has previously given wrong results (a
@@ -25,7 +25,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../scripts/testing/harness.ts";
+import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../entrypoints/machinery/testing/harness.ts";
 import { extractImageUrls, sniffMimeType } from "../adapters/github/issue-images.ts";
 import { looksTransient } from "../adapters/github/gh.ts";
 import { injectSummary } from "../adapters/atoma/inject-sub-results.ts";

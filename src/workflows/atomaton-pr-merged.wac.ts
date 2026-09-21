@@ -6,9 +6,9 @@ import { githubEvent, githubEventRaw } from "./actions/github-context.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
-import { ref as resolveOrchestratorParentRef } from "../scripts/resolve_orchestrator_parent.ts";
-import { ref as aggregateSubIssuesRef } from "../scripts/aggregate_sub_issues.ts";
-import { ref as parsePrMetadataRef } from "../scripts/parse_pr_metadata.ts";
+import { ref as resolveOrchestratorParentRef } from "../entrypoints/machinery/resolve_orchestrator_parent.ts";
+import { ref as aggregateSubIssuesRef } from "../entrypoints/machinery/aggregate_sub_issues.ts";
+import { ref as parsePrMetadataRef } from "../entrypoints/machinery/parse_pr_metadata.ts";
 
 // Detect PR merges and aggregate sub-issue results.
 // Uses pull_request_target so GITHUB_TOKEN-created PR merges are detected.

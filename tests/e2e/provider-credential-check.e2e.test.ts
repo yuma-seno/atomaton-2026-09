@@ -24,7 +24,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RUN_CREDENTIALS } from "../../src/domain/delivery/declared-secrets.ts";
 import { AGENT_DEFINITIONS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
-import { hermeticEnv } from "../../src/scripts/testing/harness.ts";
+import { hermeticEnv } from "../../src/entrypoints/machinery/testing/harness.ts";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CHECK_STEP = "Check the resolved provider has a credential";
@@ -49,7 +49,7 @@ describe.skipIf(ATOMA === undefined)("provider credential check against the real
   /**
    * Run the generated step's own bash, with the repository's real machinery.
    *
-   * The agent definitions come from `src/atomaton/agent-definitions` — the source the
+   * The agent definitions come from `src/content/agent-definitions` — the source the
    * deliverable ships — so this reads the `provider:` those definitions actually
    * declare rather than a fixture.
    */
@@ -67,7 +67,7 @@ describe.skipIf(ATOMA === undefined)("provider credential check against the real
     // The step reads its definition from the machinery root, which on a runner is a
     // checkout of the default branch. Here that is the shipped source, so what is
     // checked is what an adopter receives.
-    const stage = `mkdir -p "${machinery}/${AGENT_DEFINITIONS_DIR}" && cp "${REPO_ROOT}/src/atomaton/agent-definitions/"*.md "${machinery}/${AGENT_DEFINITIONS_DIR}/"`;
+    const stage = `mkdir -p "${machinery}/${AGENT_DEFINITIONS_DIR}" && cp "${REPO_ROOT}/src/content/agent-definitions/"*.md "${machinery}/${AGENT_DEFINITIONS_DIR}/"`;
     try {
       const result = Bun.spawnSync({
         // The flags GitHub's own `shell: bash` runs: `bash --noprofile --norc -eo pipefail {0}`.

@@ -129,7 +129,16 @@ write a workflow.*
 | Path | Who changes it | Holds |
 | --- | --- | --- |
 | `.github/atomaton/` | the adopting team, agents included | `config.yaml`, prompt template, agent definitions, skills, rulesets, **and `scripts/`** |
-| `.github/atomaton-runtime/` | upstream, through a pull request | the machinery: `machinery/`, `tools/` |
+| `.github/atomaton-runtime/` | upstream, through a pull request | the machinery: `scripts/`, `tools/` |
+
+The deployed layout is a published interface — an adopter's tree is replaced by
+position, so a path there is not one to move on a whim — and the source layout
+is ours, sorted by layer. They agree on nothing: `content/` deploys to
+`.github/atomaton/`, `entrypoints/machinery/` to
+`.github/atomaton-runtime/scripts/`, `entrypoints/tools/` to
+`.github/atomaton-runtime/tools/`. `BUILT_FROM` in `machinery-layout.ts` is the
+whole correspondence, and `build-dist.ts` reads it rather than deriving one name
+from the other.
 
 `.github/atomaton/scripts/` is where a project puts the commands its
 `config.yaml` names. It is not shipped — an adopter creates it — and this

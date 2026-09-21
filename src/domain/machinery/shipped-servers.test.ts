@@ -13,7 +13,7 @@ import { toolDefaults, whatEachIsFor } from "./shipped-servers.ts";
  * reference they reach from the config's own header comment. A server missing from
  * either is a server that is invisible from one of the two doors.
  */
-const PAGES = ["src/atomaton/README.md", "docs/configuration.md"];
+const PAGES = ["src/content/README.md", "docs/configuration.md"];
 
 describe("the servers Atomaton ships", () => {
   test("every one has a line saying what it is for", () => {
@@ -51,7 +51,7 @@ describe("the servers Atomaton ships", () => {
    */
   test("the file-wide hooks are described where the servers are", () => {
     expect(Object.keys(toolDefaults().watch).length, "there is at least one").toBeGreaterThan(0);
-    const readme = readFileSync("src/atomaton/README.md", "utf8");
+    const readme = readFileSync("src/content/README.md", "utf8");
     expect(readme, "the README says hooks of your own are added rather than replacing").toContain("tools.watch");
   });
 

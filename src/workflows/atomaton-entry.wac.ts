@@ -7,7 +7,7 @@ import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { dispatchToAtomaRunner } from "./atomaton-runner.wac.ts";
-import { ref as resolveEntryAgentRef } from "../scripts/resolve_entry_agent.ts";
+import { ref as resolveEntryAgentRef } from "../entrypoints/machinery/resolve_entry_agent.ts";
 
 // Fires when a new issue is opened. Resolves which agent (if any) should
 // handle it from the issue body's first line, then hands off to the shared

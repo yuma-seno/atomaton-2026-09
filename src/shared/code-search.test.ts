@@ -75,10 +75,10 @@ describe("passagesOf", () => {
    * no passage inside it says so.
    */
   test("the path is indexed as words", () => {
-    const passages = passagesOf("src/scripts/manage_in_progress_label.ts", "x");
+    const passages = passagesOf("src/entrypoints/machinery/manage_in_progress_label.ts", "x");
     const pathPassage = passages.at(-1)!;
     expect(pathPassage.text).toContain("manage in progress label");
-    expect(pathPassage.text).toContain("src/scripts/manage_in_progress_label.ts");
+    expect(pathPassage.text).toContain("src/entrypoints/machinery/manage_in_progress_label.ts");
   });
 
   test("an empty file contributes only its name", () => {
@@ -152,13 +152,13 @@ describe("the two stages, end to end without the reranker", () => {
     const files = [
       ["src/domain/work/session-size.ts", "Above this many estimated tokens a restored session is shrunk before use."],
       ["src/shared/bm25.ts", "Character bigrams are the standard substitute for a morphological analyser."],
-      ["src/scripts/run_checks.ts", "Runs the commands a project configured under checks, one after another."],
+      ["src/entrypoints/machinery/run_checks.ts", "Runs the commands a project configured under checks, one after another."],
     ] as const;
     const passages = files.flatMap(([path, text]) => passagesOf(path, text));
     const index = buildIndex(passages.map((p) => p.text));
 
     const ranked = rankFiles(passages, score(index, "where are the checks a project configured actually run?"), 3);
-    expect(passages[ranked[0]!.passage]!.path).toBe("src/scripts/run_checks.ts");
+    expect(passages[ranked[0]!.passage]!.path).toBe("src/entrypoints/machinery/run_checks.ts");
   });
 });
 

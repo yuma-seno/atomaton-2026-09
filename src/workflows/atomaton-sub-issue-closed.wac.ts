@@ -6,10 +6,10 @@ import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/githu
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
-import { ref as dispatchIfSiblingsDoneRef } from "../scripts/dispatch_if_siblings_done.ts";
-import { ref as checkSubIssueClosureRef } from "../scripts/check_sub_issue_closure.ts";
-import { ref as pruneAtomaDataRef } from "../scripts/prune_atomaton_data.ts";
-import { ref as stopOnCloseRef } from "../scripts/stop_on_close.ts";
+import { ref as dispatchIfSiblingsDoneRef } from "../entrypoints/machinery/dispatch_if_siblings_done.ts";
+import { ref as checkSubIssueClosureRef } from "../entrypoints/machinery/check_sub_issue_closure.ts";
+import { ref as pruneAtomaDataRef } from "../entrypoints/machinery/prune_atomaton_data.ts";
+import { ref as stopOnCloseRef } from "../entrypoints/machinery/stop_on_close.ts";
 
 // FALLBACK for manually closed sub-issues.
 // Primary aggregation happens in atomaton-pr-merged.wac.ts (pull_request_target).

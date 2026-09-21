@@ -29,7 +29,7 @@ import {
 } from "../../domain/delivery/declared-secrets.ts";
 import { CONFIG_FILE } from "../../domain/machinery/machinery-layout.ts";
 import { scriptCommandWithArgs } from "./script-call.ts";
-import { ref as readSecretNamesRef } from "../../scripts/read_secret_names.ts";
+import { ref as readSecretNamesRef } from "../../entrypoints/machinery/read_secret_names.ts";
 import { TypedOutputsStep } from "./base.ts";
 
 /** Step id the slot expressions key off. One per workflow, so a constant is enough. */

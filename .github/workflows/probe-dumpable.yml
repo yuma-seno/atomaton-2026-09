@@ -33,7 +33,7 @@ name: Process and worktree isolation
       - 'scripts/probe-server-reports.ts'
       - 'src/lib/mcp-report.ts'
       - 'src/lib/mcp-tool.ts'
-      - 'src/atomaton-runtime/tools/**'
+      - 'src/entrypoints/tools/**'
       - 'src/workflows/actions/atoma-cli.ts'
       - 'src/workflows/atomaton-runner.wac.ts'
       # .github/** is the deployed machinery -- what a run actually starts. A

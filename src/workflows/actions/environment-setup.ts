@@ -44,7 +44,7 @@
  */
 import { TypedOutputsStep } from "./base.ts";
 import { scriptCommand } from "./script-call.ts";
-import { ref as runEnvironmentSetupRef } from "../../scripts/run_environment_setup.ts";
+import { ref as runEnvironmentSetupRef } from "../../entrypoints/machinery/run_environment_setup.ts";
 
 /**
  * Runs `environment.setup_commands`, and says so plainly when there are none.
