@@ -29,7 +29,7 @@ This repository's own:
   copied over it. Upgraded deliberately rather than on merge — that lag is what
   stops a change to `src/` from reconfiguring the live agents the moment it
   merges. Adopters upgrade as a git-mediated merge instead, since they have tuned
-  files to lose; see [docs/recipes.md](docs/recipes.md), "Move to a newer release".
+  files to lose; see [docs/runtime/tasks/move-to-a-newer-release.md](docs/runtime/tasks/move-to-a-newer-release.md), "Move to a newer release".
 - `tests/`: tests of the build-and-deploy machinery. Tests of *shipped behaviour*
   live beside the shipped code instead.
 - `docs/`: adopter-facing documentation.

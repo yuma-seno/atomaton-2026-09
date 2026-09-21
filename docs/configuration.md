@@ -6,7 +6,7 @@ Everything this project declares lives in one file, `.github/atomaton/config.yam
 and everything one agent declares lives in that agent's definition. This page is
 the long form for both: what each setting is for, and the measurements behind the
 numbers that have one. It is the reference, so every settable key is here. If you
-have a goal rather than a key, [docs/recipes.md](recipes.md) is the lookup.
+have a goal rather than a key, [docs/](.) is the lookup.
 
 The file itself carries a line or two per key — enough to know what you are
 looking at while editing. Anything longer is here, so that the config stays
@@ -74,11 +74,11 @@ be under `.github/scripts/` and `.github/atomaton/tools/` now ships under
 that only unpacks. Nothing runs them — a workflow names the new path — so delete
 them once you have upgraded, before somebody reads a stale script as the one in
 use. The manifest in `.github/atomaton-release.json` lists what the release does
-contain; [docs/recipes.md](recipes.md), under "Move to a newer release", has the
+contain; [docs/runtime/tasks/move-to-a-newer-release.md](runtime/tasks/move-to-a-newer-release.md), under "Move to a newer release", has the
 command that compares the two.
 
 The procedure — treat it as vendoring, and let git do the merge — is in
-[docs/recipes.md](recipes.md), under "Move to a newer release".
+[docs/runtime/tasks/move-to-a-newer-release.md](runtime/tasks/move-to-a-newer-release.md), under "Move to a newer release".
 
 ## A key that is not a setting
 
@@ -102,7 +102,7 @@ was under way, with two credential lists described at the wrong depth.
 
 What you get in an adopted repository is the same check, runnable before you push:
 `bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .`. See
-[docs/recipes.md](recipes.md), under "Check your config before pushing".
+[docs/config/tasks/check-your-config-before-pushing-it.md](config/tasks/check-your-config-before-pushing-it.md), under "Check your config before pushing".
 
 ## How the keys are grouped
 
@@ -475,7 +475,7 @@ live.
 
 A workflow Atomaton is to start must accept `workflow_dispatch`, and a workflow that
 reads the pull request from the event payload gets nothing on a dispatched run.
-Both are in [docs/setup.md](setup.md) and [docs/recipes.md](recipes.md)
+Both are in [docs/setup.md](setup.md) and [docs/pipeline/tasks/make-a-workflow-of-your-own-work-when-atomaton-starts-it.md](pipeline/tasks/make-a-workflow-of-your-own-work-when-atomaton-starts-it.md)
 respectively.
 
 ## `merge`
@@ -788,7 +788,7 @@ is committed in plain text.
 You never edit a workflow for any of this, and there is no tools file to edit:
 the one the core is handed is written for each run, from the shipped servers and
 this section, and deleted with the runner. The three-step procedure is in
-[docs/recipes.md](recipes.md), under "Give a tool a credential"; what the routing
+[docs/tools/tasks/let-a-tool-server-reach-something-outside-github.md](tools/tasks/let-a-tool-server-reach-something-outside-github.md), under "Give a tool a credential"; what the routing
 does and does not protect is in [docs/operations.md](operations.md).
 
 ### What fails loudly
@@ -886,7 +886,7 @@ tools:
 `0` means the default, the same as leaving it out. A timeout argument in a tool's
 own schema does not raise this, and raising it just in case costs you the only
 thing that notices a server which has stopped responding —
-[docs/writing-a-tool.md](writing-a-tool.md) has both, with the measurements.
+[docs/tools/how-it-works/how-long-a-tool-has.md](tools/how-it-works/how-long-a-tool-has.md) has both, with the measurements.
 
 #### `reranker_model`
 
@@ -1024,7 +1024,7 @@ model that could have read it costs a single tool result, and says why.
 All three shipped agents read images. The engineer did not until its model could:
 the flag was off while it ran a text-only model, and a picture that arrives when
 nothing sends one costs nothing to allow. Checking whether a model can, before you
-set it, is in [docs/recipes.md](recipes.md).
+set it, is in [docs/agents/tasks/have-a-screenshot-reach-an-agent-as-a-picture.md](agents/tasks/have-a-screenshot-reach-an-agent-as-a-picture.md).
 
 ## `provider`
 
@@ -1066,14 +1066,14 @@ on). None of them may be declared in `tools.secrets`: moving a provider's endpoi
 a way to send its credential somewhere else.
 
 Which of the two OpenAI entries to prefer, and how to reach a provider with no row
-of its own, are in [docs/recipes.md](recipes.md).
+of its own, are in [docs/agents/tasks/](agents/tasks).
 
 ## `extra_body`, and the `tools:` block that is not there
 
 Atoma merges every `extra_body` key straight into the request body, so what goes
 there is the provider's own contract rather than an Atoma feature. The shipped
 definitions use it for OpenRouter's provider routing; pinning an endpoint is in
-[docs/recipes.md](recipes.md).
+[docs/agents/tasks/prefer-particular-upstream-providers.md](agents/tasks/prefer-particular-upstream-providers.md).
 
 The shipped agents declare no `tools:` block, so nothing triggers provider-side
 tool dispatch today. They used to declare `openrouter:web_search` and
@@ -1173,7 +1173,7 @@ time; a pasted secret would be committed in plain text.
 Where the value comes from is a different layer. Add the secret to the
 repository, then name it in `tools.secrets` -- that authorises the run to obtain
 it at all. The `env` entry here decides which server reaches it. Both steps are
-needed and neither substitutes for the other; see [docs/recipes.md](recipes.md),
+needed and neither substitutes for the other; see [docs/tools/tasks/let-a-tool-server-reach-something-outside-github.md](tools/tasks/let-a-tool-server-reach-something-outside-github.md),
 "Give a tool a credential".
 
 ## `tools.watch`

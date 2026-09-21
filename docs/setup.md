@@ -145,7 +145,7 @@ rm atomaton-delivery.zip
 ```
 
 Record which one you took. Moving to a newer release is vendoring rather than
-installing, and the procedure is in [docs/recipes.md](recipes.md).
+installing, and the procedure is in [docs/runtime/tasks/move-to-a-newer-release.md](runtime/tasks/move-to-a-newer-release.md).
 
 ## 7. Open the first issue
 

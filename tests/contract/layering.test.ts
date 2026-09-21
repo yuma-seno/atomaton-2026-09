@@ -1,7 +1,7 @@
 /**
  * layering.test.ts — the arrows point inward, and nothing says so but this.
  *
- * `docs/architecture.md` sorts `src/` into layers and states the rule. Nothing
+ * `docs/template/architecture.md` sorts `src/` into layers and states the rule. Nothing
  * enforced it: `package.json`'s lint is `tsc` and `synth`, and none of the other
  * contract tests reads an import. A layout with no ratchet is a layout that holds
  * until the first change made in a hurry.

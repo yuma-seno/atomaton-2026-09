@@ -45,15 +45,17 @@ You have succeeded when `Atomaton Entry` routes to `atomaton-runner`, the issue 
 
 ## Where to go next
 
+Everything below is indexed in [docs/README.md](docs/README.md), which says where a page lives and why.
+
 | You want to | Go to |
 | --- | --- |
 | put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |
 | know what a setting does | [Configuration](docs/configuration.md) — every key, and the measurements behind the numbers |
-| do one specific thing | [Recipes](docs/recipes.md) — indexed by the goal you arrived with |
+| do one specific thing | [Recipes](docs/) — indexed by the goal you arrived with |
 | understand what it just did | [Operations](docs/operations.md) — how a run works, and how to diagnose one |
-| write an MCP server for it | [Writing a tool](docs/writing-a-tool.md) |
-| know why it is built this way | [Environment-Driven Development](docs/edd.md) — the idea the whole system is an argument for |
-| change the template itself | [CONTRIBUTING.md](CONTRIBUTING.md), then [Architecture](docs/architecture.md) — the layers, and where a module belongs |
+| write an MCP server for it | [Writing a tool](docs/tools/tasks/write-a-tool.md) |
+| know why it is built this way | [Environment-Driven Development](docs/method/edd.md) — the idea the whole system is an argument for |
+| change the template itself | [CONTRIBUTING.md](CONTRIBUTING.md), then [Architecture](docs/template/architecture.md) — the layers, and where a module belongs |
 
 Paths are conventions rather than settings, and `.github/atomaton/README.md` — which
 ships with the deliverable — says what each one holds and why.
