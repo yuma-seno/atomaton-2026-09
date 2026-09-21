@@ -19,7 +19,7 @@ import {
   type LinkedChild,
   type LinkedIssue,
   type LinkedPr,
-} from "../domain/issue-links.ts";
+} from "../domain/work/issue-links.ts";
 
 /** How many children and pull requests to ask for. Past this the reader is not reading, they are scrolling. */
 const LINK_LIMIT = 50;
@@ -74,7 +74,7 @@ interface GqlResponse {
  * The two kinds are asked different things because they ARE different, not to be
  * thorough. An issue has a parent and sub-issues; a pull request has neither, and
  * what it has instead is the issue it closes -- which is its parent in the same
- * sense (see `domain/work-tree.ts`). A pull request is a leaf.
+ * sense (see `domain/work/work-tree.ts`). A pull request is a leaf.
  */
 const QUERY = `
 query($owner:String!, $name:String!, $number:Int!, $limit:Int!, $labelLimit:Int!) {

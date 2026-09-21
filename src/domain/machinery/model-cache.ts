@@ -10,7 +10,7 @@
  * That is not hypothetical. It happened: this directory was unwritable, the load
  * failed with EACCES, reranking fell back to a first-stage order, and two releases
  * went out before anyone read a log. The path is a constant for the same reason
- * `domain/workspace.ts` holds one.
+ * `domain/work/workspace.ts` holds one.
  *
  * A name rather than a full path, because the base is different in each place --
  * `$XDG_CACHE_HOME` inside the server, `${{ runner.temp }}/atomaton-tool-cache` in an

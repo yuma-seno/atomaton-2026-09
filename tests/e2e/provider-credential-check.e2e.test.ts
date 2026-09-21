@@ -22,8 +22,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RUN_CREDENTIALS } from "../../src/domain/declared-secrets.ts";
-import { AGENT_DEFINITIONS_DIR } from "../../src/domain/machinery-layout.ts";
+import { RUN_CREDENTIALS } from "../../src/domain/delivery/declared-secrets.ts";
+import { AGENT_DEFINITIONS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
 import { hermeticEnv } from "../../src/scripts/testing/harness.ts";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");

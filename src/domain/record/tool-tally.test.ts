@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../work/session.ts";
 import { toolCallTally } from "./tool-tally.ts";
 
 /** A session whose assistant turns made the given calls, in order. */

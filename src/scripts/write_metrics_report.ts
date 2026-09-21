@@ -3,8 +3,8 @@
  * write_metrics_report.ts — read every stored session and write the report a person reads.
  *
  * Runs at the end of an agent run, where the branch is already being written to and the
- * cost is a few seconds on a job that took minutes. See `domain/metrics.ts` for what is
- * counted and `domain/metrics-report.ts` for why it is Markdown on `atomaton-data`.
+ * cost is a few seconds on a job that took minutes. See `domain/record/metrics.ts` for what is
+ * counted and `domain/record/metrics-report.ts` for why it is Markdown on `atomaton-data`.
  *
  * Usage:
  *   write_metrics_report.ts [--repo OWNER/REPO] [--stdout]
@@ -23,8 +23,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { saveSession } from "./lib/atomaton-data.ts";
-import { classifyShellAct } from "../domain/search-streak.ts";
-import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery-layout.ts";
+import { classifyShellAct } from "../domain/work/search-streak.ts";
+import { CONFIG_FILE, SKILLS_DIR } from "../domain/machinery/machinery-layout.ts";
 import { machineryPath } from "../lib/machinery.ts";
 import {
   metricsOf,
@@ -33,10 +33,10 @@ import {
   type CallRecord,
   type SessionRecord,
   type TokenRecord,
-} from "../domain/metrics.ts";
-import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/metrics-windows.ts";
-import { renderReport } from "../domain/metrics-report.ts";
-import { parseTokenLine } from "../domain/token-line.ts";
+} from "../domain/record/metrics.ts";
+import { sessionEndedAt, within, type RunRecord, type Window } from "../domain/record/metrics-windows.ts";
+import { renderReport } from "../domain/record/metrics-report.ts";
+import { parseTokenLine } from "../domain/record/token-line.ts";
 
 export const ref = defineScript(import.meta.url);
 

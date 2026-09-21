@@ -81,7 +81,7 @@ Atomaton's own tools share one budget, `TOOL_OUTPUT_BUDGET`: 50,000 characters, 
 four numbers in three units before — 1,000,000 **bytes** in the shell, 60,000
 characters in `web_fetch`, 50,000 in two GitHub tools, and nothing anywhere else.
 
-That constant is this template's own, in `src/domain/tool-output.ts`. An adopted
+That constant is this template's own, in `src/shared/tool-output.ts`. An adopted
 repository has no copy of the file to read or edit; it receives the servers with
 the cap already compiled into them. For a server of your own, the number is one to
 copy, not one to look up.

@@ -40,10 +40,10 @@ import { getDeploySection, getWorkflowName } from "./config.ts";
 import { dispatchRunner } from "./dispatch.ts";
 import { resolveNotify } from "./notify.ts";
 import { isIssueBranch } from "./branch-placement.ts";
-import { mergeMightDeploy, resolveDeployJobs, type DeployTrigger } from "../domain/deploy-jobs.ts";
-import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
+import { mergeMightDeploy, resolveDeployJobs, type DeployTrigger } from "../domain/delivery/deploy-jobs.ts";
+import { DEFAULT_CD_WORKFLOW, DEFAULT_CI_WORKFLOW } from "../domain/delivery/shipped-workflows.ts";
 
-// The two shipped workflow names now live in `domain/shipped-workflows.ts`. They were
+// The two shipped workflow names now live in `domain/delivery/shipped-workflows.ts`. They were
 // declared here, in a module that runs `gh` and reads config.yaml, and re-exported from
 // here to a workflow generator and — once `deliverable-integrity.ts` needed them — to a
 // module that must stay pure. The constants are facts about what this template ships, not

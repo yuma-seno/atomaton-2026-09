@@ -3,7 +3,7 @@
  *
  * ## The failure this exists for
  *
- * Every path in `domain/machinery-layout.ts` is relative, and what they resolve
+ * Every path in `domain/machinery/machinery-layout.ts` is relative, and what they resolve
  * against was worked out in three places by hand:
  *
  *   `lib/config.ts`             `root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE`
@@ -24,7 +24,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { MACHINERY_ROOT_VAR } from "../../src/domain/machinery-layout.ts";
+import { MACHINERY_ROOT_VAR } from "../../src/domain/machinery/machinery-layout.ts";
 
 /**
  * Where the name is declared, and where it is read.
@@ -32,7 +32,7 @@ import { MACHINERY_ROOT_VAR } from "../../src/domain/machinery-layout.ts";
  * Nothing else spells it — not even the module that resolves it, which imports the
  * constant and indexes `process.env` with it.
  */
-const DECLARES_IT = "src/domain/machinery-layout.ts";
+const DECLARES_IT = "src/domain/machinery/machinery-layout.ts";
 const RESOLVES_IT = "src/lib/machinery.ts";
 
 /** Every `.ts` under `src/`, tests excluded. */

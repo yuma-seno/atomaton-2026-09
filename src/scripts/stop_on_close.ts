@@ -20,7 +20,7 @@
  * ## Why only a person's close
  *
  * An agent closing the issue it is working on is a normal path, not an accident:
- * `domain/atomaton-data-pruning.ts` is built around it ("the agent closes it and the
+ * `domain/machinery/atomaton-data-pruning.ts` is built around it ("the agent closes it and the
  * job continues"). Stopping the run that just closed its own issue would cut it off
  * mid-wrap-up, so the caller passes the closer and a bot closer is no-op'd here.
  *
@@ -35,8 +35,8 @@
  */
 import { parseArgs } from "node:util";
 import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
-import { closedTheTreeNotice, stopOnCloseNotice } from "../domain/closed-issue.ts";
-import { descendants, nodesToClose, nodesToStop, subtree } from "../domain/work-tree.ts";
+import { closedTheTreeNotice, stopOnCloseNotice } from "../domain/work/closed-issue.ts";
+import { descendants, nodesToClose, nodesToStop, subtree } from "../domain/work/work-tree.ts";
 import { closeSubtreeUnder, readWorkTree } from "../lib/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -93,7 +93,7 @@ function main(): void {
   }
 
   // Closing ends a line of work rather than one node, so the sub-issues and pull
-  // requests under it go with it. See `domain/work-tree.ts`.
+  // requests under it go with it. See `domain/work/work-tree.ts`.
   //
   // The tree is read before anything is decided, and that ordering is the fix for what
   // this used to do: it read the root's label, found none, and returned — which is

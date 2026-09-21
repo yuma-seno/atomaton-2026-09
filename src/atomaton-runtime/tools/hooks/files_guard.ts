@@ -11,7 +11,7 @@
  * then fire only on the agents that have a shell, and only for the searches they chose
  * to make the slow way.
  *
- * The rule itself is unchanged and lives in `domain/search-streak.ts`, which holds the
+ * The rule itself is unchanged and lives in `domain/work/search-streak.ts`, which holds the
  * limit and the wording. This is the door, not the rule.
  *
  * ## What counts
@@ -28,7 +28,7 @@
  * than falling through: a counter that cannot be read must leave the rule off, not
  * refuse every call the agent makes. `readStreak` is written to the same rule.
  */
-import { nextStreak, refusalReason } from "../../../domain/search-streak.ts";
+import { nextStreak, refusalReason } from "../../../domain/work/search-streak.ts";
 import { readStreak, streakFile, writeStreak } from "../lib/search-streak-file.ts";
 
 /**

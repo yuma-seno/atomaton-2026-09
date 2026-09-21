@@ -20,7 +20,7 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { resolveDeployJobs } from "../../src/domain/deploy-jobs.ts";
+import { resolveDeployJobs } from "../../src/domain/delivery/deploy-jobs.ts";
 
 /** The live configuration, which is what the runner reads. */
 function deployCommands(): string[] {

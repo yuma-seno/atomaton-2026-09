@@ -6,7 +6,7 @@
  * only reference secrets whose names were known when it was generated. Reaching
  * one through a COMPUTED key — `secrets[fromJSON(<names>)[i]]` — moves that
  * decision to run time, and config.yaml becomes where a project says which of
- * its secrets a workflow may see. See `domain/declared-secrets.ts` for what was
+ * its secrets a workflow may see. See `domain/delivery/declared-secrets.ts` for what was
  * measured before relying on this.
  *
  * Three workflows need the identical arrangement (atomaton-runner, atomaton-check,
@@ -26,8 +26,8 @@ import {
   SECRET_NAMES_VAR,
   SECRET_SLOT_PREFIX,
   SECRET_SLOTS,
-} from "../../domain/declared-secrets.ts";
-import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
+} from "../../domain/delivery/declared-secrets.ts";
+import { CONFIG_FILE } from "../../domain/machinery/machinery-layout.ts";
 import { scriptCommandWithArgs } from "./script-call.ts";
 import { ref as readSecretNamesRef } from "../../scripts/read_secret_names.ts";
 import { TypedOutputsStep } from "./base.ts";

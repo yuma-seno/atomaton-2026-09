@@ -26,7 +26,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { toolDefaults } from "../../src/domain/shipped-servers.ts";
+import { toolDefaults } from "../../src/domain/machinery/shipped-servers.ts";
 
 const AGENT_DIR = join(process.cwd(), "src/atomaton/agent-definitions");
 const CONFIG = join(process.cwd(), "src/atomaton/config.yaml");
@@ -36,7 +36,7 @@ const CONFIG = join(process.cwd(), "src/atomaton/config.yaml");
  * project added.
  *
  * Both halves, because both halves are real. It read only `tools.servers` while the
- * eight shipped servers lived there; they are in `domain/shipped-servers.ts` now, and
+ * eight shipped servers lived there; they are in `domain/machinery/shipped-servers.ts` now, and
  * a config's `servers` holds additions and overrides. Reading either alone would let
  * an agent name something that does not resolve -- which is the whole failure this
  * file exists to catch, and the one the core reports by aborting the run before a

@@ -46,7 +46,7 @@ import {
   SCRIPTS_DIR,
   TOOL_DEFAULTS_FILE,
   TOOLS_DIR,
-} from "../domain/machinery-layout.ts";
+} from "../domain/machinery/machinery-layout.ts";
 import { machineryPath, machineryRoot } from "../lib/machinery.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

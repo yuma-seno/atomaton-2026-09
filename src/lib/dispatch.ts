@@ -32,7 +32,7 @@
 import { dispatchWorkflow, gh } from "./gh.ts";
 import { logDispatch } from "./ops-log.ts";
 import { readTargetState } from "./target-state.ts";
-import { dispatchRefusedNotice, mayStartWorkOn, type TargetState } from "../domain/closed-issue.ts";
+import { dispatchRefusedNotice, mayStartWorkOn, type TargetState } from "../domain/work/closed-issue.ts";
 
 /** The reusable workflow every agent run enters through. */
 function runnerWorkflow(): string {
@@ -63,7 +63,7 @@ export interface RunnerDispatch {
    *
    * Passed as a workflow input rather than counted from anywhere, because a reload
    * leaves nothing behind to count -- unlike a handoff, which leaves a comment
-   * (see `domain/dispatch-chain.ts`). The tally has to travel with the dispatch or
+   * (see `domain/work/dispatch-chain.ts`). The tally has to travel with the dispatch or
    * it does not exist.
    *
    * Omitted by every other caller, which is correct: dispatching for any other

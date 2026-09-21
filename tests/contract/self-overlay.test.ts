@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { CONFIG_FILE } from "../../src/domain/machinery-layout.ts";
+import { CONFIG_FILE } from "../../src/domain/machinery/machinery-layout.ts";
 
 /**
  * `self/` and `.github/` do not drift apart.

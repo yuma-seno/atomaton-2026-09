@@ -125,7 +125,7 @@ decision. It is not.
 The core has no project of its own — it is handed a layout and works in whatever
 it is given. **This deliverable is the layout.** The core's configurability is the
 seam through which this repository exercises ownership, and the constants in
-`src/domain/machinery-layout.ts` are what it passes through that seam.
+`src/domain/machinery/machinery-layout.ts` are what it passes through that seam.
 
 So: settings describe policy — what to check, what may merge, what a tool may
 reach. Paths describe structure, and structure is what a name is for.

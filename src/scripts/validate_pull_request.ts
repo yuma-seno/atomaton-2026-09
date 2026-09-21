@@ -83,7 +83,7 @@
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { decideValidationOutcome } from "../domain/pr-validation.ts";
+import { decideValidationOutcome } from "../domain/work/pr-validation.ts";
 import { dispatchWorkflow, gh } from "../lib/gh.ts";
 import { readBranchRules } from "../lib/branch-rules.ts";
 import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../lib/tags.ts";

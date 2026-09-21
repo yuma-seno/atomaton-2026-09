@@ -237,7 +237,7 @@ export function archiveSession(
 // `saveSession` writes one file into a real worktree. A workspace is a tree of
 // whatever the agent chose to leave there, so both halves need the tree form.
 //
-// See `domain/workspace.ts` for what the directory is FOR and why it is a
+// See `domain/work/workspace.ts` for what the directory is FOR and why it is a
 // directory instead of a pair of evacuate/retrieve tools.
 
 /** Where a root issue's workspace lives on the atomaton-data branch. */

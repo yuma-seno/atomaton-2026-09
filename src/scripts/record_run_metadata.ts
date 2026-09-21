@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { defineScript } from "./lib/script-ref.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 
 export interface RecordRunMetadataArgs {
   session: string;

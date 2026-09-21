@@ -39,8 +39,8 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_MANIFEST, RUNTIME_ROOT, USER_ROOT } from "./domain/machinery-layout.ts";
-import { buildManifest } from "./domain/release-manifest.ts";
+import { RELEASE_MANIFEST, RUNTIME_ROOT, USER_ROOT } from "./domain/machinery/machinery-layout.ts";
+import { buildManifest } from "./domain/machinery/release-manifest.ts";
 
 /**
  * Packages left out of the bundle and installed on the runner instead.
@@ -202,7 +202,7 @@ function copyStaticAtomatonContent(): void {
  * than assembling a list by hand is the point: a list written by hand is a list that
  * disagrees with the zip the first time somebody adds a file.
  *
- * See `domain/release-manifest.ts` for the two questions this answers.
+ * See `domain/machinery/release-manifest.ts` for the two questions this answers.
  */
 function writeManifest(): void {
   const version = `v${(JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as { version: string }).version}`;

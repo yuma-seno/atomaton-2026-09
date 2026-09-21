@@ -21,7 +21,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { branchToResume } from "../domain/issue-branch.ts";
+import { branchToResume } from "../domain/work/issue-branch.ts";
 import { collectIssueBranches } from "../lib/issue-branches.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

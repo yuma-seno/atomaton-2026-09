@@ -203,7 +203,7 @@ describe("the machinery layout is declared once", () => {
         if (/["'`]\.github\/atoma\//.test(line)) offenders.push(`${file}:${index + 1}: ${line.trim()}`);
       });
     }
-    expect(offenders, "import from domain/machinery-layout.ts instead").toEqual([]);
+    expect(offenders, "import from domain/machinery/machinery-layout.ts instead").toEqual([]);
   });
 
   /**

@@ -14,7 +14,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { AGENT_NAME_PATTERN } from "../lib/agent-name.ts";
-import { isControlCommand, type ControlCommand } from "../domain/control-commands.ts";
+import { isControlCommand, type ControlCommand } from "../domain/work/control-commands.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);
@@ -48,7 +48,7 @@ export function parseCommentCommand(body: string): ParsedCommentCommand {
       const modifier = commandMatch[2]?.trim() ?? "";
 
       // Before the agent branch, so a control command never reaches it. See
-      // `domain/control-commands.ts`.
+      // `domain/work/control-commands.ts`.
       if (isControlCommand(name)) {
         if (!modifier) return { ...NOTHING, control: name };
         // `/resume 直して` is the one mistake worth naming, because the thing the

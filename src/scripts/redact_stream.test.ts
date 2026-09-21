@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { REDACTED } from "../domain/redaction.ts";
+import { REDACTED } from "../shared/redaction.ts";
 import { scriptPath } from "./testing/harness.ts";
 
 function run(input: string) {

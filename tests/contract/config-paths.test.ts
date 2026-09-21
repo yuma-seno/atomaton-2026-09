@@ -26,9 +26,9 @@
  * is a line; the cost of not adding one is measured in rejected pull requests.
  */
 import { describe, expect, test } from "bun:test";
-import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../../src/domain/check-jobs.ts";
-import { knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
-import { DEPLOY_ARMS } from "../../src/domain/deploy-jobs.ts";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST, NO_PULL_REQUEST_CHECKS } from "../../src/domain/delivery/check-jobs.ts";
+import { knownConfigKeys } from "../../src/domain/delivery/deliverable-integrity.ts";
+import { DEPLOY_ARMS } from "../../src/domain/delivery/deploy-jobs.ts";
 
 /**
  * The keys a person can actually set: the schema's leaves, minus the levels where any

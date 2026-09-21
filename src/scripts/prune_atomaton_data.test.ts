@@ -9,7 +9,7 @@ import { runWithFakeGh, scriptPath, type FakeGhRule } from "./testing/harness.ts
  * The script end to end: a real `atomaton-data` to read, a fake `gh` to answer about the
  * issues, and `--dry-run` so nothing is pushed.
  *
- * A unit test of `domain/atomaton-data-pruning.ts` checks the decision and can never see
+ * A unit test of `domain/machinery/atomaton-data-pruning.ts` checks the decision and can never see
  * what this does — whether the file asks GitHub the right question at all. It exists
  * because it did not. `ghPaginated` takes the argv of a `gh` call and the first word has
  * to be `api`; the first version omitted it and every run died with

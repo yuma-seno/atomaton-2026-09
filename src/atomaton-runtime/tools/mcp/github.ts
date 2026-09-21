@@ -26,21 +26,21 @@ import {
 import { logOp } from "../../../lib/ops-log.ts";
 import { report } from "../../../lib/mcp-report.ts";
 import { knownParticipants } from "../../../lib/participants.ts";
-import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/mention.ts";
+import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/work/mention.ts";
 import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG } from "../../../lib/tags.ts";
-import { closingKeywordRefusal, closingReferences } from "../../../domain/issue-links.ts";
+import { closingKeywordRefusal, closingReferences } from "../../../domain/work/issue-links.ts";
 import type { GhIssueAuthor } from "../../../lib/types.ts";
 import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
-import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
-import { decidePostMergeHandoff } from "../../../domain/handoff.ts";
-import { isAttended, unattendedNotice } from "../../../domain/unattended-pull-request.ts";
+import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
+import { decidePostMergeHandoff } from "../../../domain/work/handoff.ts";
+import { isAttended, unattendedNotice } from "../../../domain/work/unattended-pull-request.ts";
 import { branchForCommit, resolveBranch, stackedPrBase } from "../../../lib/branch-placement.ts";
 import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../lib/dispatch-targets.ts";
 import { issueLinks } from "../../../lib/issue-links.ts";
-import type { LinkedChild, LinkedIssue } from "../../../domain/issue-links.ts";
-import { decideMergeReadiness, formatBlockers } from "../../../domain/merge-readiness.ts";
+import type { LinkedChild, LinkedIssue } from "../../../domain/work/issue-links.ts";
+import { decideMergeReadiness, formatBlockers } from "../../../domain/delivery/merge-readiness.ts";
 import { gatherMergeSignals } from "../../../lib/merge-signals.ts";
-import { selectCommentRange } from "../../../domain/comment-range.ts";
+import { selectCommentRange } from "../../../domain/work/comment-range.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
 function log(msg: string): void {
@@ -503,7 +503,7 @@ function getIssueComments(a: z.infer<typeof ISSUE_COMMENTS_SCHEMA>): string {
   );
   const all = (issue?.comments ?? []).map((comment, i) => ({ index: i + 1, ...(comment as object) }));
 
-  // The four interacting defaults live in `domain/comment-range.ts`, where the
+  // The four interacting defaults live in `domain/work/comment-range.ts`, where the
   // truth table is testable without a `gh` in the loop.
   const range = selectCommentRange(all.length, a.from, a.to);
   // Capped per comment AND as a whole. The range bounds how MANY comments come
@@ -603,7 +603,7 @@ async function closeIssueAndDispatch(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>)
  *
  * The same check the result comment gets, for the same reason: a `@name` in an
  * issue or pull request body notifies a real account, and a name an agent read in
- * a commit log is a name it can repeat. See `domain/mention.ts`.
+ * a commit log is a name it can repeat. See `domain/work/mention.ts`.
  *
  * The thread it checks against is the issue this run is working on. For a new
  * issue that is the parent's thread rather than its own, which does not exist yet
@@ -1196,7 +1196,7 @@ async function mergePr(a: z.infer<typeof PR_NUMBER_ARG_SCHEMA>): Promise<string>
 
   // The gate, applied on the path every agent merge takes. The verdict itself is
   // the repository's own branch protection, re-read here rather than restated —
-  // see domain/merge-readiness.ts. It is applied at this call site because an
+  // see domain/delivery/merge-readiness.ts. It is applied at this call site because an
   // agent merge is made with GITHUB_TOKEN, which the ruleset must exempt in order
   // to let the deployment job publish, so protection alone would not stop it.
   const { signals, refs } = gatherMergeSignals(REPO, num, mcpFail);

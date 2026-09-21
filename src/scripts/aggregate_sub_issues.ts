@@ -18,7 +18,7 @@ import { gh } from "../lib/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from "../lib/aggregation.ts";
 import { gatherSubResults, injectSummary } from "../lib/inject-sub-results.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 import { issueLinks } from "../lib/issue-links.ts";
 import { restoreSession, saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 

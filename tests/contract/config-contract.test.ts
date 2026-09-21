@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import ts from "typescript";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { configProblems, knownConfigKeys } from "../../src/domain/deliverable-integrity.ts";
-import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/merge-gates.ts";
-import { SCRIPTS_DIR } from "../../src/domain/machinery-layout.ts";
+import { configProblems, knownConfigKeys } from "../../src/domain/delivery/deliverable-integrity.ts";
+import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/delivery/merge-gates.ts";
+import { SCRIPTS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
 import type { AtomaConfig } from "../../src/lib/types.ts";
 
 /**
@@ -80,7 +80,7 @@ describe("merge.gates documentation", () => {
  * config.yaml's recognised keys, in the type and at run time.
  *
  * `AtomaConfig` in `lib/types.ts` is the definition and `CONFIG_SCHEMA` in
- * `domain/deliverable-integrity.ts` is the runtime mirror, because an interface is
+ * `domain/delivery/deliverable-integrity.ts` is the runtime mirror, because an interface is
  * erased before anything can consult it. Two lists of the same fact — which is
  * exactly what `validate_deliverable.ts` exists to catch in an adopter's config, so
  * it had better not be uncheckable here.

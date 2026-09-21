@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Session, SessionMessage } from "../lib/session.ts";
+import type { Session, SessionMessage } from "./session.ts";
 import {
   capText,
   capToolResults,

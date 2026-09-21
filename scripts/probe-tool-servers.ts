@@ -50,7 +50,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { toolsFileFrom, type ToolsSection } from "../src/domain/tools-file.ts";
+import { toolsFileFrom, type ToolsSection } from "../src/domain/machinery/tools-file.ts";
 
 const RUNNER_TEMP = process.env.RUNNER_TEMP ?? "/tmp";
 const MACHINERY = `${RUNNER_TEMP}/atomaton-machinery`;

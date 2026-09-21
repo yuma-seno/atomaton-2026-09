@@ -1,5 +1,5 @@
 /**
- * declared-job.ts — the job a `domain/declared-jobs.ts` entry becomes.
+ * declared-job.ts — the job a `domain/delivery/declared-jobs.ts` entry becomes.
  *
  * Two workflows build one from a matrix: `atomaton-check` for a check, `atomaton-deploy`
  * for a deployment. What they do with it differs — one judges a pull request, the
@@ -15,7 +15,7 @@
  */
 import { type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { DefinedJob } from "./base.ts";
-import { SECRET_NAMES_VAR, SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../../domain/declared-secrets.ts";
+import { SECRET_NAMES_VAR, SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../../domain/delivery/declared-secrets.ts";
 
 /** The entry's commands, as JSON, for the loop below to run in order. */
 export const COMMANDS_VAR = "ATOMATON_COMMANDS";
@@ -64,7 +64,7 @@ export function matrixSecretEnv(): Record<string, string> {
  * One GitHub job per entry a planning job published.
  *
  * `fromJSON(matrix.runs_on)` always, so one label and a self-hosted runner's several
- * are consumed the same way -- see `domain/runner-label.ts`.
+ * are consumed the same way -- see `domain/delivery/runner-label.ts`.
  *
  * `if: … != '[]'`, because a matrix over an empty list is an error rather than an
  * empty job. A project that declared none of these publishes an empty list, and

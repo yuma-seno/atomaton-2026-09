@@ -1,5 +1,5 @@
 /**
- * work-tree.ts — read the work tree out of GitHub, so `domain/work-tree.ts` can do
+ * work-tree.ts — read the work tree out of GitHub, so `domain/work/work-tree.ts` can do
  * arithmetic on it.
  *
  * ## Why a walk rather than one query
@@ -51,7 +51,7 @@ import {
   subtree,
   type NodeState,
   type WorkNode,
-} from "../domain/work-tree.ts";
+} from "../domain/work/work-tree.ts";
 
 interface Listed {
   number: number;

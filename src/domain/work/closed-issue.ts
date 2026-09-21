@@ -89,7 +89,7 @@ export function stopOnCloseNotice(number: number): string {
 /**
  * What a person reads after closing an issue that had work under it.
  *
- * Closing is the end of a line of work, not of one node — see `domain/work-tree.ts`.
+ * Closing is the end of a line of work, not of one node — see `domain/work/work-tree.ts`.
  * So the sub-issues and pull requests below go with it, and this says which, because a
  * close that quietly reached further than the person looked is the kind they find out
  * about later.

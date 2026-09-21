@@ -6,7 +6,7 @@
  * `/stop` reaches the work under the issue a person named, so `/resume` has to reach
  * the same work or the model is only half true: you would stop a chain with one
  * comment and restart it with one comment per node, which is the checklist this was
- * built to remove. See `domain/work-tree.ts`.
+ * built to remove. See `domain/work/work-tree.ts`.
  *
  * ## What it does not need to remember
  *
@@ -30,7 +30,7 @@
  *   resume_subtree.ts --number N [--notify LOGIN]
  */
 import { parseArgs } from "node:util";
-import { descendants, nodesToResume, resumeCandidates, subtree } from "../domain/work-tree.ts";
+import { descendants, nodesToResume, resumeCandidates, subtree } from "../domain/work/work-tree.ts";
 import { dispatchRunner } from "../lib/dispatch.ts";
 import { lastEnding, readWorkTree } from "../lib/work-tree.ts";
 import { mostRecentAgentOn } from "./resolve_resume_agent.ts";

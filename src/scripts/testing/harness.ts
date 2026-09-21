@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { CONFIG_FILE } from "../../domain/machinery-layout.ts";
+import { CONFIG_FILE } from "../../domain/machinery/machinery-layout.ts";
 
 import { fakeGhEnv } from "./fake-gh-env.ts";
 

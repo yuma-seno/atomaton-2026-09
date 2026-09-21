@@ -31,7 +31,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
-import { RUN_CREDENTIALS } from "../../src/domain/declared-secrets.ts";
+import { RUN_CREDENTIALS } from "../../src/domain/delivery/declared-secrets.ts";
 import { hermeticEnv } from "../../src/scripts/testing/harness.ts";
 
 const WORKFLOW = "dist/.github/workflows/atomaton-runner.yml";

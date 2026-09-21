@@ -114,12 +114,12 @@ describe("rankFiles", () => {
 
 describe("documentFor", () => {
   /**
-   * Not decoration: `src/domain/session-size.ts` tells a multilingual cross encoder
+   * Not decoration: `src/domain/work/session-size.ts` tells a multilingual cross encoder
    * most of what the file is about before it reads a line.
    */
   test("the path travels with the passage", () => {
-    expect(documentFor({ path: "src/domain/session-size.ts", text: "body", startLine: 1, endLine: 1 })).toBe(
-      "src/domain/session-size.ts\nbody",
+    expect(documentFor({ path: "src/domain/work/session-size.ts", text: "body", startLine: 1, endLine: 1 })).toBe(
+      "src/domain/work/session-size.ts\nbody",
     );
   });
 
@@ -150,8 +150,8 @@ describe("resultsOf", () => {
 describe("the two stages, end to end without the reranker", () => {
   test("a question reaches the right file", () => {
     const files = [
-      ["src/domain/session-size.ts", "Above this many estimated tokens a restored session is shrunk before use."],
-      ["src/domain/bm25.ts", "Character bigrams are the standard substitute for a morphological analyser."],
+      ["src/domain/work/session-size.ts", "Above this many estimated tokens a restored session is shrunk before use."],
+      ["src/shared/bm25.ts", "Character bigrams are the standard substitute for a morphological analyser."],
       ["src/scripts/run_checks.ts", "Runs the commands a project configured under checks, one after another."],
     ] as const;
     const passages = files.flatMap(([path, text]) => passagesOf(path, text));

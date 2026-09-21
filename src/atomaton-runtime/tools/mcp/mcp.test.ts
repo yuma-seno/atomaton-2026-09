@@ -1147,7 +1147,7 @@ describe("mcp/search.ts", () => {
    * reranks -- and starting the server now takes about a second.
    *
    * What this covers is that it starts and advertises what it should. Its own logic,
-   * ranking and chunk selection, is pure and tested in `domain/bm25.ts`.
+   * ranking and chunk selection, is pure and tested in `shared/bm25.ts`.
    */
   test("starts without loading the reranker, and advertises both searches", async () => {
     const r = await sendRequest("search.ts", { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} });

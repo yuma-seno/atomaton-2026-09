@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildCommentBody, lastAgentText } from "./post_result_comment.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 import { runWithFakeGh, scriptPath } from "./testing/harness.ts";
 
 describe("post_result_comment.ts buildCommentBody", () => {

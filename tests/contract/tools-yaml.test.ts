@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { toolsFileFrom, type ToolsSection } from "../../src/domain/tools-file.ts";
+import { toolsFileFrom, type ToolsSection } from "../../src/domain/machinery/tools-file.ts";
 
 /**
  * `tools.yaml` decides how every tool server is started, and nothing was reading
@@ -97,7 +97,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
 
       // Absolute already: the generator resolves every hook path against the base it
       // is given, so the core never has to resolve one against wherever the file
-      // happens to have been written. See `domain/tools-file.ts`.
+      // happens to have been written. See `domain/machinery/tools-file.ts`.
       for (const script of scripts) {
         expect(existsSync(script), `${script} should exist`).toBe(true);
       }

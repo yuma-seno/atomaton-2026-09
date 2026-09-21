@@ -7,12 +7,12 @@
  * says which job sets it, and why the three jobs differ.
  */
 import { readFileSync } from "node:fs";
-import { DEFAULT_GOVERNED_PATHS } from "../domain/merge-readiness.ts";
-import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "../domain/check-jobs.ts";
-import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/declared-jobs.ts";
-import { resolveMergeGates, type MergeGatesResolution } from "../domain/merge-gates.ts";
+import { DEFAULT_GOVERNED_PATHS } from "../domain/delivery/merge-readiness.ts";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "../domain/delivery/check-jobs.ts";
+import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/delivery/declared-jobs.ts";
+import { resolveMergeGates, type MergeGatesResolution } from "../domain/delivery/merge-gates.ts";
 import type { AtomaConfig } from "./types.ts";
-import { CONFIG_FILE } from "../domain/machinery-layout.ts";
+import { CONFIG_FILE } from "../domain/machinery/machinery-layout.ts";
 import { machineryPath } from "./machinery.ts";
 
 /**
@@ -255,7 +255,7 @@ export function getHandoffLimit(): unknown {
 /**
  * How many consecutive runs may change nothing before a person is asked.
  *
- * Raw, like the handoff limit above and for the same reason: `domain/progress.ts`
+ * Raw, like the handoff limit above and for the same reason: `domain/work/progress.ts`
  * owns what an absent or nonsense value means, and owns the default the escalation
  * comment quotes back.
  */
@@ -278,7 +278,7 @@ export function getReloadLimit(): unknown {
 // `getRunsOn` and `runsOnPath` were here, reading a single `deploy.atomaton_runs.runs_on`
 // (as `deploy` was spelled then)
 // for one job that ran every deployment. The machine moved onto the entry -- see
-// `domain/declared-jobs.ts` -- because one runner for every deployment is what made a
+// `domain/delivery/declared-jobs.ts` -- because one runner for every deployment is what made a
 // release and a cloud rollout the same job, exactly as it had made a macOS test and a
 // Linux lint the same check.
 //

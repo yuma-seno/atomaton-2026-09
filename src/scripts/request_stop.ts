@@ -34,7 +34,7 @@
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
 import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
-import { descendants, nodesToStop, subtree } from "../domain/work-tree.ts";
+import { descendants, nodesToStop, subtree } from "../domain/work/work-tree.ts";
 import { readWorkTree, requestStopAcross } from "../lib/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
@@ -84,7 +84,7 @@ export function stopRequestedNotice(commenter: string, deleted: boolean, alsoRea
     // meant it to. This used to be the opposite list — the work a stop could NOT
     // reach, with instructions to go and stop each piece by hand — which was the
     // machinery handing somebody a checklist because its own vocabulary was one node
-    // wide. See `domain/work-tree.ts`.
+    // wide. See `domain/work/work-tree.ts`.
     lines.push(
       "",
       `It also reached the work running on ${alsoReached.map((n) => `#${n}`).join(", ")}, ` +
@@ -121,7 +121,7 @@ function main(): void {
   }
 
   // The subtree, not this node. A person points at an issue and means the work under
-  // it — `domain/work-tree.ts` has why stop and close differ in finality rather than
+  // it — `domain/work/work-tree.ts` has why stop and close differ in finality rather than
   // in reach.
   //
   // Read before posting, so the receipt can name what the stop actually reached rather

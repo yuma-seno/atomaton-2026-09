@@ -9,8 +9,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { gh } from "../lib/gh.ts";
 import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
-import { toolCallTally } from "../domain/tool-tally.ts";
-import type { Session } from "../lib/session.ts";
+import { toolCallTally } from "../domain/record/tool-tally.ts";
+import type { Session } from "../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface NotifyLimitReachedArgs {

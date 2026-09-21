@@ -148,7 +148,7 @@ export const AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
  * Whether the run that posted this comment changed anything.
  *
  * `yes` when it pushed a commit, opened a pull request or merged one; `no` when it
- * ran and left the repository as it found it. Read by `domain/progress.ts`, which
+ * ran and left the repository as it found it. Read by `domain/work/progress.ts`, which
  * counts consecutive `no`s rather than keeping a counter -- see `dispatch-chain.ts`
  * for why a counter in the session could not work.
  */

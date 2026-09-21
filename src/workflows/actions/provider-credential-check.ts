@@ -49,8 +49,8 @@
  * it report a broken definition as a missing secret, which would send somebody to
  * create a secret that changes nothing.
  */
-import { RUN_CREDENTIALS } from "../../domain/declared-secrets.ts";
-import { AGENT_DEFINITIONS_DIR } from "../../domain/machinery-layout.ts";
+import { RUN_CREDENTIALS } from "../../domain/delivery/declared-secrets.ts";
+import { AGENT_DEFINITIONS_DIR } from "../../domain/machinery/machinery-layout.ts";
 import { TypedOutputsStep } from "./base.ts";
 import { MACHINERY_ROOT } from "./script-call.ts";
 

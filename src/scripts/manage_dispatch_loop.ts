@@ -3,7 +3,7 @@
  * manage_dispatch_loop.ts — decide whether the agent chain has gone on long
  * enough to stop and ask a person.
  *
- * The I/O half. Every decision is in `domain/dispatch-chain.ts`, which explains
+ * The I/O half. Every decision is in `domain/work/dispatch-chain.ts`, which explains
  * why this counts comments instead of keeping a counter -- briefly: the counter it
  * used to keep could not reach 1, because the reset fired on any new event and
  * every run posts a result comment.
@@ -28,8 +28,8 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { handoffsSincePerson, resolveHandoffLimit, type ChainComment } from "../domain/dispatch-chain.ts";
-import { resolveNoProgressLimit, runsWithoutChange, stopReason } from "../domain/progress.ts";
+import { handoffsSincePerson, resolveHandoffLimit, type ChainComment } from "../domain/work/dispatch-chain.ts";
+import { resolveNoProgressLimit, runsWithoutChange, stopReason } from "../domain/work/progress.ts";
 import { getHandoffLimit, getNoProgressLimit } from "../lib/config.ts";
 import { gh } from "../lib/gh.ts";
 import { AGENT_TAG, CHANGED_TAG } from "../lib/tags.ts";

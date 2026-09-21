@@ -2,7 +2,7 @@
 /**
  * prune_atomaton_data.ts — remove the scratch a finished issue left behind.
  *
- * See `domain/atomaton-data-pruning.ts` for why the rule is the issue's state rather than
+ * See `domain/machinery/atomaton-data-pruning.ts` for why the rule is the issue's state rather than
  * an age, and what is deliberately left alone. This file is the part that talks to
  * GitHub and to git.
  *
@@ -31,7 +31,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ghPaginated, gitRun } from "../lib/gh.ts";
 import { getLabel } from "../lib/config.ts";
-import { prunablePaths, pruneCommitMessage } from "../domain/atomaton-data-pruning.ts";
+import { prunablePaths, pruneCommitMessage } from "../domain/machinery/atomaton-data-pruning.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

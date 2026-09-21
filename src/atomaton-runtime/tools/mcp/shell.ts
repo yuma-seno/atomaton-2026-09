@@ -12,9 +12,9 @@
  * accepted rather than closed.
  */
 import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
-import { literalsFrom, redact } from "../../../domain/redaction.ts";
-import { capText, TOOL_OUTPUT_BUDGET } from "../../../domain/tool-output.ts";
-import { RUN_CREDENTIALS } from "../../../domain/declared-secrets.ts";
+import { literalsFrom, redact } from "../../../shared/redaction.ts";
+import { capText, TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
+import { RUN_CREDENTIALS } from "../../../domain/delivery/declared-secrets.ts";
 
 /**
  * This server's diagnostics, prefixed like every other server's.
@@ -28,7 +28,7 @@ function log(message: string): void {
   console.error(`[atomaton-shell] ${message}`);
 }
 
-// The cap and the direction of the cut both come from `domain/tool-output.ts`.
+// The cap and the direction of the cut both come from `shared/tool-output.ts`.
 // This server had its own `MAX_OUTPUT_BYTES = 1_000_000`, which was twenty times
 // every other tool's and, on its own, more than a 200k context window -- and it kept
 // the HEAD, so a build log that overran lost the compiler error and returned the

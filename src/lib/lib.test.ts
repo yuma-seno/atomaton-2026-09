@@ -25,7 +25,7 @@ import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../sc
 import { extractImageUrls, sniffMimeType } from "./issue-images.ts";
 import { looksTransient } from "./gh.ts";
 import { injectSummary } from "./inject-sub-results.ts";
-import type { Session } from "./session.ts";
+import type { Session } from "../domain/work/session.ts";
 
 const LIB_DIR = import.meta.dir;
 
@@ -707,7 +707,7 @@ describe("issue-links.ts issueLinks", () => {
   /**
    * The defect, as a pull request meets it. A pull request has no parent field and no
    * sub-issues; what it has is the issue it closes, which is its parent in the sense
-   * `domain/work-tree.ts` means — a pull request is a leaf.
+   * `domain/work/work-tree.ts` means — a pull request is a leaf.
    */
   test("a pull request's number answers with the issue it closes", () => {
     const result = links({

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mergeGithubContext, reconcileGithubSession } from "./reconcile_github_session.ts";
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../domain/work/session.ts";
 
 describe("reconcile_github_session.ts", () => {
   test("persists stable GitHub context before history and appends only new events", () => {

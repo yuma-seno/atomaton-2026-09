@@ -7,7 +7,7 @@
  */
 import { gh } from "./gh.ts";
 import type { GhPrSummary } from "./types.ts";
-import type { Session, SessionMessage } from "./session.ts";
+import type { Session, SessionMessage } from "../domain/work/session.ts";
 
 // No `export type { Session, SessionMessage }` here.
 //

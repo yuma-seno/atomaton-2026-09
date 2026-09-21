@@ -1,7 +1,7 @@
 /**
  * check-jobs.ts — the two lists `checks` is made of, and which one may hold a key.
  *
- * Both are `domain/declared-jobs.ts` lists, and the only thing that separates them is
+ * Both are `domain/delivery/declared-jobs.ts` lists, and the only thing that separates them is
  * whose commands run. That single fact decides everything else, so it is stated once
  * here and read by everyone who needs it: the reader in `lib/config.ts`, the planner
  * that publishes each arm as a matrix, and the deliverable check that refuses a bad

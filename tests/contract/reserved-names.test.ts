@@ -7,7 +7,7 @@ import {
   SECRET_NAMES_VAR,
   SECRET_SLOT_PREFIX,
   TOOL_SECRETS,
-} from "../../src/domain/declared-secrets.ts";
+} from "../../src/domain/delivery/declared-secrets.ts";
 import { CHECK_JOB_NAME } from "../../src/workflows/atomaton-check.wac.ts";
 
 /**

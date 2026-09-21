@@ -16,7 +16,7 @@
  * lost — what was missing was the one thing a person needed to decide, and this is
  * that and nothing more.
  */
-import type { Session } from "../lib/session.ts";
+import type { Session } from "../work/session.ts";
 
 /** How many tools to name before the rest become a count. */
 const NAMED = 4;

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * decide_guard_release.ts — computes, via the pure domain rule in
- * domain/serialization-guard.ts, whether the atomaton/in-progress
+ * domain/work/serialization-guard.ts, whether the atomaton/in-progress
  * SerializationGuard should be released after this run, and writes
  * `should_release=true|false` to $GITHUB_OUTPUT for the "Remove
  * atomaton/in-progress label" step's `if:` to consume.
@@ -34,7 +34,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { shouldReleaseGuard } from "../domain/serialization-guard.ts";
+import { shouldReleaseGuard } from "../domain/work/serialization-guard.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface DecideGuardReleaseArgs {

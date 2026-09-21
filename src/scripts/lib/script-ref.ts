@@ -56,7 +56,7 @@ import { fileURLToPath } from "node:url";
  * deploy diff even showed the files being renamed, beside workflows that did not
  * follow them.
  */
-import { SCRIPTS_DIR as SCRIPTS_RUNTIME_ROOT } from "../../domain/machinery-layout.ts";
+import { SCRIPTS_DIR as SCRIPTS_RUNTIME_ROOT } from "../../domain/machinery/machinery-layout.ts";
 
 export interface ScriptRef<TArgs = void> {
   /** Deployed runtime path, built from `SCRIPTS_RUNTIME_ROOT` above: `.github/scripts/foo.ts`. */

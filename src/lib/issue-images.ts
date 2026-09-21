@@ -14,14 +14,11 @@
  */
 import { ghBytes } from "./gh.ts";
 
-/** An image the model can look at, in MCP's content-block shape. */
-export interface ImageBlock {
-  type: "image";
-  data: string;
-  mimeType: string;
-}
-
-export type ContentBlock = { type: "text"; text: string } | ImageBlock;
+// The block shapes themselves are the work domain's — a session is made of them, and
+// `domain/` may not import `lib/`. Re-exported here because this is where a caller
+// reaches for them, and moving the definition should not move every import with it.
+export type { ContentBlock, ImageBlock } from "../domain/work/session.ts";
+import type { ContentBlock, ImageBlock } from "../domain/work/session.ts";
 
 /**
  * Largest image to inline, in bytes of base64.

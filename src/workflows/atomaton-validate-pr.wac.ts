@@ -2,7 +2,7 @@ import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-wo
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./actions/base.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
-import { DEFAULT_CI_WORKFLOW } from "../domain/shipped-workflows.ts";
+import { DEFAULT_CI_WORKFLOW } from "../domain/delivery/shipped-workflows.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";

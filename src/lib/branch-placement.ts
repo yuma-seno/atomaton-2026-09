@@ -2,7 +2,7 @@
  * branch-placement.ts — which branch a run's work goes on, and what its pull
  * request aims at.
  *
- * The naming rule itself is pure and lives in `domain/issue-branch.ts`. What is
+ * The naming rule itself is pure and lives in `domain/work/issue-branch.ts`. What is
  * here is everything that has to ask git or GitHub to apply it: whether a branch
  * already exists, whether this issue has a parent, where a new branch should be
  * cut from, and whether a parent's branch is there to stack on.
@@ -12,7 +12,7 @@
  */
 import { gh, gitRun } from "./gh.ts";
 import { parentIssueOf, type ParentIssue } from "./parent-issue.ts";
-import { nextBranchName } from "../domain/issue-branch.ts";
+import { nextBranchName } from "../domain/work/issue-branch.ts";
 import { collectIssueBranches } from "./issue-branches.ts";
 
 // Re-exported because this module's own callers ask for it by this name. The
