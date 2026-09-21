@@ -176,18 +176,6 @@ split out of.
 Each entry is a place where the model and the code disagree and the fix needs a
 decision rather than an edit. Add to this list rather than forcing a shape.
 
-### A turn reports its own ending
-
-`domain/work/turn.ts` now names how a turn ended and who it hands to, and
-`DISPATCH_NEXT_GUARD` is gone with it. What remains is where those signals come
-from.
-
-The core exits the same way whether a run reached its limit or a person stopped
-it, and the workflow tells the two apart by whether a stop file is on disk.
-So the ending is **inferred by a bystander** rather than reported by whatever
-ended, and one of the six endings rests on a file's existence. Fixing that is a
-change to the protocol with `atoma`, which is why it is here rather than done.
-
 ### The ledger's unit is the run, not the node
 
 The only persisted history type is `RunRecord`, so *how long did this run take*

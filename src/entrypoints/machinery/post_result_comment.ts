@@ -10,7 +10,7 @@
  * Usage:
  *   post_result_comment.ts --number N --agent NAME [--notify LOGIN]
  *     [--directive NAME] [--chain-continues true|false]
- *     [--limit-reached true|false] [--stop-requested true|false] --run-url URL
+ *     [--ended-because completed|runtime|iterations|stopped] --run-url URL
  * Writes `comment_id=<id>` to $GITHUB_OUTPUT.
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
@@ -34,8 +34,8 @@ export interface PostResultCommentArgs {
   notify?: string;
   directive?: string;
   "chain-continues"?: string;
-  "limit-reached"?: string;
-  "stop-requested"?: string;
+  /** How the core says the run ended. See `read_run_ending.ts`. */
+  "ended-because"?: string;
   "messages-before"?: string | number;
   /** "true" when this run pushed a commit, opened a pull request, or merged one. */
   changed?: string;
@@ -233,11 +233,31 @@ function endedTag(ending: TurnEnding): string {
  * Deriving the ending here rather than re-deriving the parts is what removes the
  * two copies this file used to hold — one for the mention, one for the tag.
  */
-function endingHere(args: { directive?: string; chainContinues?: string; limitReached?: string; stopRequested?: string }): TurnEnding {
+/** Whether the run ended before it was done, either way round. */
+function cutShort(endedBecause: string | undefined): boolean {
+  return endedBecause === "stopped" || endedBecause === "runtime" || endedBecause === "iterations";
+}
+
+/**
+ * How it was cut short, in the words for the person reading the comment.
+ *
+ * `runtime` and `iterations` are one ending to `turn.ts` — the decisions below it
+ * turn on the same answer for either — and two different sentences here, which is
+ * why the core's own word travels this far rather than a boolean.
+ *
+ * This said "ran out of iterations" for both, and the runner passes
+ * `--max-runtime-secs` and no `--max-iterations`. So the ceiling it hits is always
+ * the clock, and that sentence was always the wrong one.
+ */
+function howItWasCutShort(endedBecause: string | undefined): string {
+  if (endedBecause === "stopped") return "was stopped";
+  return endedBecause === "iterations" ? "ran out of iterations" : "ran out of time";
+}
+
+function endingHere(args: { directive?: string; chainContinues?: string; endedBecause?: string }): TurnEnding {
   return endingOf({
     succeeded: true,
-    limitReached: args.limitReached === "true",
-    stopRequested: args.stopRequested === "true",
+    endedBecause: args.endedBecause ?? "",
     loopLimitReached: false,
     chainContinues: args.chainContinues === "true",
     directive: args.directive ?? "",
@@ -249,8 +269,7 @@ export function buildCommentBody(args: {
   notify?: string;
   directive?: string;
   chainContinues?: string;
-  limitReached?: string;
-  stopRequested?: string;
+  endedBecause?: string;
   runUrl: string;
   /** `owner/name`, for linking to the metrics report. Absent when unknown. */
   repo?: string;
@@ -339,8 +358,8 @@ export function buildCommentBody(args: {
       // stopped run rarely got a mention at all -- and the moment it did, it was
       // telling the person who had just stopped it that it had finished. "Review the
       // results" is dropped for the same reason: a run cut short may have none.
-      args.stopRequested === "true" || args.limitReached === "true"
-        ? `@${args.notify} — **${args.agent}** ${args.stopRequested === "true" ? "was stopped" : "ran out of iterations"} ` +
+      cutShort(args.endedBecause)
+        ? `@${args.notify} — **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` +
           `before it finished, and no agent will run next. Resume it, or say what to do instead.`
         : `@${args.notify} — **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`,
       "",
@@ -358,7 +377,7 @@ export function buildCommentBody(args: {
     ? ` · [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)`
     : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
-  if (args.stopRequested === "true") {
+  if (args.endedBecause === "stopped") {
     // Says the session survived, because that is the whole difference between this
     // and cancelling the job, and the person who stopped it cannot tell from here
     // which one they got.
@@ -366,8 +385,8 @@ export function buildCommentBody(args: {
       `⏸️ _Stopped on request. **The session is saved.** Comment \`/resume\` to continue ` +
         `from here, or \`/${args.agent}\` with an instruction on the following lines._`,
     );
-  } else if (args.limitReached === "true") {
-    lines.push(`⚠️ _The run reached its limit. Comment \`/${args.agent}\` to continue._`);
+  } else if (cutShort(args.endedBecause)) {
+    lines.push(`⚠️ _The run ${howItWasCutShort(args.endedBecause)}. Comment \`/${args.agent}\` to continue._`);
   }
 
   return lines.join("\n");
@@ -383,8 +402,7 @@ function main(): void {
       notify: { type: "string" },
       directive: { type: "string" },
       "chain-continues": { type: "string" },
-      "limit-reached": { type: "string" },
-      "stop-requested": { type: "string" },
+      "ended-because": { type: "string" },
       "messages-before": { type: "string" },
       "run-url": { type: "string" },
       changed: { type: "string" },
@@ -444,12 +462,12 @@ function main(): void {
   // session and nowhere a person would look.
   // A run that was cut short did not choose to end, so the two empties are told
   // apart by how the run ended rather than by what it left behind.
-  const cutShort = values["limit-reached"] === "true" || values["stop-requested"] === "true";
+  const endedEarly = cutShort(values["ended-because"]);
 
   let output = redacted;
   let salvaged = false;
   let wroteNothing = false;
-  if (!output.trim() && cutShort) {
+  if (!output.trim() && endedEarly) {
     const last = lastAgentText(values.session, Number(values["messages-before"]));
     if (last !== undefined) {
       output = redact(last);
@@ -461,7 +479,7 @@ function main(): void {
   if (!output.trim()) {
     // The skip is right for a session-ending tool call: that tool posted its own
     // comment and a second content-free one is noise.
-    if (!cutShort) {
+    if (!endedEarly) {
       console.error("atomaton_output.txt is empty (session ended via a tool call) -- skipping result comment.");
       return;
     }
@@ -473,9 +491,9 @@ function main(): void {
     // the agent's silence: that it stopped, that the session survived, and how to
     // resume. None of those are the agent's to say, and the footer below says them.
     wroteNothing = true;
-    output = values["stop-requested"] === "true"
+    output = values["ended-because"] === "stopped"
       ? "_This run was stopped before it said anything._"
-      : "_This run reached its limit before it said anything._";
+      : `_This run ${howItWasCutShort(values["ended-because"])} before it said anything._`;
     console.error("the run was cut short with nothing to report -- posting the notice rather than nothing.");
   }
 
@@ -502,8 +520,7 @@ function main(): void {
     notify: values.notify,
     directive: values.directive,
     chainContinues: values["chain-continues"],
-    limitReached: values["limit-reached"],
-    stopRequested: values["stop-requested"],
+    endedBecause: values["ended-because"],
     runUrl: values["run-url"],
     // From the environment rather than a flag: every caller is a workflow step, and
     // one more argument to thread through is one more place to forget it.

@@ -81,10 +81,21 @@ export interface TurnEnding {
 export interface TurnSignals {
   /** Did the agent step complete, as opposed to crashing or being skipped? */
   succeeded: boolean;
-  /** This run reached the limit set on it. */
-  limitReached: boolean;
-  /** A person asked this run to stop. */
-  stopRequested: boolean;
+  /**
+   * How the CORE says the run ended: `completed`, `iterations`, `runtime`,
+   * `stopped`, or `failed`.
+   *
+   * Its word, not a translation of it. `atoma` classifies its own ending and
+   * records it in the session; `read_run_ending.ts` reads that back. This was two
+   * booleans, `limitReached` and `stopRequested`, inferred outside the run from an
+   * exit code and whether a file existed — a guess that collapsed two different
+   * ceilings into one and raced the watcher writing the file.
+   *
+   * An unrecognised word lands on `finished`, which is the same place `completed`
+   * lands. A core that grows a seventh ending should be read as having finished
+   * rather than as having failed, until somebody here decides what it means.
+   */
+  endedBecause: string;
   /** The cross-run chain reached its own limit. */
   loopLimitReached: boolean;
   /** A tool call already started a follow-up run during this turn. */
@@ -100,17 +111,22 @@ export interface TurnSignals {
  * know most": a run that did not complete tells us nothing about what it intended,
  * so nothing below it is consulted.
  *
- * `stopped` and `spent` cannot both hold. The core exits the same way for both and
- * the workflow tells them apart by whether a stop file is there, so exactly one
- * arrives set — they are ordered for reading rather than to resolve a conflict.
+ * `stopped` and `spent` are one field now and cannot both hold. They were two
+ * booleans guessed from outside, where they could.
+ *
+ * `spent` covers both of the core's ceilings, `iterations` and `runtime`, because
+ * the decisions below turn on the same answer for either: the turn ended without
+ * anybody choosing to end it, and nothing it planned will run. Which ceiling is a
+ * sentence rather than a decision, so it stays on the word and is read by whatever
+ * writes that sentence — see the result comment.
  */
 export function endingOf(signals: TurnSignals): TurnEnding {
   const named = signals.directive.trim();
   const next = named === "" ? undefined : { agent: named };
 
-  if (!signals.succeeded) return { ended: "failed" };
-  if (signals.stopRequested) return { ended: "stopped" };
-  if (signals.limitReached) return { ended: "spent" };
+  if (!signals.succeeded || signals.endedBecause === "failed") return { ended: "failed" };
+  if (signals.endedBecause === "stopped") return { ended: "stopped" };
+  if (signals.endedBecause === "iterations" || signals.endedBecause === "runtime") return { ended: "spent" };
   if (signals.loopLimitReached) return { ended: "chain-over", ...(next ? { next } : {}) };
   if (next || signals.chainContinues) return { ended: "handed-off", ...(next ? { next } : {}) };
   return { ended: "finished" };

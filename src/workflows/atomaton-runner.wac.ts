@@ -34,6 +34,7 @@ import { ref as resolveIssueBranchRef } from "../entrypoints/machinery/resolve_i
 import { ref as resolvePrBranchRef } from "../entrypoints/machinery/resolve_pr_branch.ts";
 import { ref as manageInProgressLabelRef } from "../entrypoints/machinery/manage_in_progress_label.ts";
 import { ref as notifyLimitReachedRef } from "../entrypoints/machinery/notify_limit_reached.ts";
+import { ref as readRunEndingRef } from "../entrypoints/machinery/read_run_ending.ts";
 import { ref as injectUncommittedNoticeRef } from "../entrypoints/machinery/inject_uncommitted_notice.ts";
 import { ref as restoreWorkspaceRef } from "../entrypoints/machinery/restore_workspace.ts";
 import { ref as saveWorkspaceRef } from "../entrypoints/machinery/save_workspace.ts";
@@ -828,17 +829,23 @@ if [ -f "${RUN_DIR}/stop-watch.pid" ]; then
   kill "$(cat "${RUN_DIR}/stop-watch.pid")" 2>/dev/null || true
 fi
 
-# Both a limit and a stop leave atoma at status 2, because to atoma they are the
-# same thing: an ending somebody asked for, with the session written. Only this job
-# can tell them apart, because only this job asked -- the file is the record of it.
-if [ "$EXIT_CODE" = "2" ]; then
-  if [ -f "${STOP_FILE}" ]; then
-    echo "::notice::Stopped on request — session saved"
-    echo "stop_requested=true" >> "$GITHUB_OUTPUT"
-  else
-    echo "::notice::The run reached its limit — session saved for next run"
-    echo "limit_reached=true" >> "$GITHUB_OUTPUT"
-  fi
+# How the run ended, asked of the run. The core classifies its own ending and
+# writes it into the session it just saved; this reads that record. It used to be
+# guessed here -- status 2 and then a test for the stop file -- which collapsed two
+# different ceilings into one and raced the watcher that writes that file. See
+# read_run_ending.ts.
+#
+# A non-zero status that is not the soft stop is still a failure and still ends the
+# step, so nothing below it runs and no ending is published: the turn failed, and
+# decide_turn_ending.ts reads that from the step's own outcome.
+if [ "$EXIT_CODE" = "2" ] || [ "$EXIT_CODE" = "0" ]; then
+  ${scriptCommandWithArgs(readRunEndingRef, {
+    // The same two paths the agent step just handed atoma, from the same constants,
+    // so the file this reads cannot drift from the file that was written.
+    session: `${RUN_DIR}/session.json`,
+    "exit-code": "\${EXIT_CODE}",
+    "stop-file": STOP_FILE,
+  })}
 elif [ "$EXIT_CODE" != "0" ]; then
   exit $EXIT_CODE
 fi
@@ -887,7 +894,7 @@ fi
 echo "changed=\${CHANGED}" >> "$GITHUB_OUTPUT"
 `,
   },
-  ["result", "directive", "limit_reached", "stop_requested", "chain_continues", "changed"] as const,
+  ["result", "directive", "ended_because", "chain_continues", "changed"] as const,
 );
 
 const tokenUsageStep = new TypedOutputsStep({
@@ -948,8 +955,7 @@ const postResultCommentStep = new TypedOutputsStep(
       notify: notifyStep.outputs.notify,
       directive: runAgentStep.outputs.directive,
       "chain-continues": runAgentStep.outputs.chain_continues,
-      "limit-reached": runAgentStep.outputs.limit_reached,
-      "stop-requested": runAgentStep.outputs.stop_requested,
+      "ended-because": runAgentStep.outputs.ended_because,
       // Where this run's own messages begin, so a salvage cannot reach below it into
       // an earlier run's conclusion. See `lastAgentText`.
       "messages-before": buildContextStep.outputs.messages_before,
@@ -1112,8 +1118,7 @@ const turnEndingStep = new TypedOutputsStep(
     shell: "bash",
     run: `${scriptCommandWithArgs(decideTurnEndingRef, {
       outcome: runAgentStep.outcome,
-      "limit-reached": runAgentStep.outputs.limit_reached,
-      "stop-requested": runAgentStep.outputs.stop_requested,
+      "ended-because": runAgentStep.outputs.ended_because,
       "loop-limit-reached": loopControlStep.outputs.loop_limit_reached,
       "chain-continues": runAgentStep.outputs.chain_continues,
       directive: runAgentStep.outputs.directive,
@@ -1824,7 +1829,10 @@ echo "tool servers will run as ${TOOL_USER} (no sudo), caches in ${TOOL_CACHE}"
   }),
   new TypedOutputsStep({
     name: "Notify that the run reached its limit",
-    if: `${runAgentStep.rawOutputs.limit_reached} == 'true'`,
+    // The clock, or an iteration ceiling if a project sets one. Either is the run
+    // reaching a bound somebody configured, which is what this notice is about — a
+    // stop is a person acting and is reported by the result comment instead.
+    if: `${runAgentStep.rawOutputs.ended_because} == 'runtime' || ${runAgentStep.rawOutputs.ended_because} == 'iterations'`,
     shell: "bash",
     env: {
       GH_TOKEN: "${{ github.token }}",

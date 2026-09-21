@@ -10,8 +10,7 @@ import {
 function signals(overrides: Partial<TurnSignals> = {}): TurnSignals {
   return {
     succeeded: true,
-    limitReached: false,
-    stopRequested: false,
+    endedBecause: "completed",
     loopLimitReached: false,
     chainContinues: false,
     directive: "",
@@ -30,17 +29,17 @@ describe("endingOf", () => {
   });
 
   test("a person stopping it is its own ending, not a limit", () => {
-    expect(endingFor({ stopRequested: true }).ended).toBe("stopped");
+    expect(endingFor({ endedBecause: "stopped" }).ended).toBe("stopped");
   });
 
   test("this run's own ceiling spends it", () => {
-    expect(endingFor({ limitReached: true }).ended).toBe("spent");
+    expect(endingFor({ endedBecause: "runtime" }).ended).toBe("spent");
   });
 
   /** Two different ceilings. A person goes and looks at different things. */
   test("the chain's ceiling is a different ending from this run's", () => {
     expect(endingFor({ loopLimitReached: true }).ended).toBe("chain-over");
-    expect(endingFor({ limitReached: true }).ended).not.toBe("chain-over");
+    expect(endingFor({ endedBecause: "runtime" }).ended).not.toBe("chain-over");
   });
 
   test("naming the next agent is a hand-off", () => {
@@ -78,8 +77,8 @@ describe("shouldReleaseGuard", () => {
     for (const overrides of [
       { succeeded: false },
       { succeeded: false, directive: "engineer" },
-      { stopRequested: true },
-      { limitReached: true },
+      { endedBecause: "stopped" },
+      { endedBecause: "runtime" },
       { loopLimitReached: true },
       {},
     ]) {
@@ -95,7 +94,7 @@ describe("shouldReleaseGuard", () => {
 
   /** A ceiling reached mid-chain ends the turn even though something was in flight. */
   test("a ceiling beats work in flight", () => {
-    expect(shouldReleaseGuard(endingFor({ limitReached: true, chainContinues: true }))).toBe(true);
+    expect(shouldReleaseGuard(endingFor({ endedBecause: "runtime", chainContinues: true }))).toBe(true);
     expect(shouldReleaseGuard(endingFor({ loopLimitReached: true, directive: "reviewer" }))).toBe(true);
   });
 });
@@ -112,8 +111,8 @@ describe("who runs next", () => {
   test("nothing is started on any other ending", () => {
     for (const overrides of [
       { succeeded: false, directive: "reviewer" },
-      { stopRequested: true, directive: "reviewer" },
-      { limitReached: true, directive: "reviewer" },
+      { endedBecause: "stopped", directive: "reviewer" },
+      { endedBecause: "runtime", directive: "reviewer" },
       { loopLimitReached: true, directive: "reviewer" },
       { chainContinues: true },
       {},
@@ -133,7 +132,7 @@ describe("who runs next", () => {
   });
 
   test("this run's own ceiling is not that refusal", () => {
-    expect(refusedByChainLimit(endingFor({ limitReached: true, directive: "reviewer" }))).toBeUndefined();
+    expect(refusedByChainLimit(endingFor({ endedBecause: "runtime", directive: "reviewer" }))).toBeUndefined();
   });
 
   test("a hand-off that happened is not a refusal", () => {
