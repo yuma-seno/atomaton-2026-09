@@ -161,4 +161,4 @@ HTML comments before the command are skipped; ordinary prose is not, because a
 command below a paragraph is not a command at the top.
 
 The shipped agents are `orchestrator`, `engineer` and `reviewer`. What happens next,
-and how to read it, is [docs/operations.md](operations.md).
+and how to read it, is [what starts a run](work/how-it-works/what-starts-a-run.md).

@@ -1114,7 +1114,8 @@ const loopControlStep = new TypedOutputsStep(
 // It was two decisions taken two ways. This step computed `should_release`
 // through the domain; `DISPATCH_NEXT_GUARD`, thirty lines down, computed "does the
 // chain continue" from four of the same six signals as a four-term expression, in
-// the syntax `docs/operations.md` forbids, beside the paragraph forbidding it.
+// the syntax `docs/work/how-it-works/what-keeps-two-runs-off-one-issue.md` forbids,
+// beside the paragraph forbidding it.
 //
 // `always()`, because the first thing it decides is whether a lock comes off, and
 // that has to be decided even when "Run agent" failed or was skipped entirely.

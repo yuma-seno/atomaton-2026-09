@@ -9,10 +9,10 @@ title, the issue body, and which agent the last step hands the issue to. If you 
 than one of these, the label it creates and matches on is the fifth — the example uses it
 to avoid opening a second issue while the first is still open.
 
-**You have to copy it yourself.** GitHub refuses `GITHUB_TOKEN` writes to
-`.github/workflows/**` by identity, on every path and branch, so no agent can add this
-for you — and `.github/**` is a governed path, so a person merges the pull request that
-adds it. Both of those are the system working, not obstacles to route around.
+**You have to copy it yourself.** No agent can add a workflow for you —
+[GitHub refuses one the write by identity](../../pipeline/overview.md) — and
+`.github/**` is a governed path, so a person merges the pull request that adds it.
+Both of those are the system working, not obstacles to route around.
 
 **Why it creates an issue instead of starting an agent.** Agents work on an issue or a
 pull request. Something you want done every week *is* a work item that should exist every
@@ -32,7 +32,8 @@ runner time, while an agent that starts and finds nothing to do costs a billed i
 **The last step is not optional.** An issue created with `GITHUB_TOKEN` raises no
 `issues` event, so the issue would appear and nothing would pick it up. The example
 therefore dispatches `atomaton-runner.yml` explicitly. That is the same rule as everywhere
-else in Atomaton — see [docs/operations.md](../../operations.md).
+else in Atomaton — see
+[GitHub raises no event for its own token](../how-it-works/github-raises-no-event-for-its-own-token.md).
 
 **What it will cost.** One agent run per firing, whether or not there was anything to do,
 except the firings the open-issue guard skips. Multiply your provider's per-run cost by

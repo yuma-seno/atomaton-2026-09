@@ -10,7 +10,7 @@ the run before any MCP server starts — `Tool 'X' not found in tools file` — 
 It does not usually get that far. The check on every pull request resolves the
 same names against the same set, so a definition naming a server nothing provides
 is reported on the pull request rather than on whoever triggered the next run —
-[what a pull request is checked against](../operations.md#what-a-pull-request-is-checked-against).
+[what a pull request is checked against](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
 
 ## A tool that answers worse than it should
 
@@ -75,3 +75,12 @@ declare `logging` in your `initialize` result and send
 `notifications/message` with a `level` of `warning` or `error`. If you do
 neither, Atoma falls back to reading your stderr, and the word-matching above is
 what you get.
+
+## A run that takes longer, or costs more, than you expected
+
+Usually one of two things: a high number of shell round trips, or a few very large
+tool results. Both are readable. Every shell call writes an `[atomaton-shell]` line
+into the workflow log with the command, its exit code, how long it took and how many
+bytes it returned, so the expensive call is the one you can see rather than the one
+you guess at. What happens to a result too large to pass on is
+[how much a shell command may print](boundaries.md#what-a-shell-command-may-print).

@@ -56,4 +56,5 @@ You never edit a workflow for any of this, and
 
 Why routing is required at all is in
 [how a credential reaches a tool](../how-it-works/routing-a-credential.md); what it
-does and does not protect you from is in [docs/operations.md](../../operations.md).
+does and does not protect you from is
+[what a tool can and cannot be protected from](../boundaries.md#what-a-tool-can-and-cannot-be-protected-from).

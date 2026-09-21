@@ -18,4 +18,4 @@ PR=$(gh pr list --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].
 
 Setting a branch ruleset up for the first time is [docs/setup.md](../../setup.md). The
 `action_required` run that sits pending on an agent's pull request, and why deleting it
-is destructive, is [docs/operations.md](../../operations.md).
+is destructive, is [when a check will not settle](../../github/when-it-breaks.md).

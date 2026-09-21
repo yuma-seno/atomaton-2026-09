@@ -14,4 +14,4 @@ results page and read the links out of it. The endpoint lives in that file on pu
   never started.
 
 This is separate from the search over this repository's own issues, which is a tool
-server. What each of them is for is in [docs/operations.md](../../operations.md).
+server — [searching this repository's issues](../how-it-works/searching-the-issues.md).

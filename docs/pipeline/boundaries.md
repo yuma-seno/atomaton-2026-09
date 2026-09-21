@@ -35,8 +35,8 @@ credential you would not mind losing.
 The other direction is worth knowing: a tool that needs a credential you would
 rather not route into an agent's environment can be a step in
 `checks.from_pull_request` instead, because that list runs in its own job. What
-routing does and does not protect is in
-[docs/operations.md](../operations.md#what-a-tool-can-and-cannot-be-protected-from).
+routing does and does not protect is
+[what a tool can and cannot be protected from](../tools/boundaries.md#what-a-tool-can-and-cannot-be-protected-from).
 
 ## A deployment refuses a branch anyone can push to
 
@@ -87,3 +87,15 @@ Where you still need a workflow of your own, through `deploy.your_workflow` or
 Most of the limits people expect are not real. Service containers work through
 `docker run`, and a matrix works as a loop, losing only parallelism. Both are
 commands.
+
+## Nothing checks that your tool servers still start
+
+`deploy` ships empty, so nothing verifies that the tool servers a run would start
+actually start — that an allowlist pattern still names a tool that exists, that two
+`unprefixed` servers do not claim one name, that a server runs at all. Answering any
+of those means executing the configuration, and
+[the check on a pull request will not do that](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
+
+It belongs in a release, where the configuration being started has already been
+reviewed. Until you put it there, nothing runs it, and a guard that stopped guarding
+is found by the run that needed it rather than by a red check.

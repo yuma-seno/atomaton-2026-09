@@ -13,8 +13,9 @@
  * They are published rather than derived in the workflow because the workflow is
  * where the previous version of `dispatch_to` lived — `DISPATCH_NEXT_GUARD`, a
  * four-term Actions expression thirty lines below the step that asked the domain
- * the neighbouring question. `docs/operations.md` forbids that shape, and it sat
- * beside the paragraph forbidding it. See `domain/work/turn.ts`.
+ * the neighbouring question. `docs/work/how-it-works/what-keeps-two-runs-off-one-issue.md`
+ * forbids that shape, and it sat beside the paragraph forbidding it. See
+ * `domain/work/turn.ts`.
  *
  * ## Why it must not fail
  *

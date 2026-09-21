@@ -41,8 +41,8 @@
  * value in `.git/config` inside the work tree.
  *
  * A third-party server. It will not call this, and nothing can call it on its
- * behalf. See docs/operations.md, "What a tool can and cannot be protected
- * from".
+ * behalf. See docs/tools/boundaries.md, "What a tool can and cannot be
+ * protected from".
  */
 import { statSync } from "node:fs";
 import { classifyPathEntries, pathWithoutWorldWritable } from "../../../domain/machinery/tool-hardening.ts";

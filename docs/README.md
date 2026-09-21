@@ -30,6 +30,9 @@ twice or disappears from one shelf.
 | [check your config before pushing it](config/tasks/check-your-config-before-pushing-it.md) | nothing — one command |
 | [keep some paths for human review](pull-requests/tasks/keep-some-paths-for-human-review.md) | `merge.governed_paths` |
 | [let agents merge their own pull requests](pull-requests/tasks/let-agents-merge-their-own-pull-requests.md) | `merge.policy` |
+| [stop a run and pick it up again](work/tasks/stop-a-run-and-pick-it-up-again.md) | nothing — `/stop`, then `/resume` |
+| [close an issue a run is working on](work/tasks/close-an-issue-a-run-is-working-on.md) | nothing — closing it is the command |
+| [start an agent again from a clean session](work/tasks/start-an-agent-again-from-a-clean-session.md) | nothing — one modifier on the command |
 | [stop an agent loop that is going nowhere](work/tasks/stop-an-agent-loop-that-is-going-nowhere.md) | `chain.after_handoffs`, `chain.after_runs_without_change` |
 | [use your own label names](work/tasks/use-your-own-label-names.md) | `chain.labels` |
 | [let a tool server reach something outside GitHub](tools/tasks/let-a-tool-server-reach-something-outside-github.md) | `tools.secrets`, then that server's own environment |
@@ -51,10 +54,12 @@ If you know the key and not the artifact,
 **`agents/`** — an agent definition, and what it reaches its provider with.
 [What an agent definition is](agents/overview.md) ·
 [Every setting in one](agents/reference.md) ·
-[What it may not reach](agents/boundaries.md)
+[What it may not reach](agents/boundaries.md) ·
+[When an agent will not start](agents/when-it-breaks.md)
 
 **`environment/`** — the runner every job starts on.
-[The environment a run works in](environment/reference.md)
+[The environment a run works in](environment/reference.md) ·
+[When the environment is missing something](environment/how-it-works.md)
 
 **`pipeline/`** — your checks and your deployments.
 [The pipeline as commands](pipeline/overview.md) ·
@@ -64,11 +69,26 @@ If you know the key and not the artifact,
 
 **`pull-requests/`** — the gate between an agent's work and your default branch.
 [`merge`](pull-requests/reference.md) ·
-[What the merge gate stops](pull-requests/boundaries.md)
+[What an agent's pull request meets](pull-requests/how-it-works.md) ·
+[What the merge gate stops](pull-requests/boundaries.md) ·
+[When a pull request will not merge](pull-requests/when-it-breaks.md)
 
 **`work/`** — an issue, the branch it becomes, and the chain of runs on it.
 [Where work branches from, and when a chain stops](work/reference.md) ·
-[Why there are two counters](work/how-it-works.md)
+[What bounds a run, and who may start one](work/boundaries.md) ·
+[When a run does not start, or does not stop](work/when-it-breaks.md) ·
+[What starts a run](work/how-it-works/what-starts-a-run.md) ·
+[GitHub raises no event for its own token](work/how-it-works/github-raises-no-event-for-its-own-token.md) ·
+[The branch a run commits to](work/how-it-works/the-branch-a-run-commits-to.md) ·
+[What keeps two runs off one issue](work/how-it-works/what-keeps-two-runs-off-one-issue.md) ·
+[The labels Atomaton applies](work/how-it-works/the-labels-atomaton-applies.md) ·
+[Work is a tree of issues](work/how-it-works/work-is-a-tree-of-issues.md) ·
+[Two comments, and why they are not the same one twice](work/how-it-works/the-two-comments-a-stop-leaves.md) ·
+[Why there are two counters](work/how-it-works/why-there-are-two-counters.md)
+
+**`records/`** — the session and the working files a run leaves behind.
+[What a run leaves behind](records/how-it-works.md) ·
+[What a record does not keep](records/boundaries.md)
 
 **`tools/`** — what an agent can reach, and under what watch.
 [What an agent can reach](tools/overview.md) ·
@@ -79,26 +99,54 @@ If you know the key and not the artifact,
 [Where a server is read from](tools/how-it-works/where-a-server-is-read-from.md) ·
 [How a credential reaches a tool](tools/how-it-works/routing-a-credential.md) ·
 [How long a tool has to answer](tools/how-it-works/how-long-a-tool-has.md) ·
-[How the issue search ranks](tools/how-it-works/how-the-issue-search-ranks.md)
+[Searching this repository's issues](tools/how-it-works/searching-the-issues.md) ·
+[How the issue search ranks](tools/how-it-works/how-the-issue-search-ranks.md) ·
+[Reading the web](tools/how-it-works/reading-the-web.md)
+
+**`github/`** — the settings on GitHub itself, which nothing in `config.yaml` reaches.
+[When a check will not settle](github/when-it-breaks.md)
 
 **`runtime/`** — the half of the deliverable you do not edit.
 [What an upgrade replaces, and what is yours](runtime/boundaries.md)
+
+## By what went wrong
+
+The symptom is the only thing you have at this point, so it is the column you read.
+The cause and what to do about it are on the page, once.
+
+| What you see | Where it is answered |
+| --- | --- |
+| Workflow ran but agent did not start | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Nothing happened at all when an issue or comment asked for an agent | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Manual command reports invalid syntax | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Comment disappeared during run | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| `atomaton/in-progress` label remains | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Repeated handoffs stop automatically | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Agent repeatedly reproduces stale or invalid tool behaviour | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Parent orchestrator not re-invoked after sub-issue completion | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| A handoff names the next agent but no run starts | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Agent exits immediately with a provider error | [When an agent will not start](agents/when-it-breaks.md) |
+| `More than one provider credential is set` | [When an agent will not start](agents/when-it-breaks.md) |
+| Draft pull request will not merge | [When a pull request will not merge](pull-requests/when-it-breaks.md) |
+| Required check goes red and your CI never ran | [When a pull request will not merge](pull-requests/when-it-breaks.md) |
+| An agent's pull request shows a check stuck at `action_required` | [When a check will not settle](github/when-it-breaks.md) |
+| A required check never fills on an agent's pull request | [When a check will not settle](github/when-it-breaks.md) |
+| Agent reports a missing dependency instead of installing it | [When the environment is missing something](environment/how-it-works.md) |
+| A run takes longer, or costs more, than you expected | [When a tool server goes wrong](tools/when-it-breaks.md) |
 
 ## Read through, rather than looked up
 
 | | |
 | --- | --- |
 | [Setup](setup.md) | Getting from an empty repository to a first agent run. Read it through; do each step as you reach it. |
-| [Operations](operations.md) | What actually happens when work starts, and what bounds it. |
 | [Environment-Driven Development](method/edd.md) | The idea the rest of this is an argument for. Nothing in it is a setting. |
 | [Architecture](template/architecture.md) | The template's own source. An adopted repository receives `.github/`, never `src/`, so no path named there exists in it. |
 
 ## What is not here yet
 
 The tree has room for an `overview.md`, a `reference.md`, a `when-it-breaks.md` and a
-`boundaries.md` under each artifact, and most do not exist. `operations.md` and
-`setup.md` are still the single large files they always were, and several entries above
-point into them.
+`boundaries.md` under each artifact, and most do not exist. `setup.md` is still the
+single large file it always was, and several entries above point into it.
 
 A page here is written when somebody needs it, not to fill a slot. An empty page answers
 a question nobody asked and then goes stale unread.

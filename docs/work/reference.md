@@ -23,7 +23,7 @@ joining the thread resets it.
 Five is the default. `0` means the default rather than "no handoffs"; `1` is how
 you say that an agent finishes its own turn and hands off to nobody. Five is
 chosen against a repository where a person intervenes often, so
-[running autonomously you will want a larger number](how-it-works.md).
+[running autonomously you will want a larger number](how-it-works/why-there-are-two-counters.md).
 
 ## `chain.after_runs_without_change`
 
@@ -37,11 +37,11 @@ none. Two is the default: one run that changes nothing is ordinary — an agent
 asked a question, or investigated and reported. `0` means the default.
 
 It fires sooner than `after_handoffs` on repetition, and never on a long piece of
-real work, because [length is not what it measures](how-it-works.md).
+real work, because [length is not what it measures](how-it-works/why-there-are-two-counters.md).
 
 How both counters are counted, what you see when either fires, and how to resume
 are in
-[docs/operations.md](../operations.md#what-bounds-a-chain-of-runs).
+[what bounds a chain of runs](boundaries.md#what-bounds-a-chain-of-runs).
 
 ## `chain.labels`
 
@@ -57,7 +57,7 @@ Three names, and they are the ones Atomaton reads: `in_progress` while a run
 holds an issue, `launched` once it has handed work on, and `sub_issue` on the
 issues it opened. They are created on first use. What each one means to the
 machinery that reads it is in
-[docs/operations.md](../operations.md#serialization-guard-and-labels).
+[the labels Atomaton applies](how-it-works/the-labels-atomaton-applies.md).
 
 They are in this section rather than somewhere presentational because that is
 what the labels are for: state one run leaves for the next to read. They are not

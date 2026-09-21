@@ -52,7 +52,7 @@ Everything below is indexed in [docs/README.md](docs/README.md), which says wher
 | put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |
 | know what a setting does | [What `config.yaml` accepts](docs/config/reference.md) — every key, and where its entry is |
 | do one specific thing | [Recipes](docs/) — indexed by the goal you arrived with |
-| understand what it just did | [Operations](docs/operations.md) — how a run works, and how to diagnose one |
+| understand what it just did | [What starts a run](docs/work/how-it-works/what-starts-a-run.md), and [when it breaks](docs/README.md) — the map indexes those by symptom |
 | write an MCP server for it | [Writing a tool](docs/tools/tasks/write-a-tool.md) |
 | know why it is built this way | [Environment-Driven Development](docs/method/edd.md) — the idea the whole system is an argument for |
 | change the template itself | [CONTRIBUTING.md](CONTRIBUTING.md), then [Architecture](docs/template/architecture.md) — the layers, and where a module belongs |
@@ -62,14 +62,8 @@ ships with the deliverable — says what each one holds and why.
 
 ## What this costs you, and what bounds it
 
-- A run is bounded by its job: sixty minutes, less five reserved for reporting
-  whatever it had reached.
-- A chain of runs is bounded by two counters, `chain.after_handoffs` and
-  `chain.after_runs_without_change`. **There is no token or cost ceiling** — the
-  bounds are on how many runs happen, not on what they spend.
-- Validation hands a pull request back to the engineer at most three times.
-- An agent will not merge a change to how agents themselves run. It reviews and
-  reports; that merge is yours.
-
-[Operations](docs/operations.md) has the rest, including what an agent's tools can
-and cannot reach.
+Two pages answer that, and they answer it once:
+[what bounds a run, and who may start one](docs/work/boundaries.md), and
+[what the merge gate stops](docs/pull-requests/boundaries.md). What an agent's tools
+can and cannot reach is
+[a third](docs/tools/boundaries.md).

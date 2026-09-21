@@ -18,8 +18,8 @@
  * That was fixed for the guard and not for its neighbour. `DISPATCH_NEXT_GUARD`
  * stood thirty lines below the step that asked the domain, deciding *does the chain
  * continue* from four of the same six signals, as an expression — and
- * `docs/operations.md` forbids exactly that, in a paragraph the expression sat
- * beside.
+ * `docs/work/how-it-works/what-keeps-two-runs-off-one-issue.md` forbids exactly
+ * that, in a paragraph the expression sat beside.
  *
  * So the signals are read once, into a name, and every question is asked of the
  * name.
