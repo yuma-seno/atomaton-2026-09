@@ -32,7 +32,8 @@ answer.** Read it to decide which page to fetch, then fetch that page for the
 content. Quoting a search result's one-line summary as fact is how wrong answers
 get written — the summary is written to attract a click, not to be correct.
 
-Keep the query short. Two or three specific terms beat a sentence.
+A web search engine matches keywords; the search server here matches meaning. Two
+or three terms for the first, a whole question for the second.
 
 ## Judgement
 

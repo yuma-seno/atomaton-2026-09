@@ -105,12 +105,29 @@ export function dispatchPrValidation(repo: string, prNumber: number, branch: str
  * The agent is named by the `atomaton:origin-agent` tag the pull request body
  * carries. Returns whether the dispatch was sent; the caller falls back to
  * closing the issue directly when it was not.
+ *
+ * ## The comment asks for a judgement, not for a closure
+ *
+ * It said "Please confirm completion and close this sub-task", and that is the
+ * first user message the re-invoked agent reads -- ahead of its system prompt in
+ * the only ordering a model has. So whatever the prompt layer says about weighing
+ * what merged against what the issue asked for, this line told it the answer
+ * before it looked. A merge is evidence that a change was accepted, not that a
+ * requirement was satisfied, and the two come apart often enough that deciding is
+ * the reason to re-invoke anybody at all: an agent asked only to confirm has no
+ * remaining reason to read the issue.
+ *
+ * Both halves move together or neither holds. `prompt-template.md`'s "After a
+ * pull request you opened has merged" paragraph is the other half.
  */
 export function dispatchPostMergeAgent(repo: string, subIssueNum: number, agent: string): boolean {
   const notify = resolveNotify(repo, subIssueNum);
   const { code, stdout, stderr } = gh(
     "issue", "comment", String(subIssueNum), "--repo", repo,
-    "--body", "Atomaton: Your PR was merged. Please confirm completion and close this sub-task.",
+    "--body",
+    "Atomaton: the pull request for this issue merged. Decide whether what merged satisfies what " +
+      "this issue asked for. Say which acceptance criteria are met and which are not; conclude the " +
+      "issue when they are met, and carry on with the work when they are not.",
   );
   if (code) {
     log(`dispatchPostMergeAgent: could not post trigger comment on #${subIssueNum}: ${stderr || stdout}`);
@@ -118,7 +135,7 @@ export function dispatchPostMergeAgent(repo: string, subIssueNum: number, agent:
   }
   return (
     dispatchRunner({
-      context: `the pull request for #${subIssueNum} was merged, so ${agent} was to confirm and close it`,
+      context: `the pull request for #${subIssueNum} was merged, so ${agent} was to judge whether it satisfies the issue`,
       agent,
       type: "issue",
       number: subIssueNum,
