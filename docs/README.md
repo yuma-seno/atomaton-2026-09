@@ -15,6 +15,12 @@ on Friday, and a page like "what the merge gate stops" answers an operational qu
 and a design question at once. Split by reader and such a page either gets written
 twice or disappears from one shelf.
 
+Two pages stand at the root, and they are the two that are about no artifact. This one
+says where everything is. [Setup](setup.md) says what to do first, and in what order —
+an ordered path from an empty repository to a first agent run. Everything that answers
+a question about one artifact is in the tree below. Setup carries actions and links
+only: the reason behind a step is at the other end of that step's link.
+
 ## By what you want to change
 
 | You want to | What you change |
@@ -23,6 +29,7 @@ twice or disappears from one shelf.
 | [have a screenshot reach an agent as a picture](agents/tasks/have-a-screenshot-reach-an-agent-as-a-picture.md) | `vision`, in an agent definition |
 | [switch between the Chat Completions and Responses APIs](agents/tasks/switch-between-the-chat-completions-and-responses-apis.md) | `provider`, in an agent definition |
 | [reach a provider the table does not list](agents/tasks/reach-a-provider-the-table-does-not-list.md) | the `OPENAI_BASE_URL` repository variable |
+| [move to a different provider](agents/tasks/move-to-a-different-provider.md) | `provider` in every agent definition, and that provider's own secret |
 | [prefer particular upstream providers](agents/tasks/prefer-particular-upstream-providers.md) | `extra_body`, in an agent definition |
 | [give a repository a pipeline an agent can write and maintain](pipeline/tasks/give-a-repository-a-pipeline-an-agent-can-write-and-maintain.md) | `checks.from_pull_request` and `deploy.on_merge` |
 | [have agents start your own CI and deployment](pipeline/tasks/have-agents-start-your-own-ci-and-deployment.md) | `checks.your_workflow` and `deploy.your_workflow` |
@@ -39,6 +46,7 @@ twice or disappears from one shelf.
 | [let a tool run longer than a minute](tools/tasks/let-a-tool-run-longer-than-a-minute.md) | `request_timeout_secs`, on that server |
 | [change or remove web fetching and search](tools/tasks/change-or-remove-web-fetching-and-search.md) | the `research/web-search` skill |
 | [write a tool of your own](tools/tasks/write-a-tool.md) | a new MCP server |
+| [make a branch ruleset work with agents](github/tasks/make-a-branch-ruleset-work-with-agents.md) | a server-side setting on GitHub, declared by `.github/atomaton/rulesets/main.json` |
 | [move to a newer release](runtime/tasks/move-to-a-newer-release.md) | nothing — a vendoring procedure |
 | [have something happen every week](work/tasks/have-something-happen-every-week.md) | a workflow you copy in |
 
@@ -104,6 +112,7 @@ If you know the key and not the artifact,
 [Reading the web](tools/how-it-works/reading-the-web.md)
 
 **`github/`** — the settings on GitHub itself, which nothing in `config.yaml` reaches.
+[What GitHub's own settings protect](github/boundaries.md) ·
 [When a check will not settle](github/when-it-breaks.md)
 
 **`runtime/`** — the half of the deliverable you do not edit.
@@ -138,15 +147,23 @@ The cause and what to do about it are on the page, once.
 
 | | |
 | --- | --- |
-| [Setup](setup.md) | Getting from an empty repository to a first agent run. Read it through; do each step as you reach it. |
 | [Environment-Driven Development](method/edd.md) | The idea the rest of this is an argument for. Nothing in it is a setting. |
 | [Architecture](template/architecture.md) | The template's own source. An adopted repository receives `.github/`, never `src/`, so no path named there exists in it. |
 
 ## What is not here yet
 
+Nothing above is a large flat file any more, and no entry points into one. What is
+missing is pages, not shape.
+
 The tree has room for an `overview.md`, a `reference.md`, a `when-it-breaks.md` and a
-`boundaries.md` under each artifact, and most do not exist. `setup.md` is still the
-single large file it always was, and several entries above point into it.
+`boundaries.md` under each artifact, and only `agents/` and `tools/` have all four.
+`work/` and `pull-requests/` have no `overview.md`; `pipeline/` has no `when-it-breaks.md`;
+`config/`, `environment/`, `github/`, `records/` and `runtime/` are each two or three
+short. There is no `skills/` directory at all — what a skill is, and which of them are
+yours, is `.github/atomaton/README.md`, which ships with the deliverable and is already
+in your tree.
 
 A page here is written when somebody needs it, not to fill a slot. An empty page answers
-a question nobody asked and then goes stale unread.
+a question nobody asked and then goes stale unread, and a slot is not a question: an
+absent page is the honest state, and a placeholder written so the tree looks finished
+is worse than the gap it hides.

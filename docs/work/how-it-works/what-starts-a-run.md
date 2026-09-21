@@ -15,7 +15,10 @@ surface rests on — [who may start one](../boundaries.md#who-may-start-one).
 
 ## How to ask
 
-An agent command must occupy its own line. Put instructions on following lines:
+An agent command must occupy its own line. In a new issue it must also be the
+first visible line of the body: blank lines and HTML comments above it are
+skipped, ordinary prose is not, because a command below a paragraph is not a
+command at the top. Put instructions on the lines after it:
 
 ```text
 /engineer
