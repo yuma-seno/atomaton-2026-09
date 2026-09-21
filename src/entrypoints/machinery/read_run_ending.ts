@@ -43,13 +43,19 @@
  * needs is in the session: the last assistant message either carries text or carries
  * only tool calls. Nothing is asked of the agent; `reported` is read off the record.
  *
+ * The reading itself is `domain/record/closing-report.ts`, not here. It was here, and
+ * that was wrong the moment the metrics report needed the same answer about the same
+ * sessions: a second spelling of "did it report" is a second answer waiting to
+ * disagree with this one.
+ *
  * Usage:
  *   read_run_ending.ts --session FILE --exit-code N [--stop-file FILE]
  * Writes `ended_because=<word>` and `reported=<true|false>` to $GITHUB_OUTPUT.
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import type { Session, SessionMessage } from "../../domain/work/session.ts";
+import { leftClosingReport } from "../../domain/record/closing-report.ts";
+import type { Session } from "../../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ReadRunEndingArgs {
@@ -63,65 +69,28 @@ export const ref = defineScript<ReadRunEndingArgs>(import.meta.url);
 /** The exit status the core uses for an ending somebody asked for, session written. */
 const SOFT_STOP = "2";
 
-/** What the core wrote about the run that just finished, if it wrote anything. */
-export function endingFromSession(raw: string): string | undefined {
-  let parsed: { atoma_runs?: unknown };
+/**
+ * The saved session as a document, or `undefined` when there is nothing readable.
+ *
+ * Separate from the two questions below because both are asked of it. Anything
+ * unreadable is "no session" rather than a failure: each caller already has the
+ * answer it gives when the run wrote nothing.
+ */
+export function parseSession(raw: string | undefined): Session | undefined {
+  if (raw === undefined) return undefined;
   try {
-    parsed = JSON.parse(raw) as typeof parsed;
+    return JSON.parse(raw) as Session;
   } catch {
     return undefined;
   }
-  const runs = parsed.atoma_runs;
+}
+
+/** What the core wrote about the run that just finished, if it wrote anything. */
+export function endingFromSession(session: Session | undefined): string | undefined {
+  const runs = session?.atoma_runs;
   if (!Array.isArray(runs) || runs.length === 0) return undefined;
   const last = runs[runs.length - 1] as { ended_because?: unknown };
   return typeof last?.ended_because === "string" && last.ended_because !== "" ? last.ended_because : undefined;
-}
-
-/**
- * The words in a message, whichever of the two shapes it is stored in.
- *
- * A message is plain text in nearly every case; the block form appears when a
- * picture travels with it. A picture is not a report, so only the text blocks count.
- */
-function textOf(content: SessionMessage["content"]): string {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content.map((block) => (block.type === "text" ? block.text : "")).join("");
-}
-
-/**
- * Whether the run left a report: did the last thing the model said have words in it?
- *
- * The LAST assistant message, not any of them. An earlier one is a sentence from the
- * middle of the work, and this repository has already measured what that is worth —
- * these agents write prose exactly once, in their final turn — so treating one as a
- * report would call a run reported that a person would call silent.
- *
- * The session accumulates across runs, and this does not take the boundary of the
- * current one. It does not need to: the only way the newest assistant message belongs
- * to an EARLIER run is for this one to have produced none at all, which means it was
- * cut short before its first turn — and `stopped`, `spent` and `failed` are all
- * decided above `no-report` in `endingOf`, so the answer given here is not the one
- * read. Adding the boundary would be a second argument that changes no decision.
- *
- * `false` for anything unreadable, on the same footing as the ending's fallback: a
- * run that did not write the session it was told to write is not one to record as
- * having reported.
- */
-export function reportedInSession(raw: string): boolean {
-  let parsed: Session;
-  try {
-    parsed = JSON.parse(raw) as Session;
-  } catch {
-    return false;
-  }
-  const messages = parsed.messages ?? [];
-  for (let i = messages.length - 1; i >= 0; i -= 1) {
-    const message = messages[i];
-    if (message?.role !== "assistant") continue;
-    return textOf(message.content).trim() !== "";
-  }
-  return false;
 }
 
 function main(): void {
@@ -132,12 +101,12 @@ function main(): void {
 
   const exitCode = values["exit-code"] ?? "";
   const sessionPath = values.session ?? "";
-  // One read, two questions, so both facts about this run come from the same bytes.
-  // A session runs to tens of megabytes on a long thread, and opening it twice also
-  // leaves room for it to change between the two answers.
-  const raw = existsSync(sessionPath) ? readFileSync(sessionPath, "utf8") : undefined;
-  const recorded = raw === undefined ? undefined : endingFromSession(raw);
-  const reported = raw !== undefined && reportedInSession(raw);
+  // One read, one parse, two questions, so both facts about this run come from the
+  // same document. A session runs to tens of megabytes on a long thread, and opening
+  // it twice also leaves room for it to change between the two answers.
+  const session = parseSession(existsSync(sessionPath) ? readFileSync(sessionPath, "utf8") : undefined);
+  const recorded = endingFromSession(session);
+  const reported = leftClosingReport(session);
 
   let ending: string;
   if (recorded !== undefined) {

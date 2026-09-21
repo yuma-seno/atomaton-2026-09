@@ -116,6 +116,16 @@ function runSection(runs: readonly RunRecord[], now: Date): string[] {
       "the run should not continue, which is worth watching whether or not it was right.",
   );
   out.push("");
+  // The premise this column is read on, said once rather than left to be assumed. It
+  // was assumed: `completed` was the whole of "it worked", and three runs that made
+  // hundreds of tool calls and wrote nothing sat inside it as successes.
+  out.push(
+    "What is left over is not the same as work delivered. `completed` is the core " +
+      "saying its own loop ended rather than being stopped — it says nothing about " +
+      "whether the run produced a report. **Ran to an end without a report**, in each " +
+      "window below, is that question asked separately.",
+  );
+  out.push("");
   out.push("| ended because | runs |");
   out.push("| --- | ---: |");
   for (const row of endings(runs)) out.push(`| \`${row.name}\` | ${n(row.count)} |`);
@@ -164,6 +174,48 @@ function degradedSection(metrics: Metrics): string[] {
   return out;
 }
 
+/**
+ * Sessions that ran to an end and said nothing, inside one window.
+ *
+ * The defect this section exists for is not that runs go silent — it is that a silent
+ * run was indistinguishable from a working one anywhere a person looked. The comment
+ * on the issue now says so; this is the other place somebody looks, and until it said
+ * this, three runs that made 313, 173 and 110 tool calls and wrote not one line sat in
+ * `completed` as successes.
+ *
+ * Its own share rather than a correction to **gave up**, because it is a different
+ * question over a different denominator: gave up is runs that were stopped, this is
+ * sessions that were not. Folding one into the other would move a number a reader has
+ * been watching and change what it counts without saying so, which is its own defect.
+ * Sessions rather than runs because that is the honest unit -- see `CompletionTally`.
+ */
+function completionSection(tally: Metrics["completions"]): string[] {
+  const out: string[] = [];
+  const share = tally.completed === 0 ? 0 : Math.round((tally.silent / tally.completed) * 1000) / 10;
+  // Said in every window, including the ones where it is zero. A section that appears
+  // only when something is wrong reads, when absent, as a question nobody asked.
+  out.push(
+    `**Ran to an end without a report:** ${n(tally.silent)} of ` +
+      `${plural(tally.completed, "session", "sessions")} whose last run the core recorded as ` +
+      `\`completed\` — ${share}%. These are not runs that gave up: nothing stopped them, ` +
+      "they simply ended without writing a closing line, so the work is in a saved " +
+      "session and nowhere a person or the next agent reads.",
+  );
+  if (tally.unknown > 0) {
+    // Not folded into either side. Everything from before atoma v0.1.28 lands here,
+    // and a denominator that quietly swallowed it would report a share of a number
+    // that is not the number shown.
+    out.push(
+      "",
+      `Neither figure covers ${plural(tally.unknown, "session", "sessions")} with no run record ` +
+        "at all — without one, neither question can be asked. Everything from before atoma " +
+        "recorded its runs is in there.",
+    );
+  }
+  out.push("");
+  return out;
+}
+
 function windowSection(label: string, metrics: Metrics): string[] {
   const out = [`## ${label}`, ""];
   if (metrics.sessions === 0) {
@@ -173,6 +225,8 @@ function windowSection(label: string, metrics: Metrics): string[] {
 
   out.push(`${plural(metrics.sessions, "session", "sessions")}.`);
   out.push("");
+
+  out.push(...completionSection(metrics.completions));
 
   if (metrics.tokens) {
     const t = metrics.tokens;

@@ -38,6 +38,12 @@ import {
 // result comment counts the same three out of the same sessions, and two spellings of
 // "this call was refused" is two answers to one question.
 import { looksFailed, looksRefused, problemsIn } from "../../domain/record/tool-trouble.ts";
+// Whether a run left a report, asked of the session. Shared with `read_run_ending.ts`
+// for the same reason as the three above: it decides a run's ending there and this
+// report's "ran to an end without a report" here, and two spellings of one question
+// is how the report came to call a silent run a success in the first place.
+import { leftClosingReport } from "../../domain/record/closing-report.ts";
+import type { Session } from "../../domain/work/session.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../../domain/record/metrics-windows.ts";
 import { renderReport } from "../../domain/record/metrics-report.ts";
 import { parseTokenLine } from "../../domain/record/token-line.ts";
@@ -76,6 +82,11 @@ function rowsOf(sessions: readonly SessionRecord[]): unknown[] {
       failed: s.calls.filter((c) => c.failed).length,
       refused: s.calls.filter((c) => c.refused).length,
       skills: s.calls.flatMap((c) => (c.skill ? [c.skill] : [])),
+      // Here as well as in the report, because this file is for the question nobody
+      // has asked yet and "which of these said nothing" is now askable of every row:
+      // crossed against the agent, the tool mix, or the run length, without reparsing
+      // 25 MB of sessions to ask it.
+      reported: s.reported,
       tools,
       acts,
       runs: s.runs,
@@ -110,13 +121,13 @@ export function agentOf(session: { metadata?: { github_context?: { agent?: strin
 }
 
 function sessionFrom(path: string, raw: string): SessionRecord | undefined {
-  let parsed: {
-    messages?: { role?: string; content?: unknown; tool_call_id?: string; tool_calls?: unknown[] }[];
-    atoma_runs?: unknown;
-    metadata?: { github_context?: { agent?: string } };
-  };
+  // `Session`, the shape `domain/work/session.ts` defines, rather than a narrowed copy
+  // spelled here. The copy was fine while nothing else read this document; it stopped
+  // being fine when `leftClosingReport` did, because a local shape is not something a
+  // shared function can be handed.
+  let parsed: Session;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(raw) as Session;
   } catch {
     log(`${path} is not readable as JSON; skipping it`);
     return undefined;
@@ -124,8 +135,9 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   const messages = parsed.messages ?? [];
   const results = new Map<string, string>();
   for (const message of messages) {
-    if (message.role === "tool" && typeof message.tool_call_id === "string") {
-      results.set(message.tool_call_id, typeof message.content === "string" ? message.content : "");
+    const id = message.tool_call_id;
+    if (message.role === "tool" && typeof id === "string") {
+      results.set(id, typeof message.content === "string" ? message.content : "");
     }
   }
 
@@ -181,7 +193,11 @@ function sessionFrom(path: string, raw: string): SessionRecord | undefined {
   const runs = Array.isArray((parsed as { atoma_runs?: unknown }).atoma_runs)
     ? ((parsed as { atoma_runs: RunRecord[] }).atoma_runs)
     : [];
-  return { path, agent, messages: messages.length, calls, runs };
+  // Asked of the same document the calls above came out of, through the same function
+  // `read_run_ending.ts` asks it with -- so what the report counts as silent and what
+  // the result comment calls `no-report` cannot come apart. Nothing new is recorded
+  // for it: every session ever stored carries the messages it is read from.
+  return { path, agent, messages: messages.length, calls, runs, reported: leftClosingReport(parsed) };
 }
 
 /**
