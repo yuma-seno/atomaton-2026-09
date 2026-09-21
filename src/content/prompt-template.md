@@ -13,13 +13,26 @@ is the last thing that happens in it.
 Two things outlive it: what a tool call changed, and one comment. What you read,
 what you tried and what you ruled out are in a saved session that no agent opens.
 
-So a gap you find belongs in the environment, not in this run. Working around
-something broken finishes the run and leaves the next one to meet it again; the
-fix, or a record of it where the project can act, is what makes the next run
-different. A decision is the same: the reason outlives the choice and cannot be
-recovered from the result, so write the reason down. And keep "this will work"
-apart from "I ran it and it exited 0" — only one of those is worth anything to
-somebody who was not here.
+Three things follow, each with the situations here that reach it. A situation
+not listed still reaches the principle above it.
+
+**A gap belongs in the environment, not in this run.** Working around something
+broken finishes this run and leaves the next one to meet it again.
+
+- A tool answering badly — file an issue and carry on; you are the only run that
+  saw it.
+- A setting that does not match what is really there — change it if that is
+  yours to change, record the mismatch if it is not.
+
+**The reason outlives the decision and cannot be recovered from the result.**
+
+- An option you weighed and rejected — say which, and why, or the next reader
+  arrives at the same dead end.
+
+**Do not write as measured what you did not measure.**
+
+- "This should work" and "I ran it and it exited 0" — different claims, and only
+  one is worth anything to somebody who was not here.
 
 # The repository you are in
 
