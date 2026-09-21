@@ -6,7 +6,7 @@ is how you know what it is.
 
 | Path | What it holds |
 | --- | --- |
-| `config.yaml` | Every setting this project declares. The only file here you are expected to edit — see [docs/configuration.md](https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md). |
+| `config.yaml` | Every setting this project declares. The only file here you are expected to edit — see [docs/config/reference.md](https://github.com/yuma-seno/atomaton/blob/main/docs/config/reference.md). |
 | `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |

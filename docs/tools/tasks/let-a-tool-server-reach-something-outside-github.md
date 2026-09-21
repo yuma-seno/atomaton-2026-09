@@ -42,7 +42,7 @@ A server of your own also has to exist on the runner. `mcp-server-slack` is a pr
 and nothing installs it unless you say so: name its package in `tools.packages`, which
 is where a project declares what a server it added needs. The shipped servers' own
 packages are in the deliverable and are not repeated there. See
-[docs/configuration.md](../../configuration.md), under `tools.packages`.
+[`tools.packages`](../reference.md#toolspackages).
 
 Steps 2 and 3 are two keys in the same file, which does not make them one step:
 authorising a credential does not deliver it. `checks` and `deploy` need no third step at
@@ -50,10 +50,10 @@ all, because their commands run in a workflow of their own rather than beside an
 a secret named on a deployment's entry is in that job's environment and there is no
 server to route it to.
 
-You never edit a workflow for any of this, and there is no tools file to edit: the one
-`atoma` is handed is written at the start of each run — from the servers Atomaton ships and
-whatever `tools.servers` adds or overrides — and thrown away with the runner.
-`config.yaml` is still the only place a credential is routed.
+You never edit a workflow for any of this, and
+[there is no tools file to edit](../how-it-works/the-tools-file.md) either.
+`config.yaml` is the only place a credential is routed.
 
-Why routing is required at all is in [docs/configuration.md](../../configuration.md); what it
+Why routing is required at all is in
+[how a credential reaches a tool](../how-it-works/routing-a-credential.md); what it
 does and does not protect you from is in [docs/operations.md](../../operations.md).

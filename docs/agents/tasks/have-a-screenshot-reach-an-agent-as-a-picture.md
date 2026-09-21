@@ -26,4 +26,4 @@ its place saying the image was withheld and naming this setting. Setting it on a
 that cannot read images is the expensive mistake — an API error that loses the run.
 
 How the shipped agents are set, and why the default is off rather than on, is in
-[docs/configuration.md](../../configuration.md).
+[what an agent definition is](../overview.md#why-vision-is-off-by-default).

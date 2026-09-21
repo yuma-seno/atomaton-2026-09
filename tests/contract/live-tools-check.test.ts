@@ -29,7 +29,7 @@
  * is pinned here rather than left to whoever next edits the script.
  */
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolveDeployJobs } from "../../src/domain/delivery/deploy-jobs.ts";
 
 const CHECK = "self/atomaton/scripts/check-live-tools.sh";
@@ -178,6 +178,37 @@ describe("where it is wired", () => {
       guide.includes("**A release starts the servers it would ship"),
       "an unqualified 'a release' reads as the reader's own",
     ).toBe(false);
+  });
+
+  /**
+   * And the negative half is asked of the whole tree, not of one page.
+   *
+   * `docs/` is being split into a tree, and the qualified sentence above will move
+   * pages more than once. A test that names the page it is on guards the page; what
+   * needs guarding is the claim, wherever an adopter meets it. `template/architecture.md`
+   * is the one page that is explicitly about this repository's own source, so it is
+   * the one place an unqualified statement would be read as ours.
+   */
+  test("no page an adopter reads promises a check only Atomaton's release runs", () => {
+    const pages: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const path = `${dir}/${entry}`;
+        if (statSync(path).isDirectory()) walk(path);
+        else if (entry.endsWith(".md")) pages.push(path);
+      }
+    };
+    walk("docs");
+    expect(pages.length, "there are pages to check").toBeGreaterThan(5);
+
+    const claiming = pages
+      .filter((page) => page !== "docs/template/architecture.md")
+      .filter((page) => /(?<!Atomaton's )release starts the servers/.test(body(page)));
+    expect(
+      claiming,
+      "these say a release starts the servers without saying whose. An adopter's " +
+        "`deploy` ships empty and runs nothing:\n  " + claiming.join("\n  "),
+    ).toEqual([]);
   });
 
   /**

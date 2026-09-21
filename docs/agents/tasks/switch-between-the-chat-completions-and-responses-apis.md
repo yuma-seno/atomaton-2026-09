@@ -14,4 +14,4 @@ image is moved into a following message; the Responses API's `function_call_outp
 takes it directly. If your agents never receive pictures, the two behave alike.
 
 The eight values, the credential each reads and the endpoint each defaults to are the
-provider table in [docs/configuration.md](../../configuration.md).
+provider table in [the agent reference](../reference.md#provider).

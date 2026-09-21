@@ -25,14 +25,15 @@ step is done.
 **Settings > Secrets and variables > Actions > New repository secret**, named
 `ORCAROUTER_API_KEY`. This is the one the shipped configuration needs: all three
 agent definitions read `provider: orcarouter-responses`. That is a recommendation
-rather than an arbitrary pick — [docs/configuration.md](configuration.md) says why,
-and what choosing differently costs.
+rather than an arbitrary pick —
+[what an agent definition is](agents/overview.md#why-the-shipped-provider-is-a-recommendation)
+says why, and what choosing differently costs.
 
 One provider, one credential, and **no fallback** — a key under a different name does
 not stand in for this one, and two keys present is an error naming both rather than a
 precedence that picks for you. To run somewhere else, change `provider` in the agent
 definitions and add that provider's own secret; the eight values and the credential
-each reads are in [docs/configuration.md](configuration.md).
+each reads are in [the agent reference](agents/reference.md#provider).
 
 Switching provider later is therefore two edits, and the runner checks that both
 happened: **before it builds the environment**, it resolves the provider exactly as
@@ -50,14 +51,10 @@ environment:
     - "bun install --frozen-lockfile"
 ```
 
-They run through `bash -c`, in order, and stop on first failure — before the agent
-starts, before `checks.from_pull_request`, and before every `deploy` entry.
-One declaration, three jobs.
-
-The template ships this empty on purpose: it is language- and framework-agnostic, and
-only you know what your project needs. Agents are told to treat the runner as already
-provisioned and never to spend iterations installing tooling themselves, so anything
-they need at run time belongs here.
+One declaration, three jobs: these run before the agent starts, before
+`checks.from_pull_request`, and before every `deploy` entry. What else the key does,
+and why your install belongs here rather than at the front of your check, is in
+[the environment reference](environment/reference.md#environmentsetup_commands).
 
 ## 5. If you use a branch ruleset
 

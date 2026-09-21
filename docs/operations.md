@@ -117,7 +117,7 @@ day, and a guess that was too large would be silently ignored by the job timeout
 Validation hands a pull request back to the engineer at most three times, and two
 counters stop the chain itself — `chain.after_handoffs`, and
 `chain.after_runs_without_change` when the runs stop changing anything. Both
-defaults are in [configuration.md](configuration.md#chain); neither is repeated
+defaults are in [the work reference](work/reference.md); neither is repeated
 here, so this page cannot go stale against them. **There is no token or cost
 ceiling**: the bounds are on how many runs happen, not on what they spend.
 
@@ -233,7 +233,7 @@ The last two are read together, and that is why there are two. A parent is
 re-invoked once no open sibling carries **both**: a sub-issue created as a later
 phase of a plan and never launched must not hold the parent back, or the count could
 never reach zero. Rename any of them under `chain.labels` — see
-[configuration.md](configuration.md#chain).
+[the work reference](work/reference.md#chainlabels).
 
 ## Manual commands and recovery
 
@@ -475,13 +475,11 @@ that way, which is why they are not in `config.yaml`; a name can still be
 mistyped, and a server a project added itself can still be deleted or renamed
 while an agent still names it.
 
-**Where those names come from.** There is no tools file in your repository to
-open. It is written at the start of each run into the runner's temp directory,
-from the servers Atomaton ships and whatever `tools.servers` in `config.yaml` adds or
-overrides. So a name resolves if it is one of the shipped eight or one you added;
-when it is neither, `atoma` says so and lists the servers that do exist. The check
-above writes a tools file the same way, from the pull request's own config, so
-what it resolves against is what that pull request would actually run with.
+**Where those names come from.** A name resolves if it is one of the shipped eight
+or one you added; when it is neither, `atoma` says so and lists the servers that do
+exist. There is no tools file in your repository to open, and the check above writes
+one the same way a run does — see
+[the tools file](tools/how-it-works/the-tools-file.md).
 
 **What you see when it fails.** The required check goes red, the problems are
 listed in a comment on the pull request, and the engineer is dispatched to fix
@@ -619,7 +617,7 @@ adds it is being reviewed. That is deliberate: without it, opening a pull reques
 would be enough to choose what the run reviewing it can read.
 
 Four things fail the run rather than being quietly dropped, and a fifth is only a
-warning; [configuration.md](configuration.md) lists them.
+warning; [`tools.secrets`](tools/reference.md#toolssecrets) lists them.
 
 ### What a shell command may print
 
@@ -708,7 +706,7 @@ is not in them yet.
 
 Each reload starts a new run with a fresh time budget, so there is a cap:
 `environment.max_reloads`, whose default is in
-[configuration.md](configuration.md#environment). At the cap the tool refuses and
+[the environment reference](environment/reference.md#environmentmax_reloads). At the cap the tool refuses and
 tells the agent to report instead. The refusal is a tool error rather than the end
 of the run, so the agent still has a turn in which to say what it found.
 
@@ -731,7 +729,7 @@ of the run, so the agent still has a turn in which to say what it found.
 | Required check goes red and your CI never ran | The `.github/atomaton/` this pull request would merge cannot start a run, so validation returned `deliverable-invalid` and never dispatched CI | Read the problems listed in the comment on the pull request; the engineer is dispatched to fix them, under the same three-attempt bound as failing CI. Reproduce it yourself with `bun run .github/atomaton-runtime/scripts/validate_deliverable.ts --root .` |
 | Agent's pull request shows a check stuck at `action_required` | GitHub holds `pull_request` runs for pull requests opened with `GITHUB_TOKEN` | Expected; the merge does not depend on it, and the pull request settles at `UNSTABLE`, which a ruleset permits. Approve it to clear the display, but never delete the run — that breaks the commit's check rollup in a way no re-run repairs, and the pull request becomes permanently unmergeable |
 | Required check never fills on an agent's pull request | The workflow behind that context has no `workflow_dispatch` trigger, so Atomaton cannot run it | Add `workflow_dispatch` to it, or drop the context from the ruleset's required list |
-| Agent reports a missing dependency instead of installing it | `atomaton_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [configuration.md](configuration.md#environment) only if the rebuilds were making progress |
+| Agent reports a missing dependency instead of installing it | `atomaton_env__reload_environment` refused: this work has already rebuilt its environment `environment.max_reloads` times, and each reload starts a new run with a fresh budget | Read what it reported. A system package or global CLI belongs in `environment.setup_commands`, which needs your merge either way; raise the cap in [the environment reference](environment/reference.md#environmentmax_reloads) only if the rebuilds were making progress |
 | Agent run takes longer than expected or consumes excessive tokens | High number of shell tool round trips, or large tool output size | Read the `[atomaton-shell]` lines in the workflow log; each records the command, exit code, duration, and output byte size |
 
 ## Security boundaries

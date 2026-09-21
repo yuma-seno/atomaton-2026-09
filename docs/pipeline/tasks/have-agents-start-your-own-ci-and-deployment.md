@@ -23,4 +23,4 @@ starts no workflow run for events its own token triggers — see
 itself and your deployment would silently never run.
 
 What each arm means, and what the workflow you name has to support, is in
-[docs/configuration.md](../../configuration.md).
+[the pipeline reference](../reference.md#deployyour_workflow).

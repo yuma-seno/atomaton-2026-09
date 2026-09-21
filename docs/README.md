@@ -3,8 +3,9 @@
 Two questions decide where anything here lives, and neither of them is who you are.
 
 **Which artifact is it about** — a thing you hold: `config.yaml`, an agent definition,
-a skill, a tool server, your pipeline, a pull request, the records a run leaves, the
-settings on GitHub itself, the generated runtime. That is the directory.
+a skill, a tool server, your pipeline, a pull request, the environment a run works in,
+the records a run leaves, the settings on GitHub itself, the generated runtime. That is
+the directory.
 
 **What kind of question is it** — how it works, what the keys are, how to do one
 thing, what to do when it breaks, what it does and does not protect. That is the file.
@@ -38,21 +39,66 @@ twice or disappears from one shelf.
 | [move to a newer release](runtime/tasks/move-to-a-newer-release.md) | nothing — a vendoring procedure |
 | [have something happen every week](work/tasks/have-something-happen-every-week.md) | a workflow you copy in |
 
-## By what you want to understand
+## By what you have in front of you
+
+If you know the key and not the artifact,
+[what `config.yaml` accepts](config/reference.md) is the one page that knows both.
+
+**`config/`** — the file you edit.
+[What `config.yaml` accepts](config/reference.md) ·
+[When your config is wrong](config/when-it-breaks.md)
+
+**`agents/`** — an agent definition, and what it reaches its provider with.
+[What an agent definition is](agents/overview.md) ·
+[Every setting in one](agents/reference.md) ·
+[What it may not reach](agents/boundaries.md)
+
+**`environment/`** — the runner every job starts on.
+[The environment a run works in](environment/reference.md)
+
+**`pipeline/`** — your checks and your deployments.
+[The pipeline as commands](pipeline/overview.md) ·
+[`checks` and `deploy`](pipeline/reference.md) ·
+[Which ref a pipeline is read from](pipeline/how-it-works.md) ·
+[What a check and a deployment refuse to do](pipeline/boundaries.md)
+
+**`pull-requests/`** — the gate between an agent's work and your default branch.
+[`merge`](pull-requests/reference.md) ·
+[What the merge gate stops](pull-requests/boundaries.md)
+
+**`work/`** — an issue, the branch it becomes, and the chain of runs on it.
+[Where work branches from, and when a chain stops](work/reference.md) ·
+[Why there are two counters](work/how-it-works.md)
+
+**`tools/`** — what an agent can reach, and under what watch.
+[What an agent can reach](tools/overview.md) ·
+[`tools`](tools/reference.md) ·
+[What routing a credential protects](tools/boundaries.md) ·
+[When a tool server goes wrong](tools/when-it-breaks.md) ·
+[The tools file](tools/how-it-works/the-tools-file.md) ·
+[Where a server is read from](tools/how-it-works/where-a-server-is-read-from.md) ·
+[How a credential reaches a tool](tools/how-it-works/routing-a-credential.md) ·
+[How long a tool has to answer](tools/how-it-works/how-long-a-tool-has.md) ·
+[How the issue search ranks](tools/how-it-works/how-the-issue-search-ranks.md)
+
+**`runtime/`** — the half of the deliverable you do not edit.
+[What an upgrade replaces, and what is yours](runtime/boundaries.md)
+
+## Read through, rather than looked up
 
 | | |
 | --- | --- |
 | [Setup](setup.md) | Getting from an empty repository to a first agent run. Read it through; do each step as you reach it. |
-| [Configuration](configuration.md) | Every key, one entry each. Look things up in it — it is not written to be read through. |
 | [Operations](operations.md) | What actually happens when work starts, and what bounds it. |
-| [How long a tool has to answer](tools/how-it-works/how-long-a-tool-has.md) | The response budget, and what a tool should do when it runs out. |
-| [When a tool answers worse than it should](tools/when-it-breaks.md) | A tool that starts, replies, and is wrong. |
 | [Environment-Driven Development](method/edd.md) | The idea the rest of this is an argument for. Nothing in it is a setting. |
 | [Architecture](template/architecture.md) | The template's own source. An adopted repository receives `.github/`, never `src/`, so no path named there exists in it. |
 
 ## What is not here yet
 
 The tree has room for an `overview.md`, a `reference.md`, a `when-it-breaks.md` and a
-`boundaries.md` under each artifact. Most do not exist. `configuration.md`,
-`operations.md` and `setup.md` are still the single large files they always were, and
-the entries above point into them.
+`boundaries.md` under each artifact, and most do not exist. `operations.md` and
+`setup.md` are still the single large files they always were, and several entries above
+point into them.
+
+A page here is written when somebody needs it, not to fill a slot. An empty page answers
+a question nobody asked and then goes stale unread.

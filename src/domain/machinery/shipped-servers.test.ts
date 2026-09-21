@@ -9,11 +9,16 @@ import { toolDefaults, whatEachIsFor } from "./shipped-servers.ts";
  *
  * Both pages, because they answer different questions from different places.
  * `.github/atomaton/README.md` ships INTO an adopted repository and is what somebody
- * opens when they are standing in the directory; `docs/configuration.md` is the
+ * opens when they are standing in the directory; `docs/tools/reference.md` is the
  * reference they reach from the config's own header comment. A server missing from
  * either is a server that is invisible from one of the two doors.
+ *
+ * Those two doors are the one duplication the rest of this tree's "one fact, one
+ * place" rule does not remove by linking: a page in the adopter's own tree and a
+ * page on GitHub are not the same door, and a link from one to the other is a
+ * network round trip for somebody standing in the directory.
  */
-const PAGES = ["src/content/README.md", "docs/configuration.md"];
+const PAGES = ["src/content/README.md", "docs/tools/reference.md"];
 
 describe("the servers Atomaton ships", () => {
   test("every one has a line saying what it is for", () => {

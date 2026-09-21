@@ -19,10 +19,8 @@ and carries the same key there, in the same schema. Either way the value reaches
 the core through the tools file a run writes for itself.
 
 A server of your own that is started by a program rather than by `bun` also needs
-that program installed: name it in `tools.packages`, beside the server. The shipped
-servers' packages are in the deliverable, in
-`.github/atomaton-runtime/tools/packages.json`, because they are not a project's
-decision.
+that program installed: name it in
+[`tools.packages`](../reference.md#toolspackages), beside the server.
 
 **A timeout argument in your tool's own schema does not raise this.** That is the
 trap, and it is not hypothetical — it is how the shell server shipped. Its
@@ -49,14 +47,14 @@ where a 63.9-second load mostly fits.
 **Do not raise it just in case.** This limit is the only thing that notices a
 server which has stopped responding. A server that answers in milliseconds should
 keep the default, so a hung one is reported in a minute rather than in however long
-seemed generous. `0` means the default, the same as leaving it out.
+seemed generous.
 
 `ATOMA_MCP_TIMEOUT` changes the default for every server in a run, which is a
 debugging lever rather than a configuration: a per-server value is the one that
 travels with the tool.
 
 The key's reference entry, with the rest of `tools.servers`, is in
-[Configuration](../../configuration.md).
+[the tools reference](../reference.md#request_timeout_secs).
 
 ## If your tool does time out
 
