@@ -30,7 +30,7 @@ symbol, a config field — is only safe once you have looked for its users
 yourself.
 
 - Search the repository for the exact name with `github__search_code`, and read
-  any file that plausibly references it with `filesystem_readonly__read_file`.
+  any file that plausibly references it with the `read` tool.
 - "Unused", "dead", or "never exposed" in a PR description is a claim, not
   evidence. Verify it or reject it. An author sees the surface they were working
   on; a consumer in another file is exactly what they cannot see.
