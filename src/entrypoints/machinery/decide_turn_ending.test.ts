@@ -50,8 +50,32 @@ describe("decide_turn_ending.ts", () => {
   });
 
   test("releases when nothing further is happening", () => {
-    const { out } = run(["--outcome", "success"]);
+    const { out } = run(["--outcome", "success", "--reported", "true"]);
     expect(out.should_release).toBe("true");
+  });
+
+  /**
+   * The ending `finished` used to swallow. Published by name so the run is not filed
+   * as a success, and the guard still comes off -- nothing is working on that node.
+   */
+  test("a run that ended having said nothing is published as such, and still releases", () => {
+    const { out } = run(["--outcome", "success", "--reported", "false"]);
+    expect(out.ended).toBe("no-report");
+    expect(out.should_release).toBe("true");
+    expect(out.dispatch_to).toBe("");
+  });
+
+  test("and a run that did leave a report is finished", () => {
+    expect(run(["--outcome", "success", "--reported", "true"]).out.ended).toBe("finished");
+  });
+
+  /**
+   * Absent is not "reported". The argument is threaded from a step output, and a
+   * caller that drops it should get the answer that fetches a person rather than the
+   * one that records a success nobody checked.
+   */
+  test("no --reported at all is read as nothing said", () => {
+    expect(run(["--outcome", "success"]).out.ended).toBe("no-report");
   });
 
   test("fails open (releases) when --outcome is missing entirely, instead of leaving the guard stuck", () => {

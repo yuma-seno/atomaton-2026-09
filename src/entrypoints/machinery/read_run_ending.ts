@@ -35,12 +35,21 @@
  * stop landed. It is the only place left that tests the file, and it is reached only
  * when the run failed to write the session it was told to write.
  *
+ * ## And whether it left a report
+ *
+ * The same file answers a second question, so it is opened once and asked both.
+ * `domain/work/turn.ts` had no word for a run that ran to an ordinary end and said
+ * nothing — those landed on `finished` and were read as completed — and the fact it
+ * needs is in the session: the last assistant message either carries text or carries
+ * only tool calls. Nothing is asked of the agent; `reported` is read off the record.
+ *
  * Usage:
  *   read_run_ending.ts --session FILE --exit-code N [--stop-file FILE]
- * Writes `ended_because=<word>` to $GITHUB_OUTPUT.
+ * Writes `ended_because=<word>` and `reported=<true|false>` to $GITHUB_OUTPUT.
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
+import type { Session, SessionMessage } from "../../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ReadRunEndingArgs {
@@ -68,6 +77,53 @@ export function endingFromSession(raw: string): string | undefined {
   return typeof last?.ended_because === "string" && last.ended_because !== "" ? last.ended_because : undefined;
 }
 
+/**
+ * The words in a message, whichever of the two shapes it is stored in.
+ *
+ * A message is plain text in nearly every case; the block form appears when a
+ * picture travels with it. A picture is not a report, so only the text blocks count.
+ */
+function textOf(content: SessionMessage["content"]): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((block) => (block.type === "text" ? block.text : "")).join("");
+}
+
+/**
+ * Whether the run left a report: did the last thing the model said have words in it?
+ *
+ * The LAST assistant message, not any of them. An earlier one is a sentence from the
+ * middle of the work, and this repository has already measured what that is worth —
+ * these agents write prose exactly once, in their final turn — so treating one as a
+ * report would call a run reported that a person would call silent.
+ *
+ * The session accumulates across runs, and this does not take the boundary of the
+ * current one. It does not need to: the only way the newest assistant message belongs
+ * to an EARLIER run is for this one to have produced none at all, which means it was
+ * cut short before its first turn — and `stopped`, `spent` and `failed` are all
+ * decided above `no-report` in `endingOf`, so the answer given here is not the one
+ * read. Adding the boundary would be a second argument that changes no decision.
+ *
+ * `false` for anything unreadable, on the same footing as the ending's fallback: a
+ * run that did not write the session it was told to write is not one to record as
+ * having reported.
+ */
+export function reportedInSession(raw: string): boolean {
+  let parsed: Session;
+  try {
+    parsed = JSON.parse(raw) as Session;
+  } catch {
+    return false;
+  }
+  const messages = parsed.messages ?? [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message?.role !== "assistant") continue;
+    return textOf(message.content).trim() !== "";
+  }
+  return false;
+}
+
 function main(): void {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
@@ -76,7 +132,12 @@ function main(): void {
 
   const exitCode = values["exit-code"] ?? "";
   const sessionPath = values.session ?? "";
-  const recorded = existsSync(sessionPath) ? endingFromSession(readFileSync(sessionPath, "utf8")) : undefined;
+  // One read, two questions, so both facts about this run come from the same bytes.
+  // A session runs to tens of megabytes on a long thread, and opening it twice also
+  // leaves room for it to change between the two answers.
+  const raw = existsSync(sessionPath) ? readFileSync(sessionPath, "utf8") : undefined;
+  const recorded = raw === undefined ? undefined : endingFromSession(raw);
+  const reported = raw !== undefined && reportedInSession(raw);
 
   let ending: string;
   if (recorded !== undefined) {
@@ -93,8 +154,8 @@ function main(): void {
   }
 
   const githubOutput = process.env.GITHUB_OUTPUT;
-  if (githubOutput) appendFileSync(githubOutput, `ended_because=${ending}\n`);
-  console.error(`read_run_ending: ended_because=${ending}`);
+  if (githubOutput) appendFileSync(githubOutput, `ended_because=${ending}\nreported=${reported}\n`);
+  console.error(`read_run_ending: ended_because=${ending} reported=${reported}`);
 }
 
 if (import.meta.main) main();

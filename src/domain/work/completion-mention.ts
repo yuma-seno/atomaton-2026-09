@@ -64,9 +64,29 @@ export interface CompletionSignals {
  * `chain-over` carries a `next` and silences, which looks like an exception and is
  * not: the chain's own limit posts a comment naming that agent and mentioning the
  * same person. Silencing here is what keeps one event to one notification.
+ *
+ * ## The one ending that outranks the silencers
+ *
+ * `no-report` — a run that ended of its own accord having said nothing — is told
+ * about whatever else is true, and the only silencer it can actually meet is the
+ * closed sub-issue. (It cannot carry a `next`, and a `chainContinues` run is
+ * `handed-off` before it ever gets here.)
+ *
+ * Overriding that one is the point rather than an oversight. The sub-issue rule says
+ * the parent is what is waiting, not a person — and that holds because the parent's
+ * orchestrator is woken to aggregate what its children found. A child that wrote
+ * nothing hands it nothing to aggregate, and the one thing the parent cannot do is
+ * go and find out what happened: the work is in a saved session, where no agent
+ * looks. So the premise of the silence fails exactly here, and the notification is
+ * the only thing left that reaches somebody who can read the session.
+ *
+ * Measured: three of 396 sessions ended this way with the core recording
+ * `completed`, after 313, 173 and 110 tool calls. Each was, until now, a success
+ * nobody was told about.
  */
 export function shouldMentionOnCompletion(signals: CompletionSignals): boolean {
   if (!signals.notify) return false;
+  if (signals.ending.ended === "no-report") return true;
   if (signals.ending.next) return false;
   if (signals.chainContinues) return false;
   if (signals.isSubIssue && signals.issueClosed) return false;

@@ -145,11 +145,50 @@ describe("post_result_comment.ts buildCommentBody", () => {
     const body = buildCommentBody({
       agent: "engineer",
       notify: "octocat",
+      reported: true,
       runUrl: "http://example.com/run/1",
       output: "All done.",
       usageLines: [],
     });
     expect(body).toContain("task completed");
+  });
+
+  /**
+   * And a run that ended of its own accord without writing one does not get it. Three
+   * of 396 sessions ended this way with the core recording `completed`, after 313, 173
+   * and 110 tool calls -- and each was told "task completed. Please review the
+   * results", over a comment holding no results to review.
+   */
+  test("a run that ended without writing a report is not told it completed", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      reported: false,
+      runUrl: "http://example.com/run/1",
+      output: "",
+      usageLines: [],
+    });
+    expect(body).toContain("@octocat");
+    expect(body).toContain("ended without writing a report");
+    expect(body).not.toContain("task completed");
+  });
+
+  /**
+   * `atomaton:ended` answers one question -- was this node INTERRUPTED -- because
+   * `/resume` is its only reader and that is what it picks nodes by. A run that
+   * reported nothing was not interrupted: it ended believing itself done, so resuming
+   * it would restart an agent with nothing left to do. The person the mention fetches
+   * is what it needs instead.
+   */
+  test("a run that said nothing is not tagged as one to resume", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      reported: false,
+      runUrl: "http://example.com/run/1",
+      output: "",
+      usageLines: [],
+    });
+    expect(body).toContain("<!-- atomaton:ended=done -->");
   });
 
   test("omits the mention when a directive is present", () => {
@@ -183,6 +222,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
     const body = buildCommentBody({
       agent: "engineer",
       notify: "octocat",
+      reported: true,
       isSubIssue: true,
       issueClosed: true,
       runUrl: "http://example.com/run/1",
@@ -192,10 +232,30 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).not.toContain("@octocat");
   });
 
+  /**
+   * The same hand-back, by a child that wrote nothing. The parent is woken to
+   * aggregate what its children found and this one left it nothing to find, so the
+   * silence has nobody left to hand to.
+   */
+  test("keeps it when the closed sub-issue's run left nothing to hand back", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      notify: "octocat",
+      reported: false,
+      isSubIssue: true,
+      issueClosed: true,
+      runUrl: "http://example.com/run/1",
+      output: "",
+      usageLines: [],
+    });
+    expect(body).toContain("@octocat");
+  });
+
   test("keeps the mention when a sub-issue run ends with the sub-issue open", () => {
     const body = buildCommentBody({
       agent: "engineer",
       notify: "octocat",
+      reported: true,
       isSubIssue: true,
       issueClosed: false,
       runUrl: "http://example.com/run/1",
@@ -489,7 +549,7 @@ describe("post_result_comment.ts main", () => {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
         // prettier-ignore
-        ["--number", "5", "--type", "issue", "--agent", "engineer", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
+        ["--number", "5", "--type", "issue", "--agent", "engineer", "--notify", "octocat", "--reported", "true", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         {
           cwd: dir,
           env: { GITHUB_REPOSITORY: "owner/repo" },

@@ -37,6 +37,16 @@ export interface PostResultCommentArgs {
   "chain-continues"?: string;
   /** How the core says the run ended. See `read_run_ending.ts`. */
   "ended-because"?: string;
+  /**
+   * Whether the run left a report, read off the session by `read_run_ending.ts`.
+   *
+   * Not derived here from `--output` being empty, though that is right there. The
+   * output file is empty for every session-ending tool call as well — `create_pr`,
+   * `launch_sub_agent`, `request_close_issue` all stop atoma's loop before the model
+   * gets another turn — so reading it that way would call a hand-off silent. The
+   * session says which of the two happened; this carries that answer.
+   */
+  reported?: string;
   "messages-before"?: string | number;
   /** "true" when this run pushed a commit, opened a pull request, or merged one. */
   changed?: string;
@@ -219,10 +229,32 @@ export function lastAgentText(sessionPath: string | undefined, from?: number): s
  * `stopped` is the only value with a reader — `lastEnding` compares against it —
  * so the rest collapse to "not interrupted". Kept as its own function so the
  * projection is visible rather than inlined into a tag write.
+ *
+ * Written as an exhaustive switch rather than the two-line `if` it was, so that
+ * adding an ending is a type error here instead of a silent landing on `done`. That
+ * silence is what `no-report` cost: it reached this projection as "not stopped, not
+ * spent" and was filed with the runs that finished.
+ *
+ * `no-report` still answers `done`, and that is a decision rather than a fall-through.
+ * The tag says whether a node was INTERRUPTED, because `/resume` picks the nodes a
+ * person can pick up where something left off. A run that reported nothing was not
+ * interrupted — it ended believing itself finished — so resuming it would restart an
+ * agent with nothing left to do. What that run needs is a person, and the mention
+ * below is what fetches one.
  */
 function endedTag(ending: TurnEnding): string {
-  if (ending.ended === "stopped") return "stopped";
-  return ending.ended === "spent" ? "limit" : "done";
+  switch (ending.ended) {
+    case "stopped":
+      return "stopped";
+    case "spent":
+      return "limit";
+    case "failed":
+    case "chain-over":
+    case "handed-off":
+    case "no-report":
+    case "finished":
+      return "done";
+  }
 }
 
 /**
@@ -264,13 +296,52 @@ function howItWasCutShort(endedBecause: string | undefined): string {
   return endedBecause === "iterations" ? "ran out of iterations" : "ran out of time";
 }
 
-function endingHere(args: { directive?: string; chainContinues?: string; endedBecause?: string }): TurnEnding {
+/**
+ * The sentence that fetches a person, named by how the run actually ended.
+ *
+ * It used to say "task completed" whatever happened, which no one saw on a stopped
+ * run because a stopped run rarely got a mention at all -- and the moment it did, it
+ * was telling the person who had just stopped it that it had finished. "Review the
+ * results" is dropped for the same reason: a run cut short may have none.
+ *
+ * `no-report` is the third sentence, and it is here rather than sharing the ordinary
+ * one because the ordinary one is the false claim this change exists to stop making.
+ * A run that produced no closing text has no results to review; what it did is in a
+ * saved session, and the person is being told so they can go and look.
+ */
+function mentionLine(
+  ending: TurnEnding,
+  args: { agent: string; notify?: string; endedBecause?: string },
+): string {
+  if (cutShort(args.endedBecause)) {
+    return (
+      `@${args.notify} — **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` +
+      `before it finished, and no agent will run next. Resume it, or say what to do instead.`
+    );
+  }
+  if (ending.ended === "no-report") {
+    return (
+      `@${args.notify} — **${args.agent}** ended without writing a report. Nothing interrupted it ` +
+      `and nothing runs next; it simply left no closing text, so there is nothing here to review. ` +
+      `What it did is in its saved session.`
+    );
+  }
+  return `@${args.notify} — **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`;
+}
+
+function endingHere(args: {
+  directive?: string;
+  chainContinues?: string;
+  endedBecause?: string;
+  reported?: boolean;
+}): TurnEnding {
   return endingOf({
     succeeded: true,
     endedBecause: args.endedBecause ?? "",
     loopLimitReached: false,
     chainContinues: args.chainContinues === "true",
     directive: args.directive ?? "",
+    reported: args.reported === true,
   });
 }
 
@@ -280,6 +351,14 @@ export function buildCommentBody(args: {
   directive?: string;
   chainContinues?: string;
   endedBecause?: string;
+  /**
+   * Whether the run left a report — its last assistant message had words in it.
+   *
+   * Absent means it did not, which is the direction that speaks up: an unobserved run
+   * is treated as one that said nothing, and the cost of being wrong is one mention
+   * too many rather than a silent run filed as a success.
+   */
+  reported?: boolean;
   runUrl: string;
   /** `owner/name`, for linking to the metrics report. Absent when unknown. */
   repo?: string;
@@ -328,6 +407,10 @@ export function buildCommentBody(args: {
    */
   toolTrouble?: string;
 }): string {
+  // Once, and asked twice below. It was derived twice, which is one derivation more
+  // than there are facts.
+  const ending = endingHere(args);
+
   const lines = [
     AGENT_TAG.write(args.agent),
     CHANGED_TAG.write(args.changed === true ? "yes" : "no"),
@@ -335,11 +418,11 @@ export function buildCommentBody(args: {
     // needs to know which nodes under the one it was given were interrupted, and the
     // alternative -- "has a saved session" -- is true of every node that ever ran.
     //
-    // Three wire values rather than the domain's six, because this tag answers one
+    // Three wire values rather than the domain's seven, because this tag answers one
     // question and `/resume` is its only reader. A projection, taken from the ending
     // rather than re-derived from the signals beside it -- which is what it was, in
     // this same file, twelve lines from the other copy.
-    ENDED_TAG.write(endedTag(endingHere(args))),
+    ENDED_TAG.write(endedTag(ending)),
   ];
   if (args.salvaged === true) {
     lines.push(
@@ -368,25 +451,14 @@ export function buildCommentBody(args: {
 
   if (
     shouldMentionOnCompletion({
-      ending: endingHere(args),
+      ending,
       chainContinues: args.chainContinues === "true",
       notify: args.notify,
       isSubIssue: args.isSubIssue ?? false,
       issueClosed: args.issueClosed ?? false,
     })
   ) {
-    lines.push(
-      // Named by how the run actually ended. This sentence used to say "task
-      // completed" whatever happened, which no one saw on a stopped run because a
-      // stopped run rarely got a mention at all -- and the moment it did, it was
-      // telling the person who had just stopped it that it had finished. "Review the
-      // results" is dropped for the same reason: a run cut short may have none.
-      cutShort(args.endedBecause)
-        ? `@${args.notify} — **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` +
-          `before it finished, and no agent will run next. Resume it, or say what to do instead.`
-        : `@${args.notify} — **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`,
-      "",
-    );
+    lines.push(mentionLine(ending, args), "");
   }
 
   // The report, one click from the run that is reporting. It is written after this
@@ -438,6 +510,7 @@ function main(): void {
       directive: { type: "string" },
       "chain-continues": { type: "string" },
       "ended-because": { type: "string" },
+      reported: { type: "string" },
       "messages-before": { type: "string" },
       "run-url": { type: "string" },
       changed: { type: "string" },
@@ -556,6 +629,7 @@ function main(): void {
     directive: values.directive,
     chainContinues: values["chain-continues"],
     endedBecause: values["ended-because"],
+    reported: values.reported === "true",
     runUrl: values["run-url"],
     // From the environment rather than a flag: every caller is a workflow step, and
     // one more argument to thread through is one more place to forget it.
