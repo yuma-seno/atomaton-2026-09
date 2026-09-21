@@ -4388,6 +4388,37 @@
     "runs": []
   },
   {
+    "path": "sessions/issue-933/orchestrator.json",
+    "agent": "orchestrator",
+    "messages": 51,
+    "calls": 38,
+    "failed": 0,
+    "refused": 0,
+    "skills": [
+      "delivery/issue-decomposition",
+      "project/conventions"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "github__get_issue": 1,
+      "list": 9,
+      "read": 14,
+      "search__search_issues": 1,
+      "grep": 11
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-21T13:18:40Z",
+        "ended_because": "completed",
+        "iterations": 11,
+        "messages": 51,
+        "seconds": 227,
+        "started": "2026-09-21T13:14:53Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/pr-112-engineer.json",
     "agent": "engineer",
     "messages": 104,
