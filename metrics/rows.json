@@ -7,6 +7,7 @@
     "failed": 4,
     "refused": 7,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -36,6 +37,7 @@
     "failed": 28,
     "refused": 5,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_allowed_directories": 1,
@@ -65,6 +67,7 @@
     "failed": 10,
     "refused": 6,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 1,
@@ -92,6 +95,7 @@
     "failed": 18,
     "refused": 17,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 2,
       "github__get_issue": 3,
@@ -120,6 +124,7 @@
     "failed": 18,
     "refused": 7,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 13,
@@ -147,6 +152,7 @@
     "failed": 1,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -166,6 +172,7 @@
     "failed": 44,
     "refused": 8,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 3,
       "github__get_issue_comments": 4,
@@ -201,6 +208,7 @@
     "failed": 29,
     "refused": 4,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 4,
@@ -230,6 +238,7 @@
     "failed": 50,
     "refused": 10,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 5,
       "github__get_issue_comments": 1,
@@ -265,6 +274,7 @@
     "failed": 19,
     "refused": 2,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 3,
@@ -292,6 +302,7 @@
     "failed": 34,
     "refused": 6,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "shell__shell_execute": 18,
@@ -318,6 +329,7 @@
     "failed": 0,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__list_allowed_directories": 1,
       "github__get_issue": 9,
@@ -341,6 +353,7 @@
     "failed": 62,
     "refused": 5,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "shell__shell_execute": 40,
@@ -371,6 +384,7 @@
     "failed": 4,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "filesystem__read_text_file": 4,
@@ -393,6 +407,7 @@
     "failed": 10,
     "refused": 5,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__search_files": 4,
       "filesystem__list_directory": 1,
@@ -418,6 +433,7 @@
     "failed": 5,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__search_files": 1,
@@ -443,6 +459,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__create_issue": 4,
       "atoma__launch_sub_agent": 3,
@@ -459,6 +476,7 @@
     "failed": 5,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 1,
@@ -483,6 +501,7 @@
     "failed": 12,
     "refused": 3,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_allowed_directories": 1,
@@ -511,6 +530,7 @@
     "failed": 25,
     "refused": 3,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 1,
@@ -541,6 +561,7 @@
     "failed": 5,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "filesystem__search_files": 2,
@@ -565,6 +586,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 8,
       "filesystem_readonly__directory_tree": 1,
@@ -584,6 +606,7 @@
     "failed": 4,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_allowed_directories": 1,
@@ -610,6 +633,7 @@
     "failed": 72,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__search_files": 2,
@@ -645,6 +669,7 @@
     "failed": 25,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "github__get_issue": 1,
@@ -675,6 +700,7 @@
     "failed": 5,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 1,
@@ -699,6 +725,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 4,
       "github__create_issue": 1,
@@ -717,6 +744,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "github__get_issue": 1,
@@ -742,6 +770,7 @@
     "failed": 0,
     "refused": 7,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 3,
       "filesystem_readonly__directory_tree": 1,
@@ -766,6 +795,7 @@
     "failed": 20,
     "refused": 6,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__directory_tree": 1,
       "filesystem_readonly__list_allowed_directories": 1,
@@ -792,6 +822,7 @@
     "failed": 33,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__read_text_file": 7,
       "filesystem__edit_file": 3,
@@ -817,6 +848,7 @@
     "failed": 270,
     "refused": 10,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__search_files": 4,
@@ -851,6 +883,7 @@
     "failed": 46,
     "refused": 9,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_allowed_directories": 1,
       "filesystem__directory_tree": 1,
@@ -879,6 +912,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__directory_tree": 1,
       "github__get_issue": 1,
@@ -895,6 +929,7 @@
     "failed": 0,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__read_text_file": 1,
       "filesystem__edit_file": 1,
@@ -914,6 +949,7 @@
     "failed": 14,
     "refused": 18,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 4,
       "filesystem_readonly__directory_tree": 1,
@@ -941,6 +977,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -959,6 +996,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -977,6 +1015,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem_readonly__list_directory": 23,
@@ -995,6 +1034,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -1014,6 +1054,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {},
     "acts": {},
     "runs": []
@@ -1026,6 +1067,7 @@
     "failed": 5,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1045,6 +1087,7 @@
     "failed": 5,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1064,6 +1107,7 @@
     "failed": 5,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 3,
@@ -1083,6 +1127,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 6,
@@ -1110,6 +1155,7 @@
     "failed": 3,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1133,6 +1179,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1158,6 +1205,7 @@
     "failed": 8,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 3,
       "github__get_issue": 1,
@@ -1187,6 +1235,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1209,6 +1258,7 @@
     "failed": 6,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1237,6 +1287,7 @@
     "failed": 4,
     "refused": 9,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1266,6 +1317,7 @@
     "failed": 2,
     "refused": 3,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem__list_allowed_directories": 1,
@@ -1290,6 +1342,7 @@
     "failed": 1,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1317,6 +1370,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {},
     "acts": {},
     "runs": []
@@ -1329,6 +1383,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -1351,6 +1406,7 @@
     "failed": 3,
     "refused": 4,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -1376,6 +1432,7 @@
     "failed": 7,
     "refused": 17,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 11,
@@ -1409,6 +1466,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__submit_pr_review": 1,
       "github__merge_pr": 2,
@@ -1425,6 +1483,7 @@
     "failed": 15,
     "refused": 5,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__search_files": 2,
@@ -1453,6 +1512,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1476,6 +1536,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {},
     "acts": {},
     "runs": []
@@ -1488,6 +1549,7 @@
     "failed": 1,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 4,
@@ -1514,6 +1576,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 2,
       "github__submit_pr_review": 1,
@@ -1530,6 +1593,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1556,6 +1620,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1572,6 +1637,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1596,6 +1662,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1612,6 +1679,7 @@
     "failed": 2,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1640,6 +1708,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1656,6 +1725,7 @@
     "failed": 5,
     "refused": 4,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__read_text_file": 10,
@@ -1682,6 +1752,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 3,
       "github__list_issues": 1,
@@ -1707,6 +1778,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1723,6 +1795,7 @@
     "failed": 1,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -1751,6 +1824,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1767,6 +1841,7 @@
     "failed": 2,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 2,
@@ -1795,6 +1870,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -1811,6 +1887,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {},
     "acts": {},
     "runs": []
@@ -1823,6 +1900,7 @@
     "failed": 28,
     "refused": 11,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__search_files": 1,
@@ -1854,6 +1932,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 16,
       "github__get_issue": 5,
@@ -1871,6 +1950,7 @@
     "failed": 13,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__list_directory": 2,
       "shell__shell_execute": 9,
@@ -1893,6 +1973,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {},
     "acts": {},
     "runs": []
@@ -1905,6 +1986,7 @@
     "failed": 2,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_directory": 1,
@@ -1928,6 +2010,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 1,
       "github__get_issue": 1
@@ -1948,6 +2031,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_pr": 1,
@@ -1965,6 +2049,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 1,
       "github__get_issue": 1
@@ -1982,6 +2067,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "filesystem__write_file": 1,
@@ -2005,6 +2091,7 @@
     "failed": 22,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__read_text_file": 4,
       "filesystem__list_directory": 1,
@@ -2033,6 +2120,7 @@
     "failed": 2,
     "refused": 25,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__list_directory": 8,
@@ -2057,6 +2145,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "github__get_issue": 1,
@@ -2078,6 +2167,7 @@
     "failed": 18,
     "refused": 5,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_allowed_directories": 1,
@@ -2106,6 +2196,7 @@
     "failed": 3,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "atoma_builtin__load_skill": 2,
@@ -2129,6 +2220,7 @@
     "failed": 3,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 2,
       "github__list_issues": 1,
@@ -2146,6 +2238,7 @@
     "failed": 3,
     "refused": 3,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "shell__shell_execute": 12
@@ -2164,6 +2257,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "shell__shell_execute": 16
@@ -2184,6 +2278,7 @@
     "failed": 5,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "shell__shell_execute": 33
@@ -2204,6 +2299,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 18
     },
@@ -2221,6 +2317,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -2242,6 +2339,7 @@
     "failed": 7,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 4,
@@ -2267,6 +2365,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 3,
       "filesystem__read_file": 4
@@ -2285,6 +2384,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "github__get_issue_comments": 1,
@@ -2303,6 +2403,7 @@
     "failed": 3,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -2328,6 +2429,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 2,
       "shell__shell_execute": 2
@@ -2345,6 +2447,7 @@
     "failed": 10,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 1,
@@ -2367,6 +2470,7 @@
     "failed": 4,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__read_text_file": 2,
       "filesystem__edit_file": 1,
@@ -2389,6 +2493,7 @@
     "failed": 19,
     "refused": 9,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "search_files": 2,
@@ -2422,6 +2527,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 5,
       "search__search_issues": 1
@@ -2440,6 +2546,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__list_directory": 24,
@@ -2457,6 +2564,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "shell__shell_execute": 9,
@@ -2477,6 +2585,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 5,
       "github__get_issue": 4,
@@ -2497,6 +2606,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_code": 13,
       "shell__shell_execute": 15
@@ -2516,6 +2626,7 @@
     "failed": 5,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_code": 18,
       "filesystem__read_text_file": 14,
@@ -2543,6 +2654,7 @@
     "failed": 10,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__list_directory": 6,
       "github__get_issue": 1,
@@ -2572,6 +2684,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_code": 8,
       "filesystem__list_directory": 2,
@@ -2593,6 +2706,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__list_directory": 1,
       "github__get_issue": 1,
@@ -2613,6 +2727,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1
     },
@@ -2627,6 +2742,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem__write_file": 1,
       "filesystem__list_allowed_directories": 1,
@@ -2649,6 +2765,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1
@@ -2664,6 +2781,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 1,
       "atoma_builtin__load_skill": 1,
@@ -2680,6 +2798,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 1
     },
@@ -2702,6 +2821,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__list_directory": 1
@@ -2717,6 +2837,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 1
     },
@@ -2741,6 +2862,7 @@
     "skills": [
       "engineering/tdd"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 3
     },
@@ -2763,6 +2885,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__write_file": 1,
@@ -2779,6 +2902,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "search__search_issues": 1
     },
@@ -2801,6 +2925,7 @@
     "failed": 1,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "shell__shell_execute": 3,
       "github__commit_and_push": 1,
@@ -2827,6 +2952,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -2865,6 +2991,7 @@
     "failed": 1,
     "refused": 18,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 2,
       "atoma_builtin__load_skill": 2,
@@ -2917,6 +3044,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -2942,6 +3070,7 @@
     "failed": 1,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -2960,6 +3089,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -2976,6 +3106,7 @@
     "failed": 12,
     "refused": 4,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__directory_tree": 1,
       "filesystem__list_allowed_directories": 1,
@@ -3004,6 +3135,7 @@
     "failed": 6,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 5,
       "github__get_issue": 5,
@@ -3086,6 +3218,7 @@
     "failed": 3,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__directory_tree": 1,
       "github__get_issue": 1,
@@ -3109,6 +3242,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -3126,6 +3260,7 @@
     "failed": 2,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 9,
@@ -3176,6 +3311,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3201,6 +3337,7 @@
     "failed": 6,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -3226,6 +3363,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__list_directory": 2,
@@ -3265,6 +3403,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3290,6 +3429,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "filesystem__read_text_file": 3,
@@ -3321,6 +3461,7 @@
     "failed": 3,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__list_directory": 2,
@@ -3363,6 +3504,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "glob": 4,
@@ -3399,6 +3541,7 @@
     "failed": 1,
     "refused": 1,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 3,
       "shell__shell_execute": 73,
@@ -3448,6 +3591,7 @@
     "failed": 5,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 3,
@@ -3480,6 +3624,7 @@
     "failed": 7,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -3515,6 +3660,7 @@
     "failed": 0,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "filesystem__read_text_file": 1,
@@ -3552,6 +3698,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -3593,6 +3740,7 @@
     "failed": 8,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 4,
       "search__search_code": 2,
@@ -3655,6 +3803,7 @@
     "failed": 7,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 4,
@@ -3706,6 +3855,7 @@
     "failed": 4,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 4,
@@ -3754,6 +3904,7 @@
     "failed": 3,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3791,6 +3942,7 @@
     "failed": 8,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 2,
@@ -3843,6 +3995,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3877,6 +4030,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 3,
       "read": 39,
@@ -3925,6 +4079,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -3961,6 +4116,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_issue": 16,
@@ -4026,6 +4182,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 2,
       "github__get_issue_comments": 1,
@@ -4061,6 +4218,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "read": 23,
       "grep": 7,
@@ -4107,6 +4265,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue_comments": 2
     },
@@ -4130,6 +4289,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue_comments": 1
     },
@@ -4153,6 +4313,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {
       "github__get_issue": 5,
       "atoma_builtin__load_skill": 2,
@@ -4196,6 +4357,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": false,
     "tools": {},
     "acts": {},
     "runs": []
@@ -4208,6 +4370,7 @@
     "failed": 0,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "shell__shell_execute": 22,
@@ -4246,6 +4409,7 @@
     "failed": 1,
     "refused": 3,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__directory_tree": 1,
       "github__get_issue": 1,
@@ -4266,6 +4430,7 @@
     "failed": 5,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "filesystem_readonly__directory_tree": 1,
       "filesystem_readonly__list_allowed_directories": 1,
@@ -4293,6 +4458,7 @@
       "project/conventions",
       "delivery/implementation-handoff"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -4346,6 +4512,7 @@
     "skills": [
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -4375,6 +4542,7 @@
     "failed": 1,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_issue": 1,
       "filesystem_readonly__directory_tree": 1,
@@ -4398,6 +4566,7 @@
       "project/conventions",
       "delivery/implementation-handoff"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "list": 13,
@@ -4443,6 +4612,7 @@
       "delivery/issue-decomposition",
       "project/conventions"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 1,
@@ -4464,6 +4634,35 @@
     ]
   },
   {
+    "path": "sessions/issue-964/engineer.json",
+    "agent": "engineer",
+    "messages": 9,
+    "calls": 4,
+    "failed": 0,
+    "refused": 0,
+    "skills": [],
+    "reported": true,
+    "tools": {
+      "read": 1,
+      "list": 1,
+      "shell__shell_execute": 1,
+      "glob": 1
+    },
+    "acts": {
+      "other": 1
+    },
+    "runs": [
+      {
+        "ended": "2026-09-21T23:46:54Z",
+        "ended_because": "completed",
+        "iterations": 3,
+        "messages": 9,
+        "seconds": 23,
+        "started": "2026-09-21T23:46:31Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/pr-112-engineer.json",
     "agent": "engineer",
     "messages": 104,
@@ -4471,6 +4670,7 @@
     "failed": 27,
     "refused": 1,
     "skills": [],
+    "reported": false,
     "tools": {
       "filesystem__read_text_file": 3,
       "filesystem__get_file_info": 2,
@@ -4498,6 +4698,7 @@
     "failed": 0,
     "refused": 5,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr": 1,
       "github__get_pr_diff": 1,
@@ -4519,6 +4720,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4536,6 +4738,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4553,6 +4756,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4570,6 +4774,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4587,6 +4792,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4604,6 +4810,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4621,6 +4828,7 @@
     "failed": 0,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4640,6 +4848,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4657,6 +4866,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4674,6 +4884,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4691,6 +4902,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4708,6 +4920,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4725,6 +4938,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4742,6 +4956,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 2,
       "github__get_pr_diff": 2,
@@ -4759,6 +4974,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__get_pr_reviews": 1,
       "github__get_pr_diff": 1,
@@ -4776,6 +4992,7 @@
     "failed": 2,
     "refused": 2,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__get_issue": 5,
@@ -4806,6 +5023,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4823,6 +5041,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4842,6 +5061,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4860,6 +5080,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -4877,6 +5098,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr": 1,
@@ -4895,6 +5117,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -4910,6 +5133,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -4925,6 +5149,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -4939,6 +5164,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -4953,6 +5179,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -4967,6 +5194,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -4981,6 +5209,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -4995,6 +5224,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5009,6 +5239,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__get_pr_reviews": 1,
@@ -5026,6 +5257,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5041,6 +5273,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5055,6 +5288,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5069,6 +5303,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5084,6 +5319,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5098,6 +5334,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -5114,6 +5351,7 @@
     "failed": 26,
     "refused": 10,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 3,
       "github__get_issue": 3,
@@ -5149,6 +5387,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5163,6 +5402,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__get_pr": 1,
@@ -5179,6 +5419,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5193,6 +5434,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5207,6 +5449,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5222,6 +5465,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5237,6 +5481,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5252,6 +5497,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5266,6 +5512,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5280,6 +5527,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5294,6 +5542,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5308,6 +5557,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5324,6 +5574,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5338,6 +5589,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5352,6 +5604,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5368,6 +5621,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5383,6 +5637,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5397,6 +5652,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5412,6 +5668,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5427,6 +5684,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5441,6 +5699,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5456,6 +5715,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5471,6 +5731,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5486,6 +5747,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -5502,6 +5764,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5516,6 +5779,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5530,6 +5794,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -5545,6 +5810,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5559,6 +5825,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5573,6 +5840,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5588,6 +5856,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5602,6 +5871,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5617,6 +5887,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5631,6 +5902,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -5646,6 +5918,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__get_check_runs": 27,
@@ -5662,6 +5935,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5676,6 +5950,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5690,6 +5965,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5704,6 +5980,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -5719,6 +5996,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5733,6 +6011,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -5748,6 +6027,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5762,6 +6042,7 @@
     "failed": 19,
     "refused": 7,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_pr": 4,
@@ -5789,6 +6070,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5803,6 +6085,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1,
@@ -5819,6 +6102,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5833,6 +6117,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5847,6 +6132,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5861,6 +6147,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5875,6 +6162,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5889,6 +6177,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5903,6 +6192,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5917,6 +6207,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -5934,6 +6225,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -5949,6 +6241,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -5968,6 +6261,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -5983,6 +6277,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -5999,6 +6294,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6013,6 +6309,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6027,6 +6324,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6041,6 +6339,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6055,6 +6354,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6073,6 +6373,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "atoma_builtin__load_skill": 2,
@@ -6090,6 +6391,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6106,6 +6408,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6122,6 +6425,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6137,6 +6441,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6151,6 +6456,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6165,6 +6471,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6179,6 +6486,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6193,6 +6501,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6208,6 +6517,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6223,6 +6533,7 @@
     "failed": 2,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "atoma_builtin__load_skill": 2,
@@ -6242,6 +6553,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6258,6 +6570,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6272,6 +6585,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6286,6 +6600,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6300,6 +6615,7 @@
     "failed": 4,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__get_pr": 2,
@@ -6316,6 +6632,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6330,6 +6647,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6347,6 +6665,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6362,6 +6681,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6378,6 +6698,7 @@
     "failed": 8,
     "refused": 5,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_pr": 3,
@@ -6408,6 +6729,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6423,6 +6745,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6437,6 +6760,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6451,6 +6775,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6465,6 +6790,7 @@
     "failed": 11,
     "refused": 4,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 6,
       "github__get_issue": 1,
@@ -6494,6 +6820,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6508,6 +6835,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6525,6 +6853,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6542,6 +6871,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6556,6 +6886,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6573,6 +6904,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6589,6 +6921,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6603,6 +6936,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6617,6 +6951,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6633,6 +6968,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6650,6 +6986,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6668,6 +7005,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6686,6 +7024,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6702,6 +7041,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6716,6 +7056,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6731,6 +7072,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6748,6 +7090,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6765,6 +7108,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6780,6 +7124,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6794,6 +7139,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6808,6 +7154,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2
@@ -6823,6 +7170,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6837,6 +7185,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6851,6 +7200,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6865,6 +7215,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6881,6 +7232,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6898,6 +7250,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -6917,6 +7270,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6935,6 +7289,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6950,6 +7305,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -6964,6 +7320,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 2,
@@ -6983,6 +7340,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -6998,6 +7356,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7012,6 +7371,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7029,6 +7389,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7044,6 +7405,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7061,6 +7423,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7079,6 +7442,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1,
@@ -7096,6 +7460,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7110,6 +7475,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7127,6 +7493,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7142,6 +7509,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7156,6 +7524,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7170,6 +7539,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7187,6 +7557,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7202,6 +7573,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7216,6 +7588,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7230,6 +7603,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7247,6 +7621,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7265,6 +7640,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7283,6 +7659,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7298,6 +7675,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7315,6 +7693,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7333,6 +7712,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7348,6 +7728,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7362,6 +7743,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7379,6 +7761,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7397,6 +7780,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7415,6 +7799,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7433,6 +7818,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7451,6 +7837,7 @@
       "review/quick-quality-gate",
       "review/quick-quality-gate"
     ],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 2,
       "github__check_merge_readiness": 1
@@ -7466,6 +7853,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7480,6 +7868,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7494,6 +7883,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -7509,6 +7899,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7525,6 +7916,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7540,6 +7932,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7555,6 +7948,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7569,6 +7963,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7583,6 +7978,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7597,6 +7993,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -7612,6 +8009,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -7627,6 +8025,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7641,6 +8040,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7655,6 +8055,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7669,6 +8070,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7684,6 +8086,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7698,6 +8101,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7712,6 +8116,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7727,6 +8132,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7743,6 +8149,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7757,6 +8164,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7771,6 +8179,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7785,6 +8194,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7800,6 +8210,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7814,6 +8225,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7828,6 +8240,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7842,6 +8255,7 @@
     "failed": 1,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7862,6 +8276,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7876,6 +8291,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7890,6 +8306,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7906,6 +8323,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7920,6 +8338,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
@@ -7934,6 +8353,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -7954,6 +8374,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -7969,6 +8390,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1,
       "github__submit_pr_review": 1
@@ -7984,6 +8406,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1
@@ -7999,6 +8422,7 @@
     "failed": 9,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "atoma_builtin__load_skill": 1,
       "github__check_merge_readiness": 1,
@@ -8019,6 +8443,7 @@
     "failed": 0,
     "refused": 0,
     "skills": [],
+    "reported": true,
     "tools": {
       "github__check_merge_readiness": 1
     },
