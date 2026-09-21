@@ -1,14 +1,12 @@
 # Writing a tool
 
-This page is for somebody writing or changing an MCP server — one for this
-template, or one for a repository of your own.
+This page is for somebody writing an MCP server of their own — a file in your
+repository, named under `tools.servers`, started by the same run as the servers
+Atomaton ships.
 
-Where a path below begins `src/` or `tests/`, it belongs to this template's own
-source tree. An adopted repository does not receive those directories. It receives
-`.github/atomaton/**`, which is its own, and `.github/atomaton-runtime/**`, which is
-Atomaton's — and the servers under `.github/atomaton-runtime/tools/mcp/` are bundles,
-with the helpers named here already inside them. What differs is the import, not
-the behaviour, and each place that matters says so.
+Those shipped servers arrive under `.github/atomaton-runtime/tools/mcp/` as bundles,
+with every helper named below already compiled into them. Nothing here is a module
+you import: it is a set of rules your own server has to keep for itself.
 
 ## Adding a tool without flooding the context
 
@@ -21,17 +19,17 @@ rest of that issue's life. And when the session outgrows the model's context
 window, the run fails with a provider error that has nothing to do with the tool
 that caused it.
 
-This is measured, in this repository. The largest single tool result in its stored
-sessions was about **206k tokens** — more than a 200k context window, from one
-call. One session reached ~672k tokens, of which the actual conversation was 9k;
-the other 663k was tool output.
+This is measured. Across the sessions recorded while Atomaton itself was built, the
+largest single tool result was about **206k tokens** — more than a 200k context
+window, from one call. One session reached ~672k tokens, of which the actual
+conversation was 9k; the other 663k was tool output.
 
 Five rules, in the order they pay off.
 
 **1. Never return an API response whole. Project it.**
 
 This is worth more than any cap, because a projection loses nothing. Measured on
-this repository's own tools, before they were fixed:
+Atomaton's own tools, before they were fixed:
 
 | tool | raw | projected | |
 | --- | --- | --- | --- |
@@ -81,10 +79,9 @@ Atomaton's own tools share one budget, `TOOL_OUTPUT_BUDGET`: 50,000 characters, 
 four numbers in three units before — 1,000,000 **bytes** in the shell, 60,000
 characters in `web_fetch`, 50,000 in two GitHub tools, and nothing anywhere else.
 
-That constant is this template's own, in `src/shared/tool-output.ts`. An adopted
-repository has no copy of the file to read or edit; it receives the servers with
-the cap already compiled into them. For a server of your own, the number is one to
-copy, not one to look up.
+That number is compiled into the servers you receive. There is no file in your tree
+holding it and nothing to override, so for a server of your own it is a number to
+copy rather than one to look up.
 
 **What is not covered.** A server's `hooks` can allow or deny a tool but not touch
 its output, so a third-party server's cap is whatever that server decided. This

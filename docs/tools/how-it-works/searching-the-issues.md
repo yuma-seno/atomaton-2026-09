@@ -1,4 +1,4 @@
-# Searching this repository's issues
+# Searching your repository's issues
 
 `search__search_issues` answers a question from the issues and their discussion,
 and returns which passage answered it — `matched_in: "comment 3"` — so the caller

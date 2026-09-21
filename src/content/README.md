@@ -1,21 +1,33 @@
 # `.github/atomaton/`
 
 **This directory is yours.** It holds what a project says about itself — what to
-verify, which agents exist, what they are told — and the path of each thing in it
-is how you know what it is.
+verify, which agents exist, what they are told.
+
+Three things first.
+
+**Edit `config.yaml`.** It is the one file here you are expected to change, and
+almost everything you will want is a setting in it —
+[what `config.yaml` accepts](https://github.com/yuma-seno/atomaton/blob/main/docs/config/reference.md).
+
+**A change takes effect on the next run.** There is nothing to build, install or
+restart: once it is merged, the next agent to start is already working under the
+new file.
+
+**`.github/atomaton-runtime/` and `.github/workflows/` are not yours to edit.**
+They are generated, and an upgrade replaces them wholesale and takes the edit with
+it — [what is not here](#what-is-not-here). What you were trying to change is
+almost always a setting in `config.yaml`.
+
+Then the paths, because the path of each thing here is how you know what it is.
 
 | Path | What it holds |
 | --- | --- |
-| `config.yaml` | Every setting this project declares. The only file here you are expected to edit — see [docs/config/reference.md](https://github.com/yuma-seno/atomaton/blob/main/docs/config/reference.md). |
+| `config.yaml` | Every setting this project declares. |
 | `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |
 | `prompt-template.md` | The system prompt each role prompt is placed into. |
 | `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |
 | `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |
 | `scripts/` | Yours to create: the commands `config.yaml` names under `checks` and `deploy`. Nothing ships here, and nothing replaces it on upgrade. |
-
-Atomaton's own repository keeps its release scripts at exactly that path, so
-`./.github/atomaton/scripts/tag-release.sh` in its `deploy` is a line you can
-copy rather than translate.
 
 A command may of course live anywhere in your repository — `config.yaml` names a
 path and does not care which. This is where to put one when you have no reason to
@@ -37,9 +49,7 @@ Atomaton runs, replaced wholesale on upgrade.
 
 `.github/workflows/` is where GitHub requires workflows to be, and is generated
 too. So the rule has no exceptions: `.github/atomaton/` is the project's, and
-everything else under `.github/` is the deliverable's. Editing the runtime works
-until the next upgrade, which replaces it and takes the edit with it — and what you
-were trying to change is almost always a setting in `config.yaml`.
+everything else under `.github/` is the deliverable's.
 
 The split is not tidiness. Deleting something in the runtime breaks a run outright:
 the server does not start, and `atoma` stops before the first tool call. Editing
@@ -134,8 +144,8 @@ decision. It is not.
 
 The core has no project of its own — it is handed a layout and works in whatever
 it is given. **This deliverable is the layout.** The core's configurability is the
-seam through which this repository exercises ownership, and the constants in
-`src/domain/machinery/machinery-layout.ts` are what it passes through that seam.
+seam Atomaton passes these paths through, which is why they are settled here and
+not again in your config.
 
 So: settings describe policy — what to check, what may merge, what a tool may
 reach. Paths describe structure, and structure is what a name is for.

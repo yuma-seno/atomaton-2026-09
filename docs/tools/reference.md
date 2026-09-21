@@ -13,7 +13,7 @@ already starts with.
 | `shell` | Runs one foreground command. Guarded, and holds no credentials of its own. | none |
 | `github` | Issues, pull requests, comments, and every Git mutation. | the run's GitHub token |
 | `web` | Fetches a URL, and returns what it fetched. Searching the web is a skill rather than a tool — see [change or remove web fetching and search](tasks/change-or-remove-web-fetching-and-search.md). | none |
-| `search` | Ranked search over this repository's issues and code. | the run's GitHub token |
+| `search` | Ranked search over your repository's issues and code. | the run's GitHub token |
 | `atomaton` | Atomaton's own operations: sub-issues, handoffs, stopping a run. | the run's GitHub token |
 | `atomaton_env` | Rebuilding the run's environment, and nothing else. | the run's GitHub token |
 
@@ -26,7 +26,7 @@ second entry for a server above with tools withheld — an allowlist, and
 [a pattern with a reason](overview.md#one-server-two-entries).
 
 What each server's tools do in a run is in
-[searching this repository's issues](how-it-works/searching-the-issues.md) and
+[searching your repository's issues](how-it-works/searching-the-issues.md) and
 [reading the web](how-it-works/reading-the-web.md).
 
 `files` gives `read` an `offset` and a `limit` in lines, and a result that
