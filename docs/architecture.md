@@ -159,6 +159,15 @@ nothing goes in it that does not belong in `.github/` — and an overlay file is
 copy rather than a build, so both halves change in the same pull request.
 `self-overlay.test.ts` holds them to each other in both directions.
 
+**An upgrade replaces the machinery, and that is the intent.** A project may edit
+anything under `.github/atomaton-runtime/`; the next upgrade puts the shipped
+version back. This is a template, not a library — the whole tree is theirs to
+change, and an upgrade that reverted nothing would be an upgrade that shipped
+nothing. The upgrade arrives as a commit, so a reverted edit is in that diff and
+in git history: it can be read, and it can be put back. `docs/recipes.md` treats
+uptake as vendoring for this reason, and #435 holds what is left of making that
+easy.
+
 This repository's own release scripts live at `self/atomaton/scripts/`, which is
 `.github/atomaton/scripts/` once deployed. Nothing ships there: the directory is
 the adopter's to create, and this repository keeping its own in it is what makes
@@ -176,15 +185,30 @@ split out of.
 Each entry is a place where the model and the code disagree and the fix needs a
 decision rather than an edit. Add to this list rather than forcing a shape.
 
-### The ledger's unit is the run, not the node
+### Nothing asks a node how long it took
 
-The only persisted history type is `RunRecord`, so *how long did this run take*
-is answerable and *how long did #42 take* is not. A turn has a name now; nothing
-keeps a list of them per node.
+This entry said the ledger's unit was the run and that *how long did #42 take*
+was unanswerable. Measured, it is answerable today:
 
-This is the larger half of the same question, and it reaches the session store,
-the workspace branch and the metrics window. Not a refactor — a decision about
-where the authority for a node's history lives.
+```text
+sessions/issue-909/engineer.json   2 runs, 772s   completed, completed
+sessions/issue-909/reviewer.json   1 run,   36s   completed
+```
+
+The core appends a record per run — `started`, `ended`, `seconds`,
+`ended_because`, `iterations` — into the session; sessions are filed under a
+directory per node; and pruning removes `workspace/` only, never a session. So
+the per-node history exists, is grouped by node, and is permanent.
+
+What is missing is a reader. `write_metrics_report.ts` walks every session and
+reports per window and per agent, never per node. That is a report somebody can
+add when they want the number, not a decision about where the authority lives —
+and a `NodeHistory` type with no consumer would be the generalisation this
+repository keeps removing.
+
+Left here because the question "how long did that piece of work take" is one a
+person will eventually ask, and the answer being one `group by` away is worth
+saying out loud.
 
 ### The check-run shape is still GitHub's, in a domain that does not build one
 
@@ -204,9 +228,3 @@ two notes, and a person reading a session cannot tell which one cut it.
 Not something this repository can close on its own: the core is handed a layout,
 not a policy, and giving it one is a change to what `atoma` takes as an argument.
 
-### Local changes under `.github/atomaton-runtime/` vanish silently
-
-`build-dist.ts` removes the tree and rebuilds it, and the release manifest
-records the version and the shipped paths but no content hash. An adopter who
-edits the machinery loses the edit at the next update with nothing reporting it.
-`docs/edd.md` asks that drift be visible.
