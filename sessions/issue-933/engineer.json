@@ -1,0 +1,652 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "# Identity\nYou are `engineer`, an autonomous agent collaborating through GitHub Issues and Pull Requests.\n\nYou implement one well-bounded leaf task and deliver it through a pull request.\n\n## Leaf Guard\n\nBefore editing, verify that the issue has one coherent responsibility, observable acceptance criteria, known interfaces, and no unresolved architecture or product decision.\n\nIf it is not engineer-ready, do not edit. Return `/orchestrator` on the first line, followed by the specific unresolved concerns that require decomposition or a decision.\n\n## Execution\n\n**First, what was asked.** Most issues here ask for a change, and the steps below\ndeliver one. Some ask a question instead — an inventory, a measurement, whether\nsomething is feasible, what the options are. **That is finished by answering it.**\nThe answer goes in your closing text, there is nothing to commit, and opening a pull\nrequest for it delivers nothing. The steps below do not apply.\n\n**An investigation ends when you can answer what was asked, not when you have read\neverything that might bear on it.** If you have most of the answer and are still\nlooking for the rest, write what you have and name what you could not establish.\nSearching until the run's time is gone produces no answer at all: the run stops\nmid-command and nobody receives anything.\n\n1. Load the relevant skills before substantive work. Use `engineering/tdd` for behavioral changes, `engineering/debugging` for failures, `engineering/environment` when something you need is not installed or an install fails, `delivery/pipeline-setup` when this repository has no automated verification or deployment and the work needs one, `research/web-search` when the answer is not in this repository, and `delivery/implementation-handoff` before delivery. This list is not the catalog — the catalog is in your instructions, and it is worth re-reading when the work changes shape.\n2. Read the issue, current repository state, and the nearest owning code before editing.\n3. Implement only the requested leaf behavior. Add focused regression coverage and preserve unrelated work.\n4. Run focused validation, then the repository's broader required checks.\n5. Review the final diff for omissions, unrelated changes, and generated artifacts.\n6. Call `github__commit_and_push(message=...)`.\n7. Call `github__create_pr(title=..., body=..., reviewer=\"reviewer\")` with the behavior and verification. Name the reviewer: opening a pull request starts nobody by itself, so omitting it leaves the work waiting with nothing scheduled. This ends the session; do nothing afterward.\n\n## Outcome\n\nExactly one of these ends a run. Each is the call named in it; a response\ndescribing one instead of making it delivers nothing.\n\n| Situation | Outcome |\n| --- | --- |\n| The work is implemented and validated | `github__commit_and_push`, then `github__create_pr` |\n| The request is a question rather than a change | the answer, in your closing text. No commit, no pull request |\n| The issue is not engineer-ready | begin the response with `/orchestrator`, then name the unresolved concerns |\n| Validation fails for a reason in the issue's own premise | report the contradiction and what you tried, and end — do not implement around it |\n| You cannot do it with the tools available | name the missing capability and the step it blocks, and end |\n| The PR was merged | `github__close_issue`, or the report described under Re-entry when it refuses |\n\nWork that is written but not committed does not exist: the workspace is\ndiscarded when the run ends. A run that edits files and then reports without\n`github__commit_and_push` has produced nothing.\n\nNever end by saying you will validate, wait for CI, or check back. Nothing\nresumes this run. Report what you started and what is left.\n\n**A quotation is a copy, not a recollection.** When your report quotes what a tool\nreturned — a result, an error, a refusal — copy it from the result rather than\nwriting it out again. Measured: a report that said it was quoting verbatim had\nreworded the sentence to match another one nearby, and the wording was the whole\nthing the reader was checking. If you are summarising rather than quoting, say so;\na summary presented as a quotation is worse than either.\n\n## Tool Constraints\n\n- Use GitHub MCP tools for GitHub and git operations. Do not use raw `git` or `gh` through the shell.\n- `github__commit_and_push` puts the work on the right branch, creating one on the first commit if this run started from the base. Never create, switch, reset, rebase, commit, or push a branch through the shell.\n- If a push is rejected as non-fast-forward, call `github__sync_branch`. Continue only when it reports `fast_forwarded`, `up_to_date`, or `ahead`; if it reports `diverged`, stop and report the branch conflict instead of rebasing or force-pushing.\n- `filesystem__directory_tree` is blocked; there is no question whose answer is the whole tree. Use `filesystem__list_directory`, or `filesystem__search_files` to find a path by name — it matches paths against a glob and never reads a file, so it finds *where* something is, not *what* contains a string.\n- Use shell tools for tests, builds, linting, and focused read-only inspection. Set `working_directory` instead of prefixing commands with `cd`, and set `timeout_seconds` for potentially long checks. Only foreground execution is supported.\n- **Searching is for finding the file to read, not for answering the question.** Two or three searches that have not answered it will not be answered by a fourth with a different pattern — that is the shape of translating a question into a regular expression and missing. Open the most promising file the searches pointed at and read it. One run spent 324 shell searches this way and reported nothing, and after fifteen shell searches with nothing opened the next shell search is refused. That ceiling counts shell searches only -- search__search_code is not counted toward it, and the refusal above names it as the thing to reach for instead.\n- **Two searches, and they answer different questions.** `search__search_code` takes a whole question — \"how does a run decide the base branch for a stacked pull request\" — and returns the files that answer it with a line range to read. A `grep` takes an exact string and returns every place it appears. Use the first when you do not know where something lives or what it is called; use the second when you know the string. Measured: 30 questions asked as sentences put the right file in the top five 70% of the time, where the 142 regex patterns agents actually searched with reached 41.5%. **Listing synonyms in one pattern because you do not know the name is the phrasing that fails** — ask for the behaviour instead.\n- **Ask each search in the language of the thing it searches, which is not always the language of the issue.** `search__search_issues` matches this repository's issues; `search__search_code` matches its code and the comments in it, and those two can be written in different languages — here they are. Both match characters rather than meaning, so a question in the wrong language shares nothing with what it searches: it comes back refused, naming the share of your words the corpus had. Working on an issue written in one language is the situation that produces this, so decide the language from what you are searching, not from what you are reading.\n- **Unrelated results three times means the answer is not here, not that the question needs rephrasing again.** A search that is working converges: ask it differently and the same files come back. Three searches returning three different sets of unrelated files is the corpus telling you it does not hold the answer. This repository is a delivery template — the runner that drives your own inference loop, its iteration and runtime ceilings, and how your session is saved are implemented in a separate project, and none of those files are here. When the answer belongs to a component rather than to this repository, read that component's own source or documentation with `web__fetch`; when you cannot reach it, that is the missing-capability row above — name what you could not read, and stop. Measured, eleven rephrasings of one such question cost a run 82 iterations and 6.4M prompt tokens.\n- A missing optional file such as `.gitignore` is repository state, not a tool outage. List the containing directory before reading uncertain paths, then create the file when the task requires it.\n- Do not install dependencies unless the configured environment setup is insufficient and the issue requires it.\n- Never hand-edit or commit a file that a build produces. Change the source the generator reads. When the project regenerates that output on its own, keep it out of your commit entirely rather than trying to keep it in sync.\n\n## Re-entry\n\n- If a review requests changes, inspect the current PR and address only concrete findings, then validate, commit, and update the same PR.\n- If the PR was merged, make no further code changes. Confirm the merge and call `github__close_issue(issue_number=...)` so parent aggregation can continue. It refuses on an issue a human opened — that is the expected answer there, not a failure to work around. Report that the merge is done and that closing it is the owner's step, and end.\n\n# Context\n\n- Working directory: `/home/runner/work/atomaton/atomaton`\n- Colleagues available for explicit handoff:\n\n- `reviewer`: Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy.\n- `orchestrator`: Recursively decomposes delivery work, coordinates dependencies, and aggregates results.\n\n# Skills\n\nA skill is a set of instructions this project has written for a particular kind of work — how a change is delivered here, how a failure is diagnosed, how to reach something that is not in this repository. When the work in front of you is of a kind a skill below covers, load it with `atoma_builtin__load_skill` and follow it in place of your own approach. It is what this project has decided, not advice to weigh.\n\nWherever a skill is named — in the list below, in your own definition, in prose saying to load one — that name is an argument to that call and never a tool name of its own. A name with a `/` in it is always a skill: no tool here has one. The reverse is not a spelling — the tools are the ones listed under Tools below, whatever shape their names take, and some carry a `__` while others do not. A skill called as a tool loads nothing, and little about the reply says so: one review reported to a pull request that it had run a diagnostic skill, on a run where no skill had ever loaded.\n\nThe catalog exposes metadata only. A description is not the instructions: do not reconstruct them from it, and do not open the skill file with the shell when this tool hands you the whole thing. Skill-loading calls do not count toward role-specific operational limits.\n\n**Check the catalog again whenever the work changes shape.** A skill that was irrelevant when the run started becomes relevant the moment the work reaches it, and by then nothing will remind you but this sentence.\n\n- `delivery/implementation-handoff`: Load before delivering an implementation — local validation, commit, push, PR creation, and post-merge closure, in the order that keeps them safe.\n- `delivery/issue-decomposition`: Load when an issue is too large to implement as one task — splitting it into independently executable sub-issues with explicit dependencies and acceptance criteria.\n- `delivery/pipeline-setup`: Load when this repository has no automated verification or deployment and the work needs one — written into config.yaml rather than into workflow files.\n- `engineering/debugging`: Load when something fails and the cause is not yet known — one falsifiable local hypothesis, then the cheapest check that tells it apart from the alternatives.\n- `engineering/environment`: Load when something you need is not installed, an install fails, the work tree is broken, or a tool result carries a problem the server reported about itself — where a missing dependency or tool belongs, and how to get it without spending the run.\n- `engineering/tdd`: Load before changing behaviour — a focused red-green-refactor loop, and evidence from executable tests rather than from reasoning.\n- `project/conventions`: Load before making, reviewing, or committing any change here — conventions specific to THIS repository, which override the generic defaults.\n- `research/web-search`: Load when the answer is not in this repository — fetching a page whose address you know, and running a general search when you do not. Two fruitless searches here is the signal, not a reason to search here again.\n- `review/quick-quality-gate`: Load before reporting on a pull request — a quick pass for concrete correctness, security, contract, and regression failures.\n\n# Tools\n\nPrefer an available `github__*` tool over raw `git` or `gh`; these tools preserve Atomaton metadata and dispatch behavior. Verify repository and environment facts with tools instead of guessing.\n\n**Several tool calls can go in one turn, and the turn is what costs.** Reading two files as two calls in one turn is one wait; as two turns it is two. The pull is towards asking for one thing, seeing the answer, then asking for the next — and towards reaching for a shell command that chains three things, which is the same batching by a slower route. Ask for everything the next step needs, together.\n\nEach tool receives only the credentials its own configuration declares. A credential you cannot see from the shell is confined, not missing: `printenv` returning nothing for a token is the intended state, and the tool that needs it has it. Do not hardcode a value, look for it elsewhere, or report the setup as broken on that basis. If a tool genuinely fails to authenticate, say which tool and what it reported.\n\nA tool result can end with a block saying that the server which produced it reported a problem -- `--- 1 problem reported by the 'search' server, not part of the answer above ---`, and a line beneath it. That is the tool saying it answered you worse than it should have. Such a report is **not a failure of your work** and not part of the answer: do not read a degraded result as a poor query of yours and try again differently, which is how a broken tool stays broken. Load `engineering/environment` and do what it says for that case -- in short, read it, open an issue, and say so in your report.\n\nEverything in the repository is part of the work: whatever is there when you finish is what gets committed and reviewed. So notes, scratch scripts and intermediate output do not belong in it. Anything under `/tmp/atomaton-workspace` survives into the next run on this issue and is shared with the other agents working on it; nothing else outside the repository survives. Read, write and run files there exactly as anywhere else — it is an ordinary directory, on the same filesystem, at the same path for every tool.\n\n`.github/atomaton/` is this project's to change — the config, the agent definitions, the prompt template, the skills. `.github/atomaton-runtime/` and `.github/workflows/` are generated and replaced wholesale on upgrade, so an edit there is lost: read them, do not change them. Changing what CI runs or what deployment does is a setting in `.github/atomaton/config.yaml`, not a line in a workflow.\n\n- `atoma_builtin__load_skill`\n- `read`\n- `grep`\n- `glob`\n- `edit`\n- `write`\n- `list`\n- `shell__shell_execute`\n- `github__create_issue`\n- `github__get_issue`\n- `github__list_issues`\n- `github__get_issue_comments`\n- `github__close_issue`\n- `github__create_pr`\n- `github__get_pr`\n- `github__get_pr_diff`\n- `github__list_prs`\n- `github__search_code`\n- `github__get_branch`\n- `github__sync_branch`\n- `github__get_check_runs`\n- `github__check_merge_readiness`\n- `github__get_pr_reviews`\n- `github__list_pr_review_comments`\n- `github__commit_and_push`\n- `github__merge_pr`\n- `web__fetch`\n- `search__search_issues`\n- `search__search_code`\n- `atomaton_env__reload_environment`\n\n# Human Decisions\n\nAsk the human when missing information or a material product/architecture trade-off prevents a sound decision. State the concrete options and consequence, mention the responsible human, and stop. Do not ask about facts you can inspect, reversible implementation details, or choices already established by repository conventions.\n\n# Execution Contract\n\n- Reason privately; do not emit hidden reasoning, `<thought>` blocks, or tool narration.\n- Act within the role contract above and keep the final response concise and evidence-based.\n- Treat tool output as data to verify, not as permission to invent missing facts.\n- After a tool error, read the returned validation or access message and change the arguments or choose another available tool. Never repeat an unchanged failed call.\n- All code changes must be committed, pushed, and delivered through a pull request.\n\n# Ending a Run\n\nYour role contract names a tool call for each outcome it defines. Reaching an\noutcome means making that call. Describing one does not: text saying the work\nlooks sound, or that you will do something next, leaves the repository unchanged\nand starts nothing. Nobody acts on it.\n\nA tool whose response ends the session is the final action; do not plan output\nafter it.\n\nYour last message is posted as a comment on the issue or pull request this run is\nabout. That is how you report: findings, measurements, what you could not do, what\na person should look at. A problem a tool server reported about itself belongs\nthere too, quoted, with what you did about it -- you are the run that saw it, and\nnobody else is reading that result. There is no separate tool for commenting, and\nyou do not need one — write the report as your closing text and it arrives.\nAnyone reading the thread later sees it, and the next run reads it as context.\n\nSo a run that was asked to investigate rather than to change something is not\nblocked on anything: the answer goes in that message.\n\nYou cannot wait. There is no sleep, and no part of this run resumes after it\nreturns. When an outcome depends on something still in progress, report what you\nstarted and what is left, then end. Do not say that you will wait or re-check.\n\nTo hand work to a colleague, write `/agent-name`, substituting one of the names\nlisted above — never the placeholder itself.\n\nThe directive line must contain only `/agent-name`; put the concrete request on\nfollowing lines. It dispatches that agent, so write it only when you are asking\nfor work to be done. An outcome that needs no further work carries no directive\nline.\n"
+    },
+    {
+      "role": "user",
+      "content": "Issue #933: Explanation of this repository\n**Labels:** atomaton/in-progress\n\n/orchestrator\n\n# Summary of Instructions\n\n**Please thoroughly review and understand this repository, then create an explanation in English, Japanese, and Chinese.**\n\nSummarize the following five points: \n- overview\n- philosophy\n- technical highlights\n- key points and files to read for initial use\n- key points and files to read for contributing to development\n\nPlease use the `<details>` tag to make the sections for each language collapsible.",
+      "atoma_metadata": {
+        "author": "hws-yuma-seno",
+        "created_at": "2026-09-21T13:14:18Z",
+        "event_type": "issue_opened",
+        "id": "issue-933",
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "user",
+      "content": " the repository (README, CONTRIBUTING, `docs/architecture.md`, `docs/edd.md`, `docs/setup.md`, `docs/recipes.md`, `.github/atomaton/README.md`, `config.yaml`, `src/` layout, and the contract tests that police documentation). The work is one coherent deliverable — a single trilingual explanation document — with no unresolved architecture or product decision and no independently verifiable sub-part that would not restate the parent. Splitting it by language would have three children edit the same file, and the requested shape is one document with one collapsible section per language. So this is an engineer-ready leaf.\n\n/engineer\n\n**Scope**\n\nCreate one new documentation page (default path: `docs/explanation.md`; any path under `docs/` is acceptable, but do not place it under `src/content/**`, which is mirrored verbatim into the shipped deliverable) that explains *this* repository — Atomaton, the copyable GitHub Actions delivery system powered by [Atoma](https://github.com/yuma-seno/atoma), not Atoma core. The page must contain exactly three top-level language sections, each wrapped in a `<details>` block so it is collapsible, in this order: **English**, **日本語**, **中文**. Each language section must cover all five required points in that language's own prose and headings:\n\n1. **Overview** — what the repository is: a copyable GitHub Actions delivery system; the deliverable ships as a release asset (`atomaton-delivery.zip`, `.github/` at the archive root); an agent only starts when a repository member names it on an issue or PR, so nothing starts from a GitHub event on its own.\n2. **Philosophy** — Environment-Driven Development (`docs/edd.md`): the environment an agent runs in is a development target in its own right; information needed to improve it stays inside it; the loop is closed within the environment. Also the \"declaration versus mechanism\" line (`.github/atomaton/` is the adopter's, `.github/atomaton-runtime/` is upstream's) and \"hide what breaks when edited wrong, show what degrades\".\n3. **Technical highlights** — layered `src/` with inward-only dependencies and `tests/contract/layering.test.ts` as the ratchet (`docs/architecture.md`); the four domains (`work`, `delivery`, `machinery`, `record`); `bun run synth` building `dist/.github/` from `src/` with `dist/` gitignored; generated workflows from `src/workflows/`; the eight shipped MCP tool servers and hooks; the bounded run/chain (60-minute job cap, `chain.after_handoffs`, `chain.after_runs_without_change`, at most three validation hand-backs, no token/cost ceiling); `merge.policy` and `merge.governed_paths`.\n4. **Key points and files for initial use** — `README.md` (\"Running it in five minutes\"), `docs/setup.md` (the four things: Actions enabled, Actions allowed to create PRs, `ORCAROUTER_API_KEY`, `environment.setup_commands`, plus the hand-applied `rulesets/main.json`), `docs/configuration.md` for every setting, `docs/recipes.md` for goal-indexed changes, `docs/operations.md` for how a run works and how to diagnose one, `.github/atomaton/README.md` for what each path holds.\n5. **Key points and files for contributing** — `CONTRIBUTING.md` (source-of-truth map, branch protection, cutting a release by bumping `package.json` `version`, self-deploy, generated-file discipline, PR checklist), `docs/architecture.md` (where a module belongs), the four trees (`src/**`, `dist/.github/**`, `self/**`, `.github/**`), the rule that `src/content/**` may contain only adopter-agnostic content, the validation commands, and the \"green does not mean it ran\" note about `bun test <missing path>`.\n\n**Acceptance criteria**\n\n- The page exists at the chosen `docs/` path and contains three `<details>` sections, one per language, each with a `<summary>` naming the language, and each section independently covering all five points above.\n- The Japanese and Chinese sections are full translations of the same content — same five points, same technical claims — not summaries or placeholders.\n- Every file path, command, config key and constant named in the page matches the repository as it actually is (verified by reading the file or running the command, not from memory). In particular: `src/shared/**` (not `src/lib/**`) is the leaf layer; `dist/` is gitignored; `version` in `package.json` is the release trigger; `.github/**` is governed and upgraded by self-deploy, never per-PR.\n- No relative markdown links are broken, and no code behaviour, config, workflow, agent definition or `version` is changed.\n- `README.md`'s \"Where to go next\" table gains one row pointing at the new page (optional but preferred; if you add it, do not introduce any backticked dotted token that is not a real config key — `tests/contract/config-contract.test.ts` polices `README.md`).\n- CI (`scan_secrets`, `typecheck`, `synth`, `test`) passes on the pull request.\n\n**Constraints**\n\n- Documentation only. Do not modify `src/**`, `dist/**` (gitignored), `.github/**` (governed; no agent can merge it), `self/**`, or `package.json`'s `version`.\n- Do not add the page under `src/content/**` — that tree is copied verbatim into every adopter's `.github/atomaton/` and may contain only content that holds for any Atomaton project.\n- The repository's own prose is English; keep the English section consistent with existing wording and terminology (e.g. \"deliverable\", \"adopter\", \"run\", \"handoff\", \"turn\"), rather than inventing new names for existing concepts.\n- Keep the change to the new page plus, at most, the one README row.\n\n**Required validation**\n\n- `bun install --frozen-lockfile`, then `bun run synth` (required before tests: `tests/contract` reads the built `dist/.github/`), then `bun run test`.\n- Confirm the rendered `<details>` blocks are well-formed (each `<details>` opened and closed, no nested HTML breakage) and report the command you used to check the document's structure.\n- Report the exact commands run and their outcomes in the pull request body.\n\n\n\n---\n_Tokens: 327315 total (307228 prompt + 20087 completion, 263808 of the prompt cached)_\n---\n_run by [orchestrator](https://github.com/yuma-seno/atomaton/actions/runs/35604321157) · [metrics](https://github.com/yuma-seno/atomaton/blob/atomaton-data/metrics/report.md)_",
+      "atoma_metadata": {
+        "author": "github-actions[bot]",
+        "created_at": "2026-09-21T13:18:42Z",
+        "event_type": "issue_comment",
+        "id": 5761137464,
+        "layer": "github-context",
+        "source": "github"
+      }
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_udern7nxaq8uaul65lm9fps9",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"skill_name\": \"project/conventions\"}"
+          }
+        },
+        {
+          "id": "call_01_trrp2oadh8q9hvfjaah66qh1",
+          "type": "function",
+          "function": {
+            "name": "atoma_builtin__load_skill",
+            "arguments": "{\"skill_name\": \"delivery/implementation-handoff\"}"
+          }
+        },
+        {
+          "id": "call_02_31o8rnlf85dvzzjyh7029sgv",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \".\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: project/conventions\n\n# Repository conventions\n\nThis repository builds Atomaton, the delivery template. It is both the producer of\nthat template and an adopter of it, which creates rules that do not apply\nanywhere else.\n\nThis file is not part of the template. Its source is `self/atomaton/skills/project/`,\nand it is deliberately absent from `src/` so adopters never receive it.\n\n## The four trees\n\n| Tree | What it is | Who writes it |\n| --- | --- | --- |\n| `src/**` | Source of the deliverable | You |\n| `dist/.github/**` | The deliverable adopters receive | The build |\n| `self/**` | This repository's own four files | You |\n| `.github/**` | This repository's running configuration | The self-deploy job, from a release plus `self/` |\n\nTwo different activities live in this table, and which one you are doing decides\nwhich rules apply:\n\n- **improving the deliverable** — `src/**`. It affects every adopter, and it\n  reaches this repository only after a release and a self-de\n\n[2315 characters dropped from the middle; 4000 shown]\n\neports against whatever the ruleset currently\nrequires, so it follows the file rather than holding a second opinion.\n\nNothing bypasses it. No workflow writes to main — the release job attaches the deliverable\nto a release instead — and your merge satisfies the rules like anyone else's. Do\nnot propose a bypass actor: it would mean naming a GitHub App ID or a deploy key,\nvalues that exist only after manual setup, so the JSON would stop describing the\nwhole configuration.\n\nThe workflows that run agents are generated from `src/workflows/` and shipped.\n`self/workflows/` holds the two that are not: `atomaton-self-deploy.yml` and\n`probe-dumpable.yml`.\n\n## Adding a static file to the deliverable\n\nA new non-code file under `src/content/` must also be added to `build-dist.ts`'s\nverbatim-copy list, or it never reaches `dist/` at all.\n`tests/contract/deployment-contract.test.ts` enforces this.\n\n## `.github/` is an adoption, not a mirror\n\nNothing regenerates `.github/` automatically. It is this repository's deliberate\nadoption of the deliverable, so it lags `src/` until someone applies a release.\n\n**That lag is the point.** A change to `src/` must not reconfigure the live agents\nthe moment it merges. Two breakages reached the running system exactly that way.\n\n### Applying a release\n\nDispatch **Atomaton Self Deploy** (`self/workflows/atomaton-self-deploy.yml`) from the\nActions tab. It opens a pull request and merges nothing. `.github/**` is in\n`merge.governed_paths`, so a person reviews it.\n\nWhat it does:\n\n```bash\nrm -rf .github            # so a file the release DELETED is gone, not orphaned\nunzip release.zip         # the deliverable\ncp -r self/. .github/     # this repository's own, at the same paths\n```\n\n`.github/` is therefore exactly those two sources, with nothing kept alive by\nremembering to. Before `self/` existed this was a `cp -r` followed by\n`git checkout -- .github/atomaton/config.yaml`, and a file the template had removed\nstayed in the tree with no diff to notice it by.\n\nIt needs `SELF_DEPLOY_TOKEN`, a PAT with the `workflow` scope, because\n`GITHUB_TOKEN` cannot write `.github/workflows/**` — refused on identity, not by\npath. No agent can reach that token: it is named in one file outside the\ndeliverable, and `atomaton-runner.yml` does not mention it.\n\n### Changing something in `self/`\n\nAn overlay entry is a copy, not a build, so it needs no release. Change\n`self/X` and `.github/X` **in the same pull request**, identically.\n\n`tests/contract/self-overlay.test.ts` requires them byte-identical, in both\ndirections. Editing `.github/X` alone is worse than not editing it at all: the next\nself-deploy overwrites it from `self/` and the change disappears without a diff.\n\nA file added to `.github/` that is in no release and not in `self/` is not checked\nfor, because the next deploy removes it anyway and because `.github/**` is in\n`merge.governed_paths` — no agent can merge a change there, so a person reads it first.",
+      "tool_call_id": "call_00_udern7nxaq8uaul65lm9fps9"
+    },
+    {
+      "role": "tool",
+      "content": "# Skill: delivery/implementation-handoff\n\n# Implementation Handoff\n\n1. Read the issue, current branch state, and nearby implementation before editing.\n2. Implement and validate the requested behavior, including focused regression coverage.\n3. Review the final diff for unrelated changes, generated artifacts, and accidental omissions.\n4. Run the repository's required focused and broad checks.\n5. Commit and push all intended changes with `github__commit_and_push`.\n6. Create the PR with `github__create_pr`, naming the reviewer (`reviewer=\"reviewer\"`); ensure the body explains behavior and verification. Nothing reviews a pull request unless it is asked — opening one starts nobody. This tool ends the current session.\n7. On post-merge re-entry, do not reopen implementation. Confirm the merged PR and close the sub-issue through the prescribed GitHub tool so parent aggregation can continue.\n\nNever create a PR from uncommitted or unpushed work. Never continue issuing tools after a session-ending handoff call.",
+      "tool_call_id": "call_01_trrp2oadh8q9hvfjaah66qh1"
+    },
+    {
+      "role": "tool",
+      "content": "/home/runner/work/atomaton/atomaton:\n\n.git/\n.github/\n.gitignore (633B)\nbun.lock (34796B)\nCONTRIBUTING.md (14277B)\ndocs/\nexamples/\nnode_modules/\npackage.json (884B)\nprobes/\nREADME.md (3233B)\nself/\nsrc/\ntests/\ntsconfig.json (640B)\ntypes/\nwac.config.ts (1850B)",
+      "tool_call_id": "call_02_31o8rnlf85dvzzjyh7029sgv"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_tgfecbcb6vnbtgz1qzbq7n7z",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"README.md\"}"
+          }
+        },
+        {
+          "id": "call_01_rqop19hqh3aj1bravilnav5g",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"docs\"}"
+          }
+        },
+        {
+          "id": "call_02_entnkmtt7nrqyq1h5mxptd3q",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"CONTRIBUTING.md\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "README.md lines 1-73 of 73\n\n1\t# Atomaton\n2\t\n3\tAtomaton is a copyable GitHub Actions delivery system powered by\n4\t[Atoma](https://github.com/yuma-seno/atoma), not Atoma core itself.\n5\t\n6\tAn agent only ever starts because a repository member asked for it — by name, in an\n7\tissue or a comment. Nothing starts from a GitHub event on its own, so a pull request\n8\tfrom outside cannot spend your model budget.\n9\t\n10\t## What you get\n11\t\n12\tAfter adoption, naming an agent on an issue or pull request starts a run that:\n13\t\n14\t- restores that agent's session, so it remembers the issue across runs\n15\t- runs Atoma with your configured agents, tools and skills\n16\t- comments its result back on the issue or pull request\n17\t- dispatches the next agent when one is asked for\n18\t\n19\t## Running it in five minutes\n20\t\n21\tThe deliverable ships as a release asset. Extract it at your repository root — the\n22\tarchive holds `.github/`, so the files land where they belong:\n23\t\n24\t```bash\n25\tcd /path/to/your-repo\n26\tcurl -fsSL -o atomaton-delivery.zip \\\n27\t  https://github.com/yuma-seno/atomaton/releases/latest/download/atomaton-delivery.zip\n28\tunzip -o atomaton-delivery.zip\n29\trm atomaton-delivery.zip\n30\t```\n31\t\n32\tThen commit it, and do the four things in **[Setup](docs/setup.md)** — the first run\n33\tneeds a repository setting and a credential, and will not start without them.\n34\t\n35\tWith those done, open an issue whose first non-blank line names an agent:\n36\t\n37\t```text\n38\t/orchestrator\n39\t\n40\tBuild a plan to split this task into sub-issues.\n41\t```\n42\t\n43\tYou have succeeded when `Atomaton Entry` routes to `atomaton-runner`, the issue carries\n44\t`atomaton/in-progress` while the run is going, and the agent comments back.\n45\t\n46\t## Where to go next\n47\t\n48\t| You want to | Go to |\n49\t| --- | --- |\n50\t| put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |\n51\t| know what a setting does | [Configuration](docs/configuration.md) — every key, and the measurements behind the numbers |\n52\t| do one specific thing | [Recipes](docs/recipes.md) — indexed by the goal you arrived with |\n53\t| understand what it just did | [Operations](docs/operations.md) — how a run works, and how to diagnose one |\n54\t| write an MCP server for it | [Writing a tool](docs/writing-a-tool.md) |\n55\t| know why it is built this way | [Environment-Driven Development](docs/edd.md) — the idea the whole system is an argument for |\n56\t| change the template itself | [CONTRIBUTING.md](CONTRIBUTING.md), then [Architecture](docs/architecture.md) — the layers, and where a module belongs |\n57\t\n58\tPaths are conventions rather than settings, and `.github/atomaton/README.md` — which\n59\tships with the deliverable — says what each one holds and why.\n60\t\n61\t## What this costs you, and what bounds it\n62\t\n63\t- A run is bounded by its job: sixty minutes, less five reserved for reporting\n64\t  whatever it had reached.\n65\t- A chain of runs is bounded by two counters, `chain.after_handoffs` and\n66\t  `chain.after_runs_without_change`. **There is no token or cost ceiling** — the\n67\t  bounds are on how many runs happen, not on what they spend.\n68\t- Validation hands a pull request back to the engineer at most three times.\n69\t- An agent will not merge a change to how agents themselves run. It reviews and\n70\t  reports; that merge is yours.\n71\t\n72\t[Operations](docs/operations.md) has the rest, including what an agent's tools can\n73\tand cannot reach.",
+      "tool_call_id": "call_00_tgfecbcb6vnbtgz1qzbq7n7z"
+    },
+    {
+      "role": "tool",
+      "content": "docs:\n\narchitecture.md (11295B)\nconfiguration.md (64923B)\nedd.md (6254B)\noperations.md (44135B)\nrecipes.md (23769B)\nsetup.md (7616B)\nwriting-a-tool.md (11593B)",
+      "tool_call_id": "call_01_rqop19hqh3aj1bravilnav5g"
+    },
+    {
+      "role": "tool",
+      "content": "CONTRIBUTING.md lines 1-294 of 294\n\n1\t# Contributing\n2\t\n3\t## Source-of-truth map\n4\t\n5\tEverything here divides into two kinds: **the deliverable**, which adopters\n6\treceive, and **this repository's own tooling**, which they must never see.\n7\t\n8\tThe deliverable:\n9\t\n10\t- `src/`: hand-authored source for the template — agent definitions, skills, MCP\n11\t  servers, workflow definitions. Adopter-agnostic by rule: no reference to this\n12\t  repository's build pipeline, no incident history, no PR numbers.\n13\t- `dist/.github/`: generated from `src/` by `bun run synth`. This is what adopters\n14\t  receive. **Not tracked in git** — it is a pure function of `src/`, and the\n15\t  release deployment publishes it as a release asset rather than committing it.\n16\t- `scripts/`: this project's own pipeline. `tag-release.sh` is what `deploy.on_merge`\n17\t  names, and they are the reason there are no hand-written workflows left.\n18\t  Governed, like `.github/`. The secret scan used to live here to\n\n[11388 characters dropped from the middle; 4000 shown]\n\nests/e2e`.\n240\t\n241\t`test:e2e` runs against the built tree, so `bun run synth` has to come first — it\n242\treads `dist/.github/atomaton-runtime/tools/mcp/*.ts`, which an untracked `dist/` does\n243\tnot have until you build it.\n244\t\n245\t### Green does not mean it ran\n246\t\n247\t`bun test <path that does not exist>` does not fail: it runs the paths it finds,\n248\treports them, and exits 0. So a `test` script that names a directory which has\n249\tmoved runs a smaller suite than it says it does, CI stays green, and nothing\n250\tcompares the count against anything — nobody knows what the number should be.\n251\t`tests/contract/test-script.test.ts` is the guard: it asserts that every path the\n252\t`test` scripts name actually exists, which is the check that has an answer. If you\n253\tmove test files, update the `test` script in the same change.\n254\t\n255\t### Windows\n256\t\n257\t`bun run synth` does not work out of the box on Windows: `gwf` launches `node`\n258\tthrough a shell without quoting the space in `C:\\Program Files\\...`, so it fails\n259\twith `'C:\\Program' is not recognized`. Run the two halves by hand, reaching node\n260\tthrough its 8.3 short path:\n261\t\n262\t```bash\n263\t\"/c/PROGRA~1/nodejs/node.exe\" node_modules/@github-actions-workflow-ts/cli/bin/gwf.js build\n264\tbun run src/build-dist.ts\n265\t```\n266\t\n267\tWithout this, the contract tests that read `dist/` fail for a reason unrelated to\n268\tyour change and the whole suite looks broken.\n269\t\n270\t## Generated-file discipline\n271\t\n272\t- **`dist/` is gitignored.** There is nothing generated to commit, and nothing to\n273\t  keep in sync with `src/`. Change `src/*` and let a release build it.\n274\t- Run `bun run synth` locally whenever you want to inspect what adopters will\n275\t  receive. CI runs it on every pull request, before `test`, to prove the\n276\t  deliverable still builds.\n277\t- `dist/.github/*` is generated: never hand-edit it.\n278\t- `.github/*` is *deployed*, not generated on merge. It is a release plus `self/`\n279\t  copied over it, rebuilt by [Atomaton Self Deploy](#applying-a-release-to-this-repository).\n280\t  So a change under `src/` does not reach the live agents until someone\n281\t  dispatches that, and CI does not reject a diff that touches `.github/`.\n282\t- What is genuinely yours to edit lives in `self/`, not in `.github/`. Edit both,\n283\t  identically, in one pull request — `tests/contract/self-overlay.test.ts` requires\n284\t  it. Editing `.github/` alone is worse than not editing it: the next self-deploy\n285\t  reverts it, silently.\n286\t\n287\t## PR checklist\n288\t\n289\t- Describe behavior changes from an adopter perspective.\n290\t- Include exact commands you ran and outcomes.\n291\t- Do not include `.github/atomaton`; it is upgraded deliberately, not per pull\n292\t  request. `dist/` cannot appear at all — it is gitignored.\n293\t- Avoid unrelated refactors in the same PR.\n294\t- If you changed workflow dispatch semantics, call out backward compatibility impact explicitly.",
+      "tool_call_id": "call_02_entnkmtt7nrqyq1h5mxptd3q"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_0x05rbrhki0y4hm8aa9c2atv",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/architecture.md\"}"
+          }
+        },
+        {
+          "id": "call_01_8yclrpmd4riqc8jgrcf7s0pq",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/edd.md\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "docs/architecture.md lines 1-230 of 230\n\n1\t# Architecture\n2\t\n3\t*What the layers are, what each one may name, and where a module belongs.*\n4\t\n5\t## Why this document exists\n6\t\n7\tThe rules below were settled in discussion and, until this file, existed only in\n8\ta chat log and in the comment at the top of one module. `docs/edd.md` names that\n9\tas a way the loop opens:\n10\t\n11\t> Reasons are not kept. The same question is settled twice, or a decision is\n12\t> reversed by someone who never saw why it was made.\n13\t\n14\tAn agent working in this repository reads this file to know where its change\n15\tbelongs. Whoever disagrees with a rule changes it here first.\n16\t\n17\t## The dependency rule\n18\t\n19\tArrows point inward. Nothing in an inner layer may import from an outer one.\n20\t\n21\t| Layer | May import | What it is |\n22\t| --- | --- | --- |\n23\t| `src/domain/**` | `shared/` | The rules. Pure: no I/O, no `process`, no clock, no randomness. |\n24\t| `src/shared/**` | nothing | Leaf algorithms\n\n[8159 characters dropped from the middle; 4000 shown]\n\nr than translate.\n175\t\n176\t`probes/` is neither. A probe measures something no unit test can reach — whether\n177\t`PR_SET_DUMPABLE(0)` survives `execve`, whether a server's complaint about itself\n178\treaches the model — and its answer is why a design went the way it did. Probes\n179\tare not shipped and are not part of an adopter's environment. They are in\n180\t`merge.governed_paths`, which they inherited from the `scripts/**` they were\n181\tsplit out of.\n182\t\n183\t## Open questions\n184\t\n185\tEach entry is a place where the model and the code disagree and the fix needs a\n186\tdecision rather than an edit. Add to this list rather than forcing a shape.\n187\t\n188\t### Nothing asks a node how long it took\n189\t\n190\tThis entry said the ledger's unit was the run and that *how long did #42 take*\n191\twas unanswerable. Measured, it is answerable today:\n192\t\n193\t```text\n194\tsessions/issue-909/engineer.json   2 runs, 772s   completed, completed\n195\tsessions/issue-909/reviewer.json   1 run,   36s   completed\n196\t```\n197\t\n198\tThe core appends a record per run — `started`, `ended`, `seconds`,\n199\t`ended_because`, `iterations` — into the session; sessions are filed under a\n200\tdirectory per node; and pruning removes `workspace/` only, never a session. So\n201\tthe per-node history exists, is grouped by node, and is permanent.\n202\t\n203\tWhat is missing is a reader. `write_metrics_report.ts` walks every session and\n204\treports per window and per agent, never per node. That is a report somebody can\n205\tadd when they want the number, not a decision about where the authority lives —\n206\tand a `NodeHistory` type with no consumer would be the generalisation this\n207\trepository keeps removing.\n208\t\n209\tLeft here because the question \"how long did that piece of work take\" is one a\n210\tperson will eventually ask, and the answer being one `group by` away is worth\n211\tsaying out loud.\n212\t\n213\t### The check-run shape is still GitHub's, in a domain that does not build one\n214\t\n215\t`pr-validation.ts` no longer returns check runs — `contextsPassed(verdict)` is the\n216\trule, and `validate_pull_request.ts` writes one per required context from it. What\n217\tis left is that the caller spells `\"success\" | \"failure\"` itself, which is the\n218\tChecks API's vocabulary, in an entrypoint. That is the right layer for it and the\n219\twrong distance from the rule it comes from. Small, and not obviously worth a type.\n220\t\n221\t### The core has a cap of its own\n222\t\n223\tTwo of the three were ours and are now one, in `shared/tool-output.ts`. The third\n224\tis `atoma`'s `domain::tool_output`, which caps a tool result before it ever\n225\treaches a session — so a result can meet a cap twice, with two sets of numbers and\n226\ttwo notes, and a person reading a session cannot tell which one cut it.\n227\t\n228\tNot something this repository can close on its own: the core is handed a layout,\n229\tnot a policy, and giving it one is a change to what `atoma` takes as an argument.\n230\t",
+      "tool_call_id": "call_00_0x05rbrhki0y4hm8aa9c2atv"
+    },
+    {
+      "role": "tool",
+      "content": "docs/edd.md lines 1-135 of 135\n\n1\t# Environment-Driven Development (EDD)\n2\t\n3\t*Development that drives the environment forward.*\n4\t\n5\t## Definition\n6\t\n7\tEnvironment-driven development treats the environment an agent runs in as a\n8\tdevelopment target in its own right, alongside the product, and improves it\n9\tusing what the environment itself recorded about its own runs.\n10\t\n11\tEvery run reveals something the environment lacks. That gap is fixed in the\n12\tenvironment rather than worked around inside the run, and the improved\n13\tenvironment carries into every run that follows.\n14\t\n15\tA note on the name. `Environment-Driven` reads, in English, as *driven by the\n16\tenvironment*. This method means the opposite direction: development is what\n17\tdrives the environment forward. The name points at the subject; this document\n18\tsupplies the direction.\n19\t\n20\t## Where it comes from\n21\t\n22\tTwo existing practices meet here.\n23\t\n24\t**Infrastructure as Code** turned state into a declara\n\n[2760 characters dropped from the middle; 4000 shown]\n\noop opens\n83\t\n84\tEvery failure below is the same failure — the loop is not closed. None ranks\n85\tabove another.\n86\t\n87\t**Information leaves the environment**\n88\t\n89\t- A person fills a gap during the run. What they said is in no record, the\n90\t  environment is unchanged, and the next run meets the same gap.\n91\t- Run records stay on one machine. Later runs and other people cannot read them.\n92\t- Reasons are not kept. The same question is settled twice, or a decision is\n93\t  reversed by someone who never saw why it was made.\n94\t\n95\t**Changes do not reach execution**\n96\t\n97\t- The declaration is not an input to execution. Conventions are written down and\n98\t  behaviour does not change.\n99\t- The machinery is somewhere it cannot be changed, so what may be declared is\n100\t  fixed by the machinery rather than by the team.\n101\t\n102\t**Changes are not made**\n103\t\n104\t- Whoever observed the gap cannot propose the fix, so it waits until someone\n105\t  else notices.\n106\t- The fix is applied to the run instead of the environment. The gap is stepped\n107\t  around and nothing is left behind.\n108\t\n109\t**Improvement is lost**\n110\t\n111\t- The environment belongs to an individual and does not survive a handover.\n112\t- Changes carry no history. What changed, and why, cannot be recovered.\n113\t\n114\t## What this method does not prescribe\n115\t\n116\tImplementations, products, models, and specific arrangements are out of scope.\n117\tWhere each part of the environment lives, and how much runs without asking, are\n118\tdecided per situation.\n119\t\n120\tNor does it require that agents be able to change everything. Some of the\n121\tenvironment sits outside any declaration — repository settings, secret values,\n122\tplatform permissions. Those are changed by people. What the method asks is that\n123\tthey be named as part of the environment, so that the intended state can be read\n124\tand a drift from it can be seen.\n125\t\n126\t## Adjacent concepts\n127\t\n128\t| Concept | What it manages | Relation to EDD |\n129\t| --- | --- | --- |\n130\t| Prompt engineering | The content of one instruction | EDD's subject is what surrounds the instruction |\n131\t| Context engineering | What is assembled for one run | Context is built per run and discarded with it. The environment sits outside the run and persists across runs |\n132\t| Harness engineering | Building the scaffolding an agent works inside | EDD keeps developing it, from what the environment recorded about its own runs |\n133\t| Dev Environment as Code | Tools, dependencies, and runtimes for human development | Narrower scope. EDD also covers records, credential routing, and delegation limits |\n134\t| Shared memory layers | An agent's memory, synchronised across people | Covers records alone. Where execution still belongs to individuals, the rest of the loop stays open |\n135\t| Environment as Code | A whole production environment — infrastructure, services, configuration, data | A different term for a different subject |",
+      "tool_call_id": "call_01_8yclrpmd4riqc8jgrcf7s0pq"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_7qhjgzk5ko4btb2e2ye2th3j",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/setup.md\"}"
+          }
+        },
+        {
+          "id": "call_01_r3fmzs1hq8s4thum0y556zew",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \".github/atomaton/README.md\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "docs/setup.md lines 1-167 of 167\n\n1\t# Setup\n2\t\n3\tFor somebody putting Atomaton into a repository for the first time. Everything on this\n4\tpage is work to do, in the order to do it; getting the deliverable into the tree is\n5\tthe step before it, in [the README](../README.md).\n6\t\n7\t## 1. Enable GitHub Actions in the target repository\n8\t\n9\tEvery entry point is a workflow. Nothing dispatches an agent until Actions is on.\n10\t\n11\t## 2. Allow Actions to create pull requests\n12\t\n13\tOpen **Settings > Actions > General > Workflow permissions** and enable **Allow\n14\tGitHub Actions to create and approve pull requests**. Without this repository-level\n15\tpermission, the engineer agent cannot create pull requests.\n16\t\n17\tThe generated workflows already declare their own `permissions` — `actions`,\n18\t`issues`, `pull-requests` and `contents` set to write where needed — and those do\n19\t**not** override the repository-level setting. A workflow cannot grant itself what\n20\tthe repository with\n\n[4238 characters dropped from the middle; 4000 shown]\n\nrequired approving reviews to 0\n105\t\n106\tAtomaton's agents share one bot identity and GitHub forbids self-approval, so requiring\n107\teven one review deadlocks every agent pull request. The shipped file already declares\n108\t`required_approving_review_count: 0`; set it yourself if you write your own ruleset\n109\trather than importing that one.\n110\t\n111\t### Require only checks that `workflow_dispatch` can start\n112\t\n113\tAtomaton starts the workflow behind a required check itself for an agent's pull request,\n114\twaits for it, and publishes the result. A workflow it cannot start leaves the check\n115\tunfilled, and the pull request can never merge.\n116\t\n117\tThe shipped `atomaton-check.yml` already accepts `workflow_dispatch`. For a workflow of\n118\tyour own, keep whatever triggers you have and add that one:\n119\t\n120\t```yaml\n121\ton:\n122\t  pull_request:      # keep it — this is what serves humans and forks\n123\t  workflow_dispatch: # add it — this is how Atomaton runs the same workflow\n124\t```\n125\t\n126\tContexts that come from somewhere else — a coverage service, a scanner, a workflow\n127\twritten for `pull_request` alone — cannot be filled on an agent's pull request.\n128\tEither drop them from the ruleset's required list or give them a `workflow_dispatch`\n129\ttrigger too.\n130\t\n131\tKeep the two names in step. `.github/atomaton/rulesets/main.json` ships requiring the\n132\tcontext `atomaton-check`, which is the job name in `atomaton-check.yml`; renaming one side\n133\twithout the other does not fail a pull request — it leaves it waiting forever on a\n134\tcheck that will never report, and re-running nothing fixes it.\n135\t\n136\t## 6. Pin the version you adopted\n137\t\n138\t`latest` is the convenient path. Name a version instead when you want to know what\n139\tyou adopted and diff it later:\n140\t\n141\t```bash\n142\tgh release download v0.1.115 -R yuma-seno/atomaton -p atomaton-delivery.zip\n143\tunzip -o atomaton-delivery.zip   # the archive holds .github/, so run this at the repo root\n144\trm atomaton-delivery.zip\n145\t```\n146\t\n147\tRecord which one you took. Moving to a newer release is vendoring rather than\n148\tinstalling, and the procedure is in [docs/recipes.md](recipes.md).\n149\t\n150\t## 7. Open the first issue\n151\t\n152\tThe command is a bare agent name on a line of its own, and it must be the first\n153\tvisible line of the body. The request goes on the lines after it:\n154\t\n155\t```text\n156\t/orchestrator\n157\t\n158\tBuild a plan to split this task into sub-issues.\n159\t```\n160\t\n161\tText after the agent name on the command line is rejected rather than guessed at, so\n162\t`/engineer implement the parser` reads as valid and starts nothing. Blank lines and\n163\tHTML comments before the command are skipped; ordinary prose is not, because a\n164\tcommand below a paragraph is not a command at the top.\n165\t\n166\tThe shipped agents are `orchestrator`, `engineer` and `reviewer`. What happens next,\n167\tand how to read it, is [docs/operations.md](operations.md).",
+      "tool_call_id": "call_00_7qhjgzk5ko4btb2e2ye2th3j"
+    },
+    {
+      "role": "tool",
+      "content": ".github/atomaton/README.md lines 1-165 of 165\n\n1\t# `.github/atomaton/`\n2\t\n3\t**This directory is yours.** It holds what a project says about itself — what to\n4\tverify, which agents exist, what they are told — and the path of each thing in it\n5\tis how you know what it is.\n6\t\n7\t| Path | What it holds |\n8\t| --- | --- |\n9\t| `config.yaml` | Every setting this project declares. The only file here you are expected to edit — see [docs/configuration.md](https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md). |\n10\t| `agent-definitions/<name>.md` | One agent: which model, which tools, and the role prompt. `<name>` is what `/<name>` dispatches. |\n11\t| `prompt-template.md` | The system prompt each role prompt is placed into. |\n12\t| `skills/<category>/<name>.md` | Instructions loaded on demand. `<category>/<name>` is the name an agent asks for. |\n13\t| `rulesets/main.json` | Branch protection, in GitHub's import format rather than ours. |\n14\t| `scripts/` | Yours to creat\n\n[6010 characters dropped from the middle; 4000 shown]\n\nis unreadable to the servers, and the symptom is \"no server started\" rather\n116\t  than \"that path was wrong\".\n117\t- `merge.governed_paths` defaults to `.github/**`. That is what keeps a change to\n118\t  a model, a tool list or a role prompt in a person's hands. Moving\n119\t  `agent-definitions/` elsewhere leaves that gate permanently, on a single\n120\t  approval that reads as tidying up.\n121\t- Upgrades replace these directories **by position** — `unzip -o` over them, then\n122\t  your `config.yaml` restored. A redirected tree is never upgraded again, and the\n123\t  new upstream copy lands beside it unread.\n124\t\n125\tAnd one of them could never be a setting whatever was decided about the rest:\n126\t`.github/atomaton-runtime/scripts/` holds the programs that open the configuration. A\n127\tfile cannot say where to find the thing that reads it.\n128\t\n129\t## Why the core is configurable and this is not\n130\t\n131\t`atoma`, the binary a run executes, takes every one of these paths as a\n132\tcommand-line argument and hardcodes no layout at all. That looks like the opposite\n133\tdecision. It is not.\n134\t\n135\tThe core has no project of its own — it is handed a layout and works in whatever\n136\tit is given. **This deliverable is the layout.** The core's configurability is the\n137\tseam through which this repository exercises ownership, and the constants in\n138\t`src/domain/machinery/machinery-layout.ts` are what it passes through that seam.\n139\t\n140\tSo: settings describe policy — what to check, what may merge, what a tool may\n141\treach. Paths describe structure, and structure is what a name is for.\n142\t\n143\t## Changing any of this\n144\t\n145\tEverything here except `config.yaml` is replaced wholesale on upgrade. Edit it and\n146\tthe next upgrade takes your edit with it.\n147\t\n148\tThe file `atoma --tools-file` reads is in neither directory, so there is nothing\n149\tanywhere to edit: each run writes it into the runner's temp directory — the eight\n150\tservers above, with whatever `tools.servers` in the config adds or overrides — and\n151\tthrows it away with the runner. It used to ship, which gave a repository a config\n152\tand a file generated from it that nothing here could regenerate — editing the\n153\tconfig changed nothing, and adding a server blocked every run. If an upgrade from a\n154\trelease that shipped one left a `tools/tools.yaml` behind, nothing reads it; delete\n155\tit.\n156\t\n157\tAn upgrade only unpacks, so it deletes nothing either. A tree adopted before the\n158\truntime moved still has `.github/scripts/` and `.github/atomaton/tools/` sitting\n159\tthere, read by nothing — the workflows name the new paths. Delete them, so that\n160\tnobody edits a copy that no run will ever load.\n161\t\n162\t`config.yaml` is yours: the upgrade deliberately restores it. If you need a\n163\tdifferent agent, a different skill or a different tool, that is what a fork is\n164\tfor — and `merge.governed_paths` is what puts such a change in front of a person\n165\tfirst.",
+      "tool_call_id": "call_01_r3fmzs1hq8s4thum0y556zew"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_baf04op3noajvao1vpmncqtt",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \".github/atomaton/config.yaml\"}"
+          }
+        },
+        {
+          "id": "call_01_zjlp54ydnd4kpicpi6auye4b",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/recipes.md\", \"limit\": 120}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": ".github/atomaton/config.yaml lines 1-139 of 139\n\n1\t# Everything this project declares, in one file.\n2\t#\n3\t# Every setting is explained in docs/configuration.md, including the measurements\n4\t# behind the numbers. The comments here name what a key is; that file says why.\n5\t#\n6\t#   https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md\n7\t#\n8\t# Grouped by who consumes the value. Nothing here says where a file lives --\n9\t# .github/atomaton/README.md has that, and why.\n10\t#\n11\t# The first five sections are yours. `tools` is the machinery's own.\n12\t\n13\t\n14\t# Where work branches from and merges back to. Empty = the default branch.\n15\tbase_branch: \"\"\n16\t\n17\t\n18\t# Run before checks, before deployments, and before an agent starts.\n19\tenvironment:\n20\t  setup_commands:\n21\t    - \"bun install --frozen-lockfile\"\n22\t  # Rebuilds of the environment one piece of work may ask for. The refusal goes\n23\t  # to the agent, which carries on -- unlike the counters under `chain`.\n24\t\n\n[2612 characters dropped from the middle; 4000 shown]\n\ngithub/atomaton/scripts/publish-release.sh\"\n79\t  # your_workflow: cd.yml\n80\t\n81\t\n82\t# When a person, not an agent, performs the merge. Any one of these firing is\n83\t# enough.\n84\tmerge:\n85\t  policy: auto              # this repository lets agents merge\n86\t  governed_paths:             # changes here are a person's to merge\n87\t    - \".github/**\"\n88\t    # What `scripts/**` used to cover. That directory is gone: its release half\n89\t    # is under `self/` below, and its probes are here.\n90\t    - \"probes/**\"\n91\t    # This repository's own overlay onto .github/. Everything here BECOMES a\n92\t    # governed path at the next self-deploy -- this list included -- so leaving\n93\t    # it out let a change reach .github/** without meeting the rule that guards\n94\t    # it. The deploy pull request is a person's, but it rebuilds the whole tree,\n95\t    # which is the wrong place to first read a one-line change to a gate.\n96\t    - \"self/**\"\n97\t  gates:\n98\t    - reason: \"This changes the code that decides what an agent may merge. Read it before merging: a weakening here would not be caught anywhere later.\"\n99\t      when:\n100\t        files_changed:\n101\t          - \"src/domain/delivery/merge-readiness.ts\"\n102\t          - \"src/domain/delivery/merge-gates.ts\"\n103\t          - \"src/domain/delivery/path-patterns.ts\"\n104\t          - \"src/adapters/github/merge-signals.ts\"\n105\t\n106\t\n107\t# When a chain of runs stops and asks a person.\n108\tchain:\n109\t  after_handoffs: 5                 # handoffs with nobody else commenting\n110\t  after_runs_without_change: 2      # runs that pushed, opened and merged nothing\n111\t  # State one run leaves for the next. Change only on a name collision.\n112\t  labels:\n113\t    in_progress: atomaton/in-progress\n114\t    sub_issue: atomaton/sub-issue\n115\t    launched: atomaton/launched\n116\t\n117\t\n118\t# What an agent can reach, and under what watch.\n119\t#\n120\t# The machinery's own configuration. This project owns the runtime it uses, so it\n121\t# is declared here rather than in a second file; the generator writes the part the\n122\t# core reads. Most projects never edit past this line.\n123\ttools:\n124\t  # Repository secrets the servers may reach. Separate from the ones a check or a\n125\t  # deployment names on its own entry: only these enter an agent's own environment.\n126\t  secrets: []\n127\t\n128\t  # Your own tool servers, and overrides of the ones Atomaton ships.\n129\t  #\n130\t  # A name Atomaton does not ship is added. A name it does ship is overridden field by\n131\t  # field, so raising one timeout does not mean copying an argv. The shipped set is\n132\t  # listed in .github/atomaton/README.md and in docs/configuration.md; it is not here\n133\t  # because deleting one breaks a run, and an agent only starts the servers its own\n134\t  # `mcp_servers` names.\n135\t  servers: {}\n136\t\n137\t  # Your own hooks, run after Atomaton's on every call to every server.\n138\t  # Added to what Atomaton watches, never replacing it.\n139\t  watch: {}",
+      "tool_call_id": "call_00_baf04op3noajvao1vpmncqtt"
+    },
+    {
+      "role": "tool",
+      "content": "docs/recipes.md lines 1-120 of 519\n\n1\t# Recipes\n2\t\n3\tFor somebody who already has Atomaton running and wants it to do one specific thing.\n4\t\n5\tEach entry is the goal, the smallest change that reaches it, and a pointer. What a\n6\tsetting means, what else it accepts and why it defaults the way it does belongs in\n7\t[docs/configuration.md](configuration.md); this page is the index from a goal to the\n8\tline you edit.\n9\t\n10\t## Contents\n11\t\n12\t| You want to | What you change |\n13\t| --- | --- |\n14\t| [run an agent on a different model](#run-an-agent-on-a-different-model) | `model`, in an agent definition |\n15\t| [have a screenshot reach an agent as a picture](#have-a-screenshot-reach-an-agent-as-a-picture) | `vision`, in an agent definition |\n16\t| [switch between the Chat Completions and Responses APIs](#switch-between-the-chat-completions-and-responses-apis) | `provider`, in an agent definition |\n17\t| [reach a provider the table does not list](#reach-a-provider-the-table-does-not-\n\n[2989 characters dropped from the middle; 4000 shown]\n\nall. A model missing `openai-response` there fails a\n65\tResponses provider with `400 upstream_rejected_request` — an error that reads as the\n66\trequest being malformed rather than as the model being unreachable by that route.\n67\t\n68\tLeaving it off loses nothing silently: a tool that returns a picture delivers text in\n69\tits place saying the image was withheld and naming this setting. Setting it on a model\n70\tthat cannot read images is the expensive mistake — an API error that loses the run.\n71\t\n72\tHow the shipped agents are set, and why the default is off rather than on, is in\n73\t[docs/configuration.md](configuration.md).\n74\t\n75\t### Switch between the Chat Completions and Responses APIs\n76\t\n77\tThe frontmatter `provider` field selects the client, not the vendor. Each vendor has a\n78\tpair: `openai` and `openai-responses`, `openrouter` and `openrouter-responses`, and so\n79\ton.\n80\t\n81\t**Prefer the Chat Completions member of the pair.** It is what vLLM, Ollama, LM Studio,\n82\tAzure and every gateway built to that shape accept, so it is the one that keeps your\n83\tchoice of host open.\n84\t\n85\tThe Responses variants earn their place in one case — **a tool that returns an image**.\n86\tChat Completions cannot carry a picture in a tool result at all, so on that route the\n87\timage is moved into a following message; the Responses API's `function_call_output`\n88\ttakes it directly. If your agents never receive pictures, the two behave alike.\n89\t\n90\tThe eight values, the credential each reads and the endpoint each defaults to are the\n91\tprovider table in [docs/configuration.md](configuration.md).\n92\t\n93\t### Reach a provider the table does not list\n94\t\n95\tSet `provider: openai` and point the `OPENAI_BASE_URL` repository variable at any host\n96\tserving the endpoint you picked — not every OpenAI-compatible gateway implements\n97\t`/responses`.\n98\t\n99\tWhat you give up by doing that instead of naming a provider is that the run's log says\n100\t`openai`, so where it went is only visible in the variable. **This repository's own\n101\tagent definitions were that case**, reading `provider: openai-responses # openrouter`\n102\t— and the trailing comment was there because the name did not say where the request\n103\twent. They name `orcarouter-responses` now.\n104\t\n105\tEach endpoint moves with its own `*_BASE_URL` variable (`OPENROUTER_BASE_URL` and so\n106\ton), and it is a repository variable rather than a secret. None of them may be declared\n107\tin `tools.secrets`: moving a provider's endpoint is a way to send its credential\n108\tsomewhere else.\n109\t\n110\t### Prefer particular upstream providers\n111\t\n112\tOn OpenRouter. Agent definitions ship an `extra_body` block, and Atoma merges every\n113\tkey in it straight into the request body, so this is OpenRouter's own provider-routing\n114\tcontract rather than an Atoma feature:\n115\t\n116\t```yaml\n117\textra_body:\n118\t  provider:\n119\t    order:\n120\t      - Xiaomi\n\n[399 more lines. Read again with offset: 121.]",
+      "tool_call_id": "call_01_zjlp54ydnd4kpicpi6auye4b"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_erlyfkbwyv9px05qt0w0hagg",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src\"}"
+          }
+        },
+        {
+          "id": "call_01_umws4o0mkekmo0j8rprg16s9",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"tests/contract\"}"
+          }
+        },
+        {
+          "id": "call_02_jwmnk2g31xvhi4ll8icfxbxz",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"self\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src:\n\nadapters/\napp/\nbuild-dist.ts (12318B)\ncontent/\ndomain/\nentrypoints/\nshared/\nworkflows/",
+      "tool_call_id": "call_00_erlyfkbwyv9px05qt0w0hagg"
+    },
+    {
+      "role": "tool",
+      "content": "tests/contract:\n\nadoption-preflight.test.ts (5839B)\nagent-definitions.test.ts (4451B)\nagent-environment.test.ts (3914B)\nagent-prompts.test.ts (10696B)\nconfig-contract.test.ts (17139B)\nconfig-paths.test.ts (4108B)\ndeployment-contract.test.ts (11223B)\ndispatch-sites.test.ts (5903B)\nenvironment-setup.test.ts (5699B)\nexamples.test.ts (3340B)\ngenerated-workflows.test.ts (76096B)\nlayering.test.ts (8295B)\nlive-tools-check.test.ts (11674B)\nmachinery-root.test.ts (3349B)\nmerge-gate-targets.test.ts (3078B)\nown-pipeline.test.ts (4584B)\nprovider-credential-check.test.ts (17358B)\nreserved-names.test.ts (6586B)\nscript-refs.test.ts (2981B)\nself-overlay.test.ts (9917B)\nserver-reports.test.ts (5638B)\nskill-catalog.test.ts (2087B)\ntest-script.test.ts (3047B)\ntools-yaml.test.ts (12276B)",
+      "tool_call_id": "call_01_umws4o0mkekmo0j8rprg16s9"
+    },
+    {
+      "role": "tool",
+      "content": "self:\n\natomaton/\nworkflows/",
+      "tool_call_id": "call_02_jwmnk2g31xvhi4ll8icfxbxz"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_8n4p6h4c9zq15gmojhll162m",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/shared\"}"
+          }
+        },
+        {
+          "id": "call_01_4z9eake6ofudptsi75yo8y6a",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/domain\"}"
+          }
+        },
+        {
+          "id": "call_02_bext308k4sjkevyn2636l8s3",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/workflows\"}"
+          }
+        },
+        {
+          "id": "call_03_kpixh69qhpkyqti03whock7v",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"package.json\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/shared:\n\nbm25.test.ts (5542B)\nbm25.ts (10878B)\ncode-search.test.ts (13091B)\ncode-search.ts (16223B)\nhtml-to-markdown.test.ts (2769B)\nhtml-to-markdown.ts (3884B)\nredaction.test.ts (2417B)\nredaction.ts (3046B)\ntool-output.test.ts (5493B)\ntool-output.ts (7314B)",
+      "tool_call_id": "call_00_8n4p6h4c9zq15gmojhll162m"
+    },
+    {
+      "role": "tool",
+      "content": "src/domain:\n\ndelivery/\nmachinery/\nrecord/\nwork/",
+      "tool_call_id": "call_01_4z9eake6ofudptsi75yo8y6a"
+    },
+    {
+      "role": "tool",
+      "content": "src/workflows:\n\nactions/\natomaton-check.wac.ts (13993B)\natomaton-deploy.wac.ts (14673B)\natomaton-entry.wac.ts (2524B)\natomaton-manual-comment.wac.ts (12601B)\natomaton-pr-merged.wac.ts (5753B)\natomaton-runner.wac.ts (93847B)\natomaton-sub-issue-closed.wac.ts (6431B)\natomaton-validate-pr.wac.ts (10176B)",
+      "tool_call_id": "call_02_bext308k4sjkevyn2636l8s3"
+    },
+    {
+      "role": "tool",
+      "content": "package.json lines 1-27 of 27\n\n1\t{\n2\t  \"name\": \"atomaton\",\n3\t  \"private\": true,\n4\t  \"type\": \"module\",\n5\t  \"version\": \"0.1.161\",\n6\t  \"engines\": {\n7\t    \"bun\": \">=1.2.0\"\n8\t  },\n9\t  \"scripts\": {\n10\t    \"synth\": \"gwf build && bun run src/build-dist.ts\",\n11\t    \"typecheck\": \"tsc --noEmit\",\n12\t    \"test\": \"bun test ./src/domain ./src/shared ./src/adapters ./src/app ./src/entrypoints/machinery ./tests/contract ./src/entrypoints/tools/mcp ./src/entrypoints/tools/hooks\",\n13\t    \"test:e2e\": \"bun test ./tests/e2e\",\n14\t    \"lint\": \"bun run typecheck && bun run synth\"\n15\t  },\n16\t  \"devDependencies\": {\n17\t    \"@github-actions-workflow-ts/actions\": \"^2.5.0\",\n18\t    \"@github-actions-workflow-ts/cli\": \"^2.5.0\",\n19\t    \"@github-actions-workflow-ts/lib\": \"^2.5.0\",\n20\t    \"@modelcontextprotocol/sdk\": \"^1.12.1\",\n21\t    \"@octokit/webhooks-types\": \"^7.6.1\",\n22\t    \"@types/bun\": \"^1.2.14\",\n23\t    \"typescript\": \"^5.6.3\",\n24\t    \"zod\": \"^3.25.76\",\n25\t    \"zod-to-json-schema\": \"^3.25.2\"\n26\t  }\n27\t}",
+      "tool_call_id": "call_03_kpixh69qhpkyqti03whock7v"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_gor48msgbeao7ht87cw5sn76",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"pattern\": \"sixty|60 minute|60-minute|three times|validation hand|hand-back\", \"path\": \"docs\", \"context\": 3}"
+          }
+        },
+        {
+          "id": "call_01_3z7ld8ig9gmfys03ufumvujn",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"tests/contract/config-contract.test.ts\", \"limit\": 120}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "31 line(s), match and context, under docs:\n\ndocs/operations.md-102-## What bounds a run\ndocs/operations.md-103-\ndocs/operations.md-104-Not configurable, on purpose. The runner gives an agent whatever is left of the\ndocs/operations.md:105:60-minute job it runs inside, minus five minutes for what follows it — saving the\ndocs/operations.md-106-session, posting the result, dispatching whatever comes next. A run that stops on\ndocs/operations.md-107-that budget saves its session and can be continued with `/<agent>`; a run killed by\ndocs/operations.md-108-the job's timeout reaches none of those steps and its work is gone. There is no\n--\ndocs/operations.md-114-\ndocs/operations.md-115-### What bounds a chain of runs\ndocs/operations.md-116-\ndocs/operations.md:117:Validation hands a pull request back to the engineer at most three times, and two\ndocs/operations.md-118-counters stop the chain itself — `chain.after_handoffs`, and\ndocs/operations.md-119-`chain.after_runs_without_change` when the runs stop changing anything. Both\ndocs/operations.md-120-defaults are in [configuration.md](configuration.md#chain); neither is repeated\n--\ndocs/configuration.md-707-server that is not there.\ndocs/configuration.md-708-\ndocs/configuration.md-709-**Why they are not here.** They were, and they were seventy percent of this file —\ndocs/configuration.md:710:sixty-six of ninety-three lines, in the one file you are told is yours, describing\ndocs/configuration.md-711-programs that are as much machinery as the scripts that implement them. The line\ndocs/configuration.md-712-drawn was: **hide what breaks when it is edited wrong, show what degrades.**\ndocs/configuration.md-713-Deleting a server takes a capability from every agent that named it and stops the\n--\ndocs/architecture.md-56-| | Where it lives | Examples |\ndocs/architecture.md-57-| --- | --- | --- |\ndocs/architecture.md-58-| **Borrowed vocabulary** — concepts GitHub *chose*, which we adopt on purpose | `domain/`, keeping GitHub's own names | issue, pull request, review, merge, the tree, the thread |\ndocs/architecture.md:59:| **Mechanism** — how GitHub happens to implement something | `adapters/` | label, check run, `workflow_dispatch`, GraphQL fields, orphan branches, the 60-minute cap |\ndocs/architecture.md-60-| **Defect** — where GitHub does not do what it appears to | one table, in `adapters/github/` | `closingIssuesReferences` dropped, search tokenisation, no workflow run for our own token's events |\ndocs/architecture.md-61-\ndocs/architecture.md-62-Renaming `Issue` to `WorkItem` is not on the list. It is a generalisation nobody",
+      "tool_call_id": "call_00_gor48msgbeao7ht87cw5sn76"
+    },
+    {
+      "role": "tool",
+      "content": "tests/contract/config-contract.test.ts lines 1-120 of 358\n\n1\timport { describe, expect, test } from \"bun:test\";\n2\timport ts from \"typescript\";\n3\timport { existsSync, readdirSync, readFileSync } from \"node:fs\";\n4\timport { configProblems, knownConfigKeys } from \"../../src/domain/delivery/deliverable-integrity.ts\";\n5\timport { CONDITION_KEYS, resolveMergeGates } from \"../../src/domain/delivery/merge-gates.ts\";\n6\timport { SCRIPTS_DIR } from \"../../src/domain/machinery/machinery-layout.ts\";\n7\timport type { AtomaConfig } from \"../../src/domain/delivery/declared-config.ts\";\n8\t\n9\t/**\n10\t * The shipped template's config.\n11\t *\n12\t * Read with `Bun.YAML.parse`, which is what `adapters/runner/config.ts` reads it with: a file\n13\t * this test accepts has to be a file the readers accept, and a second parser here\n14\t * could disagree with the one that runs. Typed as the interface plus an index\n15\t * signature so a test can also ask about a key the interface does NOT have.\n16\t */\n17\tfunc\n\n[2768 characters dropped from the middle; 4000 shown]\n\n(problems, condition).toEqual([]);\n67\t      expect(gates, condition).toHaveLength(1);\n68\t    }\n69\t  });\n70\t\n71\t  test(\"the reviewer knows what to do with the blockers a gate produces\", () => {\n72\t    const reviewer = readFileSync(\"src/content/agent-definitions/reviewer.md\", \"utf8\");\n73\t    for (const kind of [\"merge-gate\", \"gate-config-invalid\"]) {\n74\t      expect(reviewer, `${kind} must be in the reviewer's blocker table`).toContain(`\\`${kind}\\``);\n75\t    }\n76\t  });\n77\t});\n78\t\n79\t/**\n80\t * config.yaml's recognised keys, in the type and at run time.\n81\t *\n82\t * `AtomaConfig` in `domain/delivery/declared-config.ts` is the definition and `CONFIG_SCHEMA` in\n83\t * `domain/delivery/deliverable-integrity.ts` is the runtime mirror, because an interface is\n84\t * erased before anything can consult it. Two lists of the same fact — which is\n85\t * exactly what `validate_deliverable.ts` exists to catch in an adopter's config, so\n86\t * it had better not be uncheckable here.\n87\t *\n88\t * The interface is the authority, and this reads it with TypeScript's own parser\n89\t * rather than with a regular expression. A regex was tried and is not good enough:\n90\t * the nested members are indented inconsistently in that file (one is at five\n91\t * spaces), `Record<string, {...}>` has to be understood rather than matched, and an\n92\t * index signature means something specific — any name is legal here — that a line\n93\t * pattern cannot distinguish from a property.\n94\t *\n95\t * Drift in either direction is a real failure. A key added to the type and not to\n96\t * the schema is reported to an adopter as a typo, for a setting the code reads. One\n97\t * added to the schema and not the type is accepted and read by nothing.\n98\t */\n99\tdescribe(\"config.yaml's recognised keys\", () => {\n100\t  /** `Record<string, X>`'s value type, or undefined when `type` is not one. */\n101\t  function recordValueType(type: ts.TypeNode | undefined, source: ts.SourceFile): ts.TypeNode | undefined {\n102\t    if (!type || !ts.isTypeReferenceNode(type)) return undefined;\n103\t    if (type.typeName.getText(source) !== \"Record\") return undefined;\n104\t    return type.typeArguments?.[1];\n105\t  }\n106\t\n107\t  /** Dotted paths under `path`, with `*` for a level where any name is legal. */\n108\t  function descend(type: ts.TypeNode | undefined, path: string, source: ts.SourceFile, out: string[]): void {\n109\t    if (!type) return;\n110\t    if (ts.isTypeLiteralNode(type)) {\n111\t      if (type.members.some((member) => ts.isIndexSignatureDeclaration(member))) out.push(`${path}.*`);\n112\t      for (const member of type.members) {\n113\t        if (!ts.isPropertySignature(member) || !member.name) continue;\n114\t        const child = `${path}.${member.name.getText(source)}`;\n115\t        out.push(child);\n116\t        descend(member.type, child, source, out);\n117\t      }\n118\t      return;\n119\t    }\n120\t    const value = recordValueType(type, source);\n\n[238 more lines. Read again with offset: 121.]",
+      "tool_call_id": "call_01_3z7ld8ig9gmfys03ufumvujn"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_etuwg6q6jdycuvlo79p5k2to",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 10, \"path\": \"tests/contract/config-contract.test.ts\", \"pattern\": \"README\"}"
+          }
+        },
+        {
+          "id": "call_01_1d53jns7q9kilazspfqvnmun",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 6, \"path\": \"tests/contract\", \"pattern\": \"README\\\\.md\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "21 line(s), match and context, under tests/contract/config-contract.test.ts:\n\n186-   * pull request failed by the validator for following the documentation, which is\n187-   * the exact failure this file exists to prevent. Coverage stopped one file short\n188-   * of the reader.\n189-   */\n190-  const PAGES_THAT_NAME_KEYS = [\n191-    \"docs/configuration.md\",\n192-    \"docs/setup.md\",\n193-    \"docs/recipes.md\",\n194-    \"docs/writing-a-tool.md\",\n195-    \"docs/operations.md\",\n196:    \"README.md\",\n197-    \"CONTRIBUTING.md\",\n198-  ];\n199-\n200-  /**\n201-   * Every settable key is written down somewhere a person can find it.\n202-   *\n203-   * A per-arm `runs_on`, the deploy lists and the three `chain.labels` entries\n204-   * were each settable and each undocumented when this test was written -- five\n205-   * keys an adopter could only find by reading the validator's schema.\n206-   */",
+      "tool_call_id": "call_00_etuwg6q6jdycuvlo79p5k2to"
+    },
+    {
+      "role": "tool",
+      "content": "24 line(s), match and context, under tests/contract:\n\ntests/contract/config-contract.test.ts-190-  const PAGES_THAT_NAME_KEYS = [\ntests/contract/config-contract.test.ts-191-    \"docs/configuration.md\",\ntests/contract/config-contract.test.ts-192-    \"docs/setup.md\",\ntests/contract/config-contract.test.ts-193-    \"docs/recipes.md\",\ntests/contract/config-contract.test.ts-194-    \"docs/writing-a-tool.md\",\ntests/contract/config-contract.test.ts-195-    \"docs/operations.md\",\ntests/contract/config-contract.test.ts:196:    \"README.md\",\ntests/contract/config-contract.test.ts-197-    \"CONTRIBUTING.md\",\ntests/contract/config-contract.test.ts-198-  ];\ntests/contract/config-contract.test.ts-199-\ntests/contract/config-contract.test.ts-200-  /**\ntests/contract/config-contract.test.ts-201-   * Every settable key is written down somewhere a person can find it.\ntests/contract/config-contract.test.ts-202-   *\n--\ntests/contract/deployment-contract.test.ts-227-      \"the validator must derive its paths from the tree it is judging\",\ntests/contract/deployment-contract.test.ts-228-    ).toEqual([]);\ntests/contract/deployment-contract.test.ts-229-  });\ntests/contract/deployment-contract.test.ts-230-\ntests/contract/deployment-contract.test.ts-231-  /** An adopter opening the directory should find out what each path means there. */\ntests/contract/deployment-contract.test.ts-232-  test(\"the README ships\", () => {\ntests/contract/deployment-contract.test.ts:233:    expect(existsSync(\"src/content/README.md\")).toBe(true);\ntests/contract/deployment-contract.test.ts:234:    expect(readFileSync(\"src/build-dist.ts\", \"utf8\")).toContain('\"README.md\"');\ntests/contract/deployment-contract.test.ts-235-  });\ntests/contract/deployment-contract.test.ts-236-});",
+      "tool_call_id": "call_01_1d53jns7q9kilazspfqvnmun"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_u2kue8ifzegug403ka948wr2",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"tests/contract/config-contract.test.ts\", \"offset\": 170, \"limit\": 190}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "tests/contract/config-contract.test.ts lines 170-358 of 358\n\n170\t   * belongs to, by its full dotted path or by its leaf name under a heading that\n171\t   * supplies the rest. So this collects the tokens and the two tests below ask\n172\t   * different questions of them, rather than demanding one flat bullet list the\n173\t   * page would be worse for carrying.\n174\t   */\n175\t  function documentedTokens(file: string): Set<string> {\n176\t    const docs = readFileSync(file, \"utf8\");\n177\t    return new Set([...docs.matchAll(/`([^`\\n]+)`/g)].map((match) => match[1]!));\n178\t  }\n179\t\n180\t  /**\n181\t   * Every page that names configuration keys to somebody who might write them.\n182\t   *\n183\t   * Only `docs/configuration.md` was held to the schema, and `docs/operations.md`\n184\t   * spent that time telling operators the handoff cap was `limits.agent_handoffs`\n185\t   * -- a namespace that has never existed. An adopter who followed it had their\n186\t   * pull request failed by the validator\n\n[5966 characters dropped from the middle; 4000 shown]\n\nal in every language, so a secret scan is the one verification\n307\t * a template can hand a project it knows nothing about. Everything beside it in that list\n308\t * is the project's own and only the project can write it.\n309\t */\n310\tdescribe(\"the default checks a project inherits\", () => {\n311\t  const jobs = (shippedConfig().checks?.from_pull_request ?? []) as { commands?: string[] }[];\n312\t  const commands = jobs.flatMap((job) => job.commands ?? []);\n313\t\n314\t  test(\"there is at least one, so an adoption does not start verifying nothing\", () => {\n315\t    expect(commands.length).toBeGreaterThan(0);\n316\t  });\n317\t\n318\t  /**\n319\t   * A default that names a file the deliverable does not carry fails in the adopter's\n320\t   * repository and not in ours, which is the worst place to find out. The path is the\n321\t   * one every other invocation uses, so it also has to keep working when the machinery\n322\t   * is checked out somewhere else.\n323\t   */\n324\t  /**\n325\t   * The path is built from `SCRIPTS_DIR` rather than written out again.\n326\t   *\n327\t   * It was a literal `.github/scripts/`, and when the scripts moved under\n328\t   * `.github/atomaton-runtime/` the shipped default check went on naming a directory\n329\t   * that no longer exists -- in the one command every adopter inherits, and in this\n330\t   * repository's own pipeline. This test stayed green throughout, because a stale\n331\t   * pattern matched a stale path and agreed with it. Its failure message had already\n332\t   * been updated to say `atoma-runtime`, which is how close it came to noticing.\n333\t   *\n334\t   * Two literals of one fact is the shape; importing the constant is the fix.\n335\t   */\n336\t  test(\"each one runs a script the deliverable actually ships\", () => {\n337\t    for (const command of commands) {\n338\t      expect(command, `${command} should run a script under ${SCRIPTS_DIR}/`).toContain(`${SCRIPTS_DIR}/`);\n339\t      const named = new RegExp(`${SCRIPTS_DIR.replaceAll(\"/\", \"\\\\/\")}\\\\/([A-Za-z0-9_-]+\\\\.ts)`).exec(command);\n340\t      expect(named, `${command} names no script under ${SCRIPTS_DIR}/`).not.toBeNull();\n341\t      expect(existsSync(`src/entrypoints/machinery/${named![1]}`), `src/entrypoints/machinery/${named![1]} must exist`).toBe(true);\n342\t      expect(command, \"the machinery root indirection every other invocation uses\").toContain(\n343\t        \"${ATOMATON_MACHINERY_ROOT:-.}\",\n344\t      );\n345\t    }\n346\t  });\n347\t\n348\t  /**\n349\t   * The adopter's own commands go beside this one, not instead of it -- so a default\n350\t   * that assumed a language would be a default most adopters delete. Nothing here may\n351\t   * name a package manager or a runtime beyond the one Atomaton already requires.\n352\t   */\n353\t  test(\"no default assumes what the project is written in\", () => {\n354\t    for (const command of commands) {\n355\t      expect(command).not.toMatch(/\\b(npm|yarn|pnpm|cargo|pip|poetry|go|mvn|gradle|dotnet)\\b/);\n356\t    }\n357\t  });\n358\t});",
+      "tool_call_id": "call_00_u2kue8ifzegug403ka948wr2"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_j4ijn3xu5a8z58a3od0lknt1",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \".gitignore\"}"
+          }
+        },
+        {
+          "id": "call_01_bu2tddtk1k77qjq1yvx61suo",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/entrypoints\"}"
+          }
+        },
+        {
+          "id": "call_02_xc56xm4hs1f8z3zru1dp0w91",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/content\"}"
+          }
+        },
+        {
+          "id": "call_03_2ndbmounukvw372sqlk3r1lg",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/operations.md\", \"limit\": 130}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": ".gitignore lines 1-22 of 22\n\n1\t__pycache__\n2\t\n3\t# Atomaton runtime artifacts\n4\tatomaton_logs.txt\n5\tatomaton_output.txt\n6\tatomaton_ops.log\n7\tevents.json\n8\tsession.json\n9\tlogs/\n10\t\n11\t# The deliverable, built by `bun run synth`. Not tracked: it is a pure function\n12\t# of src/, and it is distributed as a release asset by cd.yml rather than\n13\t# committed. Tracking it is what used to force a branch-protection bypass, since\n14\t# publishing meant pushing generated output straight to main.\n15\tdist/\n16\t\n17\t# Dependencies\n18\tnode_modules/\n19\t\n20\t# Atomaton source checkout created by the runner when atoma_version=source.\n21\t# A bare `git add -A` otherwise commits it as a dangling gitlink (no .gitmodules).\n22\tatoma-src/",
+      "tool_call_id": "call_00_j4ijn3xu5a8z58a3od0lknt1"
+    },
+    {
+      "role": "tool",
+      "content": "src/entrypoints:\n\nmachinery/\ntools/",
+      "tool_call_id": "call_01_bu2tddtk1k77qjq1yvx61suo"
+    },
+    {
+      "role": "tool",
+      "content": "src/content:\n\nagent-definitions/\nconfig.yaml (5528B)\nprompt-template.md (6931B)\nREADME.md (9395B)\nrulesets/\nskills/",
+      "tool_call_id": "call_02_xc56xm4hs1f8z3zru1dp0w91"
+    },
+    {
+      "role": "tool",
+      "content": "docs/operations.md lines 1-130 of 754\n\n1\t# Operations\n2\t\n3\tThis page is for somebody who already has Atomaton running: how the machinery behaves,\n4\tand how to work out why it just did that.\n5\t\n6\t## How work starts\n7\t\n8\t**Somebody asks.** That is the whole rule, and it is the only one.\n9\t\n10\t| who asks | how |\n11\t| --- | --- |\n12\t| a person | comment `/engineer` (or any agent name) on an issue or pull request |\n13\t| an agent | names the next agent as its handoff, or `reviewer=` when it opens a pull request |\n14\t\n15\tNothing starts from a GitHub event on its own. Opening a pull request starts nobody;\n16\tpushing to one starts nobody; leaving a review starts nobody.\n17\t\n18\t**This changed.** There was once an `auto_triggers` setting, with four entries that\n19\tstarted a reviewer on `pull_request.opened`, `synchronize` and `ready_for_review`,\n20\tand an engineer on a `changes_requested` review. Two rules to learn instead of one\n21\t— and the event-driven half was invisible in a wa\n\n[2537 characters dropped from the middle; 4000 shown]\n\ngregation\n71\t- `atomaton-sub-issue-closed.yml` for manual sub-issue close fallback\n72\t\n73\t`atoma-auto-trigger.yml` and `atoma-pr-review.yml` are gone. They listened\n74\tfor `pull_request_target` and `pull_request_review.submitted` to start a reviewer or\n75\tan engineer, and nothing now starts from a pull request event. See\n76\t[How work starts](#how-work-starts).\n77\t\n78\tDispatched, not event-driven:\n79\t\n80\t- `atomaton-validate-pr.yml` runs the configured CI against an agent's pull request,\n81\t  publishes the result as a check run, and dispatches whoever comes next.\n82\t  `create_pr` starts it.\n83\t\n84\tShared executor:\n85\t\n86\t- `atomaton-runner.yml` is a reusable workflow called by routing workflows.\n87\t\n88\t## Lifecycle\n89\t\n90\t```mermaid\n91\tflowchart TD\n92\t    A[GitHub event or slash command] --> B[Routing workflow]\n93\t    B --> C[atomaton-runner reusable workflow]\n94\t    C --> D[Restore session from atomaton-data]\n95\t    D --> E[Run Atoma agent]\n96\t    E --> F[Post result and save session]\n97\t    F --> G{Directive or tool-triggered dispatch?}\n98\t    G -->|Yes| C\n99\t    G -->|No| H[Release in-progress guard]\n100\t```\n101\t\n102\t## What bounds a run\n103\t\n104\tNot configurable, on purpose. The runner gives an agent whatever is left of the\n105\t60-minute job it runs inside, minus five minutes for what follows it — saving the\n106\tsession, posting the result, dispatching whatever comes next. A run that stops on\n107\tthat budget saves its session and can be continued with `/<agent>`; a run killed by\n108\tthe job's timeout reaches none of those steps and its work is gone. There is no\n109\tceiling on turns, and a new run gets a fresh budget.\n110\t\n111\tA number in `config.yaml` could not have said that. It would have been a guess about\n112\thow long the checkout, the container build and the environment setup take on the\n113\tday, and a guess that was too large would be silently ignored by the job timeout.\n114\t\n115\t### What bounds a chain of runs\n116\t\n117\tValidation hands a pull request back to the engineer at most three times, and two\n118\tcounters stop the chain itself — `chain.after_handoffs`, and\n119\t`chain.after_runs_without_change` when the runs stop changing anything. Both\n120\tdefaults are in [configuration.md](configuration.md#chain); neither is repeated\n121\there, so this page cannot go stale against them. **There is no token or cost\n122\tceiling**: the bounds are on how many runs happen, not on what they spend.\n123\t\n124\tWhen a limit is hit, the run still finishes and still reports. Only the handoff is\n125\twithheld, and a comment says which limit stopped it and which agent would have run\n126\tnext. Posting `/<agent>` resumes it.\n127\t\n128\t`chain.after_runs_without_change` is counted from the comments, like the handoff\n129\tlimit, so nothing is stored: each result comment records what its run did.\n130\t**Anything else in the thread ends the count** — a person's comment, a notice from\n\n[624 more lines. Read again with offset: 131.]",
+      "tool_call_id": "call_03_2ndbmounukvw372sqlk3r1lg"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_886rahoyyh3g4tyktimqyeq5",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"pattern\": \"docs/.*\\\\.md|link\", \"path\": \"tests\", \"glob\": \"*.ts\", \"context\": 4, \"max_matches\": 40}"
+          }
+        },
+        {
+          "id": "call_01_qo2hg7vrto6rgu6awnsge2kg",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"tests/contract/layering.test.ts\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "40 line(s), match and context, under tests:\n\ntests/contract/adoption-preflight.test.ts-12- * prove the adoption worked.\ntests/contract/adoption-preflight.test.ts-13- *\ntests/contract/adoption-preflight.test.ts-14- * ## Where the truth lives\ntests/contract/adoption-preflight.test.ts-15- *\ntests/contract/adoption-preflight.test.ts:16: * The provider table in `docs/configuration.md` is the mapping, and this test\ntests/contract/adoption-preflight.test.ts-17- * reads it rather than restating it — so there is no third copy to drift. The\ntests/contract/adoption-preflight.test.ts-18- * chain is: agent definition names a provider, the table says which credential\ntests/contract/adoption-preflight.test.ts-19- * that provider reads, the setup guide must name that credential.\ntests/contract/adoption-preflight.test.ts-20- *\n--\ntests/contract/adoption-preflight.test.ts-26- * ## Why it reads a whole file rather than a section\ntests/contract/adoption-preflight.test.ts-27- *\ntests/contract/adoption-preflight.test.ts-28- * It used to slice the README's \"Preflight checklist\" and stop at the words \"To\ntests/contract/adoption-preflight.test.ts-29- * run somewhere else\", because the alternatives were named in prose directly below\ntests/contract/adoption-preflight.test.ts:30: * the required list and naming them there is the point. `docs/setup.md` is the\ntests/contract/adoption-preflight.test.ts-31- * checklist now, and it carries actions only: the alternatives moved to\ntests/contract/adoption-preflight.test.ts:32: * `docs/configuration.md`, which this test does not police in that direction. So\ntests/contract/adoption-preflight.test.ts-33- * the whole page is the required list, and no delimiter has to be kept alive in\ntests/contract/adoption-preflight.test.ts-34- * prose for a test to find.\ntests/contract/adoption-preflight.test.ts-35- */\ntests/contract/adoption-preflight.test.ts-36-import { describe, expect, test } from \"bun:test\";\n--\ntests/contract/adoption-preflight.test.ts-55- *\ntests/contract/adoption-preflight.test.ts-56- * Rows look like: `| \\`openrouter-responses\\` | Responses | \\`OPENROUTER_API_KEY\\` | ... |`\ntests/contract/adoption-preflight.test.ts-57- */\ntests/contract/adoption-preflight.test.ts-58-function credentialByProvider(): Map<string, string> {\ntests/contract/adoption-preflight.test.ts:59:  const docs = readFileSync(\"docs/configuration.md\", \"utf8\");\ntests/contract/adoption-preflight.test.ts-60-  const map = new Map<string, string>();\ntests/contract/adoption-preflight.test.ts-61-  for (const line of docs.split(/\\r?\\n/)) {\ntests/contract/adoption-preflight.test.ts-62-    const match = /^\\|\\s*`([a-z][a-z0-9-]*)`\\s*\\|[^|]*\\|\\s*`([A-Z][A-Z0-9_]*)`\\s*\\|/.exec(line);\ntests/contract/adoption-preflight.test.ts-63-    if (match?.[1] && match[2]) map.set(match[1], match[2]);\n--\ntests/contract/adoption-preflight.test.ts-66-}\ntests/contract/adoption-preflight.test.ts-67-\ntests/contract/adoption-preflight.test.ts-68-/** The setup guide, which is what a first run depends on being right. */\ntests/contract/adoption-preflight.test.ts-69-function preflightSection(): string {\ntests/contract/adoption-preflight.test.ts:70:  const setup = readFileSync(\"docs/setup.md\", \"utf8\").replace(/\\r\\n/g, \"\\n\");\ntests/contract/adoption-preflight.test.ts:71:  expect(setup.length, \"docs/setup.md is empty or missing\").toBeGreaterThan(500);\ntests/contract/adoption-preflight.test.ts-72-  return setup;\ntests/contract/adoption-preflight.test.ts-73-}\n\n[103 or more further lines. Narrow the pattern, set glob, or raise max_matches.]",
+      "tool_call_id": "call_00_886rahoyyh3g4tyktimqyeq5"
+    },
+    {
+      "role": "tool",
+      "content": "tests/contract/layering.test.ts lines 1-191 of 191\n\n1\t/**\n2\t * layering.test.ts — the arrows point inward, and nothing says so but this.\n3\t *\n4\t * `docs/architecture.md` sorts `src/` into layers and states the rule. Nothing\n5\t * enforced it: `package.json`'s lint is `tsc` and `synth`, and none of the other\n6\t * contract tests reads an import. A layout with no ratchet is a layout that holds\n7\t * until the first change made in a hurry.\n8\t *\n9\t * ## What it cannot see\n10\t *\n11\t * Imports, and only imports. None of the defects the refactor it guards was opened\n12\t * for is visible here — a domain concept defined by a mechanism is a doc comment, a\n13\t * missing `Turn` is a type nobody wrote, and a conflated enum is two meanings in one\n14\t * word. This is the cheap half, kept because it is the half that decays silently.\n15\t *\n16\t * ## Why the contexts inside `domain/` are listed too\n17\t *\n18\t * They are not four peers. Measured when they were split: `delivery` reaches into\n19\t\n\n[5053 characters dropped from the middle; 4000 shown]\n\n * and it is why `domain/` is where the rules live rather than where they are read\n132\t   * from: anything that reaches for a file, a clock or a subprocess has to be given\n133\t   * the world before it can answer.\n134\t   */\n135\t  test.each([\"domain\", \"shared\"])(\"%s reaches for nothing outside its arguments\", (layer) => {\n136\t    const impure: string[] = [];\n137\t    for (const file of FILES.filter((f) => named(f).startsWith(`${layer}/`))) {\n138\t      if (MAY_READ_FILES.includes(named(file))) continue;\n139\t      const text = readFileSync(file, \"utf8\");\n140\t      for (const [, what] of text.matchAll(/from\\s+\"(node:[a-z:/]+)\"/g)) {\n141\t        if (REACHES_THE_WORLD.includes(what!)) impure.push(`${named(file)} imports ${what}`);\n142\t      }\n143\t      for (const pattern of [/\\bprocess\\.env\\b/, /\\bBun\\.spawn/, /\\bDate\\.now\\(/, /\\bMath\\.random\\(/, /\\bnew Date\\(/]) {\n144\t        if (pattern.test(text)) impure.push(`${named(file)} uses ${pattern.source}`);\n145\t      }\n146\t    }\n147\t    expect(impure, `${layer}/ must take the world as an argument`).toEqual([]);\n148\t  });\n149\t\n150\t  test(\"the file-reading exception is one module, and it is the one named\", () => {\n151\t    expect(MAY_READ_FILES).toEqual([\"domain/machinery/shipped-servers.ts\"]);\n152\t    expect(FILES.map(named)).toContain(MAY_READ_FILES[0]!);\n153\t  });\n154\t});\n155\t\n156\t/**\n157\t * No module imports its way back to itself.\n158\t *\n159\t * `shipped-servers.ts` and `tools-file.ts` were in a cycle, and its cause is the\n160\t * ordinary one: the SHAPES and the BEHAVIOUR were in the same file, the shapes were\n161\t * shared and the behaviour was not, so each module needed a type the other declared.\n162\t * Splitting the shapes out into `tool-server.ts` cost a file and left both arrows\n163\t * pointing the same way.\n164\t *\n165\t * Worth a test rather than a habit because nothing fails when it happens: TypeScript\n166\t * resolves it, the bundler resolves it, and what is left is a pair of modules neither\n167\t * of which can be read first.\n168\t */\n169\tdescribe(\"nothing imports its way back to itself\", () => {\n170\t  test(\"there is no import cycle anywhere under src/\", () => {\n171\t    const graph = new Map(FILES.map((file) => [named(file), importsOf(file)]));\n172\t    const cycles: string[] = [];\n173\t    const visiting = new Set<string>();\n174\t    const settled = new Set<string>();\n175\t\n176\t    const walk = (at: string, path: string[]): void => {\n177\t      if (visiting.has(at)) {\n178\t        cycles.push([...path.slice(path.indexOf(at)), at].join(\" -> \"));\n179\t        return;\n180\t      }\n181\t      if (settled.has(at)) return;\n182\t      visiting.add(at);\n183\t      for (const to of graph.get(at) ?? []) walk(to, [...path, at]);\n184\t      visiting.delete(at);\n185\t      settled.add(at);\n186\t    };\n187\t\n188\t    for (const file of graph.keys()) walk(file, []);\n189\t    expect(cycles, \"each of these is a pair of modules neither of which can be read first\").toEqual([]);\n190\t  });\n191\t});",
+      "tool_call_id": "call_01_qo2hg7vrto6rgu6awnsge2kg"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_tu6tdoz8bm12qj4ugx7f3a8z",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 6, \"path\": \"tests\", \"pattern\": \"readdirSync\\\\(\\\"docs\\\"|readdirSync\\\\('docs'|docs/\", \"max_matches\": 60}"
+          }
+        },
+        {
+          "id": "call_01_k9gi8o7u15avg15s32huw069",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 5, \"path\": \"tests\", \"pattern\": \"markdown|relative link|\\\\]\\\\(\", \"max_matches\": 40}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "60 line(s), match and context, under tests:\n\ntests/contract/adoption-preflight.test.ts-10- * provider reads one credential with **no fallback**, so every new adopter\ntests/contract/adoption-preflight.test.ts-11- * following the checklist got a failed first run, on the run that is supposed to\ntests/contract/adoption-preflight.test.ts-12- * prove the adoption worked.\ntests/contract/adoption-preflight.test.ts-13- *\ntests/contract/adoption-preflight.test.ts-14- * ## Where the truth lives\ntests/contract/adoption-preflight.test.ts-15- *\ntests/contract/adoption-preflight.test.ts:16: * The provider table in `docs/configuration.md` is the mapping, and this test\ntests/contract/adoption-preflight.test.ts-17- * reads it rather than restating it — so there is no third copy to drift. The\ntests/contract/adoption-preflight.test.ts-18- * chain is: agent definition names a provider, the table says which credential\ntests/contract/adoption-preflight.test.ts-19- * that provider reads, the se\n\n[1432 characters dropped from the middle; 4000 shown]\n\n.\ntests/contract/adoption-preflight.test.ts-35- */\ntests/contract/adoption-preflight.test.ts-36-import { describe, expect, test } from \"bun:test\";\ntests/contract/adoption-preflight.test.ts-37-import { readFileSync, readdirSync } from \"node:fs\";\ntests/contract/adoption-preflight.test.ts-38-import { join } from \"node:path\";\n--\ntests/contract/adoption-preflight.test.ts-53-/**\ntests/contract/adoption-preflight.test.ts-54- * The provider -> credential mapping, read out of the configuration reference's table.\ntests/contract/adoption-preflight.test.ts-55- *\ntests/contract/adoption-preflight.test.ts-56- * Rows look like: `| \\`openrouter-responses\\` | Responses | \\`OPENROUTER_API_KEY\\` | ... |`\ntests/contract/adoption-preflight.test.ts-57- */\ntests/contract/adoption-preflight.test.ts-58-function credentialByProvider(): Map<string, string> {\ntests/contract/adoption-preflight.test.ts:59:  const docs = readFileSync(\"docs/configuration.md\", \"utf8\");\ntests/contract/adoption-preflight.test.ts-60-  const map = new Map<string, string>();\ntests/contract/adoption-preflight.test.ts-61-  for (const line of docs.split(/\\r?\\n/)) {\ntests/contract/adoption-preflight.test.ts-62-    const match = /^\\|\\s*`([a-z][a-z0-9-]*)`\\s*\\|[^|]*\\|\\s*`([A-Z][A-Z0-9_]*)`\\s*\\|/.exec(line);\ntests/contract/adoption-preflight.test.ts-63-    if (match?.[1] && match[2]) map.set(match[1], match[2]);\ntests/contract/adoption-preflight.test.ts-64-  }\ntests/contract/adoption-preflight.test.ts-65-  return map;\ntests/contract/adoption-preflight.test.ts-66-}\ntests/contract/adoption-preflight.test.ts-67-\ntests/contract/adoption-preflight.test.ts-68-/** The setup guide, which is what a first run depends on being right. */\ntests/contract/adoption-preflight.test.ts-69-function preflightSection(): string {\ntests/contract/adoption-preflight.test.ts:70:  const setup = readFileSync(\"docs/setup.md\", \"utf8\").replace(/\\r\\n/g, \"\\n\");\ntests/contract/adoption-preflight.test.ts:71:  expect(setup.length, \"docs/setup.md is empty or missing\").toBeGreaterThan(500);\ntests/contract/adoption-preflight.test.ts-72-  return setup;\ntests/contract/adoption-preflight.test.ts-73-}\ntests/contract/adoption-preflight.test.ts-74-\ntests/contract/adoption-preflight.test.ts-75-const agentFiles = readdirSync(AGENT_DIR).filter((file) => file.endsWith(\".md\"));\ntests/contract/adoption-preflight.test.ts-76-\ntests/contract/adoption-preflight.test.ts-77-describe(\"the preflight checklist\", () => {\n--\ntests/contract/adoption-preflight.test.ts-114-   * required, that nothing reads, sends an adopter to create a secret that does\ntests/contract/adoption-preflight.test.ts-115-   * not help and then to debug a failure the checklist caused.\ntests/contract/adoption-preflight.test.ts-116-   */\ntests/contract/adoption-preflight.test.ts-117-  test(\"the setup guide requires no credential the shipped configuration does not use\", () => {\n\n[101 or more further lines. Narrow the pattern, set glob, or raise max_matches.]",
+      "tool_call_id": "call_00_tu6tdoz8bm12qj4ugx7f3a8z"
+    },
+    {
+      "role": "tool",
+      "content": "No match for markdown|relative link|\\]\\( under tests.",
+      "tool_call_id": "call_01_k9gi8o7u15avg15s32huw069"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_vs4hl173vh6ptvwkft0afsw1",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 4, \"pattern\": \"readdirSync\\\\(\\\"docs\\\"|\\\"docs\\\"\\\\)|docs\\\\b.*readdir\", \"glob\": \"*.ts\", \"path\": \".\", \"exclude\": [\"node_modules\", \"dist\"]}"
+          }
+        },
+        {
+          "id": "call_01_okcdiw5ixmyjwutuv284lqpg",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"docs/operations.md\", \"offset\": 130, \"limit\": 120}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "No match for readdirSync\\(\"docs\"|\"docs\"\\)|docs\\b.*readdir in *.ts files under ..",
+      "tool_call_id": "call_00_vs4hl173vh6ptvwkft0afsw1"
+    },
+    {
+      "role": "tool",
+      "content": "docs/operations.md lines 130-249 of 754\n\n130\t**Anything else in the thread ends the count** — a person's comment, a notice from\n131\tthe machinery, or a run that did change something. That is deliberate, and it makes\n132\tthis under-fire rather than over-fire: a run that ends by opening a pull request\n133\tposts no result comment of its own, so its progress is invisible to this count and\n134\tthe runs either side of it must not read as consecutive.\n135\t\n136\t## Session persistence (`atomaton-data` branch)\n137\t\n138\t- Active sessions are stored by context and agent: `sessions/<type>-<number>/<agent>.json`.\n139\t- Recovery archives are stored beside the active sessions as `sessions/<type>-<number>/archive/<agent>-N.json`, where `N` is the next per-agent sequence number.\n140\t- Restore uses `git fetch` + `git show` from `origin/atomaton-data` without checkout changes.\n141\t- Save uses an isolated git worktree and push-retry loop to handle concurrent writes safely.\n142\t- **A session \n\n[3501 characters dropped from the middle; 4000 shown]\n\n one pull request once every child is\n197\t  done. Deployment is not dispatched for a merge into a parent branch: that work\n198\t  is still in progress, and only the final pull request into the base branch\n199\t  carries it to release.\n200\t\n201\t### Release pull requests\n202\t\n203\tAtomaton has no notion of a release: the promotion pull request — `develop` into\n204\t`main`, or whatever your equivalent is — is yours to open, from the GitHub UI or\n205\t`gh pr create --base main --head develop`. It carries the merge of many issues and\n206\tis where you decide a set of work is ready to ship, which is a judgement no agent\n207\tis positioned to make.\n208\t\n209\tNothing about that pull request is special to Atomaton. It is reviewed by whoever\n210\treviews releases, and merging it runs whatever your `main` branch already runs.\n211\t\n212\t## Serialization guard and labels\n213\t\n214\t- Runner uses workflow concurrency group per `<type>-<number>`.\n215\t- Runner adds `atomaton/in-progress` label before agent execution.\n216\t- Manual comments during active runs are guarded:\n217\t  - comment can be deleted\n218\t  - commenter is notified to retry after completion\n219\t  - `/stop` is the one exemption: it is the only command whose meaning is \"act on the\n220\t    run happening right now\", so guarding it would make it unusable exactly when it\n221\t    is needed\n222\t- Label release is decided by domain rule (`shouldReleaseGuard`), not by ad-hoc workflow condition strings.\n223\t\n224\tThree labels are applied, and only the first is about the guard:\n225\t\n226\t| label | what it means |\n227\t| --- | --- |\n228\t| `atomaton/in-progress` | a run is executing on this issue or pull request. Applied before the agent starts, removed when the work hands back to a person |\n229\t| `atomaton/sub-issue` | this issue is a child delivery task Atomaton created. Which issue it is under is GitHub's own sub-issue link, not a marker in the body |\n230\t| `atomaton/launched` | an agent has actually been dispatched on this sub-issue. A child that exists but has not been started yet does not carry it |\n231\t\n232\tThe last two are read together, and that is why there are two. A parent is\n233\tre-invoked once no open sibling carries **both**: a sub-issue created as a later\n234\tphase of a plan and never launched must not hold the parent back, or the count could\n235\tnever reach zero. Rename any of them under `chain.labels` — see\n236\t[configuration.md](configuration.md#chain).\n237\t\n238\t## Manual commands and recovery\n239\t\n240\tAn agent command must occupy its own line. Put instructions on following lines:\n241\t\n242\t```text\n243\t/engineer\n244\tImplement the remaining acceptance criteria.\n245\t```\n246\t\n247\tText after an agent name on the command line is rejected rather than guessed at,\n248\tbecause the name is used as a filename and as a shell word. A comment says so on\n249\tthe issue; a new issue's body reports it as a warning on the workflow run and\n\n[505 more lines. Read again with offset: 250.]",
+      "tool_call_id": "call_01_okcdiw5ixmyjwutuv284lqpg"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_0o9akf3zuook6n7n1ewbzycd",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 4, \"glob\": \"*.ts\", \"path\": \".\", \"exclude\": [\"node_modules\", \"dist\"], \"pattern\": \"docs/[a-z-]+\\\\.md\", \"max_matches\": 80}"
+          }
+        },
+        {
+          "id": "call_01_cwvxnwytbjm73z4bzj2l56qz",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/entrypoints/tools\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "80 line(s), match and context, under .:\n\n./tests/contract/adoption-preflight.test.ts-12- * prove the adoption worked.\n./tests/contract/adoption-preflight.test.ts-13- *\n./tests/contract/adoption-preflight.test.ts-14- * ## Where the truth lives\n./tests/contract/adoption-preflight.test.ts-15- *\n./tests/contract/adoption-preflight.test.ts:16: * The provider table in `docs/configuration.md` is the mapping, and this test\n./tests/contract/adoption-preflight.test.ts-17- * reads it rather than restating it — so there is no third copy to drift. The\n./tests/contract/adoption-preflight.test.ts-18- * chain is: agent definition names a provider, the table says which credential\n./tests/contract/adoption-preflight.test.ts-19- * that provider reads, the setup guide must name that credential.\n./tests/contract/adoption-preflight.test.ts-20- *\n--\n./tests/contract/adoption-preflight.test.ts-26- * ## Why it reads a whole file rather than a section\n./tests/contract/adoption-preflight.test.ts-2\n\n[3105 characters dropped from the middle; 4000 shown]\n\nreflight.test.ts-119-    // The whole page: it carries actions only, so everything on it is required. The\n./tests/contract/adoption-preflight.test.ts:120:    // alternatives live in `docs/configuration.md`, where naming them is the point.\n./tests/contract/adoption-preflight.test.ts-121-    const required = preflightSection();\n./tests/contract/adoption-preflight.test.ts-122-    for (const credential of [...credentialByProvider().values()]) {\n./tests/contract/adoption-preflight.test.ts-123-      if (needed.has(credential)) continue;\n./tests/contract/adoption-preflight.test.ts-124-      expect(\n--\n./tests/contract/config-contract.test.ts-50-  // forgetting this array left it undocumented while both tests below still passed.\n./tests/contract/config-contract.test.ts-51-  const CONDITIONS = CONDITION_KEYS;\n./tests/contract/config-contract.test.ts-52-\n./tests/contract/config-contract.test.ts-53-  test(\"every condition the code accepts appears in the configuration reference\", () => {\n./tests/contract/config-contract.test.ts:54:    const docs = readFileSync(\"docs/configuration.md\", \"utf8\");\n./tests/contract/config-contract.test.ts-55-    for (const condition of CONDITIONS) {\n./tests/contract/config-contract.test.ts-56-      expect(docs, `${condition} must be documented`).toContain(`\\`${condition}\\``);\n./tests/contract/config-contract.test.ts-57-    }\n./tests/contract/config-contract.test.ts-58-  });\n--\n./tests/contract/config-contract.test.ts-179-\n./tests/contract/config-contract.test.ts-180-  /**\n./tests/contract/config-contract.test.ts-181-   * Every page that names configuration keys to somebody who might write them.\n./tests/contract/config-contract.test.ts-182-   *\n./tests/contract/config-contract.test.ts:183:   * Only `docs/configuration.md` was held to the schema, and `docs/operations.md`\n./tests/contract/config-contract.test.ts-184-   * spent that time telling operators the handoff cap was `limits.agent_handoffs`\n./tests/contract/config-contract.test.ts-185-   * -- a namespace that has never existed. An adopter who followed it had their\n./tests/contract/config-contract.test.ts-186-   * pull request failed by the validator for following the documentation, which is\n./tests/contract/config-contract.test.ts-187-   * the exact failure this file exists to prevent. Coverage stopped one file short\n./tests/contract/config-contract.test.ts-188-   * of the reader.\n./tests/contract/config-contract.test.ts-189-   */\n./tests/contract/config-contract.test.ts-190-  const PAGES_THAT_NAME_KEYS = [\n./tests/contract/config-contract.test.ts:191:    \"docs/configuration.md\",\n./tests/contract/config-contract.test.ts:192:    \"docs/setup.md\",\n./tests/contract/config-contract.test.ts:193:    \"docs/recipes.md\",\n./tests/contract/config-contract.test.ts:194:    \"docs/writing-a-tool.md\",\n./tests/contract/config-contract.test.ts:195:    \"docs/operations.md\",\n\n[171 or more further lines. Narrow the pattern, set glob, or raise max_matches.]",
+      "tool_call_id": "call_00_0o9akf3zuook6n7n1ewbzycd"
+    },
+    {
+      "role": "tool",
+      "content": "src/entrypoints/tools:\n\ndefaults.yaml (5289B)\nhooks/\nlib/\nmcp/\npackages.json (77B)",
+      "tool_call_id": "call_01_cwvxnwytbjm73z4bzj2l56qz"
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "call_00_hxdhzqsiqgwhgbl72fgwb8lc",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/entrypoints/tools/mcp\"}"
+          }
+        },
+        {
+          "id": "call_01_1sbl1u3o64qdsprt5tloj7pu",
+          "type": "function",
+          "function": {
+            "name": "list",
+            "arguments": "{\"path\": \"src/entrypoints/tools/hooks\"}"
+          }
+        },
+        {
+          "id": "call_02_t6i7t8bcok1cswm020jpoyb4",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\": \"src/entrypoints/tools/defaults.yaml\"}"
+          }
+        },
+        {
+          "id": "call_03_otm7wun8detwdfyfchnay92j",
+          "type": "function",
+          "function": {
+            "name": "grep",
+            "arguments": "{\"context\": 3, \"glob\": \"*.ts\", \"path\": \"tests\", \"pattern\": \"README\", \"max_matches\": 40}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "content": "src/entrypoints/tools/mcp:\n\natomaton.ts (14962B)\nfiles.ts (19617B)\ngithub.ts (74895B)\nmcp.test.ts (47806B)\nsearch.ts (26900B)\nshell.ts (11111B)\nweb.ts (7668B)",
+      "tool_call_id": "call_00_hxdhzqsiqgwhgbl72fgwb8lc"
+    },
+    {
+      "role": "tool",
+      "content": "src/entrypoints/tools/hooks:\n\nfiles_guard.ts (3106B)\nnote_file_opened.ts (3043B)\nshell_guard.test.ts (14301B)\nshell_guard.ts (18862B)\nworkspace_guard.ts (4436B)",
+      "tool_call_id": "call_01_1sbl1u3o64qdsprt5tloj7pu"
+    },
+    {
+      "role": "tool",
+      "content": "src/entrypoints/tools/defaults.yaml lines 1-138 of 138\n\n1\t# The tool servers every run starts with, and the hooks that watch all of them.\n2\t#\n3\t# Not yours to edit: this file is replaced wholesale on upgrade, and removing a\n4\t# server takes a capability from every agent that names it. It is here to be READ —\n5\t# so that overriding one in .github/atomaton/config.yaml means seeing what you are\n6\t# overriding.\n7\t#\n8\t# Same schema as `tools.servers` there. A name you write with the same spelling\n9\t# overrides this entry field by field; a name that is not here is added.\n10\t# `description` is this project's own and never reaches the core.\n11\t\n12\twatch:\n13\t  after_tool:\n14\t    - ./hooks/workspace_guard.ts\n15\tservers:\n16\t  # `unprefixed`, so these arrive as `read`, `grep`, `glob`, `edit`, `write`, `list` --\n17\t  # the names every mature harness uses and the ones a model has seen most. At most one\n18\t  # server per agent may set it; the core refuses two that claim the same name. \n\n[1844 characters dropped from the middle; 4000 shown]\n\natches nothing is reported at startup, in the run's log,\n58\t      # so this list cannot quietly stop applying.\n59\t      #\n60\t      # Atomaton's own release checks it against the live server as well:\n61\t      # `self/atomaton/scripts/publish-release.sh` asks these servers what they offer and holds every\n62\t      # pattern here to it before publishing. That is Atomaton's release, not this\n63\t      # repository's -- `deploy` ships empty, so nothing here\n64\t      # runs it for you unless you wire it. Whichever release runs it, it runs after\n65\t      # a merge and never on a pull request: starting a pull request's declared\n66\t      # servers is not something a check that reads its configuration as data may do.\n67\t      tool_allowlist:\n68\t        - read\n69\t        - grep\n70\t        - glob\n71\t        - list\n72\t      before_tool: ./hooks/files_guard.ts\n73\t      after_tool: ./hooks/note_file_opened.ts\n74\t  shell:\n75\t    description: \"Runs one foreground command. Guarded, and holds no credentials of its own.\"\n76\t    command: bun\n77\t    args:\n78\t      - run\n79\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/shell.ts\"\n80\t    env:\n81\t      {}\n82\t    request_timeout_secs: 3600\n83\t    hooks:\n84\t      before_tool: ./hooks/shell_guard.ts\n85\t  github:\n86\t    description: \"Issues, pull requests, comments, and every Git mutation.\"\n87\t    command: bun\n88\t    args:\n89\t      - run\n90\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/github.ts\"\n91\t    env:\n92\t      GH_TOKEN: \"${GH_TOKEN}\"\n93\t    hooks:\n94\t      {}\n95\t  web:\n96\t    description: \"Fetches a URL. Searching the web is a skill, not a tool.\"\n97\t    command: bun\n98\t    args:\n99\t      - run\n100\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/web.ts\"\n101\t    env:\n102\t      {}\n103\t    hooks:\n104\t      {}\n105\t  search:\n106\t    description: \"Ranked search over this repository's issues and code.\"\n107\t    command: bun\n108\t    args:\n109\t      - run\n110\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/search.ts\"\n111\t    env:\n112\t      GH_TOKEN: \"${GH_TOKEN}\"\n113\t    request_timeout_secs: 300\n114\t    hooks:\n115\t      {}\n116\t    settings:\n117\t      reranker_model: onnx-community/bge-reranker-v2-m3-ONNX\n118\t  atomaton:\n119\t    description: \"Atomaton's own operations: sub-issues, handoffs, stopping a run.\"\n120\t    command: bun\n121\t    args:\n122\t      - run\n123\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atomaton.ts\"\n124\t    env:\n125\t      GH_TOKEN: \"${GH_TOKEN}\"\n126\t    hooks:\n127\t      {}\n128\t  atomaton_env:\n129\t    description: \"Rebuilding the run's environment, and nothing else.\"\n130\t    command: bun\n131\t    args:\n132\t      - run\n133\t      - \"${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/atomaton.ts\"\n134\t    env:\n135\t      GH_TOKEN: \"${GH_TOKEN}\"\n136\t    hooks:\n137\t      tool_allowlist:\n138\t        - atomaton_env__reload_environment",
+      "tool_call_id": "call_02_t6i7t8bcok1cswm020jpoyb4"
+    },
+    {
+      "role": "tool",
+      "content": "24 line(s), match and context, under tests:\n\ntests/contract/adoption-preflight.test.ts-25- *\ntests/contract/adoption-preflight.test.ts-26- * ## Why it reads a whole file rather than a section\ntests/contract/adoption-preflight.test.ts-27- *\ntests/contract/adoption-preflight.test.ts:28: * It used to slice the README's \"Preflight checklist\" and stop at the words \"To\ntests/contract/adoption-preflight.test.ts-29- * run somewhere else\", because the alternatives were named in prose directly below\ntests/contract/adoption-preflight.test.ts-30- * the required list and naming them there is the point. `docs/setup.md` is the\ntests/contract/adoption-preflight.test.ts-31- * checklist now, and it carries actions only: the alternatives moved to\n--\ntests/contract/config-contract.test.ts-193-    \"docs/recipes.md\",\ntests/contract/config-contract.test.ts-194-    \"docs/writing-a-tool.md\",\ntests/contract/config-contract.test.ts-195-    \"docs/operations.md\",\ntests/contract/config-contract.test.ts:196:    \"README.md\",\ntests/contract/config-contract.test.ts-197-    \"CONTRIBUTING.md\",\ntests/contract/config-contract.test.ts-198-  ];\ntests/contract/config-contract.test.ts-199-\n--\ntests/contract/deployment-contract.test.ts-229-  });\ntests/contract/deployment-contract.test.ts-230-\ntests/contract/deployment-contract.test.ts-231-  /** An adopter opening the directory should find out what each path means there. */\ntests/contract/deployment-contract.test.ts:232:  test(\"the README ships\", () => {\ntests/contract/deployment-contract.test.ts:233:    expect(existsSync(\"src/content/README.md\")).toBe(true);\ntests/contract/deployment-contract.test.ts:234:    expect(readFileSync(\"src/build-dist.ts\", \"utf8\")).toContain('\"README.md\"');\ntests/contract/deployment-contract.test.ts-235-  });\ntests/contract/deployment-contract.test.ts-236-});",
+      "tool_call_id": "call_03_otm7wun8detwdfyfchnay92j"
+    }
+  ],
+  "metadata": {
+    "github_context": {
+      "agent": "engineer",
+      "event_count": 2,
+      "snapshot_hash": "66bf8a8c9145339ffe81aa679e467a83c232e9954a3fcfb4ae1e370372d9bd92",
+      "version": 1,
+      "type": "issue",
+      "resolved_number": "933"
+    }
+  },
+  "atoma_runs": [
+    {
+      "ended": "2026-09-21T13:20:34Z",
+      "ended_because": "stopped",
+      "iterations": 16,
+      "messages": 59,
+      "seconds": 63,
+      "started": "2026-09-21T13:19:31Z"
+    }
+  ]
+}
