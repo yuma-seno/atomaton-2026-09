@@ -1321,7 +1321,23 @@ async function mergePr(a: z.infer<typeof PR_NUMBER_ARG_SCHEMA>): Promise<string>
 /** closeIssueAndDispatch also triggers phase-gating/aggregation itself. Shared by mergePr()'s "close-directly" case and its "reinvoke failed" fallback. */
 async function closeParentAndReport(parentIssue: number): Promise<string> {
   try {
-    await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue });
+    // Read, not discarded. `closeIssueAndDispatch` stopped throwing when the author
+    // is a person: it asks them on the thread and reports success. A caller that
+    // ignores the answer therefore reports a parent as closed while it is open --
+    // which is the failure this change exists to remove, and discarding the return
+    // value here would have moved it rather than fixed it.
+    const outcome = JSON.parse(await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue })) as {
+      close_requested?: number;
+    };
+    if (outcome.close_requested !== undefined) {
+      return JSON.stringify({
+        merged: true,
+        closed_issue: null,
+        parent_issue: parentIssue,
+        parent_outcome: "close-requested",
+        note: `The pull request merged. Issue #${parentIssue} was opened by a person, so it was not closed -- they have been asked on the thread to close it. Nothing further is needed from you.`,
+      });
+    }
     return JSON.stringify({
       merged: true,
       closed_issue: parentIssue,
