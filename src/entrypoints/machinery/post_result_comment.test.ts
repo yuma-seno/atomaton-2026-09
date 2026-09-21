@@ -268,6 +268,53 @@ describe("post_result_comment.ts buildCommentBody", () => {
     });
     expect(body).toContain("ran out of iterations");
   });
+
+  /**
+   * In the footer, where the machine's own facts about the run already are. Said
+   * there rather than left to the agent because asking did not work: over 396
+   * sessions, 30 runs carried a problem a server reported about itself and 3
+   * mentioned it (#940). A reader has to be able to see that this sentence is the
+   * machinery's -- an agent's own report of a broken tool is worth more, and the two
+   * must not be mistaken for each other.
+   *
+   * Plain italic, in the voice of the token line and the run link, and deliberately
+   * not a `⚠️`. That marker means one thing in this footer -- the run was cut off and
+   * a person has to continue it -- and that notice is the one line here anybody has
+   * to act on. This one is a count, and most of what it counts is a guard doing its
+   * job: 107 of 396 runs carried a refused or errored call, so marking it would put a
+   * warning sign on a quarter of all comments and the meaningful one would stop being
+   * read.
+   */
+  test("what the tools did to the run reads as the machine's, under the run link", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      endedBecause: "runtime",
+      runUrl: "http://example.com/run/1",
+      output: "LGTM.",
+      toolTrouble: "Counted from the session: 1 problem a server reported about itself (`search`).",
+      usageLines: [],
+    });
+    expect(body).toContain("\n_Counted from the session: 1 problem a server reported about itself (`search`)._");
+    expect(body.indexOf("Counted from the session")).toBeGreaterThan(body.indexOf("_run by"));
+    expect(body.indexOf("Counted from the session")).toBeGreaterThan(body.indexOf("LGTM."));
+    // Above the continuation notice: the count is a fact, the notice is the action,
+    // and the action reads last.
+    expect(body.indexOf("Counted from the session")).toBeLessThan(body.indexOf("The run ran out of time"));
+    // And the notice keeps the only warning sign in the footer, which is what makes
+    // it findable at a glance.
+    expect(body.split("⚠️").length - 1, "one ⚠️ in the footer, on the line that needs a person").toBe(1);
+  });
+
+  /** The ordinary run. Nothing to count is nothing to say. */
+  test("and is absent when the tools gave the run no trouble", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      runUrl: "http://example.com/run/1",
+      output: "LGTM.",
+      usageLines: [],
+    });
+    expect(body).not.toContain("Counted from the session");
+  });
 });
 
 describe("post_result_comment.ts main", () => {
@@ -378,6 +425,58 @@ describe("post_result_comment.ts main", () => {
       );
       expect(r.status).toBe(0);
       expect(r.ghCalls.some((c) => c.join(" ").includes("comments"))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * The wiring, which is where this can fail invisibly: the session and the boundary
+   * are already passed for the salvage, and a count taken without the boundary would
+   * report the previous run's trouble under this run's comment and still look right.
+   *
+   * The report here says nothing about either, which is the measured normal case --
+   * 30 runs carried a self-reported problem and 3 mentioned it (#940).
+   */
+  test("counts what the tools did to this run, out of the session it was handed", () => {
+    const dir = mkdtempSync(join(tmpdir(), "atomaton-post-result-"));
+    writeFileSync(join(dir, "atomaton_output.txt"), "Reviewed and merged PR #240.");
+    writeFileSync(
+      join(dir, "session.json"),
+      JSON.stringify({
+        messages: [
+          // An earlier run's trouble, below the boundary.
+          { role: "tool", tool_call_id: "old", content: "Error: ENOENT" },
+          { role: "user", content: "/reviewer" },
+          {
+            role: "tool",
+            tool_call_id: "c1",
+            content: [
+              "3 results",
+              "--- 1 problem reported by the 'search' server, not part of the answer above ---",
+              "warning: could not preload the reranker (EACCES)",
+            ].join("\n"),
+          },
+          { role: "tool", tool_call_id: "c2", content: "Error: `curl` is blocked by denylist pattern" },
+        ],
+      }),
+    );
+    try {
+      const r = runWithFakeGh(
+        scriptPath("post_result_comment.ts"),
+        // prettier-ignore
+        ["--number", "240", "--agent", "reviewer", "--run-url", "http://example.com/run/1",
+         "--session", join(dir, "session.json"), "--messages-before", "1",
+         "--output", join(dir, "atomaton_output.txt")],
+        { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api", "comments"], stdout: "42" }] },
+      );
+      expect(r.status).toBe(0);
+      // The POST, not the read of the thread's participants -- both are `comments`.
+      const posted = r.ghCalls.find((c) => c.join(" ").includes("_run by"))?.join(" ") ?? "";
+      expect(posted).toContain("1 problem a server reported about itself (`search`)");
+      expect(posted).toContain("1 refused or errored tool call");
+      // Not 2: the `ENOENT` belongs to the run before this one.
+      expect(posted).not.toContain("2 refused or errored tool calls");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

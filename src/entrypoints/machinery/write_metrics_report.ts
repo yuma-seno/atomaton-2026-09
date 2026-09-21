@@ -29,11 +29,15 @@ import { machineryPath } from "../../adapters/runner/machinery.ts";
 import {
   metricsOf,
   type DeclaredServer,
-  type ReportedProblem,
   type CallRecord,
   type SessionRecord,
   type TokenRecord,
 } from "../../domain/record/metrics.ts";
+// What a refused call, a failed one and a server's report about itself look like in a
+// session. They live in `domain/` because this is no longer their only reader: the
+// result comment counts the same three out of the same sessions, and two spellings of
+// "this call was refused" is two answers to one question.
+import { looksFailed, looksRefused, problemsIn } from "../../domain/record/tool-trouble.ts";
 import { sessionEndedAt, within, type RunRecord, type Window } from "../../domain/record/metrics-windows.ts";
 import { renderReport } from "../../domain/record/metrics-report.ts";
 import { parseTokenLine } from "../../domain/record/token-line.ts";
@@ -103,89 +107,6 @@ function log(message: string): void {
  */
 export function agentOf(session: { metadata?: { github_context?: { agent?: string } } }): string {
   return session.metadata?.github_context?.agent?.trim() || "unknown";
-}
-
-/**
- * Whether a result is the machinery refusing the call rather than a tool failing it.
- *
- * Three ways to be refused and they are one thing: a `before_tool` hook saying no, and
- * atoma's own denylist and allowlist. All three arrive as an error, which is how they
- * were counted as failures — so the report said `filesystem__search_files` fails 97.7%
- * of the time, when what it actually says is that a denylist works 43 times out of 43.
- *
- * A guard doing its job is not a tool breaking, and a reader cannot act on the two the
- * same way. Checked before `looksFailed`, because every refusal also looks like one.
- */
-function looksRefused(content: string): boolean {
-  return (
-    /blocked by hook|shell_guard:|Tool blocked/.test(content) ||
-    /is blocked by denylist pattern/.test(content) ||
-    /is not permitted by the allowlist/.test(content) ||
-    // `close_issue` declining a human's issue. A guard of ours, matched on wording we
-    // wrote ourselves, so unlike a general "looks like a refusal" rule it cannot
-    // swallow a call the agent simply got wrong. Fourteen of these were counted as
-    // failures, which read as a broken tool when it was the tool doing its job.
-    //
-    // Nothing emits this any more: the tool now posts a comment asking the issue's
-    // author to close it and reports success, because a refusal handed to an agent at
-    // the end of its run came back out in the report. The pattern stays for the
-    // sessions already recorded, which this report still reads.
-    /Refusing to close issue #[0-9]+: opened by a human/.test(content)
-  );
-}
-
-/**
- * The problems a server reported alongside an answer it did give.
- *
- * A tool result can end with a block the server appended:
- *
- *     --- 1 problem reported by the 'search' server, not part of the answer above ---
- *     warning: reranking failed (EACCES); these results are first-stage ordered
- *
- * The call succeeded, so neither `looksFailed` nor `looksRefused` is true, and until
- * now nothing else looked either. Twenty-six of these sat in the recorded sessions;
- * six were an audit log writing to a path that did not exist, which went unnoticed for
- * weeks and took two control signals with it.
- *
- * Only lines after the marker are read. The same words can appear in an answer -- a
- * grep for "error:" returns lines beginning "error:" -- and counting those would fill
- * this with whatever the agents happened to be reading.
- */
-function problemsIn(content: string): ReportedProblem[] {
-  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
-  if (!marker) return [];
-  const server = marker[1]!;
-  const out: ReportedProblem[] = [];
-  for (const line of content.slice(marker.index).split("\n")) {
-    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
-    if (reported) out.push({ server, problem: normaliseProblem(reported[2]!) });
-  }
-  return out;
-}
-
-/**
- * One problem, spelled the same way every time it happened.
- *
- * Without this the same fault splits across rows on whatever issue number, pull
- * request number or byte count it mentioned, and a fault reported forty times reads
- * as forty faults reported once -- which is exactly the shape that gets ignored.
- *
- * Truncated because some of these carry a whole query or a path list, and the tail is
- * never what identifies them.
- */
-function normaliseProblem(text: string): string {
-  return text
-    .replace(/\s+/g, " ")
-    .replace(/#[0-9]+/g, "#N")
-    .replace(/[0-9]{3,}/g, "N")
-    .trim()
-    .slice(0, 120);
-}
-
-/** Whether a tool result reads as a failure. A string match, and the report says so. */
-function looksFailed(content: string): boolean {
-  if (looksRefused(content)) return false;
-  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
 }
 
 function sessionFrom(path: string, raw: string): SessionRecord | undefined {
