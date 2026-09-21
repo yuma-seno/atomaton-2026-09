@@ -35,8 +35,8 @@
  * hazard rather than a theoretical one, and the description says so outright.
  */
 // `@huggingface/transformers` is NOT imported here. See `loadRerankerOnce`.
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, withoutBookkeeping, z } from "../../../lib/mcp-tool.ts";
-import { report } from "../../../lib/mcp-report.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, withoutBookkeeping, z } from "../../../adapters/mcp/mcp-tool.ts";
+import { report } from "../../../adapters/mcp/mcp-report.ts";
 import { buildIndex, rankIssues, score, type Bm25Index, type Chunk } from "../../../shared/bm25.ts";
 import { corpusFrom } from "../../../domain/machinery/code-corpus.ts";
 import {
@@ -51,10 +51,10 @@ import {
   unreachableQueryReason,
   type CodePassage,
 } from "../../../shared/code-search.ts";
-import { getRerankerModel } from "../../../lib/config.ts";
+import { getRerankerModel } from "../../../adapters/runner/config.ts";
 import { MODEL_CACHE_DIR } from "../../../domain/machinery/model-cache.ts";
 import { readFileSync } from "node:fs";
-import { gitRun } from "../../../lib/gh.ts";
+import { gitRun } from "../../../adapters/github/gh.ts";
 import {
   INDEX_BRANCH,
   INDEX_PATH,
@@ -65,7 +65,7 @@ import {
   withDerived,
   type IndexedIssue,
   type IssueIndex,
-} from "../../../lib/issue-index.ts";
+} from "../../../adapters/github/issue-index.ts";
 // Named for sessions because that is what the branch was built to hold, but
 // both take a path and content and care about neither. The index is stored the
 // same way for the same reason: a runner has no other durable storage between

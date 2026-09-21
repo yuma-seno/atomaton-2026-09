@@ -11,7 +11,7 @@
  * markers, because an issue a person drove by hand has no Atomaton markers on it
  * and is exactly the case that must not silently come back empty.
  *
- * Pure. The GraphQL half lives in `lib/issue-links.ts`.
+ * Pure. The GraphQL half lives in `adapters/github/issue-links.ts`.
  */
 
 export interface LinkedIssue {

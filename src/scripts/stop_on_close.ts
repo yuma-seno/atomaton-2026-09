@@ -34,10 +34,10 @@
  *   stop_on_close.ts --number N --closer LOGIN [--closer-type Bot|User]
  */
 import { parseArgs } from "node:util";
-import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
+import { LLM_CONTEXT_TAG, STOP_TAG } from "../adapters/github/tags.ts";
 import { closedTheTreeNotice, stopOnCloseNotice } from "../domain/work/closed-issue.ts";
 import { descendants, nodesToClose, nodesToStop, subtree } from "../domain/work/work-tree.ts";
-import { closeSubtreeUnder, readWorkTree } from "../lib/work-tree.ts";
+import { closeSubtreeUnder, readWorkTree } from "../adapters/github/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface StopOnCloseArgs {

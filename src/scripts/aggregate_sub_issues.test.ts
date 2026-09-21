@@ -19,7 +19,7 @@ describe("aggregate_sub_issues.ts", () => {
         {
           cwd: dir,
           // The siblings come from GitHub's own sub-issue links now, with their
-          // labels in the same request. See `lib/parent-issue.ts`.
+          // labels in the same request. See `adapters/github/parent-issue.ts`.
           rules: [
             {
               match: ["graphql"],

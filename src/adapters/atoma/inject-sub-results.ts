@@ -5,13 +5,13 @@
  * The one canonical implementation (was inject_sub_results.ts), called
  * directly by aggregate_sub_issues.ts -- no more subprocess spawn.
  */
-import { gh } from "./gh.ts";
-import type { GhPrSummary } from "./types.ts";
-import type { Session, SessionMessage } from "../domain/work/session.ts";
+import { gh } from "../../adapters/github/gh.ts";
+import type { GhPrSummary } from "../github/wire-types.ts";
+import type { Session, SessionMessage } from "../../domain/work/session.ts";
 
 // No `export type { Session, SessionMessage }` here.
 //
-// Eleven files import `Session` from `lib/session.ts`; exactly one used to get
+// Eleven files import `Session` from `domain/work/session.ts`; exactly one used to get
 // it through this re-export, which made a second route to the same type. See
 // `config.ts`, which argues the same point about `getDeclaredSecrets`: the next
 // caller finds whichever route it meets first, and then the two exist forever.

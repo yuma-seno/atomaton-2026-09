@@ -21,8 +21,8 @@
  * Writes to $GITHUB_OUTPUT: is_sub_issue, parent_number, closed_via_pr
  */
 import { appendFileSync } from "node:fs";
-import { ghGraphql } from "../lib/gh.ts";
-import { parentIssueOf } from "../lib/parent-issue.ts";
+import { ghGraphql } from "../adapters/github/gh.ts";
+import { parentIssueOf } from "../adapters/github/parent-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

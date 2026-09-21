@@ -6,7 +6,7 @@
  * Every path in `domain/machinery/machinery-layout.ts` is relative, and what they resolve
  * against was worked out in three places by hand:
  *
- *   `lib/config.ts`             `root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE`
+ *   `adapters/runner/config.ts`             `root ? `${root}/${CONFIG_FILE}` : CONFIG_FILE`
  *   `check_live_tools.ts`       `process.env.ATOMATON_MACHINERY_ROOT?.trim() || "."`
  *   `write_metrics_report.ts`   the same line again
  *
@@ -33,7 +33,7 @@ import { MACHINERY_ROOT_VAR } from "../../src/domain/machinery/machinery-layout.
  * constant and indexes `process.env` with it.
  */
 const DECLARES_IT = "src/domain/machinery/machinery-layout.ts";
-const RESOLVES_IT = "src/lib/machinery.ts";
+const RESOLVES_IT = "src/adapters/runner/machinery.ts";
 
 /** Every `.ts` under `src/`, tests excluded. */
 function sourceFiles(): string[] {

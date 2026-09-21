@@ -42,7 +42,7 @@ import { z } from "zod/v3";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { attachReportChannel } from "./mcp-report.ts";
-import { withoutTags } from "./tags.ts";
+import { withoutTags } from "../../adapters/github/tags.ts";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type Tool } from "@modelcontextprotocol/sdk/types.js";
 
@@ -294,7 +294,7 @@ export function unknownToolMessage(name: string, available: readonly string[]): 
  *   `shell`, `search`   dropped both
  *
  * Nothing said so, and nothing would have caught it. The type declares all
- * three, so a `github` tool that started returning an image — `lib/issue-images.ts`
+ * three, so a `github` tool that started returning an image — `adapters/github/issue-images.ts`
  * already exists, and `web` already uses it — or a `web` tool that set
  * `session_ends` would have been silently truncated, with no type error, because
  * each handler destructured only the subset it happened to need. That is
@@ -305,7 +305,7 @@ export function unknownToolMessage(name: string, available: readonly string[]): 
  *
  * ## The logging capability
  *
- * Declaring it is what makes `lib/mcp-report.ts` work, and the SDK then does the
+ * Declaring it is what makes `adapters/mcp/mcp-report.ts` work, and the SDK then does the
  * rest of the protocol itself: it registers the `logging/setLevel` handler,
  * remembers the level the client asked for, and drops anything below it inside
  * `sendLoggingMessage`. atoma asks for `warning`, which is everything `report`

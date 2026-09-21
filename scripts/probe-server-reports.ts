@@ -40,8 +40,8 @@
  *
  * Not part of the deliverable -- this repository's own CI, like probe-dumpable.sh.
  */
-import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../src/lib/mcp-tool.ts";
-import { report } from "../src/lib/mcp-report.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../src/adapters/mcp/mcp-tool.ts";
+import { report } from "../src/adapters/mcp/mcp-report.ts";
 
 const REAL_SERVER = "src/atomaton-runtime/tools/mcp/github.ts";
 const STARTUP_REPORT = "raised before this server had anywhere to send it";

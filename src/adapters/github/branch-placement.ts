@@ -12,7 +12,7 @@
  */
 import { gh, gitRun } from "./gh.ts";
 import { parentIssueOf, type ParentIssue } from "./parent-issue.ts";
-import { nextBranchName } from "../domain/work/issue-branch.ts";
+import { nextBranchName } from "../../domain/work/issue-branch.ts";
 import { collectIssueBranches } from "./issue-branches.ts";
 
 // Re-exported because this module's own callers ask for it by this name. The

@@ -93,7 +93,7 @@ merge:
           - "src/domain/delivery/merge-readiness.ts"
           - "src/domain/delivery/merge-gates.ts"
           - "src/domain/delivery/path-patterns.ts"
-          - "src/lib/merge-signals.ts"
+          - "src/adapters/github/merge-signals.ts"
 
 
 # When a chain of runs stops and asks a person.

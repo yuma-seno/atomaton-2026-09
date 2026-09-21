@@ -19,12 +19,12 @@
  * reaches the first path. The `atomaton:aggregated` marker check below makes
  * whichever caller gets here first win and the other a no-op.
  */
-import { gh } from "./gh.ts";
-import { countOpenSiblings } from "./sibling-check.ts";
-import { dispatchRunner } from "./dispatch.ts";
-import { resolveNotify } from "./notify.ts";
-import { AGGREGATED_TAG, LLM_CONTEXT_TAG, SUB_RESULT_TAG } from "./tags.ts";
-import { parentIssueOf } from "./parent-issue.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { countOpenSiblings } from "../adapters/github/sibling-check.ts";
+import { dispatchRunner } from "../adapters/actions/dispatch.ts";
+import { resolveNotify } from "../adapters/github/notify.ts";
+import { AGGREGATED_TAG, LLM_CONTEXT_TAG, SUB_RESULT_TAG } from "../adapters/github/tags.ts";
+import { parentIssueOf } from "../adapters/github/parent-issue.ts";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -258,7 +258,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
  * spawned the now-removed dispatch_orchestrator_if_ready.ts script).
  */
 export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssueNum: number): Promise<DispatchGateResult> {
-  // `lib/parent-issue.ts`, the same reader `countOpenSiblings` now agrees with.
+  // `adapters/github/parent-issue.ts`, the same reader `countOpenSiblings` now agrees with.
   //
   // This used to insist on the `atomaton:parent` tag alone and said why: the sibling
   // count was a search for `atomaton:parent=N in:body`, so a parent found through

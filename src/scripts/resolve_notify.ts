@@ -15,7 +15,7 @@
  */
 import { parseArgs } from "node:util";
 import { defineScript } from "./lib/script-ref.ts";
-import { resolveNotify } from "../lib/notify.ts";
+import { resolveNotify } from "../adapters/github/notify.ts";
 
 /** CLI contract for this script, used by callers (e.g. src/workflows/*.wac.ts) to build a type-checked argv. */
 export interface ResolveNotifyArgs {

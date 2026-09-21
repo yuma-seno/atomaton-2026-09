@@ -1,8 +1,12 @@
 /**
- * lib.test.ts — direct tests for src/lib/** functions that lost a
- * standalone CLI entry point during the "system" refactor (their logic was
- * absorbed into src/lib/ and is now called directly, via import, by every
- * caller instead of a subprocess spawn -- see aggregation.ts's doc comment).
+ * adapters.test.ts — direct tests for adapter functions that lost a standalone
+ * CLI entry point during the "system" refactor (their logic was absorbed into
+ * what is now src/adapters/ and is called directly, via import, by every caller
+ * instead of a subprocess spawn -- see app/aggregation.ts's doc comment).
+ *
+ * At the root of `src/adapters/` rather than inside one of its folders because
+ * it reaches across them: `mcp/`, `github/` and `atoma/`. A test that spans a
+ * boundary belongs above it.
  *
  * Since these are plain functions (no `main()`/CLI), each test spawns a
  * tiny generated shim script that imports and calls the target function,
@@ -15,19 +19,22 @@
  * `gh` MUST spawn a fresh subprocess, never call such a function in-process.
  */
 import { describe, expect, test } from "bun:test";
-import { unknownToolMessage } from "./mcp-tool.ts";
-import { nothingToCommit } from "./gh.ts";
+import { unknownToolMessage } from "../adapters/mcp/mcp-tool.ts";
+import { nothingToCommit } from "../adapters/github/gh.ts";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeConfigDir, runWithFakeGh, type FakeGhRule, importable } from "../scripts/testing/harness.ts";
-import { extractImageUrls, sniffMimeType } from "./issue-images.ts";
-import { looksTransient } from "./gh.ts";
-import { injectSummary } from "./inject-sub-results.ts";
+import { extractImageUrls, sniffMimeType } from "../adapters/github/issue-images.ts";
+import { looksTransient } from "../adapters/github/gh.ts";
+import { injectSummary } from "../adapters/atoma/inject-sub-results.ts";
 import type { Session } from "../domain/work/session.ts";
 
-const LIB_DIR = import.meta.dir;
+// The modules these shims import all live one folder down, in `github/`. Spelled
+// from this file rather than from the working directory, because a shim is written
+// to a temp directory and resolves its imports from there.
+const GITHUB_DIR = join(import.meta.dir, "github");
 
 /** Writes a temp .ts file containing `code` and returns its absolute path. */
 function makeShim(code: string): { file: string; dir: string } {
@@ -40,7 +47,7 @@ function makeShim(code: string): { file: string; dir: string } {
 /**
  * The siblings come from GitHub's own sub-issue links now, with their labels in the
  * same request — the `atomaton:parent=N in:body` search is gone, along with the tag
- * it read. See `lib/parent-issue.ts`.
+ * it read. See `adapters/github/parent-issue.ts`.
  */
 describe("sibling-check.ts countOpenSiblings", () => {
   const LAUNCHED = ["atomaton/sub-issue", "atomaton/launched"];
@@ -65,7 +72,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   function count(options: string, rule: FakeGhRule): string {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
+      import { countOpenSiblings } from "${importable(join(GITHUB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings(${options}));
     `);
     try {
@@ -104,7 +111,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   test("links that could not be read throw rather than counting zero", () => {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { countOpenSiblings } from "${importable(join(LIB_DIR, "sibling-check.ts"))}";
+      import { countOpenSiblings } from "${importable(join(GITHUB_DIR, "sibling-check.ts"))}";
       console.log(countOpenSiblings({ repo: "owner/repo", parent: 5 }));
     `);
     try {
@@ -154,7 +161,7 @@ describe("inject-sub-results.ts injectSummary", () => {
 });
 describe("agent-name.ts", () => {
   test("accepts a bare lowercase name and rejects everything a shell would reinterpret", async () => {
-    const { isAgentName } = await import("./agent-name.ts");
+    const { isAgentName } = await import("../domain/work/agent-name.ts");
     for (const valid of ["engineer", "orchestrator", "e", "code-reviewer", "agent2"]) {
       expect(isAgentName(valid), valid).toBe(true);
     }
@@ -179,7 +186,7 @@ describe("agent-name.ts", () => {
   // class: no anchors, no groups, no escapes that only mean something to one of
   // those three engines.
   test("is exported as a bare pattern body the bash and tag consumers can embed", async () => {
-    const { AGENT_NAME_PATTERN } = await import("./agent-name.ts");
+    const { AGENT_NAME_PATTERN } = await import("../domain/work/agent-name.ts");
     expect(AGENT_NAME_PATTERN).toBe("[a-z][a-z0-9-]*");
   });
 });
@@ -187,7 +194,7 @@ describe("agent-name.ts", () => {
 describe("tags.ts", () => {
   // Pure, no `gh` involved -- safe to test in-process directly.
   test("PARENT_ISSUE_TAG round-trips with the canonical numeric format", async () => {
-    const { PARENT_ISSUE_TAG } = await import("./tags.ts");
+    const { PARENT_ISSUE_TAG } = await import("../adapters/github/tags.ts");
     const written = PARENT_ISSUE_TAG.write(42);
     expect(written).toBe("<!-- atomaton:parent-issue=42 -->");
     expect(PARENT_ISSUE_TAG.read(`intro\n${written}\nmore text`)).toBe(42);
@@ -196,17 +203,17 @@ describe("tags.ts", () => {
 
   /**
    * The issue-to-issue half of this edge is not a tag any more — GitHub's own
-   * sub-issue link is, and `lib/parent-issue.ts` is the reader. `readAnyParentTag`
+   * sub-issue link is, and `adapters/github/parent-issue.ts` is the reader. `readAnyParentTag`
    * went with it: with one tag left there is nothing to choose between.
    */
   test("the issue-to-issue parent tag is gone", async () => {
-    const tags = (await import("./tags.ts")) as Record<string, unknown>;
+    const tags = (await import("../adapters/github/tags.ts")) as Record<string, unknown>;
     expect(tags.PARENT_TAG).toBeUndefined();
     expect(tags.readAnyParentTag).toBeUndefined();
   });
 
   test("AGGREGATED_TAG idempotency marker", async () => {
-    const { AGGREGATED_TAG } = await import("./tags.ts");
+    const { AGGREGATED_TAG } = await import("../adapters/github/tags.ts");
     const marker = AGGREGATED_TAG.write(9);
     expect(marker).toBe("<!-- atomaton:aggregated=9 -->");
     expect(AGGREGATED_TAG.has(`some comment\n${marker}`)).toBe(true);
@@ -214,7 +221,7 @@ describe("tags.ts", () => {
   });
 
   test("LLM_CONTEXT_TAG marks human-visible notifications for exclusion", async () => {
-    const { LLM_CONTEXT_TAG } = await import("./tags.ts");
+    const { LLM_CONTEXT_TAG } = await import("../adapters/github/tags.ts");
     const marker = LLM_CONTEXT_TAG.write("exclude");
     expect(marker).toBe("<!-- atomaton:llm-context=exclude -->");
     expect(LLM_CONTEXT_TAG.read(`${marker}\nAtomaton: operation started.`)).toBe("exclude");
@@ -223,7 +230,7 @@ describe("tags.ts", () => {
 
 describe("mcp-tool schema helpers", () => {
   test("positiveInt accepts a number and its string form, rejecting non-integers", async () => {
-    const { positiveInt } = await import("./mcp-tool.ts");
+    const { positiveInt } = await import("../adapters/mcp/mcp-tool.ts");
     const schema = positiveInt("issue number");
 
     expect(schema.parse(185)).toBe(185);
@@ -235,7 +242,7 @@ describe("mcp-tool schema helpers", () => {
   });
 
   test("stringArray accepts an array and wraps a bare string", async () => {
-    const { stringArray } = await import("./mcp-tool.ts");
+    const { stringArray } = await import("../adapters/mcp/mcp-tool.ts");
     const schema = stringArray("label names");
 
     expect(schema.parse(["a", "b"])).toEqual(["a", "b"]);
@@ -257,7 +264,7 @@ describe("mcp-tool schema helpers", () => {
    */
   describe("a strict schema is the whole mechanism", () => {
     const tool = async () => {
-      const { defineMcpTool, positiveInt, z } = await import("./mcp-tool.ts");
+      const { defineMcpTool, positiveInt, z } = await import("../adapters/mcp/mcp-tool.ts");
       return defineMcpTool({
         name: "probe",
         description: "probe",
@@ -300,7 +307,7 @@ describe("mcp-tool schema helpers", () => {
   // silently emits `{}` for schemas built the wrong way (see mcp-tool.ts's
   // header), which would leave the model with no shape at all to follow.
   test("helpers still advertise a precise JSON Schema", async () => {
-    const { positiveInt, stringArray } = await import("./mcp-tool.ts");
+    const { positiveInt, stringArray } = await import("../adapters/mcp/mcp-tool.ts");
     const { zodToJsonSchema } = await import("zod-to-json-schema");
 
     const numberSchema = zodToJsonSchema(positiveInt("issue number"), {
@@ -354,7 +361,7 @@ describe("branch-placement.ts resolveBranch", () => {
   /** Calls `resolveBranch` in a subprocess whose cwd is `cwd`, and reports which way it went. */
   function resolveIn(cwd: string, env: Record<string, string>): { ok?: string; error?: string } {
     const { file, dir } = makeShim(`
-      import { resolveBranch } from "${importable(join(LIB_DIR, "branch-placement.ts"))}";
+      import { resolveBranch } from "${importable(join(GITHUB_DIR, "branch-placement.ts"))}";
       try {
         console.log(JSON.stringify({ ok: resolveBranch() }));
       } catch (e) {
@@ -471,7 +478,7 @@ describe("issue-branches.ts collectIssueBranches", () => {
   function run(rules: FakeGhRule[]) {
     const configDir = makeConfigDir({});
     const { file, dir } = makeShim(`
-      import { collectIssueBranches } from "${importable(join(LIB_DIR, "issue-branches.ts"))}";
+      import { collectIssueBranches } from "${importable(join(GITHUB_DIR, "issue-branches.ts"))}";
       console.log(JSON.stringify(collectIssueBranches("owner/repo", 12)));
     `);
     try {
@@ -686,7 +693,7 @@ describe("nothingToCommit", () => {
 describe("issue-links.ts issueLinks", () => {
   function links(payload: unknown) {
     const { file, dir } = makeShim(`
-      import { issueLinks } from "${importable(join(LIB_DIR, "issue-links.ts"))}";
+      import { issueLinks } from "${importable(join(GITHUB_DIR, "issue-links.ts"))}";
       console.log(JSON.stringify(issueLinks("owner/repo", 826)));
     `);
     try {

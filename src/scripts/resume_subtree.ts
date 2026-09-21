@@ -31,8 +31,8 @@
  */
 import { parseArgs } from "node:util";
 import { descendants, nodesToResume, resumeCandidates, subtree } from "../domain/work/work-tree.ts";
-import { dispatchRunner } from "../lib/dispatch.ts";
-import { lastEnding, readWorkTree } from "../lib/work-tree.ts";
+import { dispatchRunner } from "../adapters/actions/dispatch.ts";
+import { lastEnding, readWorkTree } from "../adapters/github/work-tree.ts";
 import { mostRecentAgentOn } from "./resolve_resume_agent.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

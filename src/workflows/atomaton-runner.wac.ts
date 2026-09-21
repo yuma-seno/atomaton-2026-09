@@ -28,7 +28,7 @@ import { environmentSetupStep } from "./actions/environment-setup.ts";
 import { providerCredentialCheckStep } from "./actions/provider-credential-check.ts";
 import { ref as resolveNotifyRef } from "../scripts/resolve_notify.ts";
 import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../scripts/get_config_value.ts";
-import { DEFAULT_RERANKER } from "../lib/config.ts";
+import { DEFAULT_RERANKER } from "../adapters/runner/config.ts";
 import { MODEL_CACHE_DIR } from "../domain/machinery/model-cache.ts";
 import { ref as resolveIssueBranchRef } from "../scripts/resolve_issue_branch.ts";
 import { ref as resolvePrBranchRef } from "../scripts/resolve_pr_branch.ts";
@@ -55,8 +55,8 @@ import { runCredentialEnv, secretNamesStep, secretSlotEnv } from "./actions/secr
 import { ref as reportRunFailureRef } from "../scripts/report_run_failure.ts";
 import { ref as writeCredentialsFileRef } from "../scripts/write_credentials_file.ts";
 import { ref as watchForStopRef } from "../scripts/watch_for_stop.ts";
-import { AGENT_NAME_PATTERN } from "../lib/agent-name.ts";
-import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
+import { AGENT_NAME_PATTERN } from "../domain/work/agent-name.ts";
+import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 
 // The shared reusable workflow every entry-point workflow (atomaton-entry,
 // atoma-auto-trigger, atomaton-manual-comment, atoma-pr-review) hands off to via
@@ -1138,7 +1138,7 @@ const DISPATCH_NEXT_GUARD =
 /**
  * Hand this run's work to the agent its directive named.
  *
- * Through `scripts/dispatch_agent.ts`, and so through `lib/dispatch.ts`, rather than
+ * Through `scripts/dispatch_agent.ts`, and so through `adapters/actions/dispatch.ts`, rather than
  * the `gh workflow run atomaton-runner.yml` this step used to write itself. That copy
  * refused no closed target, wrote no ops-log entry and sent no `reload_count` -- the
  * three things `dispatchRunner` exists to make unforgettable, missing from the
@@ -1151,7 +1151,7 @@ const DISPATCH_NEXT_GUARD =
  * out to the same `gh` with the same environment.
  *
  * `ATOMATON_OPS_LOG` is set so the dispatch entry lands in this run's own log rather
- * than in `/tmp`, where `lib/ops-log.ts` puts it when nobody says otherwise.
+ * than in `/tmp`, where `adapters/runner/ops-log.ts` puts it when nobody says otherwise.
  */
 const dispatchNextAgentStep = new TypedOutputsStep({
   name: "Dispatch next agent",

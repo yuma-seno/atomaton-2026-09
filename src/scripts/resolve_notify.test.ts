@@ -4,7 +4,7 @@ import { runWithFakeGh, scriptPath, type FakeGhRule } from "./testing/harness.ts
 /**
  * Who a run tells when something goes wrong, in the case where nothing in the thread
  * says. This is the fallback path -- every live trigger decides a notify where the run
- * starts, and `lib/notify.ts` explains why -- so these tests are about recovery.
+ * starts, and `adapters/github/notify.ts` explains why -- so these tests are about recovery.
  */
 describe("resolve_notify.ts", () => {
   function run(rules: FakeGhRule[]) {

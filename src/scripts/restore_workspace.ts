@@ -20,7 +20,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { restoreWorkspace, workspaceTargetPrefix } from "./lib/atomaton-data.ts";
-import { resolveWorkspaceScope } from "../lib/workspace-scope.ts";
+import { resolveWorkspaceScope } from "../adapters/github/workspace-scope.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface RestoreWorkspaceArgs {

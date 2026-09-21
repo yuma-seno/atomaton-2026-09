@@ -90,7 +90,7 @@ function isPerson(comment: ChainComment): boolean {
  *
  * `comments` in the order the API returns them -- oldest first. `isAgentComment`
  * is passed in rather than imported so this stays a pure function of its inputs
- * and the tag format lives in one place (`lib/tags.ts`).
+ * and the tag format lives in one place (`adapters/github/tags.ts`).
  */
 export function handoffsSincePerson(
   comments: readonly ChainComment[],

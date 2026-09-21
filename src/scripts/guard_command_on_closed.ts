@@ -27,9 +27,9 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
-import { LLM_CONTEXT_TAG } from "../lib/tags.ts";
-import { readTargetState } from "../lib/target-state.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
+import { readTargetState } from "../adapters/github/target-state.ts";
 import { commandOnClosedNotice, mayStartWorkOn } from "../domain/work/closed-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

@@ -47,7 +47,7 @@ import {
   TOOL_DEFAULTS_FILE,
   TOOLS_DIR,
 } from "../domain/machinery/machinery-layout.ts";
-import { machineryPath, machineryRoot } from "../lib/machinery.ts";
+import { machineryPath, machineryRoot } from "../adapters/runner/machinery.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

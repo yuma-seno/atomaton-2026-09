@@ -13,7 +13,7 @@
  *   bun run get_config_value.ts chain.after_handoffs 5
  *   bun run get_config_value.ts chain.labels.in_progress atomaton/in-progress
  */
-import { loadConfig } from "../lib/config.ts";
+import { loadConfig } from "../adapters/runner/config.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

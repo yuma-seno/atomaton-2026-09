@@ -15,14 +15,14 @@
  */
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
-import { AGENT_TAG, CHANGED_TAG, ENDED_TAG } from "../lib/tags.ts";
-import { parentIssueOf } from "../lib/parent-issue.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { AGENT_TAG, CHANGED_TAG, ENDED_TAG } from "../adapters/github/tags.ts";
+import { parentIssueOf } from "../adapters/github/parent-issue.ts";
 import { shouldMentionOnCompletion } from "../domain/work/completion-mention.ts";
 import { redact } from "../shared/redaction.ts";
 import { renderTokenLine } from "../domain/record/token-line.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../domain/work/mention.ts";
-import { knownParticipants } from "../lib/participants.ts";
+import { knownParticipants } from "../adapters/github/participants.ts";
 import type { Session } from "../domain/work/session.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

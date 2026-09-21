@@ -67,8 +67,8 @@ const COMMAND_WRAPPERS = new Set(["sudo", "env", "time", "nohup", "nice", "xargs
  * The programs a command line actually invokes.
  *
  * Position, not mention. The rules above used to match `\bgh\b` anywhere in the
- * string, and this repository keeps its shared `gh` wrapper in `src/lib/gh.ts` -- so
- * `grep -n dispatchWorkflow src/lib/gh.ts` was refused as though it were the GitHub
+ * string, and this repository keeps its shared `gh` wrapper in `../../../adapters/github/gh.ts` -- so
+ * `grep -n dispatchWorkflow ../../../adapters/github/gh.ts` was refused as though it were the GitHub
  * CLI. An agent hit that three times in a row on the file it needed and the run was
  * aborted by the repeated-call guard. The same trap sat under every other rule:
  * `curl` would have taken any path containing a `curl` segment with it.

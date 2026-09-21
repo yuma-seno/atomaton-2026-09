@@ -58,7 +58,7 @@ export function fakeGhEnv(
   logPath: string,
 ): Record<string, string> {
   return {
-    // Named, not resolved. See `ghCommand` in `lib/gh.ts`: PATH cannot carry this on
+    // Named, not resolved. See `ghCommand` in `adapters/github/gh.ts`: PATH cannot carry this on
     // Windows, and the way it failed was to fall through to the real CLI.
     ATOMATON_FAKE_GH: FAKE_GH_IMPL,
     FAKE_GH_RESPONSES: JSON.stringify(rules ?? []),

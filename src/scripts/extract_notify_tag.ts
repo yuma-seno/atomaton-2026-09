@@ -11,7 +11,7 @@
  * Writes `notify=<login-or-empty>` to $GITHUB_OUTPUT.
  */
 import { appendFileSync } from "node:fs";
-import { NOTIFY_TAG } from "../lib/tags.ts";
+import { NOTIFY_TAG } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

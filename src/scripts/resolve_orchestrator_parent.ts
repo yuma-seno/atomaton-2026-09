@@ -3,7 +3,7 @@
  * resolve_orchestrator_parent.ts — print a sub-issue's orchestrator parent, for
  * a workflow step that needs the number in bash.
  *
- * The rule itself is `lib/parent-issue.ts`. It used to be written out here as
+ * The rule itself is `adapters/github/parent-issue.ts`. It used to be written out here as
  * well -- its own GraphQL query and its own body-tag read -- which made this the
  * only one of three call sites with the richer rule, for no reason anything
  * recorded. Both halves already existed in `lib/`.
@@ -12,7 +12,7 @@
  * Prints the resolved parent issue number, or nothing, to stdout.
  */
 import { parseArgs } from "node:util";
-import { parentIssueOf } from "../lib/parent-issue.ts";
+import { parentIssueOf } from "../adapters/github/parent-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ResolveOrchestratorParentArgs {

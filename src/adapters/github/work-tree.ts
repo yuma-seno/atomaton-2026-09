@@ -38,7 +38,7 @@
  * leaves work running with nobody told.
  */
 import { gh, ghRead } from "./gh.ts";
-import { getLabel } from "./config.ts";
+import { getLabel } from "../../adapters/runner/config.ts";
 import { issueLinks } from "./issue-links.ts";
 import { ENDED_TAG, LLM_CONTEXT_TAG, PARENT_ISSUE_TAG, STOP_TAG } from "./tags.ts";
 import {
@@ -51,7 +51,7 @@ import {
   subtree,
   type NodeState,
   type WorkNode,
-} from "../domain/work/work-tree.ts";
+} from "../../domain/work/work-tree.ts";
 
 interface Listed {
   number: number;
@@ -130,7 +130,7 @@ function readNode(repo: string, number: number): { node?: WorkNode; problem?: st
  * The issues filed under `parent`, and the pull requests opened for it.
  *
  * The issues come from GitHub's own sub-issue links, through `issueLinks`, which is
- * the single record of that edge — see `lib/parent-issue.ts`. There used to be a
+ * the single record of that edge — see `adapters/github/parent-issue.ts`. There used to be a
  * search for `atomaton:parent=N in:body` beside it and a union afterwards, because
  * `addSubIssue` was best-effort and a sub-issue could carry the tag and no link. It
  * is not best-effort any more: `create_issue` fails if the link cannot be made, so
@@ -142,7 +142,7 @@ function readNode(repo: string, number: number): { node?: WorkNode; problem?: st
  * the link once something other than that pull request's merge closes the issue, and
  * two things in this design do exactly that — a sub-issue's pull request merges into
  * its PARENT's branch rather than the default one, so the auto-close never fires, and
- * the post-merge agent closes the sub-issue itself. See `lib/tags.ts`.
+ * the post-merge agent closes the sub-issue itself. See `adapters/github/tags.ts`.
  */
 function readChildren(repo: string, parent: number): { nodes: WorkNode[]; problems: string[] } {
   const label = getLabel("in_progress");

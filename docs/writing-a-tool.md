@@ -195,7 +195,7 @@ import { report } from "../../../lib/mcp-report.ts";
 report("warning", "could not save the search index; every search from here rebuilds it");
 ```
 
-That import is this template's own source layout: `src/lib/mcp-report.ts`, reached
+That import is this template's own source layout: `src/adapters/mcp/mcp-report.ts`, reached
 from `src/atomaton-runtime/tools/mcp/`. The servers an adopted repository receives are
 bundles with the helper already inside them, so there is no file at that path to
 import — what the deliverable carries is the behaviour, not the module. For a

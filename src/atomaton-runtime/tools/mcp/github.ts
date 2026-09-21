@@ -14,32 +14,32 @@
  * in-process (resolveNotify/dispatchOrchestratorIfSubIssueReady/etc.);
  * always `console.error()` (`log()` below) for logging.
  */
-import { gh, ghGraphql, gitRun, nothingToCommit } from "../../../lib/gh.ts";
-import { getBaseBranch, getLabel } from "../../../lib/config.ts";
-import { resolveNotify } from "../../../lib/notify.ts";
+import { gh, ghGraphql, gitRun, nothingToCommit } from "../../../adapters/github/gh.ts";
+import { getBaseBranch, getLabel } from "../../../adapters/runner/config.ts";
+import { resolveNotify } from "../../../adapters/github/notify.ts";
 import {
   describeGateResult,
   dispatchOrchestratorIfSubIssueReady,
   needsAttention,
   type DispatchGateResult,
-} from "../../../lib/aggregation.ts";
-import { logOp } from "../../../lib/ops-log.ts";
-import { report } from "../../../lib/mcp-report.ts";
-import { knownParticipants } from "../../../lib/participants.ts";
+} from "../../../app/aggregation.ts";
+import { logOp } from "../../../adapters/runner/ops-log.ts";
+import { report } from "../../../adapters/mcp/mcp-report.ts";
+import { knownParticipants } from "../../../adapters/github/participants.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../../domain/work/mention.ts";
-import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG } from "../../../lib/tags.ts";
+import { LLM_CONTEXT_TAG, NOTIFY_TAG, ORIGIN_AGENT_TAG, PARENT_ISSUE_TAG } from "../../../adapters/github/tags.ts";
 import { closingKeywordRefusal, closingReferences } from "../../../domain/work/issue-links.ts";
-import type { GhIssueAuthor } from "../../../lib/types.ts";
-import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import type { GhIssueAuthor } from "../../../adapters/github/wire-types.ts";
+import { buildMcpTools, defineMcpTool, positiveInt, serveMcpServer, stringArray, withoutBookkeeping, z, type McpToolResult } from "../../../adapters/mcp/mcp-tool.ts";
 import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
 import { decidePostMergeHandoff } from "../../../domain/work/handoff.ts";
 import { isAttended, unattendedNotice } from "../../../domain/work/unattended-pull-request.ts";
-import { branchForCommit, resolveBranch, stackedPrBase } from "../../../lib/branch-placement.ts";
-import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../lib/dispatch-targets.ts";
-import { issueLinks } from "../../../lib/issue-links.ts";
+import { branchForCommit, resolveBranch, stackedPrBase } from "../../../adapters/github/branch-placement.ts";
+import { dispatchCd, dispatchCi, dispatchPostMergeAgent, dispatchPrValidation } from "../../../adapters/actions/dispatch-targets.ts";
+import { issueLinks } from "../../../adapters/github/issue-links.ts";
 import type { LinkedChild, LinkedIssue } from "../../../domain/work/issue-links.ts";
 import { decideMergeReadiness, formatBlockers } from "../../../domain/delivery/merge-readiness.ts";
-import { gatherMergeSignals } from "../../../lib/merge-signals.ts";
+import { gatherMergeSignals } from "../../../adapters/github/merge-signals.ts";
 import { selectCommentRange } from "../../../domain/work/comment-range.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 
@@ -95,7 +95,7 @@ async function resolveIssueId(number: number): Promise<string> {
 /**
  * What each shape of tool calls its number.
  *
- * These were both `number`, with `lib/mcp-tool.ts` folding four synonyms into it —
+ * These were both `number`, with `adapters/mcp/mcp-tool.ts` folding four synonyms into it —
  * `issue_number`, `pr_number`, `pull_number`, `pull_request_number` — before the
  * schema was allowed to see the call. Only ONE of those was ever observed
  * (`issue_number`, three times in one run); the other three were speculative, which
@@ -374,7 +374,7 @@ async function createIssue(a: z.infer<typeof CREATE_ISSUE_SCHEMA>): Promise<stri
   // `atomaton:parent` tag in the body was what aggregation read and the link was "the
   // cosmetic half". The tag is gone — it recorded the parent at creation and nothing
   // ever rewrote it, so a person re-parenting a sub-issue in the web UI left two
-  // answers in the system. See `lib/parent-issue.ts`.
+  // answers in the system. See `adapters/github/parent-issue.ts`.
   //
   // The issue exists by this point and cannot be un-created, so the failure names it:
   // an agent that is told only "create_issue failed" would file it again.

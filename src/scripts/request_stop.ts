@@ -32,10 +32,10 @@
  *   request_stop.ts --number N --comment-id ID --commenter LOGIN
  */
 import { parseArgs } from "node:util";
-import { gh } from "../lib/gh.ts";
-import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { LLM_CONTEXT_TAG, STOP_TAG } from "../adapters/github/tags.ts";
 import { descendants, nodesToStop, subtree } from "../domain/work/work-tree.ts";
-import { readWorkTree, requestStopAcross } from "../lib/work-tree.ts";
+import { readWorkTree, requestStopAcross } from "../adapters/github/work-tree.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface RequestStopArgs {
