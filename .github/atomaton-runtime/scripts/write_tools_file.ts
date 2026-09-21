@@ -9,6 +9,10 @@ import { parseArgs } from "util";
 // src/domain/machinery/tools-file.ts
 import { isAbsolute, join as join2, resolve } from "path";
 
+// src/shared/tool-output.ts
+var TOOL_OUTPUT_BUDGET = 50000;
+var TOOL_OUTPUT_BACKSTOP = TOOL_OUTPUT_BUDGET * 2;
+
 // src/domain/machinery/shipped-servers.ts
 import { readFileSync } from "fs";
 import { basename, dirname, join } from "path";
@@ -64,6 +68,9 @@ function toolsFileFrom(tools, hookBase, defaultsPath) {
     const { settings: _delivery, ...forTheCore } = server;
     if (isRecord(forTheCore.hooks))
       forTheCore.hooks = absoluteHooks(forTheCore.hooks, hookBase);
+    if (Object.hasOwn(defaults.servers, name) && forTheCore.max_output_chars === undefined) {
+      forTheCore.max_output_chars = TOOL_OUTPUT_BACKSTOP;
+    }
     out[name] = forTheCore;
   }
   return out;

@@ -5,6 +5,25 @@
 import { appendFileSync, existsSync, readFileSync } from "fs";
 import { parseArgs } from "util";
 
+// src/domain/record/closing-report.ts
+function textOf(content) {
+  if (typeof content === "string")
+    return content;
+  if (!Array.isArray(content))
+    return "";
+  return content.map((block) => block.type === "text" ? block.text : "").join("");
+}
+function leftClosingReport(session) {
+  const messages = session?.messages ?? [];
+  for (let i = messages.length - 1;i >= 0; i -= 1) {
+    const message = messages[i];
+    if (message?.role !== "assistant")
+      continue;
+    return textOf(message.content).trim() !== "";
+  }
+  return false;
+}
+
 // src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
@@ -31,14 +50,17 @@ function defineScript(importMetaUrl) {
 // src/entrypoints/machinery/read_run_ending.ts
 var ref = defineScript(import.meta.url);
 var SOFT_STOP = "2";
-function endingFromSession(raw) {
-  let parsed;
+function parseSession(raw) {
+  if (raw === undefined)
+    return;
   try {
-    parsed = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch {
     return;
   }
-  const runs = parsed.atoma_runs;
+}
+function endingFromSession(session) {
+  const runs = session?.atoma_runs;
   if (!Array.isArray(runs) || runs.length === 0)
     return;
   const last = runs[runs.length - 1];
@@ -51,7 +73,9 @@ function main() {
   });
   const exitCode = values["exit-code"] ?? "";
   const sessionPath = values.session ?? "";
-  const recorded = existsSync(sessionPath) ? endingFromSession(readFileSync(sessionPath, "utf8")) : undefined;
+  const session = parseSession(existsSync(sessionPath) ? readFileSync(sessionPath, "utf8") : undefined);
+  const recorded = endingFromSession(session);
+  const reported = leftClosingReport(session);
   let ending;
   if (recorded !== undefined) {
     ending = recorded;
@@ -66,12 +90,14 @@ function main() {
   const githubOutput = process.env.GITHUB_OUTPUT;
   if (githubOutput)
     appendFileSync(githubOutput, `ended_because=${ending}
+reported=${reported}
 `);
-  console.error(`read_run_ending: ended_because=${ending}`);
+  console.error(`read_run_ending: ended_because=${ending} reported=${reported}`);
 }
 if (import.meta.main)
   main();
 export {
   endingFromSession,
+  parseSession,
   ref
 };

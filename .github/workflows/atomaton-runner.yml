@@ -6,7 +6,7 @@
 # commands in .github/atomaton/config.yaml, under `checks` or `deploy`. That
 # file is yours, it survives upgrades, and an
 # agent can write it -- GitHub refuses to let one write a workflow.
-# See docs/configuration.md, "The pipeline as commands".
+# See docs/pipeline/overview.md, "The pipeline as commands".
 #
 # Upstream: https://github.com/yuma-seno/atomaton
 
@@ -928,7 +928,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atomaton-run/session.json" --output "${RUNNER_TEMP}/atomaton-run/atomaton_output.txt" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --reported "${{ steps.atoma.outputs.reported }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atomaton-run/session.json" --output "${RUNNER_TEMP}/atomaton-run/atomaton_output.txt" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
       - name: Record run metadata
         if: steps.atoma.outcome == 'success' && steps.post-result.outputs.comment_id != ''
         shell: bash
@@ -999,7 +999,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/decide_turn_ending.ts" --outcome "${{ steps.atoma.outcome }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}"
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/decide_turn_ending.ts" --outcome "${{ steps.atoma.outcome }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}" --reported "${{ steps.atoma.outputs.reported }}"
       - name: Remove atomaton/in-progress label on completion
         if: always() && steps.turn-ending.outputs.should_release == 'true'
         shell: bash

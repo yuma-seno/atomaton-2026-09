@@ -19,6 +19,8 @@ function endingOf(signals) {
     return { ended: "chain-over", ...next ? { next } : {} };
   if (next || signals.chainContinues)
     return { ended: "handed-off", ...next ? { next } : {} };
+  if (!signals.reported)
+    return { ended: "no-report" };
   return { ended: "finished" };
 }
 function shouldReleaseGuard(ending) {
@@ -67,7 +69,8 @@ function main() {
       "ended-because": { type: "string" },
       "loop-limit-reached": { type: "string" },
       "chain-continues": { type: "string" },
-      directive: { type: "string" }
+      directive: { type: "string" },
+      reported: { type: "string" }
     }
   });
   if (!values.outcome) {
@@ -78,7 +81,8 @@ function main() {
     endedBecause: values["ended-because"] ?? "",
     loopLimitReached: isTrue(values["loop-limit-reached"]),
     chainContinues: isTrue(values["chain-continues"]),
-    directive: values.directive ?? ""
+    directive: values.directive ?? "",
+    reported: isTrue(values.reported)
   });
   const published = {
     ended: ending.ended,

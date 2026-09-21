@@ -128,6 +128,8 @@ function parentIssueOf(repo, issue) {
 function shouldMentionOnCompletion(signals) {
   if (!signals.notify)
     return false;
+  if (signals.ending.ended === "no-report")
+    return true;
   if (signals.ending.next)
     return false;
   if (signals.chainContinues)
@@ -151,6 +153,8 @@ function endingOf(signals) {
     return { ended: "chain-over", ...next ? { next } : {} };
   if (next || signals.chainContinues)
     return { ended: "handed-off", ...next ? { next } : {} };
+  if (!signals.reported)
+    return { ended: "no-report" };
   return { ended: "finished" };
 }
 
@@ -181,6 +185,69 @@ function renderTokenLine(u) {
   const split = `${u.prompt ?? "?"} prompt + ${u.completion ?? "?"} completion`;
   const share = u.cached === undefined ? "" : `, ${u.cached} of the prompt cached`;
   return `_Tokens: ${u.total ?? "?"} total (${split}${share})_`;
+}
+
+// src/domain/record/tool-trouble.ts
+var NAMED = 3;
+function looksRefused(content) {
+  return /blocked by hook|shell_guard:|Tool blocked/.test(content) || /is blocked by denylist pattern/.test(content) || /is not permitted by the allowlist/.test(content) || /Refusing to close issue #[0-9]+: opened by a human/.test(content);
+}
+function looksFailed(content) {
+  if (looksRefused(content))
+    return false;
+  return /^\s*(Error|error):/.test(content) || /"status"\s*:\s*"(failed|error)"/.test(content);
+}
+function problemsIn(content) {
+  const marker = /^--- \d+ problems? reported by the '([^']+)' server/m.exec(content);
+  if (!marker)
+    return [];
+  const server = marker[1];
+  const out = [];
+  for (const line of content.slice(marker.index).split(`
+`)) {
+    const reported = /^(error|warning):\s*(.+)$/.exec(line.trim());
+    if (reported)
+      out.push({ server, problem: normaliseProblem(reported[2]) });
+  }
+  return out;
+}
+function normaliseProblem(text) {
+  return text.replace(/\s+/g, " ").replace(/#[0-9]+/g, "#N").replace(/[0-9]{3,}/g, "N").trim().slice(0, 120);
+}
+function toolTroubleLine(session, from) {
+  if (from === undefined || !Number.isFinite(from))
+    return;
+  const messages = session?.messages ?? [];
+  const servers = new Map;
+  let problems = 0;
+  let stopped = 0;
+  for (let i = Math.max(0, from);i < messages.length; i += 1) {
+    const message = messages[i];
+    if (message?.role !== "tool")
+      continue;
+    const content = typeof message.content === "string" ? message.content : "";
+    for (const { server } of problemsIn(content)) {
+      problems += 1;
+      servers.set(server, (servers.get(server) ?? 0) + 1);
+    }
+    if (looksRefused(content) || looksFailed(content))
+      stopped += 1;
+  }
+  if (problems === 0 && stopped === 0)
+    return;
+  const parts = [];
+  if (problems > 0) {
+    const ranked = [...servers.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const shown = ranked.slice(0, NAMED).map(([server]) => `\`${server}\``);
+    const rest = ranked.length - shown.length;
+    if (rest > 0)
+      shown.push(`and ${rest} other server${rest === 1 ? "" : "s"}`);
+    const said = servers.size === 1 ? "a server reported about itself" : "servers reported about themselves";
+    parts.push(`${problems} problem${problems === 1 ? "" : "s"} ${said} (${shown.join(", ")})`);
+  }
+  if (stopped > 0)
+    parts.push(`${stopped} refused or errored tool call${stopped === 1 ? "" : "s"}`);
+  return `Counted from the session: ${parts.join(", ")}.`;
 }
 
 // src/domain/work/mention.ts
@@ -294,18 +361,19 @@ function subIssueState(number, type) {
   const found = parentIssueOf(repo, Number(number));
   return { isSubIssue: found.known && found.parent > 0, issueClosed };
 }
-function lastAgentText(sessionPath, from) {
-  if (!sessionPath || !existsSync(sessionPath))
+function readSession(path) {
+  if (!path || !existsSync(path))
     return;
-  if (from === undefined || !Number.isFinite(from))
-    return;
-  let session;
   try {
-    session = JSON.parse(readFileSync(sessionPath, "utf8"));
+    return JSON.parse(readFileSync(path, "utf8"));
   } catch {
     return;
   }
-  const messages = session.messages ?? [];
+}
+function lastAgentText(sessionPath, from) {
+  if (from === undefined || !Number.isFinite(from))
+    return;
+  const messages = readSession(sessionPath)?.messages ?? [];
   for (let i = messages.length - 1;i >= from; i -= 1) {
     const message = messages[i];
     if (message?.role !== "assistant")
@@ -317,9 +385,18 @@ function lastAgentText(sessionPath, from) {
   return;
 }
 function endedTag(ending) {
-  if (ending.ended === "stopped")
-    return "stopped";
-  return ending.ended === "spent" ? "limit" : "done";
+  switch (ending.ended) {
+    case "stopped":
+      return "stopped";
+    case "spent":
+      return "limit";
+    case "failed":
+    case "chain-over":
+    case "handed-off":
+    case "no-report":
+    case "finished":
+      return "done";
+  }
 }
 function cutShort(endedBecause) {
   return endedBecause === "stopped" || endedBecause === "runtime" || endedBecause === "iterations";
@@ -329,20 +406,31 @@ function howItWasCutShort(endedBecause) {
     return "was stopped";
   return endedBecause === "iterations" ? "ran out of iterations" : "ran out of time";
 }
+function mentionLine(ending, args) {
+  if (cutShort(args.endedBecause)) {
+    return `@${args.notify} \u2014 **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` + `before it finished, and no agent will run next. Resume it, or say what to do instead.`;
+  }
+  if (ending.ended === "no-report") {
+    return `@${args.notify} \u2014 **${args.agent}** ended without writing a report. Nothing interrupted it ` + `and nothing runs next; it simply left no closing text, so there is nothing here to review. ` + `What it did is in its saved session.`;
+  }
+  return `@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`;
+}
 function endingHere(args) {
   return endingOf({
     succeeded: true,
     endedBecause: args.endedBecause ?? "",
     loopLimitReached: false,
     chainContinues: args.chainContinues === "true",
-    directive: args.directive ?? ""
+    directive: args.directive ?? "",
+    reported: args.reported === true
   });
 }
 function buildCommentBody(args) {
+  const ending = endingHere(args);
   const lines = [
     AGENT_TAG.write(args.agent),
     CHANGED_TAG.write(args.changed === true ? "yes" : "no"),
-    ENDED_TAG.write(endedTag(endingHere(args)))
+    ENDED_TAG.write(endedTag(ending))
   ];
   if (args.salvaged === true) {
     lines.push("> [!WARNING]", "> This run ended before it wrote a report. Below is the last thing it said,", "> from the middle of the work \u2014 not a conclusion, and not a summary of what it found.", "");
@@ -354,16 +442,18 @@ function buildCommentBody(args) {
   if (escapedNotice !== undefined)
     lines.push("", escapedNotice, "");
   if (shouldMentionOnCompletion({
-    ending: endingHere(args),
+    ending,
     chainContinues: args.chainContinues === "true",
     notify: args.notify,
     isSubIssue: args.isSubIssue ?? false,
     issueClosed: args.issueClosed ?? false
   })) {
-    lines.push(cutShort(args.endedBecause) ? `@${args.notify} \u2014 **${args.agent}** ${howItWasCutShort(args.endedBecause)} ` + `before it finished, and no agent will run next. Resume it, or say what to do instead.` : `@${args.notify} \u2014 **${args.agent}** task completed. No agent will be automatically executed next. Please review the results or provide instructions for the next step.`, "");
+    lines.push(mentionLine(ending, args), "");
   }
   const metrics = args.repo ? ` \xB7 [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)` : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
+  if (args.toolTrouble !== undefined)
+    lines.push(`_${args.toolTrouble}_`);
   if (args.endedBecause === "stopped") {
     lines.push(`\u23F8\uFE0F _Stopped on request. **The session is saved.** Comment \`/resume\` to continue ` + `from here, or \`/${args.agent}\` with an instruction on the following lines._`);
   } else if (cutShort(args.endedBecause)) {
@@ -383,6 +473,7 @@ function main() {
       directive: { type: "string" },
       "chain-continues": { type: "string" },
       "ended-because": { type: "string" },
+      reported: { type: "string" },
       "messages-before": { type: "string" },
       "run-url": { type: "string" },
       changed: { type: "string" },
@@ -434,11 +525,13 @@ function main() {
     directive: values.directive,
     chainContinues: values["chain-continues"],
     endedBecause: values["ended-because"],
+    reported: values.reported === "true",
     runUrl: values["run-url"],
     repo: process.env.GITHUB_REPOSITORY ?? "",
     output: checked.text,
     escapedMentions: checked.escaped,
     changed: values.changed === "true",
+    toolTrouble: toolTroubleLine(readSession(values.session), Number(values["messages-before"])),
     usageLines: tokenUsageLines(values["logs-file"] ?? ""),
     ...subIssueState(values.number, values.type)
   });

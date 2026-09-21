@@ -7854,6 +7854,17 @@ function escapedMentionNotice(escaped) {
 ` + `> ${names} ${escaped.length === 1 ? "was" : "were"} written as ${escaped.length === 1 ? "a mention" : "mentions"} ` + `and had the notification removed: this run could not confirm ${escaped.length === 1 ? "that account" : "those accounts"} ` + `as a participant in this repository or this thread. Nobody was notified. If the mention was meant, mention them yourself.`;
 }
 
+// src/domain/work/close-request.ts
+var CLOSE_REQUEST_LINE = "**This issue was opened by a person, so please close it yourself if you agree that the work below is done.** " + "Atomaton leaves that to you; comment with further instructions instead if it is not done.";
+function closeRequestComment(request) {
+  const mention = request.notify ? `@${request.notify} ` : "";
+  const body = (request.body ?? "").trim();
+  const head = `${mention}${CLOSE_REQUEST_LINE}`;
+  return body ? `${head}
+
+${body}` : head;
+}
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util) {
@@ -18836,6 +18847,7 @@ async function serveMcpServer(options) {
 
 // src/shared/tool-output.ts
 var TOOL_OUTPUT_BUDGET = 50000;
+var TOOL_OUTPUT_BACKSTOP = TOOL_OUTPUT_BUDGET * 2;
 function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
   if (text.length <= budget)
     return { text, dropped: 0 };
@@ -19194,13 +19206,13 @@ function dispatchPrValidation(repo, prNumber, branch, reviewer) {
 }
 function dispatchPostMergeAgent(repo, subIssueNum, agent) {
   const notify = resolveNotify(repo, subIssueNum);
-  const { code, stdout, stderr } = gh("issue", "comment", String(subIssueNum), "--repo", repo, "--body", "Atomaton: Your PR was merged. Please confirm completion and close this sub-task.");
+  const { code, stdout, stderr } = gh("issue", "comment", String(subIssueNum), "--repo", repo, "--body", "Atomaton: the pull request for this issue merged. Decide whether what merged satisfies what " + "this issue asked for. Say which acceptance criteria are met and which are not; conclude the " + "issue when they are met, and carry on with the work when they are not.");
   if (code) {
     log5(`dispatchPostMergeAgent: could not post trigger comment on #${subIssueNum}: ${stderr || stdout}`);
     return false;
   }
   return dispatchRunner({
-    context: `the pull request for #${subIssueNum} was merged, so ${agent} was to confirm and close it`,
+    context: `the pull request for #${subIssueNum} was merged, so ${agent} was to judge whether it satisfies the issue`,
     agent,
     type: "issue",
     number: subIssueNum,
@@ -19713,17 +19725,33 @@ function closeIssue(a) {
   const d = ghJsonOrThrow("issue", "view", String(num), "--repo", REPO, "--json", "author");
   const isBot = Boolean(d?.author?.is_bot);
   log7(`closeIssue: author.is_bot=${isBot}`);
-  if (!isBot)
-    mcpFail(`Refusing to close issue #${num}: opened by a human, not a bot`);
+  if (!isBot) {
+    const body = closeRequestComment({
+      notify: resolveNotify(REPO, num),
+      body: "Atomaton: an agent finished the work on this issue and asked for it to be closed."
+    });
+    const { code, stdout, stderr } = gh("issue", "comment", String(num), "--repo", REPO, "--body", body);
+    if (code)
+      mcpFail(`Could not ask for issue #${num} to be closed: ${stderr || stdout}`);
+    logOp("close_issue", { number: num, closed: false });
+    return false;
+  }
   const { code, stdout, stderr } = gh("issue", "close", String(num), "--repo", REPO);
   if (code)
     mcpFail(stderr || stdout);
-  logOp("close_issue", { number: num });
-  return JSON.stringify({ ok: true });
+  logOp("close_issue", { number: num, closed: true });
+  return true;
 }
 async function closeIssueAndDispatch(a) {
-  closeIssue(a);
+  const closed = closeIssue(a);
   const num = a[ISSUE_NUMBER_ARG];
+  if (!closed) {
+    return JSON.stringify({
+      ok: true,
+      close_requested: num,
+      note: "The issue's author was asked on the thread to close it."
+    });
+  }
   let aggregation;
   try {
     aggregation = await dispatchOrchestratorIfSubIssueReady(REPO, num);
@@ -20116,7 +20144,16 @@ ${formatBlockers(readiness.blockers)}`
 }
 async function closeParentAndReport(parentIssue) {
   try {
-    await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue });
+    const outcome = JSON.parse(await closeIssueAndDispatch({ [ISSUE_NUMBER_ARG]: parentIssue }));
+    if (outcome.close_requested !== undefined) {
+      return JSON.stringify({
+        merged: true,
+        closed_issue: null,
+        parent_issue: parentIssue,
+        parent_outcome: "close-requested",
+        note: `The pull request merged. Issue #${parentIssue} was opened by a person, so it was not closed -- they have been asked on the thread to close it. Nothing further is needed from you.`
+      });
+    }
     return JSON.stringify({
       merged: true,
       closed_issue: parentIssue,
@@ -20145,13 +20182,13 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
   defineMcpTool({ name: "get_issue", description: "Retrieve one issue's title, body, state, labels, timestamps, comment count, and what it is attached to: its parent issue, its sub-issues, and the pull requests that say they close it (each marked merged or not). It does NOT return the comments themselves \u2014 use get_issue_comments for those, which takes a range. Returns a JSON issue object and does not mutate GitHub.", schema: ISSUE_CONTEXT_NUMBER_ARG_SCHEMA, handler: getIssue }),
   defineMcpTool({ name: "list_issues", description: "List issue summaries in the current repository, optionally filtered by state and labels. Use this to discover or scan issues; use get_issue when full body and comments are needed. Returns a JSON array and does not mutate GitHub.", schema: LIST_ISSUES_SCHEMA, handler: listIssues }),
   defineMcpTool({ name: "get_issue_comments", description: "Read a range of one issue's comments, numbered from 1 in the order they were posted. Pass `from` (and optionally `to`) to read exactly the comment a search result pointed at; with no range it returns the last few, and always states which of how many it showed. Each result also carries the issue's title, state, parent, and the pull requests that close it, so a comment read on its own is not mistaken for settled work when its pull request is still open. Returns JSON and does not mutate GitHub.", schema: ISSUE_COMMENTS_SCHEMA, handler: getIssueComments }),
-  defineMcpTool({ name: "close_issue", description: "Close a bot-created issue and trigger Atomaton parent-task aggregation when applicable. Use only after the issue's work is complete; the tool refuses to close human-created issues. Returns JSON success status and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
+  defineMcpTool({ name: "close_issue", description: "Conclude an issue whose work is complete, and trigger Atomaton parent-task aggregation when applicable. Whether the issue is closed now or the person who opened it is asked on the thread to close it is this tool's decision and not yours; it does not fail on either. Returns JSON and mutates GitHub.", schema: ISSUE_NUMBER_ARG_SCHEMA, guidance: omittedNumberGuidance("issue"), handler: closeIssueAndDispatch }),
   defineMcpTool({ name: "create_pr", description: "Create a pull request from the checked-out Atomaton branch and return its number, URL and resolved base. Call commit_and_push first: this tool requires a clean worktree and exact local/remote HEAD equality, and it never pushes for you. On success it dispatches CI validation -- NOT the reviewer directly: validation runs the checks and then dispatches whichever agent the result calls for, the reviewer when they pass and the engineer when they do not. Read `validation_dispatched`: when it is true the session ends here and you are re-invoked later; when it is false nothing is scheduled and the session stays open for you to act.", schema: CREATE_PR_SCHEMA, handler: createPr }),
   defineMcpTool({ name: "get_pr", description: "Retrieve one pull request's metadata, including state and base/head branches. Use this for PR status and identity; use get_pr_diff or review tools for code and review details. Returns a JSON object and does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPr }),
   defineMcpTool({ name: "get_pr_diff", description: "Retrieve the unified diff for one pull request. Use this to review code changes; it does not include review conversations. Returns plain diff text and does not mutate GitHub. A large diff is truncated and says so in the text where the cut falls -- if you see that marker, the files after it were NOT shown and you have not seen the whole change.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrDiff }),
   defineMcpTool({ name: "list_prs", description: "List pull request summaries in the current repository, optionally filtered by state. Use this to discover PRs; use get_pr for full metadata. Returns a JSON array and does not mutate GitHub.", schema: LIST_PRS_SCHEMA, handler: listPrs }),
   defineMcpTool({ name: "search_code", description: "Search code through GitHub within the current repository. Use this for remote repository text or symbol discovery when local filesystem search is unavailable; do not use it for uncommitted changes. Returns GitHub CLI search text; a long result is truncated and says so where the cut falls.", schema: SEARCH_CODE_SCHEMA, handler: searchCode }),
-  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name, or report that no such branch exists. Use this to inspect remote branch identity and protection information, not local worktree state. A branch that is not there is an answer, not an error: it returns `{branch, exists: false}`, so this is the tool for checking before you create one. When the branch does exist it returns `branch`, `exists`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
+  defineMcpTool({ name: "get_branch", description: "Retrieve GitHub's branch metadata for an exact branch name, or report that no such branch exists. Use this to inspect remote branch identity and protection information, not local worktree state. A branch that is not there is an answer, not an error: it returns `{branch, exists: false}`, so this is the tool for checking before you create one. When the branch does exist it returns `branch`, `exists`, `sha` and `protected` -- the head commit's SHA, not the commit itself; use get_pr_diff or shell__shell_execute git log for commit content. Does not mutate GitHub.", schema: GET_BRANCH_SCHEMA, handler: getBranch }),
   defineMcpTool({
     name: "sync_branch",
     description: "Synchronize the checked-out branch with its remote counterpart and report ahead/behind status. Use this after a non-fast-forward push failure or before retrying branch publication; it fast-forwards only when safe. It never rebases or force-pushes, and reports diverged branches for explicit resolution.",
@@ -20166,7 +20203,7 @@ var { tools: TOOLS, dispatch: rawDispatch } = buildMcpTools([
     handler: checkMergeReadiness
   }),
   defineMcpTool({ name: "get_pr_reviews", description: "Retrieve submitted review summaries for one pull request. Use this to inspect review decisions and bodies; use list_pr_review_comments for line-level code comments. Returns { total, omitted, reviews } where each review has `author`, `state`, `submittedAt` and `body`; a non-zero `omitted` means the rest did not fit and you have not seen them all. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: getPrReviews }),
-  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with filesystem or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
+  defineMcpTool({ name: "list_pr_review_comments", description: "Retrieve line-level review comments for one pull request. Use this to find file- and line-specific feedback; use get_pr_reviews for overall review decisions. Returns { total, omitted, comments } where each comment has `author`, `path`, `line`, `in_reply_to` and `body`; the surrounding code is not included, read it with the `read` tool or get_pr_diff, and a non-zero `omitted` means the rest did not fit. Does not mutate GitHub.", schema: PR_CONTEXT_NUMBER_ARG_SCHEMA, handler: listPrReviewComments }),
   defineMcpTool({
     name: "commit_and_push",
     description: "Stage all worktree changes, create one commit, and push the checked-out branch to origin. Use this after validation and before create_pr; do not call it with unrelated or unreviewed changes present. Returns JSON success status and fails rather than rewriting remote history.",

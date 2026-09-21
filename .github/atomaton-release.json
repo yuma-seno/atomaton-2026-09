@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.161",
+  "version": "v0.1.162",
   "files": [
     ".github/atomaton-release.json",
     ".github/atomaton-runtime/scripts/aggregate_sub_issues.ts",
@@ -72,14 +72,9 @@
     ".github/atomaton/config.yaml",
     ".github/atomaton/prompt-template.md",
     ".github/atomaton/rulesets/main.json",
-    ".github/atomaton/skills/delivery/implementation-handoff.md",
-    ".github/atomaton/skills/delivery/issue-decomposition.md",
     ".github/atomaton/skills/delivery/pipeline-setup.md",
-    ".github/atomaton/skills/engineering/debugging.md",
     ".github/atomaton/skills/engineering/environment.md",
-    ".github/atomaton/skills/engineering/tdd.md",
     ".github/atomaton/skills/research/web-search.md",
-    ".github/atomaton/skills/review/quick-quality-gate.md",
     ".github/workflows/atomaton-check.yml",
     ".github/workflows/atomaton-deploy.yml",
     ".github/workflows/atomaton-entry.yml",

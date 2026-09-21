@@ -7260,6 +7260,17 @@ async function dispatchOrchestratorIfSubIssueReady(repo, subIssueNum) {
   return dispatchOrchestratorIfReady({ repo, parent: found.parent, closedNum: subIssueNum, retry: true });
 }
 
+// src/domain/work/close-request.ts
+var CLOSE_REQUEST_LINE = "**This issue was opened by a person, so please close it yourself if you agree that the work below is done.** " + "Atomaton leaves that to you; comment with further instructions instead if it is not done.";
+function closeRequestComment(request) {
+  const mention = request.notify ? `@${request.notify} ` : "";
+  const body = (request.body ?? "").trim();
+  const head = `${mention}${CLOSE_REQUEST_LINE}`;
+  return body ? `${head}
+
+${body}` : head;
+}
+
 // src/entrypoints/tools/lib/conclude_issue.ts
 function mustSucceed(result, what) {
   if (result.code === 0)
@@ -7283,14 +7294,10 @@ async function concludeIssue(issue, reason, summary) {
 ${summary}`;
   }
   if (!isBot) {
-    const notify = resolveNotify(repo, issue);
-    const mention = notify ? `@${notify} ` : "";
-    body = `${mention}${body}
-
-This issue was opened directly by a human, so it will not be closed automatically. Please review and close it yourself if you agree, or comment with further instructions.`;
+    body = closeRequestComment({ notify: resolveNotify(repo, issue), body });
     mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);
-    console.error(`escalated: issue=#${issue} (human-authored, not closed)`);
-    return { outcome: "escalated" };
+    console.error(`close requested: issue=#${issue} (opened by a person, left open for them)`);
+    return { outcome: "close-requested" };
   }
   mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);
   mustSucceed(gh("issue", "close", String(issue), "--repo", repo), `close issue #${issue}`);
@@ -18395,7 +18402,8 @@ var LAUNCH_SUB_AGENT_SCHEMA = objectType({
   tasks: arrayType(objectType({
     issue: positiveInt("The sub-issue number."),
     agent: stringType().min(1).describe("The agent to dispatch (e.g., 'engineer').")
-  })).min(1, "tasks must be a non-empty list of {issue, agent} objects").describe("List of {issue, agent} pairs to dispatch.")
+  })).min(1, "tasks must be a non-empty list of {issue, agent} objects").describe("List of {issue, agent} pairs to dispatch."),
+  summary: stringType().optional().describe("Your report for this run, posted as a comment on the issue you are on. This call ends " + "your session when every dispatch succeeds, so there is no turn after it to write one in.")
 });
 var REQUEST_CLOSE_ISSUE_SCHEMA = objectType({
   reason: stringType().min(1).describe("Why this issue's work is considered complete."),
@@ -18425,6 +18433,10 @@ function handleLaunchSubAgent(args) {
     const bodyLines = [LLM_CONTEXT_TAG.write("exclude"), "Atomaton: Launched sub-agent(s):", ...dispatched.map((d) => `- ${d}`)];
     gh("issue", "comment", parentIssue, "--body", bodyLines.join(`
 `));
+  }
+  const summary = (args.summary ?? "").trim();
+  if (summary && parentIssue) {
+    gh("issue", "comment", parentIssue, "--body", summary);
   }
   if (errors.length && !dispatched.length) {
     mcpFail(`All dispatches failed: ${errors.join("; ")}`);
@@ -18458,19 +18470,17 @@ async function handleRequestCloseIssue(args) {
     log3(`concludeIssue failed for #${issueNumber}: ${message}`);
     mcpFail(`Failed to conclude issue #${issueNumber}: ${message}`);
   }
+  const concluded = `Issue #${issueNumber} is concluded: your reason and summary are on the issue.`;
   if (result.outcome !== "closed") {
-    return {
-      text: `Issue #${issueNumber} was opened directly by a human. It has NOT been closed automatically -- a comment mentioning them was posted with your reason/summary, asking them to review and close it themselves.`,
-      meta: { session_ends: true }
-    };
+    return { text: `${concluded} Nothing else is yours to do here.`, meta: { session_ends: true } };
   }
   const aggregation = result.aggregation;
   const stalled = aggregation !== undefined && needsAttention(aggregation);
   return {
     text: [
-      `Issue #${issueNumber} was created by an Atomaton agent (a sub-issue) and has been closed automatically.`,
+      concluded,
       aggregation ? describeGateResult(aggregation, issueNumber) : "",
-      stalled ? "This session is staying open because you are the last thing able to act on that: report it on the parent issue so a person sees it." : ""
+      stalled ? "This session is staying open because you are the last thing able to act on that: report it on the parent issue so a person sees it." : "Nothing else is yours to do here."
     ].filter(Boolean).join(" "),
     meta: stalled ? {} : { session_ends: true }
   };
@@ -18514,13 +18524,13 @@ Atomaton: rebuilding the environment and restarting \`${agent}\` ` + `(reload ${
 var { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({
     name: "launch_sub_agent",
-    description: "Dispatch Atomaton agents onto sub-issues and immediately end the orchestrator session. " + "Call this ONCE after creating all sub-issues via GitHub MCP. " + "Each sub-issue can be assigned a different agent. " + "The orchestrator session ends immediately after this call returns. " + "The orchestrator will be automatically re-invoked when ALL sub-issues are closed.",
+    description: "Dispatch Atomaton agents onto sub-issues and immediately end the orchestrator session. " + "Call this ONCE after creating all sub-issues via GitHub MCP. " + "Each sub-issue can be assigned a different agent. " + "Put your report in `summary`: the orchestrator session ends immediately after this call " + "returns, so there is no turn afterwards in which to write one. " + "The orchestrator will be automatically re-invoked when ALL sub-issues are closed.",
     schema: LAUNCH_SUB_AGENT_SCHEMA,
     handler: handleLaunchSubAgent
   }),
   defineMcpTool({
     name: "request_close_issue",
-    description: "Conclude work on YOUR CURRENT issue and end your session. This is the ONLY " + "correct way for the orchestrator to finish an issue -- do NOT call " + "github__close_issue yourself, and do NOT just stop responding without calling " + "this. The tool decides what happens next based on who opened THIS issue: " + "if it was created by another Atomaton agent (a sub-issue), it is closed " + "automatically right now and phase-gating/aggregation is triggered for its " + "parent. If it was opened directly by a human (a root issue), it is NOT " + "closed -- instead a comment mentioning that human is posted with your reason " + "and summary, asking them to review and close it themselves.",
+    description: "Conclude work on YOUR CURRENT issue and end your session. This is the ONLY " + "correct way for the orchestrator to finish an issue -- do NOT call " + "github__close_issue yourself, and do NOT just stop responding without calling " + "this. Your reason and summary are posted to the issue, and phase-gating/" + "aggregation is triggered for its parent when this is a sub-issue. Whether the " + "close happens now or the issue's author is asked to make it is this tool's " + "decision and not yours -- it is the same call either way, and your session " + "ends when it returns.",
     schema: REQUEST_CLOSE_ISSUE_SCHEMA,
     handler: handleRequestCloseIssue
   }),
