@@ -49,6 +49,49 @@
  */
 export const TOOL_OUTPUT_BUDGET = 50_000;
 
+/**
+ * The cap the core is ASKED to apply to the servers this repository writes.
+ *
+ * ## Why it is passed at all
+ *
+ * atoma caps every tool result too, on the client, where it covers a server nobody
+ * here wrote. Its default is also 50,000 — and that is a coincidence rather than an
+ * agreement: this budget came from the two tools already using the number, atoma's
+ * from `domain::tool_output::DEFAULT_MAX_OUTPUT_CHARS`. While the two match, atoma's
+ * cap on these servers never fires, so nothing states the relationship and nothing
+ * would report it breaking. `domain/machinery/tools-file.ts` writes this into every
+ * shipped server's `max_output_chars`, which turns an assumption into a line.
+ *
+ * ## Why it sits ABOVE the budget rather than at it
+ *
+ * The two caps do different jobs and count different strings. The budget above is
+ * what a server may spend on CONTENT, after projecting. atoma counts the text that
+ * arrives, which for a server returning JSON is that content escaped and inside an
+ * envelope.
+ *
+ * Measured: `shell_execute` on a `git log -p` long enough to fill both streams
+ * spends exactly 50,000 characters of budget and returns 51,412 — the envelope and
+ * the escaped newlines are 1,412 of it. Across the 39 files in this repository over
+ * 20KB the worst was 53,879. So a backstop AT 50,000 cuts results this repository
+ * had already cut correctly: a second note on one result, and the middle taken out
+ * of output whose two ends were deliberately chosen.
+ *
+ * Doubling is where that stops being a measurement and becomes arithmetic. JSON
+ * escaping is at most two characters per character of text — a budget filled
+ * entirely with newlines, quotes, backslashes or tabs measures 99,994 — so a result
+ * that honoured the budget cannot reach this, whatever it contains. That is the
+ * property wanted: the backstop fires when a server did not bound itself, never
+ * because it encoded something it did bound.
+ *
+ * ## Why only the servers this repository writes
+ *
+ * A third-party server gets no `max_output_chars` and keeps atoma's default. Raising
+ * the bound for a server nobody here measured would widen the one cap that exists
+ * precisely because nothing else covers it — measured in atoma, one third-party
+ * `read_text_file` returning 72,141 characters against a `shell` that capped itself.
+ */
+export const TOOL_OUTPUT_BACKSTOP = TOOL_OUTPUT_BUDGET * 2;
+
 /** Which end of an over-long result is worth keeping. */
 export type Keep =
   /** A listing, a document, a diff: the beginning is the subject. */
