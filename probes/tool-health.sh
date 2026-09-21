@@ -24,4 +24,4 @@ curl -fsSL "${URL}" -o "${BIN}" || { echo "could not download ${URL}" >&2; exit 
 chmod +x "${BIN}"
 printf 'RESULT installed=%s\n' "$("${BIN}" --version 2>&1 | head -1)"
 
-ATOMA_BIN="${BIN}" bun run scripts/probe-tool-health.ts
+ATOMA_BIN="${BIN}" bun run probes/tool-health.ts

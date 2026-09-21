@@ -81,7 +81,7 @@ fi
 # which is what makes a re-run cheap.
 #
 # See the script's header for what it can and cannot see.
-bash scripts/check-live-tools.sh
+bash .github/atomaton/scripts/check-live-tools.sh
 
 # `zip` from inside dist/ so the archive holds `.github/...` and not
 # `dist/.github/...`, and an adopter extracts it at their repository root.
