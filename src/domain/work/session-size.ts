@@ -49,6 +49,7 @@
  * here removes a message, so the pairing cannot be broken by either -- which is
  * the same invariant `answer_unanswered_tool_calls` enforces in the core.
  */
+import { capText as cap } from "../../shared/tool-output.ts";
 import type { Session, SessionMessage } from "./session.ts";
 
 /**
@@ -164,21 +165,20 @@ function contentText(content: SessionMessage["content"]): string | undefined {
 /**
  * Keep the head and the tail of `text`, up to `limit` characters.
  *
- * The same rule as `shared/tool-output.ts` and the core's `domain::tool_output`,
- * deliberately: three caps behaving differently would be three things to learn.
- * A quarter at the front and the rest at the back, because a command's exit
- * status, a stack trace's origin and a test summary are all at the end.
+ * `shared/tool-output.ts`'s, not a second one. It WAS a second one — the same
+ * quarter-at-the-front split, the same sentence in the note, written out again —
+ * and the comment here said the two were deliberately alike, which is the shape a
+ * duplicate takes when somebody has noticed it and not moved it.
+ *
+ * They were alike and not identical, and the difference was the one that mattered:
+ * both returned a string LONGER than the limit, because the note sat outside the
+ * budget rather than inside it. A tool result is capped once, so nothing came of it
+ * there. A session is capped again on every save, so each save cut another note's
+ * worth off the text and wrote a number that had been true one save ago. That is
+ * fixed in the one implementation, which is the argument for having one.
  */
 export function capText(text: string, limit: number): string {
-  if (text.length <= limit) return text;
-  const head = Math.floor(limit / 4);
-  const tail = limit - head;
-  const dropped = text.length - limit;
-  return (
-    text.slice(0, head) +
-    `\n\n[atomaton] ${dropped} characters dropped from the middle; ${limit} shown\n\n` +
-    text.slice(text.length - tail)
-  );
+  return cap(text, limit, "both").text;
 }
 
 /** The text left where a tool result used to be. */

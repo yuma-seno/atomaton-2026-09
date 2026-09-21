@@ -88,21 +88,44 @@ export interface CappedText {
 export function capText(text: string, budget: number = TOOL_OUTPUT_BUDGET, keep: Keep = "head"): CappedText {
   if (text.length <= budget) return { text, dropped: 0 };
 
-  const dropped = text.length - budget;
-  const note = (where: string) => `\n\n[${dropped} characters ${where}; ${budget} shown]\n\n`;
+  const note = (where: string, howMany: number) => `\n\n[${howMany} characters ${where}; ${budget} shown]\n\n`;
+
+  // The note is inside the budget, not on top of it, and this is the whole of why
+  // the arithmetic below looks roundabout.
+  //
+  // It used to be `slice(0, budget) + note`, so the result came back LONGER than
+  // the budget it was capping to. Harmless for a tool result, which is capped once
+  // on its way into the session — and not harmless for a session, which
+  // `domain/work/session-size.ts` caps again on every save. Each save saw a string
+  // over the limit, cut another note's worth off it, and wrote a note claiming a
+  // number that had been true one save ago. Measured across the stored sessions:
+  // 157 of 601 had lost text that way, and the note is what an agent reads to
+  // decide whether to fetch the result again.
+  //
+  // `text.length` is the largest `dropped` can ever be, so a note built from it is
+  // the longest one possible. Reserving that much always leaves room for the real
+  // one, and capping an already-capped string is then a no-op.
+  const room = budget - note("dropped from the middle", text.length).length;
+  const dropped = text.length - room;
+
+  // A budget too small to hold the note at all. The length is the caller's hard
+  // constraint — it is what keeps a request under a window — so the note is what
+  // gives way, not the bound. Never reached by the budgets in this repository: the
+  // smallest is 4,000 against a note of about fifty.
+  if (room <= 0) return { text: keep === "tail" ? text.slice(-budget) : text.slice(0, budget), dropped: text.length - budget };
 
   if (keep === "tail") {
-    return { text: note("dropped from the start").trimStart() + text.slice(-budget), dropped };
+    return { text: note("dropped from the start", dropped).trimStart() + text.slice(-room), dropped };
   }
   if (keep === "head") {
-    return { text: text.slice(0, budget) + note("dropped from the end").trimEnd(), dropped };
+    return { text: text.slice(0, room) + note("dropped from the end", dropped).trimEnd(), dropped };
   }
 
   // Both ends. A quarter at the front is enough for a command echo, a header, or
   // the first failing test; the rest goes to the end, where a build error is.
-  const head = Math.floor(budget / 4);
-  const tail = budget - head;
-  return { text: text.slice(0, head) + note("dropped from the middle") + text.slice(-tail), dropped };
+  const head = Math.floor(room / 4);
+  const tail = room - head;
+  return { text: text.slice(0, head) + note("dropped from the middle", dropped) + text.slice(-tail), dropped };
 }
 
 /**

@@ -10,6 +10,9 @@ import { capText, fitItems, TOOL_OUTPUT_BUDGET } from "./tool-output.ts";
 
 const long = (n: number, char = "x") => char.repeat(n);
 
+/** The marker and the blank lines around it, so a test can measure the content alone. */
+const markerLength = (text: string) => (/\n*\[[^\]]*\]\n*/.exec(text)?.[0] ?? "").length;
+
 describe("capText", () => {
   test("text within the budget is returned untouched", () => {
     const text = "a short result";
@@ -25,46 +28,68 @@ describe("capText", () => {
   });
 
   test("the cut is announced in the text, not only in a field", () => {
-    const capped = capText(long(100), 20);
-    expect(capped.dropped).toBe(80);
-    expect(capped.text).toContain("80 characters");
-    expect(capped.text).toContain("20 shown");
+    const capped = capText(long(1_000), 200);
+    expect(capped.text).toContain(`${capped.dropped} characters`);
+    expect(capped.text).toContain("200 shown");
   });
 
   describe("which end survives", () => {
     // `START…END`, so each case can be read off the result.
-    const text = `START${long(100)}END`;
+    const text = `START${long(400)}END`;
 
     test("head keeps the beginning — a diff, a listing, a document", () => {
-      const capped = capText(text, 20, "head");
+      const capped = capText(text, 200, "head");
       expect(capped.text.startsWith("START")).toBe(true);
       expect(capped.text).not.toContain("END");
     });
 
     // The one that was wrong in production.
     test("tail keeps the end — a log's failure is at the bottom", () => {
-      const capped = capText(text, 20, "tail");
+      const capped = capText(text, 200, "tail");
       expect(capped.text.endsWith("END")).toBe(true);
       expect(capped.text).not.toContain("START");
     });
 
     test("both keeps each end — a command echo and the error after it", () => {
-      const capped = capText(text, 40, "both");
+      const capped = capText(text, 200, "both");
       expect(capped.text.startsWith("START")).toBe(true);
       expect(capped.text.endsWith("END")).toBe(true);
       expect(capped.text).toContain("dropped from the middle");
     });
   });
 
-  // The marker costs about fifty characters on top of the budget, which is
-  // deliberate and documented — reserving space for it needs its own length
-  // before it can be written. What must not happen is the CONTENT overrunning.
-  test("the content honours the budget, marker aside", () => {
+  /**
+   * The budget bounds the WHOLE result, marker included.
+   *
+   * It used to bound the content and let the marker sit on top, so the answer came
+   * back longer than the number it was capping to. Nothing came of that for a tool
+   * result, which is capped once on its way into the session. A session is capped
+   * again on every save, and there each save saw a string over the limit, cut
+   * another marker's worth off it, and wrote a number that had been true one save
+   * ago — 157 of 601 stored sessions had lost text that way.
+   */
+  test("the whole result fits the budget, marker included", () => {
     for (const keep of ["head", "tail", "both"] as const) {
       const capped = capText(long(10_000), 500, keep);
-      const content = capped.text.replace(/\n*\[[^\]]*\]\n*/, "");
-      expect(content.length, keep).toBe(500);
+      expect(capped.text.length, keep).toBeLessThanOrEqual(500);
     }
+  });
+
+  /** The property that makes it safe to cap the same text twice. */
+  test("capping an already-capped result changes nothing", () => {
+    for (const keep of ["head", "tail", "both"] as const) {
+      const once = capText(long(10_000), 500, keep);
+      const twice = capText(once.text, 500, keep);
+      expect(twice.text, keep).toBe(once.text);
+      expect(twice.dropped, keep).toBe(0);
+    }
+  });
+
+  /** And the number in the marker is the number actually dropped. */
+  test("the marker counts what went, not what would have gone", () => {
+    const capped = capText(long(10_000), 500, "both");
+    expect(capped.text).toContain(`${capped.dropped} characters`);
+    expect(capped.dropped).toBe(10_000 - (capped.text.length - markerLength(capped.text)));
   });
 
   test("the budget is one number, shared", () => {

@@ -206,10 +206,15 @@ is left is that the caller spells `"success" | "failure"` itself, which is the
 Checks API's vocabulary, in an entrypoint. That is the right layer for it and the
 wrong distance from the rule it comes from. Small, and not obviously worth a type.
 
-### Three implementations of one cap
+### The core has a cap of its own
 
-`session-size.ts` says so itself: the same rule lives there, in `tool-output.ts`,
-and in the core's `domain::tool_output`. Two of the three are ours.
+Two of the three were ours and are now one, in `shared/tool-output.ts`. The third
+is `atoma`'s `domain::tool_output`, which caps a tool result before it ever
+reaches a session — so a result can meet a cap twice, with two sets of numbers and
+two notes, and a person reading a session cannot tell which one cut it.
+
+Not something this repository can close on its own: the core is handed a layout,
+not a policy, and giving it one is a change to what `atoma` takes as an argument.
 
 ### Local changes under `.github/atomaton-runtime/` vanish silently
 
