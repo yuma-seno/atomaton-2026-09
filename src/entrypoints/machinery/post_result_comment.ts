@@ -22,6 +22,7 @@ import { shouldMentionOnCompletion } from "../../domain/work/completion-mention.
 import { endingOf, type TurnEnding } from "../../domain/work/turn.ts";
 import { redact } from "../../shared/redaction.ts";
 import { renderTokenLine } from "../../domain/record/token-line.ts";
+import { toolTroubleLine } from "../../domain/record/tool-trouble.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../domain/work/mention.ts";
 import { knownParticipants } from "../../adapters/github/participants.ts";
 import type { Session } from "../../domain/work/session.ts";
@@ -184,16 +185,25 @@ function subIssueState(number: string, type?: string): { isSubIssue: boolean; is
  * less than they could have had is smaller than the failure of showing them an old
  * conclusion labelled as a new fragment.
  */
-export function lastAgentText(sessionPath: string | undefined, from?: number): string | undefined {
-  if (!sessionPath || !existsSync(sessionPath)) return undefined;
-  if (from === undefined || !Number.isFinite(from)) return undefined;
-  let session: Session;
+/**
+ * The session, or nothing.
+ *
+ * Every failure here is silent on purpose. The comment is the thing that has to go
+ * out; what is read from the session -- the salvaged last message, the count of what
+ * the tools did -- is an addition to it and never a precondition for it.
+ */
+function readSession(path: string | undefined): Session | undefined {
+  if (!path || !existsSync(path)) return undefined;
   try {
-    session = JSON.parse(readFileSync(sessionPath, "utf8")) as Session;
+    return JSON.parse(readFileSync(path, "utf8")) as Session;
   } catch {
     return undefined;
   }
-  const messages = session.messages ?? [];
+}
+
+export function lastAgentText(sessionPath: string | undefined, from?: number): string | undefined {
+  if (from === undefined || !Number.isFinite(from)) return undefined;
+  const messages = readSession(sessionPath)?.messages ?? [];
   for (let i = messages.length - 1; i >= from; i -= 1) {
     const message = messages[i];
     if (message?.role !== "assistant") continue;
@@ -304,6 +314,19 @@ export function buildCommentBody(args: {
    * carry the fact.
    */
   changed?: boolean;
+  /**
+   * What the tools did to this run, counted from its session by `tool-trouble.ts`.
+   *
+   * Measured over 396 sessions (#940): 30 runs carried a problem a server reported
+   * about itself and 3 said so; 107 carried a refused or errored call and 33 said so.
+   * The prompt asks for all of it by name, so what is left is to stop asking and
+   * count -- and the count belongs in the footer, where every other thing the machine
+   * knows about the run already is, rather than in the agent's text where a reader
+   * would take it for something the agent chose to say.
+   *
+   * Absent when there was none, which is the ordinary run.
+   */
+  toolTrouble?: string;
 }): string {
   const lines = [
     AGENT_TAG.write(args.agent),
@@ -377,6 +400,9 @@ export function buildCommentBody(args: {
     ? ` · [metrics](https://github.com/${args.repo}/blob/atomaton-data/metrics/report.md)`
     : "";
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
+  // Under the run link and above the notice saying how to continue: this is a fact
+  // about the run, the notice is the action, and the action reads last.
+  if (args.toolTrouble !== undefined) lines.push(`⚠️ _${args.toolTrouble}_`);
   if (args.endedBecause === "stopped") {
     // Says the session survived, because that is the whole difference between this
     // and cancelling the job, and the person who stopped it cannot tell from here
@@ -528,6 +554,10 @@ function main(): void {
     output: checked.text,
     escapedMentions: checked.escaped,
     changed: values.changed === "true",
+    // The same boundary the salvage uses, for the same reason: a session accumulates
+    // across runs, and a count taken from the top would put an earlier run's trouble
+    // under this one's comment.
+    toolTrouble: toolTroubleLine(readSession(values.session), Number(values["messages-before"])),
     usageLines: tokenUsageLines(values["logs-file"] ?? ""),
     ...subIssueState(values.number, values.type),
   });
