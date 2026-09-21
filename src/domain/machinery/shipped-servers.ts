@@ -34,18 +34,11 @@ import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sourceOf, TOOL_DEFAULTS_FILE, TOOLS_DIR } from "./machinery-layout.ts";
-import type { ConfiguredServer } from "./tools-file.ts";
-
-/** A server as `defaults.yaml` carries it: the core's keys, plus this project's own. */
-export interface ShippedServer extends ConfiguredServer {
-  /** One line on what it is for. Stripped before the core sees it. */
-  description?: string;
-}
-
-export interface ToolDefaults {
-  watch: Record<string, string[]>;
-  servers: Record<string, ShippedServer>;
-}
+// The shapes live in `tool-server.ts`, which is what broke the cycle these two
+// modules were in: this one reads the defaults and that one merges them, and each
+// needed a type the other declared.
+export type { ShippedServer, ToolDefaults } from "./tool-server.ts";
+import type { ToolDefaults } from "./tool-server.ts";
 
 /**
  * Where the defaults are read from when the caller does not say.

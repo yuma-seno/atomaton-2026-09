@@ -152,3 +152,40 @@ describe("domain and shared are pure", () => {
     expect(FILES.map(named)).toContain(MAY_READ_FILES[0]!);
   });
 });
+
+/**
+ * No module imports its way back to itself.
+ *
+ * `shipped-servers.ts` and `tools-file.ts` were in a cycle, and its cause is the
+ * ordinary one: the SHAPES and the BEHAVIOUR were in the same file, the shapes were
+ * shared and the behaviour was not, so each module needed a type the other declared.
+ * Splitting the shapes out into `tool-server.ts` cost a file and left both arrows
+ * pointing the same way.
+ *
+ * Worth a test rather than a habit because nothing fails when it happens: TypeScript
+ * resolves it, the bundler resolves it, and what is left is a pair of modules neither
+ * of which can be read first.
+ */
+describe("nothing imports its way back to itself", () => {
+  test("there is no import cycle anywhere under src/", () => {
+    const graph = new Map(FILES.map((file) => [named(file), importsOf(file)]));
+    const cycles: string[] = [];
+    const visiting = new Set<string>();
+    const settled = new Set<string>();
+
+    const walk = (at: string, path: string[]): void => {
+      if (visiting.has(at)) {
+        cycles.push([...path.slice(path.indexOf(at)), at].join(" -> "));
+        return;
+      }
+      if (settled.has(at)) return;
+      visiting.add(at);
+      for (const to of graph.get(at) ?? []) walk(to, [...path, at]);
+      visiting.delete(at);
+      settled.add(at);
+    };
+
+    for (const file of graph.keys()) walk(file, []);
+    expect(cycles, "each of these is a pair of modules neither of which can be read first").toEqual([]);
+  });
+});

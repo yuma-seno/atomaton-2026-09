@@ -36,9 +36,10 @@ one), `atoma/` (the session file).
 `types/` at the repository root holds ambient `.d.ts` declarations. It is not a
 layer, which is why it is not under `src/`.
 
-`tests/contract/layering.test.ts` reads every import and fails on an arrow that
-points the wrong way. It is a ratchet, not a design: it sees imports, not
-meaning, and none of the defects this refactor was opened for are visible to it.
+`tests/contract/layering.test.ts` reads every import, fails on an arrow that
+points the wrong way, and fails on a cycle. It is a ratchet, not a design: it sees
+imports, not meaning, and none of the defects this refactor was opened for are
+visible to it.
 
 ## What the domain may say about GitHub
 
@@ -206,10 +207,6 @@ is a naming convention, which is mechanism. They are one module.
 
 Who runs next (work), what the check context is (mechanism), and whether the
 deliverable is trusted (machinery), in one return value.
-
-### `shipped-servers.ts` and `tools-file.ts` import each other
-
-A cycle inside `domain/machinery/`.
 
 ### Three implementations of one cap
 
