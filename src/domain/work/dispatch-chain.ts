@@ -12,7 +12,7 @@
  * posts one comment per run. The next agent in the chain sees the previous agent's
  * result comment as a new event, resets to zero, hands off, and so on. `LOOP_LIMIT`
  * was unreachable, the comment telling a person the chain had stopped could not be
- * posted, and `decide_guard_release` always received `loop-limit-reached=false`.
+ * posted, and `decide_turn_ending` always received `loop-limit-reached=false`.
  *
  * Its unit tests were green. Three of the four passed `newEventCount = 0`, which
  * the workflow cannot produce: the agent step only runs when `new_event_count != 0`,

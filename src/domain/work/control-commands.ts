@@ -26,7 +26,8 @@
  *
  * Neither is a state. A stopped run has ended and handed back to a person, which is
  * the same terminal state as an agent that finished its turn, ran out of time, or
- * hit the handoff limit — `shouldReleaseGuard` already treats all of those alike, and
+ * hit the handoff limit — `domain/work/turn.ts` tells them apart by name and treats
+ * all of them alike when it comes to the guard, and
  * a stop joins them rather than adding a fourth. This is why there is no `paused`
  * label: "nothing is executing here" is already said by the in-progress label being
  * gone.
