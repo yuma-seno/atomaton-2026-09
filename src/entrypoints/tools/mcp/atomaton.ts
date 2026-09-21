@@ -60,6 +60,32 @@ const LAUNCH_SUB_AGENT_SCHEMA = z.object({
     )
     .min(1, "tasks must be a non-empty list of {issue, agent} objects")
     .describe("List of {issue, agent} pairs to dispatch."),
+  /**
+   * Where the report goes for the one exit that had nowhere to put it.
+   *
+   * Four calls end a session. `create_pr` carries the report in `body`,
+   * `request_close_issue` in `summary`, `reload_environment` in `reason` -- and
+   * this one carried nothing, while being the orchestrator's most frequent exit.
+   * The session stops the moment it returns, so there is no later turn to write
+   * in: a run that meant to report after dispatching never reports at all, and
+   * the comment this tool already posted is tagged to be excluded from the next
+   * run's context, so it cannot stand in for one.
+   *
+   * Optional rather than required, and deliberately so: a partial dispatch leaves
+   * the session OPEN (see `handleLaunchSubAgent`), and on that path the closing
+   * text is still the report. Required here would make the failure path demand
+   * the report twice.
+   *
+   * Same shape as `REQUEST_CLOSE_ISSUE_SCHEMA.summary` below, because it is the
+   * same fact -- what this run concluded -- reaching the thread the same way.
+   */
+  summary: z
+    .string()
+    .optional()
+    .describe(
+      "Your report for this run, posted as a comment on the issue you are on. This call ends " +
+        "your session when every dispatch succeeds, so there is no turn after it to write one in.",
+    ),
 });
 
 const REQUEST_CLOSE_ISSUE_SCHEMA = z.object({
@@ -100,6 +126,21 @@ function handleLaunchSubAgent(args: z.infer<typeof LAUNCH_SUB_AGENT_SCHEMA>): Mc
   if (dispatched.length && parentIssue) {
     const bodyLines = [LLM_CONTEXT_TAG.write("exclude"), "Atomaton: Launched sub-agent(s):", ...dispatched.map((d) => `- ${d}`)];
     gh("issue", "comment", parentIssue, "--body", bodyLines.join("\n"));
+  }
+
+  // The report, as its own comment and WITHOUT the exclude tag.
+  //
+  // Separate from the audit comment above because they are different facts with
+  // different readers: that one is the machine's list of what it dispatched, kept
+  // out of the next run's context on purpose, and this one is what the run
+  // concluded -- the thing the next run on this issue is handed as context, and
+  // the only thing that outlives the session this call is about to end.
+  //
+  // Posted even on a partial dispatch: the session stays open there, but a report
+  // the agent has already written is not worth discarding for that.
+  const summary = (args.summary ?? "").trim();
+  if (summary && parentIssue) {
+    gh("issue", "comment", parentIssue, "--body", summary);
   }
 
   if (errors.length && !dispatched.length) {
@@ -281,7 +322,8 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
       "Dispatch Atomaton agents onto sub-issues and immediately end the orchestrator session. " +
       "Call this ONCE after creating all sub-issues via GitHub MCP. " +
       "Each sub-issue can be assigned a different agent. " +
-      "The orchestrator session ends immediately after this call returns. " +
+      "Put your report in `summary`: the orchestrator session ends immediately after this call " +
+      "returns, so there is no turn afterwards in which to write one. " +
       "The orchestrator will be automatically re-invoked when ALL sub-issues are closed.",
     schema: LAUNCH_SUB_AGENT_SCHEMA,
     handler: handleLaunchSubAgent,

@@ -1,14 +1,15 @@
 ---
 name: delivery/pipeline-setup
-description: Load when this repository has no automated verification or deployment and the work needs one — written into config.yaml rather than into workflow files.
+description: "Load when `checks` is empty in config.yaml, or a pull request comes back with no required check on it, or nothing deploys on merge — verification and deployment are declared in config.yaml, not written as workflow files."
 ---
 
 # Setting up verification and deployment
 
-Read this when a repository has no automated verification or no deployment and
-the work in front of you needs one. Not a procedure to follow on request — a
-description of how this is arranged here, because the obvious approach does not
-work.
+Read this when `checks` in `.github/atomaton/config.yaml` is empty, when a pull
+request comes back with no required check on it, or when nothing deploys on merge
+and the work in front of you needs one of those. Not a procedure to follow on
+request — a description of how this is arranged here, because the obvious approach
+does not work.
 
 ## You cannot write a workflow. You do not need to.
 
@@ -186,9 +187,8 @@ the answer rather than a sign something is missing from the file.
 `config.yaml` is the only place this goes. There is no tools file in the
 repository: the one `atoma` is handed is written at the start of each run, from
 the shipped servers and whatever `tools.servers` adds, and deleted with the
-runner. If you find a `tools/tools.yaml` left behind by an older release, it is
-read by nothing — routing a credential through it produces a tool that never
-receives it, with nothing reporting why.
+runner. Routing a credential anywhere else produces a tool that never receives it,
+with nothing reporting why.
 
 `checks` and `deploy` need no routing step: their commands run in a workflow of
 their own rather than beside an agent.

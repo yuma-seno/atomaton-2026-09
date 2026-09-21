@@ -180,11 +180,11 @@ You are a test agent.
           {
             id: "skill_1",
             name: "atoma_builtin__load_skill",
-            arguments: { name: "engineering/tdd" },
+            arguments: { name: "engineering/environment" },
           },
         ],
       },
-      { content: "Done: applied the TDD skill." },
+      { content: "Done: applied the environment skill." },
     ]);
 
     const dir = mkdtempSync(join(tmpdir(), "atomaton-skill-e2e-"));
@@ -201,7 +201,7 @@ You are a test agent.
 `,
       );
       writeFileSync(join(dir, "tools.yaml"), "{}\n");
-      writeFileSync(join(dir, "prompt.txt"), "Use the TDD skill.");
+      writeFileSync(join(dir, "prompt.txt"), "Use the environment skill.");
 
       const { exitCode, stderr } = await runAtoma({
         agentDefPath: join(dir, "agent.md"),
@@ -221,12 +221,12 @@ You are a test agent.
       expect(exitCode).toBe(0);
       expect(mock.requests[0]!.tools?.some((tool) => tool.function?.name === "atoma_builtin__load_skill")).toBe(true);
       const initialPrompt = String(mock.requests[0]!.messages[0]?.content);
-      expect(initialPrompt).toContain("Load each relevant skill with `atoma_builtin__load_skill`");
-      expect(initialPrompt).toContain("`engineering/tdd`");
+      expect(initialPrompt).toContain("load it with `atoma_builtin__load_skill`");
+      expect(initialPrompt).toContain("`engineering/environment`");
 
       const toolMessage = mock.requests[1]!.messages.find((message) => message.role === "tool");
-      expect(String(toolMessage?.content)).toContain("# Skill: engineering/tdd");
-      expect(String(toolMessage?.content)).toContain("Add or select one focused test");
+      expect(String(toolMessage?.content)).toContain("# Skill: engineering/environment");
+      expect(String(toolMessage?.content)).toContain("Is it a library your project declares?");
     } finally {
       mock.stop();
       rmSync(dir, { recursive: true, force: true });
