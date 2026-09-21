@@ -8,7 +8,7 @@
  * a release creates its tag with GITHUB_TOKEN, from inside a workflow, so no `push`
  * arrives and `on_tag` never fires. A project could write a perfectly good `on_tag`
  * entry and watch it never run — which is exactly this repository's own shape, where
- * `scripts/tag-release.sh` tags every release.
+ * `self/atomaton/scripts/tag-release.sh` tags every release.
  *
  * What is here is the COMPARISON — which tags are new — and the decision to fail.
  * The dispatch itself is `dispatchTagDeploy`, beside the other four, because which

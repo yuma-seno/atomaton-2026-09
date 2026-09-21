@@ -154,12 +154,21 @@ here as everywhere.
 
 `self/` is this repository's own overlay onto `.github/`, copied verbatim by
 `self/workflows/atomaton-self-deploy.yml`. It mirrors `.github/` exactly, so
-nothing goes in it that does not belong in `.github/`.
+nothing goes in it that does not belong in `.github/` — and an overlay file is a
+copy rather than a build, so both halves change in the same pull request.
+`self-overlay.test.ts` holds them to each other in both directions.
+
+This repository's own release scripts live at `self/atomaton/scripts/`, which is
+`.github/atomaton/scripts/` once deployed. Nothing ships there: the directory is
+the adopter's to create, and this repository keeping its own in it is what makes
+the path in `config.yaml` a line an adopter can copy rather than translate.
 
 `probes/` is neither. A probe measures something no unit test can reach — whether
 `PR_SET_DUMPABLE(0)` survives `execve`, whether a server's complaint about itself
 reaches the model — and its answer is why a design went the way it did. Probes
-are not shipped and are not part of an adopter's environment.
+are not shipped and are not part of an adopter's environment. They are in
+`merge.governed_paths`, which they inherited from the `scripts/**` they were
+split out of.
 
 ## Open questions
 

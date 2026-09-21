@@ -20,17 +20,17 @@ name: Process and worktree isolation
 'on':
   pull_request:
     paths:
-      - 'scripts/probe-dumpable.sh'
-      - 'scripts/probe-shared-worktree.sh'
-      - 'scripts/probe-secret-off-env.sh'
-      - 'scripts/probe-secret-holder.ts'
-      - 'scripts/probe-preload.sh'
-      - 'scripts/probe-tool-user.sh'
-      - 'scripts/probe-tool-health.sh'
-      - 'scripts/probe-tool-health.ts'
-      - 'scripts/probe-tool-servers.ts'
-      - 'scripts/probe-http-transport.ts'
-      - 'scripts/probe-server-reports.ts'
+      - 'probes/dumpable.sh'
+      - 'probes/shared-worktree.sh'
+      - 'probes/secret-off-env.sh'
+      - 'probes/secret-holder.ts'
+      - 'probes/preload.sh'
+      - 'probes/tool-user.sh'
+      - 'probes/tool-health.sh'
+      - 'probes/tool-health.ts'
+      - 'probes/tool-servers.ts'
+      - 'probes/http-transport.ts'
+      - 'probes/server-reports.ts'
       - 'src/lib/mcp-report.ts'
       - 'src/lib/mcp-tool.ts'
       - 'src/entrypoints/tools/**'
@@ -63,21 +63,21 @@ jobs:
         with:
           bun-version: latest
       - name: Measure — can a tool server read another server's environment
-        run: bash scripts/probe-dumpable.sh
+        run: bash probes/dumpable.sh
       - name: Measure — can a credential be held out of reach without isolation
-        run: bash scripts/probe-secret-off-env.sh
+        run: bash probes/secret-off-env.sh
       - name: Measure — can a process be hardened without changing its code
-        run: bash scripts/probe-preload.sh
+        run: bash probes/preload.sh
       - name: Measure — the arrangement the design lands on, end to end
-        run: bash scripts/probe-tool-user.sh
+        run: bash probes/tool-user.sh
       - name: Measure — can two users share the work tree
-        run: bash scripts/probe-shared-worktree.sh
+        run: bash probes/shared-worktree.sh
       # The one probe here that runs atoma itself, because what it asks about is
       # atoma's behaviour: whether a server's report about its own trouble reaches
       # the model. No provider is called -- the LLM is a local fake, which is also
       # the only place the answer is observable.
       - name: Measure — does a tool's report about itself reach the model
-        run: bash scripts/probe-tool-health.sh
+        run: bash probes/tool-health.sh
       # atomaton-check starts no tool server, so module resolution and file
       # permissions are first tried by a real run -- the half left open, and the path defect in
       # particular. One turn with a fake LLM, at the layout the runner builds.
@@ -99,13 +99,13 @@ jobs:
           bun run synth
           rm -rf node_modules
       - name: Measure — do the tool servers start at the layout a run uses
-        run: ATOMA_BIN="${RUNNER_TEMP}/atoma-probe" bun run scripts/probe-tool-servers.ts
+        run: ATOMA_BIN="${RUNNER_TEMP}/atoma-probe" bun run probes/tool-servers.ts
       # The transport atoma added. Unreachable from a unit test: what is left
       # once the pure parts are covered is the socket itself -- a session header
       # echoed back, a notification on a tool call's stream, a server that is not
       # listening yet when the first POST arrives.
       - name: Measure — can atoma use a server it did not start
-        run: ATOMA_BIN="${RUNNER_TEMP}/atoma-probe" bun run scripts/probe-http-transport.ts
+        run: ATOMA_BIN="${RUNNER_TEMP}/atoma-probe" bun run probes/http-transport.ts
       # The other end of the same wire: a server this repository ships,
       # started as a real process, putting a report on the protocol rather than
       # writing WARN to stderr and hoping the word-matching catches it.
@@ -114,4 +114,4 @@ jobs:
       # still runs against a work tree with no node_modules in it -- which is the
       # arrangement probe-tool-servers.ts is asking about.
       - name: Measure — does a server we ship report over the protocol
-        run: bun install --frozen-lockfile && bun run scripts/probe-server-reports.ts
+        run: bun install --frozen-lockfile && bun run probes/server-reports.ts

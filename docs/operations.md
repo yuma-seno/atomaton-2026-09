@@ -515,7 +515,7 @@ in `config.yaml` is one an agent can set up, extend and repair; one whose pipeli
 lives in workflow YAML always needs a person.
 
 **Atomaton's release starts the servers it would ship, and stops before publishing
-if they disagree with it.** `scripts/publish-release.sh` runs `scripts/check-live-tools.sh`
+if they disagree with it.** `self/atomaton/scripts/publish-release.sh` runs `self/atomaton/scripts/check-live-tools.sh`
 between building `dist/` and creating the release. Both are Atomaton's own and
 neither ships, so this is a description of how Atomaton is released rather than of
 what your pipeline does: `deploy` ships empty, and wiring the

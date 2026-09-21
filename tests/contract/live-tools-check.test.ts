@@ -12,7 +12,7 @@
  * there would turn "a check that runs nothing" into "a check that runs the pull
  * request", inside the job that decides whether that pull request may merge.
  *
- * So it is wired at the other end: `scripts/publish-release.sh`, which runs from a
+ * So it is wired at the other end: `self/atomaton/scripts/publish-release.sh`, which runs from a
  * release tag, against `dist/` — the artifact about to be published. These tests hold both
  * ends, because either one alone is half a rule: the check existing is useless if
  * nothing calls it, and the check being called is dangerous if it is called from
@@ -32,8 +32,8 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolveDeployJobs } from "../../src/domain/delivery/deploy-jobs.ts";
 
-const CHECK = "scripts/check-live-tools.sh";
-const RELEASE = "scripts/publish-release.sh";
+const CHECK = "self/atomaton/scripts/check-live-tools.sh";
+const RELEASE = "self/atomaton/scripts/publish-release.sh";
 const DELIVERABLE_VALIDATOR = "src/entrypoints/machinery/validate_deliverable.ts";
 
 function body(path: string): string {
@@ -151,7 +151,7 @@ describe("where it is wired", () => {
   /**
    * Whose release runs it.
 
-   * `scripts/release.sh` and `scripts/check-live-tools.sh` are Atomaton's own and
+   * `scripts/release.sh` and `self/atomaton/scripts/check-live-tools.sh` are Atomaton's own and
    * neither ships. What ships is an empty `deploy`, so an adopter's
    * release runs nothing until they wire it. Three places described the check
    * without saying whose release it was, which read -- in a file that ships, and in
@@ -167,7 +167,7 @@ describe("where it is wired", () => {
       "a shipped file must not say the reader's release checks this: theirs ships with " +
         "deploy ships empty and runs nothing",
     ).toBe(false);
-    expect(shipped).toContain("scripts/publish-release.sh");
+    expect(shipped).toContain("self/atomaton/scripts/publish-release.sh");
   });
 
   /** The same claim, in the guide an adopter operates from. */

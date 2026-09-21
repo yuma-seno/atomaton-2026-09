@@ -58,7 +58,7 @@ servers:
       # so this list cannot quietly stop applying.
       #
       # Atomaton's own release checks it against the live server as well:
-      # `scripts/publish-release.sh` asks these servers what they offer and holds every
+      # `self/atomaton/scripts/publish-release.sh` asks these servers what they offer and holds every
       # pattern here to it before publishing. That is Atomaton's release, not this
       # repository's -- `deploy` ships empty, so nothing here
       # runs it for you unless you wire it. Whichever release runs it, it runs after

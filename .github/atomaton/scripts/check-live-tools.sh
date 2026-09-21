@@ -68,7 +68,7 @@
 # rejects it. This is not a gap this script can close.
 #
 # Usage:
-#   bash scripts/check-live-tools.sh
+#   bash .github/atomaton/scripts/check-live-tools.sh
 #
 #   ATOMA_BIN=/path/to/atoma   check with this binary instead of downloading the pin
 set -euo pipefail
