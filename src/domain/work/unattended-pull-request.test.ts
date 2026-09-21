@@ -3,12 +3,12 @@ import { isAttended, mentionsSomeone, unattendedNotice } from "./unattended-pull
 
 describe("whether anybody was asked to look at a new pull request", () => {
   test("a named reviewer is enough", () => {
-    expect(isAttended({ reviewer: "reviewer", body: "" })).toBe(true);
-    expect(isAttended({ reviewer: "senior-reviewer", body: "no mentions here" })).toBe(true);
+    expect(isAttended({ next: { agent: "reviewer" }, body: "" })).toBe(true);
+    expect(isAttended({ next: { agent: "senior-reviewer" }, body: "no mentions here" })).toBe(true);
   });
 
   test("a mention is enough", () => {
-    expect(isAttended({ reviewer: "", body: "@octocat could you look at this" })).toBe(true);
+    expect(isAttended({ body: "@octocat could you look at this" })).toBe(true);
   });
 
   /**
@@ -17,8 +17,10 @@ describe("whether anybody was asked to look at a new pull request", () => {
    * and the work waits for somebody who was never told.
    */
   test("neither is unattended", () => {
-    expect(isAttended({ reviewer: "", body: "Implements the thing." })).toBe(false);
-    expect(isAttended({ reviewer: "   ", body: "" }), "whitespace is not a name").toBe(false);
+    expect(isAttended({ body: "Implements the thing." })).toBe(false);
+    // Whitespace is not a name, and the type no longer lets one through: the caller
+    // that has a raw input normalises it, and absence is absence here.
+    expect(isAttended({ body: "" }), "nothing named, nobody mentioned").toBe(false);
   });
 });
 

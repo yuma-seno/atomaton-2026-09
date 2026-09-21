@@ -8,11 +8,25 @@
  *
  * Pure: the caller reads the run's outcome and the issue's state, this decides.
  */
+import type { TurnEnding } from "./turn.ts";
 
 export interface CompletionSignals {
-  /** The agent's closing directive line, if it named another agent to run next. */
-  directive?: string;
-  /** A tool call during this run already dispatched a follow-up run. */
+  /**
+   * How this turn ended, and who it named.
+   *
+   * It was the raw directive plus `stopRequested` and `limitReached`, and this
+   * function re-derived "will the hand-off actually run" from the three — the
+   * fourth place in the system deriving a turn's ending for itself. It is read
+   * from `domain/work/turn.ts` now, which is where the derivation lives.
+   */
+  ending: TurnEnding;
+  /**
+   * A tool call during this run already dispatched a follow-up run.
+   *
+   * Beside the ending rather than inside it, because it is a fact about what
+   * already happened rather than about how this turn finished. A `create_pr` that
+   * started the reviewer started it; a stop arriving afterwards does not unstart it.
+   */
   chainContinues: boolean;
   /** The login to mention, empty when nobody is configured. */
   notify?: string;
@@ -20,18 +34,6 @@ export interface CompletionSignals {
   isSubIssue: boolean;
   /** The issue is closed as of this comment. */
   issueClosed: boolean;
-  /**
-   * A person asked this run to stop, or it ran out of iterations.
-   *
-   * Either one cancels the directive's dispatch -- `DISPATCH_NEXT_GUARD` in
-   * `atomaton-runner.wac.ts` refuses on both -- so the directive below stops being
-   * evidence that anything will follow. Without these, a run that stopped on the
-   * same turn it named its successor went quiet twice over: the successor did not
-   * start, and nobody was told, because the comment believed the handoff it could
-   * see rather than the stop it could not.
-   */
-  stopRequested?: boolean;
-  limitReached?: boolean;
 }
 
 /**
@@ -52,16 +54,20 @@ export interface CompletionSignals {
  * a parent for a sub-issue that has not finished, so a run that ends there has
  * genuinely stopped, and that is exactly the case a person needs to hear about.
  *
- * The directive is the one of the three that can be contradicted. A stop or a
- * spent iteration budget means the run it named never started, so the handoff is a
- * plan rather than a fact and silences nothing. The other two are not: a tool that
- * already dispatched has already dispatched, and a closed sub-issue still wakes its
- * parent, whether or not the run that closed it was stopped afterwards.
+ * The hand-off is the one of the three that can be contradicted, and the ending is
+ * what already knows: a turn that was stopped, spent, or that failed outright
+ * carries no `next` at all, so the plan it wrote silences nothing. The other two
+ * are not contradictable — a tool that already dispatched has already dispatched,
+ * and a closed sub-issue still wakes its parent, whether or not the run that closed
+ * it was stopped afterwards.
+ *
+ * `chain-over` carries a `next` and silences, which looks like an exception and is
+ * not: the chain's own limit posts a comment naming that agent and mentioning the
+ * same person. Silencing here is what keeps one event to one notification.
  */
 export function shouldMentionOnCompletion(signals: CompletionSignals): boolean {
   if (!signals.notify) return false;
-  const handoffWillRun = !signals.stopRequested && !signals.limitReached;
-  if (signals.directive && handoffWillRun) return false;
+  if (signals.ending.next) return false;
   if (signals.chainContinues) return false;
   if (signals.isSubIssue && signals.issueClosed) return false;
   return true;

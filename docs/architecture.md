@@ -197,14 +197,6 @@ This is the larger half of the same question, and it reaches the session store,
 the workspace branch and the metrics window. Not a refactor — a decision about
 where the authority for a node's history lives.
 
-### "No next" is still `""` in two places
-
-`pr-validation.ts` was the third, and is now `next?: NextTurn`.
-`unattended-pull-request.ts`'s `reviewer` and `completion-mention.ts`'s
-`directive` still carry the empty string, and in both the value arrives straight
-from a workflow input where `""` is what the wire actually holds. Normalising at
-the door is the fix; it is small, and it is listed so it is not lost.
-
 ### `issue-branch.ts` fuses a rule with a convention
 
 *Resume the existing branch or cut a new one* is a work rule. `atomaton/issue-N`
