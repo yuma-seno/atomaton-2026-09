@@ -1,7 +1,21 @@
 import { describe, expect, test } from "bun:test";
 import { shouldMentionOnCompletion, type CompletionSignals } from "./completion-mention.ts";
+import { endingOf, type TurnSignals } from "./turn.ts";
+
+/** An ending built the way a run builds it, so these exercise the real derivation. */
+const ended = (overrides: Partial<TurnSignals> = {}) =>
+  endingOf({
+    succeeded: true,
+    limitReached: false,
+    stopRequested: false,
+    loopLimitReached: false,
+    chainContinues: false,
+    directive: "",
+    ...overrides,
+  });
 
 const base: CompletionSignals = {
+  ending: ended(),
   chainContinues: false,
   notify: "someone",
   isSubIssue: false,
@@ -18,7 +32,7 @@ describe("shouldMentionOnCompletion", () => {
   });
 
   test("says nothing when the agent handed off to another agent", () => {
-    expect(shouldMentionOnCompletion({ ...base, directive: "reviewer" })).toBe(false);
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer" }) })).toBe(false);
   });
 
   test("says nothing when a tool call already dispatched the next run", () => {
@@ -45,17 +59,17 @@ describe("shouldMentionOnCompletion", () => {
   });
 
   /**
-   * The case that went silent twice. `DISPATCH_NEXT_GUARD` refuses on a stop, so the
-   * successor named in the directive never runs -- and the directive then silenced
+   * The case that went silent twice. A stopped turn carries no `next`, so the
+   * successor it named never runs -- and the directive then silenced
    * the mention as well, leaving nothing running and nobody told.
    */
   test("still mentions when a stop cancelled the handoff the agent named", () => {
-    expect(shouldMentionOnCompletion({ ...base, directive: "reviewer", stopRequested: true })).toBe(true);
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", stopRequested: true }) })).toBe(true);
   });
 
-  /** The same guard refuses on a spent iteration budget, so the same applies. */
+  /** A spent budget is the same: the turn ended, and what it planned did not happen. */
   test("still mentions when a spent budget cancelled the handoff", () => {
-    expect(shouldMentionOnCompletion({ ...base, directive: "reviewer", limitReached: true })).toBe(true);
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", limitReached: true }) })).toBe(true);
   });
 
   /**
@@ -64,13 +78,13 @@ describe("shouldMentionOnCompletion", () => {
    * mention would be claiming a halt that did not happen.
    */
   test("a stop does not un-silence a dispatch that already went out", () => {
-    expect(shouldMentionOnCompletion({ ...base, chainContinues: true, stopRequested: true })).toBe(false);
+    expect(shouldMentionOnCompletion({ ...base, chainContinues: true, ending: ended({ stopRequested: true }) })).toBe(false);
   });
 
   /** Nor the parent hand-back: the sub-issue is closed, and closing it is the signal. */
   test("a stop does not un-silence a closed sub-issue's hand-back", () => {
     expect(
-      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, stopRequested: true }),
+      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, ending: ended({ stopRequested: true }) }),
     ).toBe(false);
   });
 });

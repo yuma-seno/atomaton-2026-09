@@ -19,6 +19,7 @@ import { gh } from "../../adapters/github/gh.ts";
 import { AGENT_TAG, CHANGED_TAG, ENDED_TAG } from "../../adapters/github/tags.ts";
 import { parentIssueOf } from "../../adapters/github/parent-issue.ts";
 import { shouldMentionOnCompletion } from "../../domain/work/completion-mention.ts";
+import { endingOf, type TurnEnding } from "../../domain/work/turn.ts";
 import { redact } from "../../shared/redaction.ts";
 import { renderTokenLine } from "../../domain/record/token-line.ts";
 import { escapedMentionNotice, escapeUnknownMentions } from "../../domain/work/mention.ts";
@@ -202,6 +203,47 @@ export function lastAgentText(sessionPath: string | undefined, from?: number): s
   return undefined;
 }
 
+/**
+ * The ending as `atomaton:ended` spells it: what `/resume` asks the thread.
+ *
+ * `stopped` is the only value with a reader — `lastEnding` compares against it —
+ * so the rest collapse to "not interrupted". Kept as its own function so the
+ * projection is visible rather than inlined into a tag write.
+ */
+function endedTag(ending: TurnEnding): string {
+  if (ending.ended === "stopped") return "stopped";
+  return ending.ended === "spent" ? "limit" : "done";
+}
+
+/**
+ * How this turn ended, as far as this comment can know.
+ *
+ * `succeeded` is true by construction: the workflow only runs this step when the
+ * agent step succeeded, so there is no failed turn to report from here.
+ *
+ * `loopLimitReached` is NOT known yet, and cannot be. The chain's own limit is
+ * counted from the thread by `manage_dispatch_loop.ts`, which runs after this
+ * because the tally includes the comment this is writing. Passing `false` is
+ * therefore not a guess:
+ *
+ *   - it can only turn a `chain-over` into a `handed-off`, and
+ *   - both carry the same `next`, which is the only thing read here.
+ *
+ * So the one signal this cannot see is the one that does not change the answer.
+ * Deriving the ending here rather than re-deriving the parts is what removes the
+ * two copies this file used to hold — one for the mention, one for the tag.
+ */
+function endingHere(args: { directive?: string; chainContinues?: string; limitReached?: string; stopRequested?: string }): TurnEnding {
+  return endingOf({
+    succeeded: true,
+    limitReached: args.limitReached === "true",
+    stopRequested: args.stopRequested === "true",
+    loopLimitReached: false,
+    chainContinues: args.chainContinues === "true",
+    directive: args.directive ?? "",
+  });
+}
+
 export function buildCommentBody(args: {
   agent: string;
   notify?: string;
@@ -250,9 +292,12 @@ export function buildCommentBody(args: {
     // How this run ended, so the thread can be asked later. `/resume` over a work tree
     // needs to know which nodes under the one it was given were interrupted, and the
     // alternative -- "has a saved session" -- is true of every node that ever ran.
-    ENDED_TAG.write(
-      args.stopRequested === "true" ? "stopped" : args.limitReached === "true" ? "limit" : "done",
-    ),
+    //
+    // Three wire values rather than the domain's six, because this tag answers one
+    // question and `/resume` is its only reader. A projection, taken from the ending
+    // rather than re-derived from the signals beside it -- which is what it was, in
+    // this same file, twelve lines from the other copy.
+    ENDED_TAG.write(endedTag(endingHere(args))),
   ];
   if (args.salvaged === true) {
     lines.push(
@@ -281,16 +326,11 @@ export function buildCommentBody(args: {
 
   if (
     shouldMentionOnCompletion({
-      directive: args.directive,
+      ending: endingHere(args),
       chainContinues: args.chainContinues === "true",
       notify: args.notify,
       isSubIssue: args.isSubIssue ?? false,
       issueClosed: args.issueClosed ?? false,
-      // Already here for the footer below, and not forwarded until now. A run that
-      // named its successor and was stopped before it started one had the mention
-      // suppressed by a handoff that never happened.
-      stopRequested: args.stopRequested === "true",
-      limitReached: args.limitReached === "true",
     })
   ) {
     lines.push(

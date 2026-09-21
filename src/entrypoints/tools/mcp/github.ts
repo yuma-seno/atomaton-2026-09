@@ -749,7 +749,7 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
   // Not tagged `llm-context=exclude`, unlike the confirmation above: this one is a
   // fact about the pull request that a later agent reading the thread should see.
   // The confirmation is bookkeeping; this is "nobody is coming".
-  if (!isAttended({ reviewer, body: body ?? "" })) {
+  if (!isAttended({ ...(reviewer ? { next: { agent: reviewer } } : {}), body: body ?? "" })) {
     const openedBy = (process.env.AGENT ?? "").trim() || "an agent";
     const notify = resolveNotify(REPO, num);
     log(`createPr: PR #${num} has no reviewer and mentions nobody; leaving a notice for ${notify || "(nobody resolved)"}`);

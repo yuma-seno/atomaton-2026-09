@@ -15,11 +15,20 @@
  * asking whether either of the two things that would bring a person or an agent is
  * present.
  */
+import type { NextTurn } from "./turn.ts";
 
 /** What a new pull request was given to reach someone. */
 export interface Attendance {
-  /** The agent the caller named to review it, or "" for none. */
-  reviewer: string;
+  /**
+   * The agent named to review it, when one was named.
+   *
+   * It was `reviewer: string` with `""` for none — the spelling of absence this
+   * domain kept reaching for, and one this function then had to undo with a
+   * `.trim() !== ""` the caller had already done. `NextTurn` is the same edge
+   * `domain/work/turn.ts` names, which is what a named reviewer is: who takes this
+   * pull request next.
+   */
+  next?: NextTurn;
   /** The pull request body, which may mention a person. */
   body: string;
 }
@@ -38,7 +47,7 @@ export interface Attendance {
  * relevant person is a separate question, and a real one.
  */
 export function isAttended(attendance: Attendance): boolean {
-  if (attendance.reviewer.trim() !== "") return true;
+  if (attendance.next) return true;
   return mentionsSomeone(attendance.body);
 }
 
