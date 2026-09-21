@@ -23,7 +23,7 @@ This repository's own:
 
 - `self/`: the four files that are this repository's rather than the template's,
   laid out to mirror `.github/`. Nothing else in `.github/` is ours. See
-  [Applying a release](#applying-a-release).
+  [Applying a release](#applying-a-release-to-this-repository).
 - top-level `.github/`: this repository's adoption of the deliverable. Exactly two
   sources, and nothing kept alive by remembering: a release archive, with `self/`
   copied over it. Upgraded deliberately rather than on merge — that lag is what
