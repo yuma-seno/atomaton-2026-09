@@ -276,18 +276,33 @@ describe("post_result_comment.ts buildCommentBody", () => {
    * mentioned it (#940). A reader has to be able to see that this sentence is the
    * machinery's -- an agent's own report of a broken tool is worth more, and the two
    * must not be mistaken for each other.
+   *
+   * Plain italic, in the voice of the token line and the run link, and deliberately
+   * not a `⚠️`. That marker means one thing in this footer -- the run was cut off and
+   * a person has to continue it -- and that notice is the one line here anybody has
+   * to act on. This one is a count, and most of what it counts is a guard doing its
+   * job: 107 of 396 runs carried a refused or errored call, so marking it would put a
+   * warning sign on a quarter of all comments and the meaningful one would stop being
+   * read.
    */
   test("what the tools did to the run reads as the machine's, under the run link", () => {
     const body = buildCommentBody({
       agent: "engineer",
+      endedBecause: "runtime",
       runUrl: "http://example.com/run/1",
       output: "LGTM.",
       toolTrouble: "Counted from the session: 1 problem a server reported about itself (`search`).",
       usageLines: [],
     });
-    expect(body).toContain("⚠️ _Counted from the session: 1 problem a server reported about itself (`search`)._");
+    expect(body).toContain("\n_Counted from the session: 1 problem a server reported about itself (`search`)._");
     expect(body.indexOf("Counted from the session")).toBeGreaterThan(body.indexOf("_run by"));
     expect(body.indexOf("Counted from the session")).toBeGreaterThan(body.indexOf("LGTM."));
+    // Above the continuation notice: the count is a fact, the notice is the action,
+    // and the action reads last.
+    expect(body.indexOf("Counted from the session")).toBeLessThan(body.indexOf("The run ran out of time"));
+    // And the notice keeps the only warning sign in the footer, which is what makes
+    // it findable at a glance.
+    expect(body.split("⚠️").length - 1, "one ⚠️ in the footer, on the line that needs a person").toBe(1);
   });
 
   /** The ordinary run. Nothing to count is nothing to say. */

@@ -402,7 +402,16 @@ export function buildCommentBody(args: {
   lines.push("---", `_run by [${args.agent}](${args.runUrl})${metrics}_`);
   // Under the run link and above the notice saying how to continue: this is a fact
   // about the run, the notice is the action, and the action reads last.
-  if (args.toolTrouble !== undefined) lines.push(`⚠️ _${args.toolTrouble}_`);
+  //
+  // No `⚠️`, in the same voice as the token line and the run link above it. The
+  // marker means one thing in this footer -- the run was cut off and a person has to
+  // continue it -- and this line is not that. Most of what it counts is a guard doing
+  // its job, which `looksRefused` exists to distinguish from a tool breaking;
+  // measured, 107 of 396 runs carried a refused or errored call, so a warning sign
+  // here would appear on a quarter of all comments and the one below it would stop
+  // being read. The line's job is to make the count impossible to lose, not to claim
+  // a fault.
+  if (args.toolTrouble !== undefined) lines.push(`_${args.toolTrouble}_`);
   if (args.endedBecause === "stopped") {
     // Says the session survived, because that is the whole difference between this
     // and cancelling the job, and the person who stopped it cannot tell from here
