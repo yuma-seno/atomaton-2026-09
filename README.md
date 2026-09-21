@@ -29,8 +29,8 @@ unzip -o atomaton-delivery.zip
 rm atomaton-delivery.zip
 ```
 
-Then commit it, and do the four things in **[Setup](docs/setup.md)** — the first run
-needs a repository setting and a credential, and will not start without them.
+Then commit it, and do everything in **[Setup](docs/setup.md)**, in order — the first
+run needs a repository setting and a credential, and will not start without them.
 
 With those done, open an issue whose first non-blank line names an agent:
 
@@ -51,7 +51,7 @@ Everything below is indexed in [docs/README.md](docs/README.md), which says wher
 | --- | --- |
 | put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |
 | know what a setting does | [What `config.yaml` accepts](docs/config/reference.md) — every key, and where its entry is |
-| do one specific thing | [Recipes](docs/) — indexed by the goal you arrived with |
+| do one specific thing | [The map](docs/README.md) — a table indexed by what you want to change |
 | understand what it just did | [What starts a run](docs/work/how-it-works/what-starts-a-run.md), and [when it breaks](docs/README.md) — the map indexes those by symptom |
 | write an MCP server for it | [Writing a tool](docs/tools/tasks/write-a-tool.md) |
 | know why it is built this way | [Environment-Driven Development](docs/method/edd.md) — the idea the whole system is an argument for |

@@ -16,6 +16,7 @@ event payload gets nothing when Atomaton starts it. Resolve it from the branch i
 PR=$(gh pr list --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].number // empty')
 ```
 
-Setting a branch ruleset up for the first time is [docs/setup.md](../../setup.md). The
+Which checks a ruleset may require, and setting one up for the first time, is
+[make a branch ruleset work with agents](../../github/tasks/make-a-branch-ruleset-work-with-agents.md). The
 `action_required` run that sits pending on an agent's pull request, and why deleting it
 is destructive, is [when a check will not settle](../../github/when-it-breaks.md).

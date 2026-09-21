@@ -47,7 +47,7 @@ pushes, no force-pushes, no branch deletion, and a pull request that cannot merg
 until the `atomaton-check` job passes.
 
 How an adopter applies that file, and the two settings they must get right, are in
-[docs/setup.md](docs/setup.md#5-if-you-use-a-branch-ruleset) — it is their work, not
+[make a branch ruleset work with agents](docs/github/tasks/make-a-branch-ruleset-work-with-agents.md) — it is their work, not
 a contributor's. What follows is this repository's own, and the reasoning behind
 what the shipped file contains.
 

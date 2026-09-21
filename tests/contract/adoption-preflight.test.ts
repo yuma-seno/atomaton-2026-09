@@ -39,12 +39,44 @@
  * rows anywhere `docs/setup.md` could grow one would make the negative assertion
  * below read a credential as required when it is an alternative, so the rows move
  * as a unit or not at all.
+ *
+ * ## What the length floor protects, and what it does not
+ *
+ * `preflightSection()` keeps a floor of 500 characters, and the floor catches one
+ * thing: the page emptied or gone, with every assertion after it passing over an
+ * empty string. It was proposed that the floor be raised to roughly the page's own
+ * size, so that a checklist thinned into a bare link list would fail. It is not:
+ * the page is ~2,500 characters of actions and links, a floor set just under that
+ * fails the next honest edit, and it would report the failure as "docs/setup.md is
+ * empty or missing", which would be false.
+ *
+ * The discipline that actually broke is the opposite one. `docs/setup.md` has no
+ * artifact of its own, so explanation drifts onto it, and four times it had: two
+ * paragraphs of `environment.setup_commands`, the `workflow_dispatch` YAML, the
+ * `gh release download` block and a restatement of the provider rule all stood
+ * here as second copies of pages in the tree. `the checklist copies nothing from
+ * the tree` below is the machine-readable half of that: every fenced block on this
+ * page has to be an action nowhere else under `docs/` performs. It cannot catch a
+ * paragraph restated in different words -- that is what review is for -- but each
+ * of the three code blocks it would have caught was carried for years.
  */
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const AGENT_DIR = "src/content/agent-definitions";
+const SETUP = "docs/setup.md";
+
+/** Every Markdown page under a directory, with the separators links are written in. */
+function markdownUnder(dir: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const path = `${dir}/${entry}`;
+    if (statSync(path).isDirectory()) found.push(...markdownUnder(path));
+    else if (entry.endsWith(".md")) found.push(path);
+  }
+  return found;
+}
 
 /** `provider:` from an agent definition's frontmatter. */
 function providerOf(file: string): string | undefined {
@@ -74,8 +106,8 @@ function credentialByProvider(): Map<string, string> {
 
 /** The setup guide, which is what a first run depends on being right. */
 function preflightSection(): string {
-  const setup = readFileSync("docs/setup.md", "utf8").replace(/\r\n/g, "\n");
-  expect(setup.length, "docs/setup.md is empty or missing").toBeGreaterThan(500);
+  const setup = readFileSync(SETUP, "utf8").replace(/\r\n/g, "\n");
+  expect(setup.length, `${SETUP} is empty or missing`).toBeGreaterThan(500);
   return setup;
 }
 
@@ -133,5 +165,39 @@ describe("the preflight checklist", () => {
         `the checklist requires ${credential}, which no shipped agent definition uses`,
       ).toBe(false);
     }
+  });
+
+  /**
+   * The checklist copies nothing from the tree.
+   *
+   * A page with no artifact of its own attracts explanation, and this one had
+   * collected three code blocks that a page in the tree already owned -- the
+   * `workflow_dispatch` trigger, `gh release download`, and the issue body that
+   * starts a run. A copy is not wrong on the day it is made; it is wrong on the day
+   * one of the two moves, and nothing says which one the reader is looking at.
+   *
+   * Fenced blocks rather than prose, because a block is the unit that copies
+   * verbatim and the unit a checklist is tempted to carry "so the reader does not
+   * have to click".
+   */
+  test("the checklist copies nothing from the tree", () => {
+    const setup = readFileSync(SETUP, "utf8").replace(/\r\n/g, "\n");
+    const blocks = [...setup.matchAll(/^[ \t]*```[^\n]*\n([\s\S]*?)^[ \t]*```/gm)].map((m) =>
+      (m[1] ?? "").replace(/^[ \t]+/gm, "").trim(),
+    );
+    expect(blocks.length, `${SETUP} has no fenced blocks to compare`).toBeGreaterThan(0);
+
+    const duplicated: string[] = [];
+    for (const page of markdownUnder("docs").filter((file) => file !== SETUP)) {
+      const other = readFileSync(page, "utf8").replace(/\r\n/g, "\n");
+      const normalised = other.replace(/^[ \t]+/gm, "");
+      for (const block of blocks) if (normalised.includes(block)) duplicated.push(`${page}: ${block.split("\n")[0]}…`);
+    }
+
+    expect(
+      duplicated,
+      `${SETUP} carries a code block another page already owns:\n  ${duplicated.join("\n  ")}\n` +
+        `Link to that page instead — a second copy is what goes stale.`,
+    ).toEqual([]);
   });
 });
