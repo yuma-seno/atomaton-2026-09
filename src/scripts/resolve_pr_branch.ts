@@ -33,7 +33,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { gh, gitRun } from "../lib/gh.ts";
+import { gh, gitRun } from "../adapters/github/gh.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ResolvePrBranchArgs {

@@ -186,7 +186,7 @@ export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
       deliverableStep,
       configStep,
       validateStep,
-      // Through `scripts/dispatch_agent.ts`, and so through `lib/dispatch.ts`, rather
+      // Through `scripts/dispatch_agent.ts`, and so through `adapters/actions/dispatch.ts`, rather
       // than the `gh workflow run atomaton-runner.yml` written here before. That copy
       // refused no closed target and wrote no ops-log entry — the guarantees
       // `dispatchRunner` exists to make unforgettable, and this was one of the two

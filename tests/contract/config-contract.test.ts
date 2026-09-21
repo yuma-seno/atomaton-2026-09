@@ -4,12 +4,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { configProblems, knownConfigKeys } from "../../src/domain/delivery/deliverable-integrity.ts";
 import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/delivery/merge-gates.ts";
 import { SCRIPTS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
-import type { AtomaConfig } from "../../src/lib/types.ts";
+import type { AtomaConfig } from "../../src/domain/delivery/declared-config.ts";
 
 /**
  * The shipped template's config.
  *
- * Read with `Bun.YAML.parse`, which is what `lib/config.ts` reads it with: a file
+ * Read with `Bun.YAML.parse`, which is what `adapters/runner/config.ts` reads it with: a file
  * this test accepts has to be a file the readers accept, and a second parser here
  * could disagree with the one that runs. Typed as the interface plus an index
  * signature so a test can also ask about a key the interface does NOT have.
@@ -79,7 +79,7 @@ describe("merge.gates documentation", () => {
 /**
  * config.yaml's recognised keys, in the type and at run time.
  *
- * `AtomaConfig` in `lib/types.ts` is the definition and `CONFIG_SCHEMA` in
+ * `AtomaConfig` in `domain/delivery/declared-config.ts` is the definition and `CONFIG_SCHEMA` in
  * `domain/delivery/deliverable-integrity.ts` is the runtime mirror, because an interface is
  * erased before anything can consult it. Two lists of the same fact — which is
  * exactly what `validate_deliverable.ts` exists to catch in an adopter's config, so
@@ -125,13 +125,13 @@ describe("config.yaml's recognised keys", () => {
   }
 
   function keysFromTheInterface(): string[] {
-    const file = "src/lib/types.ts";
+    const file = "src/domain/delivery/declared-config.ts";
     const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
     const declaration = source.statements.find(
       (statement): statement is ts.InterfaceDeclaration =>
         ts.isInterfaceDeclaration(statement) && statement.name.text === "AtomaConfig",
     );
-    expect(declaration, "AtomaConfig is no longer an interface in src/lib/types.ts").toBeDefined();
+    expect(declaration, "AtomaConfig is no longer an interface in src/domain/delivery/declared-config.ts").toBeDefined();
 
     const out: string[] = [];
     for (const member of declaration!.members) {

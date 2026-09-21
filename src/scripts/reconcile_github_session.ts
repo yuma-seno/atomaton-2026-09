@@ -36,8 +36,8 @@ import { parseArgs } from "node:util";
 import { defineScript } from "./lib/script-ref.ts";
 import type { GithubEvent } from "./fetch_events.ts";
 import type { Session, SessionMessage, SessionMessageMetadata } from "../domain/work/session.ts";
-import { AGENT_TAG, LLM_CONTEXT_TAG } from "../lib/tags.ts";
-import { contentWithImages, type ContentBlock } from "../lib/issue-images.ts";
+import { AGENT_TAG, LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
+import { contentWithImages, type ContentBlock } from "../adapters/github/issue-images.ts";
 
 export interface ReconcileGithubSessionArgs {
   events: string;

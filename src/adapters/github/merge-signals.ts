@@ -14,15 +14,15 @@
  */
 import { gh } from "./gh.ts";
 import { readBranchRules } from "./branch-rules.ts";
-import { getGovernedPaths, getMergeGates, getMergePolicy } from "./config.ts";
-import { governedPathsIn, type MergeSignals } from "../domain/delivery/merge-readiness.ts";
-import { pathPatternProblem } from "../domain/delivery/path-patterns.ts";
+import { getGovernedPaths, getMergeGates, getMergePolicy } from "../../adapters/runner/config.ts";
+import { governedPathsIn, type MergeSignals } from "../../domain/delivery/merge-readiness.ts";
+import { pathPatternProblem } from "../../domain/delivery/path-patterns.ts";
 import {
   matchMergeGates,
   type ChangedFile,
   type FileStatus,
   type MergeGateMatch,
-} from "../domain/delivery/merge-gates.ts";
+} from "../../domain/delivery/merge-gates.ts";
 
 export interface PullRequestRefs {
   headRefName: string;

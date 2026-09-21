@@ -10,7 +10,7 @@
  * questions, which is why there is no vector index here to maintain.
  *
  * Pure and synchronous. The I/O half — fetching issues, storing the index —
- * lives in `lib/issue-index.ts`.
+ * lives in `adapters/github/issue-index.ts`.
  */
 
 /**

@@ -124,7 +124,7 @@ describe("matchMergeGates", () => {
   });
 
   test("ordinary work applies nothing", () => {
-    expect(matchMergeGates(gates, facts({ changedFiles: [file("src/lib/config.ts", "modified")] }))).toEqual([]);
+    expect(matchMergeGates(gates, facts({ changedFiles: [file("../../adapters/runner/config.ts", "modified")] }))).toEqual([]);
   });
 
   test("no gates declared means nothing applies", () => {

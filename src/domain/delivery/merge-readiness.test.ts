@@ -313,7 +313,7 @@ describe("governedPathsIn", () => {
   });
 
   test("ordinary work is not governance", () => {
-    expect(governedPathsIn(["src/lib/config.ts", "docs/operations.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
+    expect(governedPathsIn(["../../adapters/runner/config.ts", "docs/operations.md"], DEFAULT_GOVERNED_PATHS)).toEqual([]);
   });
 
   // The default names an adopter's deployed tree. A template repository develops

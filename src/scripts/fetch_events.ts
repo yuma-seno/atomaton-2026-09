@@ -24,8 +24,8 @@
  */
 import { appendFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { gh, ghJson, ghPaginated, ghRead } from "../lib/gh.ts";
-import { PARENT_ISSUE_TAG, withoutTags } from "../lib/tags.ts";
+import { gh, ghJson, ghPaginated, ghRead } from "../adapters/github/gh.ts";
+import { PARENT_ISSUE_TAG, withoutTags } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface FetchEventsArgs {

@@ -16,7 +16,7 @@
  * ## Why `settings` is stripped rather than passed through
  *
  * `settings` is the one key this project reserves: the server reads it back through
- * `lib/config.ts`, from the same config file, so it never needs to travel through
+ * `adapters/runner/config.ts`, from the same config file, so it never needs to travel through
  * here. Everything else is passed on untouched, so a key a later core release adds
  * -- `url` and `headers` for a remote server, whatever comes next -- works the day
  * it ships without this file learning it.

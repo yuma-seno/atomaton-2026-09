@@ -5,7 +5,7 @@
  * A workflow step that needs to start an agent used to write its own `gh workflow
  * run atomaton-runner.yml` in bash. Two did — the runner's hand-off to the agent a
  * directive named, and the validation workflow's hand-off to whoever the result
- * called for — and both were invisible to `lib/dispatch.ts`, which exists to make
+ * called for — and both were invisible to `adapters/actions/dispatch.ts`, which exists to make
  * exactly that impossible. Its header says so:
  *
  * > a guard that each of them has to remember is one the fifth will not have.
@@ -32,8 +32,8 @@
  *     --context "CI passed on #12, so reviewer was to review it"
  */
 import { parseArgs } from "node:util";
-import { isAgentName } from "../lib/agent-name.ts";
-import { dispatchRunner } from "../lib/dispatch.ts";
+import { isAgentName } from "../domain/work/agent-name.ts";
+import { dispatchRunner } from "../adapters/actions/dispatch.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface DispatchAgentArgs {

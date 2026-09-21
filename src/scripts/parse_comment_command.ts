@@ -13,7 +13,7 @@
  * $GITHUB_OUTPUT.
  */
 import { appendFileSync } from "node:fs";
-import { AGENT_NAME_PATTERN } from "../lib/agent-name.ts";
+import { AGENT_NAME_PATTERN } from "../domain/work/agent-name.ts";
 import { isControlCommand, type ControlCommand } from "../domain/work/control-commands.ts";
 import { defineScript } from "./lib/script-ref.ts";
 

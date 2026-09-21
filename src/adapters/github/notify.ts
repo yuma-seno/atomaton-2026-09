@@ -141,7 +141,7 @@ export function resolveNotify(repo: string, number: number): string {
 
     // Up one edge, and which edge depends on what this is. A pull request's link to
     // its issue is `atomaton:parent-issue`, which has no native equivalent that
-    // survives — measured, and written down in `lib/tags.ts`. An issue's link to its
+    // survives — measured, and written down in `adapters/github/tags.ts`. An issue's link to its
     // parent is GitHub's own, and the tag that used to answer here is gone.
     const parent = d.is_pr ? PARENT_ISSUE_TAG.read(body) : nativeParentOf(repo, current);
     if (parent === undefined) break;

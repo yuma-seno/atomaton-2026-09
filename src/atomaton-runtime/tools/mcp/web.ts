@@ -16,9 +16,9 @@
  * Bounds the response. A page with no limit can spend an entire context window
  * in one call.
  */
-import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../lib/mcp-tool.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z, type McpToolResult } from "../../../adapters/mcp/mcp-tool.ts";
 import { htmlToMarkdown } from "../../../shared/html-to-markdown.ts";
-import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../lib/issue-images.ts";
+import { MAX_IMAGE_BYTES, sniffMimeType } from "../../../adapters/github/issue-images.ts";
 import { TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
 import { hardenCredentialHolder } from "../lib/harden.ts";
 

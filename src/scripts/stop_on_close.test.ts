@@ -22,7 +22,7 @@ describe("stop_on_close.ts", () => {
    *
    * They used to come from an `atomaton:parent=N in:body` search, and these fixtures
    * were about that half with the native half answering empty. The tag is gone and
-   * the link is the record — see `lib/parent-issue.ts`. Pull requests are still found
+   * the link is the record — see `adapters/github/parent-issue.ts`. Pull requests are still found
    * by their own tag, because GitHub does not keep its PR-to-issue link in this
    * design.
    */

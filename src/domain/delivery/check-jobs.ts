@@ -3,7 +3,7 @@
  *
  * Both are `domain/delivery/declared-jobs.ts` lists, and the only thing that separates them is
  * whose commands run. That single fact decides everything else, so it is stated once
- * here and read by everyone who needs it: the reader in `lib/config.ts`, the planner
+ * here and read by everyone who needs it: the reader in `adapters/runner/config.ts`, the planner
  * that publishes each arm as a matrix, and the deliverable check that refuses a bad
  * one at pull-request time. Written out at each of those, the rule was three copies
  * of a string and two copies of a security decision.

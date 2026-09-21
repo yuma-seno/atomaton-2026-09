@@ -375,7 +375,7 @@ describe("post_result_comment.ts main", () => {
           rules: [
             { match: ["issue", "view", "5"], stdout: JSON.stringify({ state: "CLOSED" }) },
             // Whether it is a sub-issue comes from GitHub's own link now, not from a
-            // marker in the body. See `lib/parent-issue.ts`.
+            // marker in the body. See `adapters/github/parent-issue.ts`.
             {
               match: ["graphql", "parent{number}"],
               stdout: JSON.stringify({ data: { repository: { issue: { parent: { number: 4 } } } } }),

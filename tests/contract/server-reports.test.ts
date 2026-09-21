@@ -12,7 +12,7 @@
  * contain a severity word.** If it does, one of two things is true and both are
  * wrong —
  *
- *   - it is a report, and it should go through `lib/mcp-report.ts`
+ *   - it is a report, and it should go through `adapters/mcp/mcp-report.ts`
  *   - it is not, and the fallback will put it in front of an agent as a problem
  *
  * The scope is `src/atomaton-runtime/tools/**`, which is code that only ever runs as a
@@ -76,7 +76,7 @@ describe("what a shipped tool server says about itself", () => {
     }
     expect(
       offenders,
-      "either report it through lib/mcp-report.ts, or drop the word so the fallback does not promote it",
+      "either report it through adapters/mcp/mcp-report.ts, or drop the word so the fallback does not promote it",
     ).toEqual([]);
   });
 
@@ -110,7 +110,7 @@ describe("what a shipped tool server says about itself", () => {
 
     for (const [file, texts] of expected) {
       const source = readFileSync(file, "utf8");
-      expect(source, `${file} must import the channel`).toContain("lib/mcp-report.ts");
+      expect(source, `${file} must import the channel`).toContain("adapters/mcp/mcp-report.ts");
       for (const text of texts) {
         expect(source, `${file} must still say: ${text}`).toContain(text);
         // And must not say it through the other channel. A revert to `log()` would
@@ -130,7 +130,7 @@ describe("what a shipped tool server says about itself", () => {
    * would stop arriving.
    */
   test("the server declares the capability that makes a report possible", () => {
-    const serving = readFileSync("src/lib/mcp-tool.ts", "utf8");
+    const serving = readFileSync("src/adapters/mcp/mcp-tool.ts", "utf8");
     expect(serving).toContain("capabilities: { tools: {}, logging: {} }");
     expect(serving, "and points reports at the connection once it is up").toContain(
       "attachReportChannel(",

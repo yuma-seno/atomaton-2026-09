@@ -44,7 +44,7 @@
  * an issue's parent is GitHub's own sub-issue link, and a pull request's is the
  * `atomaton:parent-issue` tag, because GitHub drops its own PR-to-issue link as soon
  * as anything but that pull request's merge closes the issue — which this design does
- * twice over. `lib/tags.ts` carries the measurement.
+ * twice over. `adapters/github/tags.ts` carries the measurement.
  *
  * It used to be two TAGS, `atomaton:parent` and `atomaton:parent-issue`, read in turn
  * with `??` even where the kind was already known. The first is gone.

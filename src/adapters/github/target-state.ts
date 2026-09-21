@@ -28,7 +28,7 @@
  * with it.
  */
 import { ghRead } from "./gh.ts";
-import type { TargetState } from "../domain/work/closed-issue.ts";
+import type { TargetState } from "../../domain/work/closed-issue.ts";
 
 interface IssueOrPr {
   state?: string;

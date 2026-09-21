@@ -46,7 +46,7 @@
  */
 import { statSync } from "node:fs";
 import { classifyPathEntries, pathWithoutWorldWritable } from "../../../domain/machinery/tool-hardening.ts";
-import { report } from "../../../lib/mcp-report.ts";
+import { report } from "../../../adapters/mcp/mcp-report.ts";
 
 const PR_SET_DUMPABLE = 4;
 const PR_GET_DUMPABLE = 3;
@@ -82,7 +82,7 @@ function inspect(directory: string): "writable" | "safe" | "unreadable" {
  */
 export function hardenCredentialHolder(log: (message: string) => void): void {
   // The three failures below are reported rather than logged, and they are the
-  // clearest case of what `lib/mcp-report.ts` is for: each one means the
+  // clearest case of what `adapters/mcp/mcp-report.ts` is for: each one means the
   // environment did not give this process a property it was supposed to have, and
   // nothing else will ever say so. They also all happen before the server has
   // connected, which is why reports are held until it has.

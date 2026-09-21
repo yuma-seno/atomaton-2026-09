@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { PARENT_ISSUE_TAG } from "./tags.ts";
-import { withoutBookkeeping, type McpDispatch } from "./mcp-tool.ts";
+import { PARENT_ISSUE_TAG } from "../adapters/github/tags.ts";
+import { withoutBookkeeping, type McpDispatch } from "../adapters/mcp/mcp-tool.ts";
 
 /**
  * Which results get edited, and which are shown as they came back.

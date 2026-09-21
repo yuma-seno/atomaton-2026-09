@@ -100,7 +100,7 @@ export function runWithFakeGh(
 
 /**
  * Creates a fresh temp directory containing `.github/atomaton/config.yaml`
- * with the given content, for scripts that read config via `lib/config.ts`
+ * with the given content, for scripts that read config via `adapters/runner/config.ts`
  * (which always resolves that path relative to `cwd`). Caller is
  * responsible for `rmSync(dir, { recursive: true, force: true })`.
  *

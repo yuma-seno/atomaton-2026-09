@@ -30,9 +30,9 @@ import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { handoffsSincePerson, resolveHandoffLimit, type ChainComment } from "../domain/work/dispatch-chain.ts";
 import { resolveNoProgressLimit, runsWithoutChange, stopReason } from "../domain/work/progress.ts";
-import { getHandoffLimit, getNoProgressLimit } from "../lib/config.ts";
-import { gh } from "../lib/gh.ts";
-import { AGENT_TAG, CHANGED_TAG } from "../lib/tags.ts";
+import { getHandoffLimit, getNoProgressLimit } from "../adapters/runner/config.ts";
+import { gh } from "../adapters/github/gh.ts";
+import { AGENT_TAG, CHANGED_TAG } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ManageDispatchLoopArgs {

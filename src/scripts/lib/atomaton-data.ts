@@ -6,7 +6,7 @@
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { gitRun } from "../../lib/gh.ts";
+import { gitRun } from "../../adapters/github/gh.ts";
 
 /** Path of a given agent's session file on the atomaton-data branch. */
 export function sessionTargetPath(type: string, number: string | number, agent: string): string {
@@ -70,7 +70,7 @@ export function restoreFromBranch(branch: string, targetPath: string): string | 
  *
  * For data that is rewritten whole, whose old versions are worth nothing, and which
  * can be rebuilt if it is lost. The issue search index is all three -- see
- * `lib/issue-index.ts` for what keeping its history cost before this existed.
+ * `adapters/github/issue-index.ts` for what keeping its history cost before this existed.
  *
  * # Why this does not use a worktree
  *

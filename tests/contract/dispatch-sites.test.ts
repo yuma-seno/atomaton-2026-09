@@ -1,11 +1,11 @@
 /**
  * dispatch-sites.test.ts — nothing may start a workflow run behind
- * `lib/dispatch-targets.ts`'s back.
+ * `adapters/actions/dispatch-targets.ts`'s back.
  *
  * ## The failure this exists for
  *
  * One fact — **GitHub starts no workflow run for an event its own token triggered**
- * — is bridged by dispatching explicitly. `lib/dispatch-targets.ts` was written to
+ * — is bridged by dispatching explicitly. `adapters/actions/dispatch-targets.ts` was written to
  * hold those bridges and to say why they exist. Its header said "All four" while the
  * module held five, and three more had been written elsewhere:
  *
@@ -13,7 +13,7 @@
  *   not know `deploy.your_workflow` existed;
  * - the runner's "Dispatch next agent" step and the validation workflow's
  *   "Dispatch the agent the result calls for" step each wrote their own
- *   `gh workflow run atomaton-runner.yml` in bash — bypassing `lib/dispatch.ts`,
+ *   `gh workflow run atomaton-runner.yml` in bash — bypassing `adapters/actions/dispatch.ts`,
  *   whose header says, of the closed-target guard it holds: *"a guard that each of
  *   them has to remember is one the fifth will not have. See #827."* Those two were
  *   the fifth and the sixth. Neither refused a closed target and neither wrote the
@@ -33,12 +33,12 @@ const NEWLINE = String.fromCharCode(10);
 /**
  * The one module allowed to build the command.
  *
- * `lib/gh.ts` exports `dispatchWorkflow`, which every bridge calls. That is the
+ * `adapters/github/gh.ts` exports `dispatchWorkflow`, which every bridge calls. That is the
  * boundary this test draws: not "who may dispatch" — several legitimately do — but
  * "who may write the call", so a new one is a call to a named function rather than
  * an argv nobody else can see.
  */
-const MAY_BUILD_THE_CALL = "src/lib/gh.ts";
+const MAY_BUILD_THE_CALL = "src/adapters/github/gh.ts";
 
 /** Every `.ts` under `src/`, excluding tests. */
 function sourceFiles(): string[] {
@@ -105,7 +105,7 @@ describe("the places that start a workflow run", () => {
    * wrong.
    */
   test("every bridge is named in the header that explains them", () => {
-    const source = readFileSync("src/lib/dispatch-targets.ts", "utf8");
+    const source = readFileSync("src/adapters/actions/dispatch-targets.ts", "utf8");
     const header = source.slice(0, source.indexOf("*/"));
     const exported = [...source.matchAll(/export function (dispatch\w+)/g)].map((m) => m[1]);
 

@@ -11,7 +11,7 @@
  * cannot reach is in that file's `shell` entry, including the one exposure that is
  * accepted rather than closed.
  */
-import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../../../lib/mcp-tool.ts";
+import { buildMcpTools, defineMcpTool, serveMcpServer, z } from "../../../adapters/mcp/mcp-tool.ts";
 import { literalsFrom, redact } from "../../../shared/redaction.ts";
 import { capText, TOOL_OUTPUT_BUDGET } from "../../../shared/tool-output.ts";
 import { RUN_CREDENTIALS } from "../../../domain/delivery/declared-secrets.ts";

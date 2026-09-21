@@ -184,7 +184,7 @@ describe("deployment contract", () => {
 describe("the machinery layout is declared once", () => {
   const SOURCES = [
     "src/workflows/atomaton-runner.wac.ts",
-    "src/lib/config.ts",
+    "src/adapters/runner/config.ts",
     "src/scripts/write_metrics_report.ts",
     "src/build-dist.ts",
   ];

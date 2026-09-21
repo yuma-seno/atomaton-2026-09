@@ -52,7 +52,7 @@ export interface ValidationOutcome {
    * and `CI_RETRY_LIMIT` could never fire. The engineer/CI loop this constant
    * exists to bound ran unbounded, one model run per turn.
    *
-   * `lib/branch-rules.ts` records the same `[].every()` defect being fixed once
+   * `adapters/github/branch-rules.ts` records the same `[].every()` defect being fixed once
    * already. It was fixed at the input — "we could not read the required checks"
    * — and this is the other half: we read them, and there are none.
    */

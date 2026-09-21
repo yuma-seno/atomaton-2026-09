@@ -19,7 +19,7 @@ import {
   type LinkedChild,
   type LinkedIssue,
   type LinkedPr,
-} from "../domain/work/issue-links.ts";
+} from "../../domain/work/issue-links.ts";
 
 /** How many children and pull requests to ask for. Past this the reader is not reading, they are scrolling. */
 const LINK_LIMIT = 50;

@@ -2,17 +2,17 @@
  * config.ts — shared helper for reading .github/atomaton/config.yaml. The one
  * canonical copy used by every script and MCP server in this repo.
  *
- * Resolved through `lib/machinery.ts`, which is the one place that knows which tree
+ * Resolved through `adapters/runner/machinery.ts`, which is the one place that knows which tree
  * the machinery is in -- and `MACHINERY_ROOT_VAR`'s comment is the one place that
  * says which job sets it, and why the three jobs differ.
  */
 import { readFileSync } from "node:fs";
-import { DEFAULT_GOVERNED_PATHS } from "../domain/delivery/merge-readiness.ts";
-import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "../domain/delivery/check-jobs.ts";
-import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../domain/delivery/declared-jobs.ts";
-import { resolveMergeGates, type MergeGatesResolution } from "../domain/delivery/merge-gates.ts";
-import type { AtomaConfig } from "./types.ts";
-import { CONFIG_FILE } from "../domain/machinery/machinery-layout.ts";
+import { DEFAULT_GOVERNED_PATHS } from "../../domain/delivery/merge-readiness.ts";
+import { CHECKS_FROM_DEFAULT_BRANCH, CHECKS_FROM_PULL_REQUEST } from "../../domain/delivery/check-jobs.ts";
+import { resolveDeclaredJobs, type DeclaredJobsResolution } from "../../domain/delivery/declared-jobs.ts";
+import { resolveMergeGates, type MergeGatesResolution } from "../../domain/delivery/merge-gates.ts";
+import type { AtomaConfig } from "../../domain/delivery/declared-config.ts";
+import { CONFIG_FILE } from "../../domain/machinery/machinery-layout.ts";
 import { machineryPath } from "./machinery.ts";
 
 /**

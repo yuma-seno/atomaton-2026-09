@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mostRecentAgent } from "./resolve_resume_agent.ts";
-import { AGENT_TAG } from "../lib/tags.ts";
+import { AGENT_TAG } from "../adapters/github/tags.ts";
 
 const from = (agent: string) => `${AGENT_TAG.write(agent)}\nwork happened`;
 

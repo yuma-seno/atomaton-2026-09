@@ -359,7 +359,7 @@ describe("generated workflows", () => {
    * question as "reachable by a server".
    */
   test("every environment variable a tool server reads is passed to the agent", () => {
-    const roots = ["src/atomaton-runtime/tools", "src/lib", "src/domain"];
+    const roots = ["src/atomaton-runtime/tools", "src/adapters", "src/app", "src/domain", "src/shared"];
     const files: string[] = [];
     const walk = (directory: string): void => {
       for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -655,7 +655,7 @@ describe("generated workflows", () => {
   /**
    * The runner decides whether a run changed anything by grepping the ops log for
    * op names, and the ops log is written somewhere else entirely. That is the exact
-   * shape `lib/ops-log.ts` exists to protect against -- its own comment records the
+   * shape `adapters/runner/ops-log.ts` exists to protect against -- its own comment records the
    * time a refactor changed a log message's wording and a grep silently stopped
    * matching.
    *

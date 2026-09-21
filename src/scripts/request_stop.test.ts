@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { stopRequestedNotice } from "./request_stop.ts";
-import { LLM_CONTEXT_TAG, STOP_TAG } from "../lib/tags.ts";
+import { LLM_CONTEXT_TAG, STOP_TAG } from "../adapters/github/tags.ts";
 
 describe("request_stop.ts", () => {
   // The notice IS the request: the running job polls for this tag. A notice that

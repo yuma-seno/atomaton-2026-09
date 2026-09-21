@@ -9,7 +9,7 @@
  */
 import { appendFileSync } from "node:fs";
 import { closedIssueNumber } from "../domain/work/issue-links.ts";
-import { PARENT_ISSUE_TAG } from "../lib/tags.ts";
+import { PARENT_ISSUE_TAG } from "../adapters/github/tags.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export const ref = defineScript(import.meta.url);

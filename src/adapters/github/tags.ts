@@ -7,7 +7,7 @@
  * wire format is defined; every reader/writer imports from here instead of
  * re-deriving its own regex.
  */
-import { AGENT_NAME_PATTERN } from "./agent-name.ts";
+import { AGENT_NAME_PATTERN } from "../../domain/work/agent-name.ts";
 
 /**
  * The prefix every tag carries, written once.
@@ -108,7 +108,7 @@ export const ENDED_TAG = stringTag("ended", "stopped|limit|done");
 // `PARENT_TAG` (`atomaton:parent`, sub-issue -> parent issue) was here. GitHub's own
 // sub-issue link answers the same question and a person can change it, while this was
 // written once at creation and never rewritten -- so re-parenting in the web UI left
-// two answers in the system with nothing to say they differed. `lib/parent-issue.ts`
+// two answers in the system with nothing to say they differed. `adapters/github/parent-issue.ts`
 // carries the measurement and the argument.
 
 /**
@@ -175,7 +175,7 @@ export const CI_RETRY_TAG = numericTag("ci-retry");
 // `readAnyParentTag` was here: `PARENT_TAG.read(text) ?? PARENT_ISSUE_TAG.read(text)`,
 // for a walk that did not know whether it held an issue or a pull request. With one
 // tag left there is nothing to choose between, and the one caller that walks upward
-// asks GitHub which kind it is looking at -- see `lib/notify.ts`.
+// asks GitHub which kind it is looking at -- see `adapters/github/notify.ts`.
 
 /**
  * `text` with every Atomaton tag removed.

@@ -154,13 +154,13 @@ describe("shell_guard.ts", () => {
 
     /**
      * The rules used to match `\bgh\b` anywhere in the command string, and this
-     * repository keeps its shared `gh` wrapper in `src/lib/gh.ts`. Reading that file was
+     * repository keeps its shared `gh` wrapper in `../../../adapters/github/gh.ts`. Reading that file was
      * refused as though it were the GitHub CLI; an agent hit it three times running and
      * the repeated-call guard ended the run. Reading a file is not invoking a program.
      */
     test("a path that merely contains a routed name is not the program", () => {
       for (const command of [
-        "grep -n dispatchWorkflow src/lib/gh.ts",
+        "grep -n dispatchWorkflow ../../../adapters/github/gh.ts",
         "cat src/scripts/testing/bin/gh",
         "ls src/scripts/testing/bin",
         "wc -l src/lib/curl-helper.ts",

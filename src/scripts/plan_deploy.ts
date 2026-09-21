@@ -63,9 +63,9 @@ import {
   type PlannedDeploy,
   type TagCandidate,
 } from "../domain/delivery/deploy-jobs.ts";
-import { deploymentRefusal, readBranchRules } from "../lib/branch-rules.ts";
-import { getDeploySection } from "../lib/config.ts";
-import { commitsAdded, isContained, readTags, type RepositoryTag } from "../lib/git-tags.ts";
+import { deploymentRefusal, readBranchRules } from "../adapters/github/branch-rules.ts";
+import { getDeploySection } from "../adapters/runner/config.ts";
+import { commitsAdded, isContained, readTags, type RepositoryTag } from "../adapters/github/git-tags.ts";
 import { parseAcrossReleases } from "./lib/cli.ts";
 import { publishMatrix } from "./lib/publish-matrix.ts";
 import { defineScript } from "./lib/script-ref.ts";

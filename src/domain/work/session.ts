@@ -5,7 +5,7 @@
  * `restore_agent_session.ts`/`save_agent_session.ts`, and read/mutated
  * in-place by `reconcile_github_session.ts`, `record_run_metadata.ts`,
  * `manage_dispatch_loop.ts`, `inject_uncommitted_notice.ts`, and
- * `lib/inject-sub-results.ts`). The one canonical definition, replacing 5
+ * `adapters/atoma/inject-sub-results.ts`). The one canonical definition, replacing 5
  * independently-hand-rolled (near-identical, slightly-narrowed-per-use)
  * local interfaces.
  *
@@ -28,7 +28,7 @@ export interface ImageBlock {
  *
  * The block form appears when a picture travels with the text, and it is the shape
  * atoma's LLM adapters map to each provider — the same shape a tool result uses when
- * it returns one. `lib/issue-images.ts` is what fetches an issue's pictures into it.
+ * it returns one. `adapters/github/issue-images.ts` is what fetches an issue's pictures into it.
  *
  * Here rather than beside that fetcher because a session's shape is the work domain's
  * to define: `domain/` may not import `lib/`, and this type is part of what a turn
@@ -57,7 +57,7 @@ export interface SessionMessage {
    * Text, or content blocks when the message carries something text cannot hold.
    *
    * A plain string in nearly every message. The block form appears when a
-   * picture travels with the text — see `lib/issue-images.ts` — and matches the
+   * picture travels with the text — see `adapters/github/issue-images.ts` — and matches the
    * shape atoma's LLM adapters map to each provider.
    */
   content?: string | ContentBlock[];

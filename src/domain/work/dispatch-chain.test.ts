@@ -6,7 +6,7 @@ import {
   resolveHandoffLimit,
   type ChainComment,
 } from "./dispatch-chain.ts";
-import { AGENT_TAG, CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../../lib/tags.ts";
+import { AGENT_TAG, CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../../adapters/github/tags.ts";
 
 /**
  * These replace `manage_dispatch_loop.test.ts`, which was green and testing

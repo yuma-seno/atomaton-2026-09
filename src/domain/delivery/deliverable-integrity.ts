@@ -70,7 +70,7 @@ interface Section {
 /**
  * config.yaml's recognised keys.
  *
- * `AtomaConfig` in `lib/types.ts` is the definition; this is the runtime mirror,
+ * `AtomaConfig` in `domain/delivery/declared-config.ts` is the definition; this is the runtime mirror,
  * because an interface is erased before anything can consult it.
  * `config-contract.test.ts` extracts the interface's keys with TypeScript's own
  * parser and asserts this tree matches exactly — so a key added to the type and

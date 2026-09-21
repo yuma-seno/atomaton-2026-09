@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { stopRequested, type StopComment } from "./watch_for_stop.ts";
-import { STOP_TAG } from "../lib/tags.ts";
+import { STOP_TAG } from "../adapters/github/tags.ts";
 
 const REQUEST = `${STOP_TAG.write("requested")}\n@someone Atomaton: stop requested.`;
 

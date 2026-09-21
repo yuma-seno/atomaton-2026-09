@@ -90,7 +90,7 @@ so a misspelling there is not caught by this.
 The recognised set is held to the code by this template's own
 `tests/contract/config-contract.test.ts`, which is not part of the deliverable. It
 compares the validator's schema against the `AtomaConfig` interface in
-`lib/types.ts`, using TypeScript's own parser. The same test holds this page to
+`domain/delivery/declared-config.ts`, using TypeScript's own parser. The same test holds this page to
 that schema in both directions: a settable key documented nowhere fails it, and so
 does a dotted path this page names that the validator would reject.
 
