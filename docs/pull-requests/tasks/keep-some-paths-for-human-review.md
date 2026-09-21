@@ -19,4 +19,4 @@ An agent that could merge a change to them could widen its own reach, and nothin
 catches it, because the next run already obeys the new file.
 
 For a condition that a path cannot express — a label, a title, how many files changed —
-use `merge.gates`, in [docs/configuration.md](../../configuration.md).
+use `merge.gates`, in [the pull request reference](../reference.md#mergegates).

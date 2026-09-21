@@ -20,8 +20,9 @@
  * that declares nothing still runs -- the readers carry the defaults, in one place
  * each, so two callers cannot disagree about what an absent setting means.
  *
- * The reasons are in `docs/configuration.md` rather than here. They used to be in
- * both, and a reason written twice is a reason that will disagree with itself.
+ * The reasons are in `docs/` rather than here, one entry per key, indexed by
+ * `docs/config/reference.md`. They used to be in both, and a reason written twice
+ * is a reason that will disagree with itself.
  */
 export interface AtomaConfig {
   /** Where work branches from and merges back to. Empty means the default branch. */

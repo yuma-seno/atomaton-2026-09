@@ -64,6 +64,12 @@ function linksIn(source: string): string[] {
  * A heading's anchor, as GitHub derives it: lowercased, punctuation dropped, spaces
  * to hyphens. Close enough for the headings this repository writes, and a heading
  * exotic enough to defeat it is one worth rewording rather than encoding for.
+ *
+ * `_` is kept, and that is not a detail. GitHub's slugger keeps it, and most
+ * configuration keys carry one -- `setup_commands`, `max_reloads`,
+ * `from_pull_request`, `governed_paths`. Dropping it here would have made every
+ * anchor in the key index either fail this test or 404 on GitHub, with no spelling
+ * that satisfies both.
  */
 function anchorsIn(source: string): Set<string> {
   const prose = source.replace(/```[\s\S]*?```/g, "");
@@ -74,7 +80,7 @@ function anchorsIn(source: string): Set<string> {
       .replace(/`/g, "")
       .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
       .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s-]/gu, "")
+      .replace(/[^\p{L}\p{N}\s_-]/gu, "")
       .trim()
       .replace(/\s+/g, "-");
     if (slug) anchors.add(slug);

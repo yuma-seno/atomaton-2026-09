@@ -1,4 +1,18 @@
-# If your tool answers worse than it should
+# When a tool server goes wrong
+
+## A name that is not a server
+
+The servers a run starts must cover the union of `mcp_servers` across every agent
+definition. A name that is neither shipped nor added under `tools.servers` aborts
+the run before any MCP server starts — `Tool 'X' not found in tools file` — and
+`atoma` lists the servers that do exist beside that error.
+
+It does not usually get that far. The check on every pull request resolves the
+same names against the same set, so a definition naming a server nothing provides
+is reported on the pull request rather than on whoever triggered the next run —
+[what a pull request is checked against](../operations.md#what-a-pull-request-is-checked-against).
+
+## A tool that answers worse than it should
 
 A tool that fails returns an error and the agent sees it. A tool that **degrades**
 returns an answer that looks like any other, and nothing says otherwise. That

@@ -41,7 +41,7 @@ Read it rather than acting on it: your own workflows and your own project skills
 files the template never shipped, and they are supposed to be there.
 
 Which files are replaced wholesale, which are yours outright, and which are both is the
-ownership table in [docs/configuration.md](../../configuration.md). The safest habit is to keep
+ownership table in [what an upgrade replaces](../boundaries.md). The safest habit is to keep
 your customisation where the template will not fight you for it — `config.yaml` covers
 the labels, the merge policy, the environment setup, the tool servers and the workflows
 to dispatch, and `skills/project/` is yours outright.

@@ -13,7 +13,7 @@
  *
  * ## Where the truth lives
  *
- * The provider table in `docs/configuration.md` is the mapping, and this test
+ * The provider table in `docs/agents/reference.md` is the mapping, and this test
  * reads it rather than restating it — so there is no third copy to drift. The
  * chain is: agent definition names a provider, the table says which credential
  * that provider reads, the setup guide must name that credential.
@@ -29,9 +29,16 @@
  * run somewhere else", because the alternatives were named in prose directly below
  * the required list and naming them there is the point. `docs/setup.md` is the
  * checklist now, and it carries actions only: the alternatives moved to
- * `docs/configuration.md`, which this test does not police in that direction. So
+ * `docs/agents/reference.md`, which this test does not police in that direction. So
  * the whole page is the required list, and no delimiter has to be kept alive in
  * prose for a test to find.
+ *
+ * ## The table has to stay on exactly one page
+ *
+ * `credentialByProvider()` builds the mapping from one file. A second copy of those
+ * rows anywhere `docs/setup.md` could grow one would make the negative assertion
+ * below read a credential as required when it is an alternative, so the rows move
+ * as a unit or not at all.
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync, readdirSync } from "node:fs";
@@ -56,7 +63,7 @@ function providerOf(file: string): string | undefined {
  * Rows look like: `| \`openrouter-responses\` | Responses | \`OPENROUTER_API_KEY\` | ... |`
  */
 function credentialByProvider(): Map<string, string> {
-  const docs = readFileSync("docs/configuration.md", "utf8");
+  const docs = readFileSync("docs/agents/reference.md", "utf8");
   const map = new Map<string, string>();
   for (const line of docs.split(/\r?\n/)) {
     const match = /^\|\s*`([a-z][a-z0-9-]*)`\s*\|[^|]*\|\s*`([A-Z][A-Z0-9_]*)`\s*\|/.exec(line);
@@ -117,7 +124,7 @@ describe("the preflight checklist", () => {
   test("the setup guide requires no credential the shipped configuration does not use", () => {
     const needed = new Set(agentFiles.map((file) => credentialByProvider().get(providerOf(file)!)));
     // The whole page: it carries actions only, so everything on it is required. The
-    // alternatives live in `docs/configuration.md`, where naming them is the point.
+    // alternatives live in `docs/agents/reference.md`, where naming them is the point.
     const required = preflightSection();
     for (const credential of [...credentialByProvider().values()]) {
       if (needed.has(credential)) continue;

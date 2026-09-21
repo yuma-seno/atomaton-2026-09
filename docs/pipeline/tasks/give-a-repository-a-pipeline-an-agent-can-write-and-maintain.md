@@ -27,5 +27,6 @@ every path and every branch, and no permission grants it. So a repository whose 
 lives in `config.yaml` is one an agent can set up, extend and repair; one whose pipeline
 lives in workflow YAML always needs a person.
 
-The three deploy lists, where credentials go, and the four things commands cannot
-express are in [docs/configuration.md](../../configuration.md).
+The three deploy lists and where credentials go are in
+[the pipeline reference](../reference.md); what commands cannot express is in
+[what a check and a deployment refuse to do](../boundaries.md#what-commands-cannot-express).

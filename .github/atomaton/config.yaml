@@ -1,9 +1,9 @@
 # Everything this project declares, in one file.
 #
-# Every setting is explained in docs/configuration.md, including the measurements
-# behind the numbers. The comments here name what a key is; that file says why.
+# Every setting is explained in docs/, one entry per key. The comments here name
+# what a key is; the entry says why, and where the key goes is indexed here:
 #
-#   https://github.com/yuma-seno/atomaton/blob/main/docs/configuration.md
+#   https://github.com/yuma-seno/atomaton/blob/main/docs/config/reference.md
 #
 # Grouped by who consumes the value. Nothing here says where a file lives --
 # .github/atomaton/README.md has that, and why.
@@ -129,7 +129,7 @@ tools:
   #
   # A name Atomaton does not ship is added. A name it does ship is overridden field by
   # field, so raising one timeout does not mean copying an argv. The shipped set is
-  # listed in .github/atomaton/README.md and in docs/configuration.md; it is not here
+  # listed in .github/atomaton/README.md and in docs/tools/reference.md; it is not here
   # because deleting one breaks a run, and an agent only starts the servers its own
   # `mcp_servers` names.
   servers: {}

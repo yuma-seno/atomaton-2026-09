@@ -50,7 +50,7 @@ Everything below is indexed in [docs/README.md](docs/README.md), which says wher
 | You want to | Go to |
 | --- | --- |
 | put this into a repository | [Setup](docs/setup.md) — everything you do first, in order |
-| know what a setting does | [Configuration](docs/configuration.md) — every key, and the measurements behind the numbers |
+| know what a setting does | [What `config.yaml` accepts](docs/config/reference.md) — every key, and where its entry is |
 | do one specific thing | [Recipes](docs/) — indexed by the goal you arrived with |
 | understand what it just did | [Operations](docs/operations.md) — how a run works, and how to diagnose one |
 | write an MCP server for it | [Writing a tool](docs/tools/tasks/write-a-tool.md) |

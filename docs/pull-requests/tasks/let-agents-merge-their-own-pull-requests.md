@@ -9,4 +9,4 @@ merge:
 when nothing else objects — `merge.governed_paths`, `merge.gates` and whatever GitHub's
 own ruleset requires all still apply, and any one of them firing puts the merge back in
 a person's hands. How those members compose is in
-[docs/configuration.md](../../configuration.md).
+[the pull request reference](../reference.md#merge).

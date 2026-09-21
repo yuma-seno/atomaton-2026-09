@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import ts from "typescript";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { configProblems, knownConfigKeys } from "../../src/domain/delivery/deliverable-integrity.ts";
 import { CONDITION_KEYS, resolveMergeGates } from "../../src/domain/delivery/merge-gates.ts";
 import { SCRIPTS_DIR } from "../../src/domain/machinery/machinery-layout.ts";
@@ -51,7 +51,7 @@ describe("merge.gates documentation", () => {
   const CONDITIONS = CONDITION_KEYS;
 
   test("every condition the code accepts appears in the configuration reference", () => {
-    const docs = readFileSync("docs/configuration.md", "utf8");
+    const docs = readFileSync("docs/pull-requests/reference.md", "utf8");
     for (const condition of CONDITIONS) {
       expect(docs, `${condition} must be documented`).toContain(`\`${condition}\``);
     }
@@ -172,9 +172,13 @@ describe("config.yaml's recognised keys", () => {
    * different questions of them, rather than demanding one flat bullet list the
    * page would be worse for carrying.
    */
-  function documentedTokens(file: string): Set<string> {
-    const docs = readFileSync(file, "utf8");
-    return new Set([...docs.matchAll(/`([^`\n]+)`/g)].map((match) => match[1]!));
+  function documentedTokens(files: string[]): Set<string> {
+    const tokens = new Set<string>();
+    for (const file of files) {
+      const docs = readFileSync(file, "utf8");
+      for (const match of docs.matchAll(/`([^`\n]+)`/g)) tokens.add(match[1]!);
+    }
+    return tokens;
   }
 
   /**
@@ -186,35 +190,48 @@ describe("config.yaml's recognised keys", () => {
    * pull request failed by the validator for following the documentation, which is
    * the exact failure this file exists to prevent. Coverage stopped one file short
    * of the reader.
+   *
+   * Walked rather than listed. It was a list of twenty-six paths, and the page that
+   * named a key was one somebody had to remember to add -- the same failure one
+   * level up, in the file that exists to prevent it. A page under `docs/` is in
+   * scope by being there.
    */
-  const PAGES_THAT_NAME_KEYS = [
-    "docs/configuration.md",
-    "docs/setup.md",
-    "docs/agents/tasks/have-a-screenshot-reach-an-agent-as-a-picture.md",
-    "docs/agents/tasks/prefer-particular-upstream-providers.md",
-    "docs/agents/tasks/reach-a-provider-the-table-does-not-list.md",
-    "docs/agents/tasks/run-an-agent-on-a-different-model.md",
-    "docs/agents/tasks/switch-between-the-chat-completions-and-responses-apis.md",
-    "docs/config/tasks/check-your-config-before-pushing-it.md",
-    "docs/pipeline/tasks/give-a-repository-a-pipeline-an-agent-can-write-and-maintain.md",
-    "docs/pipeline/tasks/have-agents-start-your-own-ci-and-deployment.md",
-    "docs/pipeline/tasks/make-a-workflow-of-your-own-work-when-atomaton-starts-it.md",
-    "docs/pull-requests/tasks/keep-some-paths-for-human-review.md",
-    "docs/pull-requests/tasks/let-agents-merge-their-own-pull-requests.md",
-    "docs/runtime/tasks/move-to-a-newer-release.md",
-    "docs/tools/how-it-works/how-long-a-tool-has.md",
-    "docs/tools/tasks/change-or-remove-web-fetching-and-search.md",
-    "docs/tools/tasks/let-a-tool-run-longer-than-a-minute.md",
-    "docs/tools/tasks/let-a-tool-server-reach-something-outside-github.md",
-    "docs/tools/tasks/write-a-tool.md",
-    "docs/tools/when-it-breaks.md",
-    "docs/work/tasks/have-something-happen-every-week.md",
-    "docs/work/tasks/stop-an-agent-loop-that-is-going-nowhere.md",
-    "docs/work/tasks/use-your-own-label-names.md",
-    "docs/operations.md",
-    "README.md",
-    "CONTRIBUTING.md",
+  function pagesThatNameKeys(): string[] {
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const path = `${dir}/${entry}`;
+        if (statSync(path).isDirectory()) walk(path);
+        else if (entry.endsWith(".md")) found.push(path);
+      }
+    };
+    walk("docs");
+    for (const name of ["README.md", "CONTRIBUTING.md"]) if (existsSync(name)) found.push(name);
+    return found;
+  }
+
+  const PAGES_THAT_NAME_KEYS = pagesThatNameKeys();
+
+  /**
+   * Where a key's entry is, as against where its name is written down.
+   *
+   * `docs/config/reference.md` is deliberately not in this list. It is the index --
+   * the surface of `config.yaml`, one row per key, each row a link. Pointing the
+   * test below at it would ask whether a key's name appears in a list of key names,
+   * which is true of a key whose entry was dropped on the way here. `doc-links`
+   * then checks that each row's fragment lands on a heading that exists, so the two
+   * together are "every key has an entry, and the index reaches it".
+   */
+  const REFERENCE_PAGES = [
+    "docs/agents/reference.md",
+    "docs/environment/reference.md",
+    "docs/pipeline/reference.md",
+    "docs/pull-requests/reference.md",
+    "docs/tools/reference.md",
+    "docs/work/reference.md",
   ];
+
+  const KEY_INDEX = "docs/config/reference.md";
 
   /**
    * Every settable key is written down somewhere a person can find it.
@@ -223,12 +240,25 @@ describe("config.yaml's recognised keys", () => {
    * were each settable and each undocumented when this test was written -- five
    * keys an adopter could only find by reading the validator's schema.
    */
-  test("the configuration reference documents every settable key", () => {
-    const tokens = documentedTokens("docs/configuration.md");
+  test("some reference page documents every settable key", () => {
+    const tokens = documentedTokens(REFERENCE_PAGES);
     const undocumented = settableKeys().filter(
       (key) => !tokens.has(key) && !tokens.has(key.split(".").pop()!),
     );
-    expect(undocumented, "these keys are settable and documented nowhere").toEqual([]);
+    expect(undocumented, "these keys are settable and have no entry").toEqual([]);
+  });
+
+  /**
+   * And the index reaches every one of them.
+   *
+   * The entry pages are eight directories apart, so a key that has an entry and no
+   * row is a key you can only find by guessing which artifact it belongs to --
+   * which is the whole thing the index exists to answer.
+   */
+  test("the index names every settable key", () => {
+    const tokens = documentedTokens([KEY_INDEX]);
+    const missing = settableKeys().filter((key) => !tokens.has(key));
+    expect(missing, `${KEY_INDEX} has no row for these`).toEqual([]);
   });
 
   /**
@@ -256,7 +286,7 @@ describe("config.yaml's recognised keys", () => {
      * write a level where any name is legal, and `*` is how the schema writes it.
      */
     function configPathsNamedBy(file: string): string[] {
-      return [...documentedTokens(file)]
+      return [...documentedTokens([file])]
         .filter((token) => !/[\s:]/.test(token))
         .filter((token) => !/\.(ya?ml|json|md|ts|sh|lock)$/.test(token))
         .map((token) => token.replaceAll("<name>", "*"))
@@ -291,7 +321,15 @@ describe("config.yaml's recognised keys", () => {
      * dropped, and requiring them to survive, can.
      */
     const examined = new Set(PAGES_THAT_NAME_KEYS.flatMap(configPathsNamedBy));
-    for (const path of ["tools.secrets", "checks.from_pull_request"]) {
+    // One per artifact the keys are split across, so a filter that eats a whole
+    // directory's worth of paths reports itself rather than one page's worth.
+    for (const path of [
+      "tools.secrets",
+      "checks.from_pull_request",
+      "environment.max_reloads",
+      "merge.governed_paths",
+      "deploy.on_tag",
+    ]) {
       expect(examined.has(path), `${path} is documented, so the filters must not drop it`).toBe(true);
     }
   });
