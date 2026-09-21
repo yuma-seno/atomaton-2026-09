@@ -4388,6 +4388,35 @@
     "runs": []
   },
   {
+    "path": "sessions/issue-933/engineer.json",
+    "agent": "engineer",
+    "messages": 59,
+    "calls": 40,
+    "failed": 0,
+    "refused": 0,
+    "skills": [
+      "project/conventions",
+      "delivery/implementation-handoff"
+    ],
+    "tools": {
+      "atoma_builtin__load_skill": 2,
+      "list": 13,
+      "read": 16,
+      "grep": 9
+    },
+    "acts": {},
+    "runs": [
+      {
+        "ended": "2026-09-21T13:20:34Z",
+        "ended_because": "stopped",
+        "iterations": 16,
+        "messages": 59,
+        "seconds": 63,
+        "started": "2026-09-21T13:19:31Z"
+      }
+    ]
+  },
+  {
     "path": "sessions/issue-933/orchestrator.json",
     "agent": "orchestrator",
     "messages": 51,
