@@ -5,10 +5,19 @@ import {
   dispatchOrchestratorIfSubIssueReady,
   type DispatchGateResult,
 } from "../../../app/aggregation.ts";
+import { closeRequestComment } from "../../../domain/work/close-request.ts";
 import type { GhIssueAuthor } from "../../../adapters/github/wire-types.ts";
 
 export interface ConcludeIssueResult {
-  outcome: "closed" | "escalated";
+  /**
+   * Whether this closed the issue or asked its author to.
+   *
+   * Both are conclusions, and the caller ends the session on either. The
+   * distinction exists because the two leave the world differently — only a
+   * closed issue wakes its parent — not because one of them failed. See
+   * `domain/work/close-request.ts` for why the second is not a refusal.
+   */
+  outcome: "closed" | "close-requested";
   /**
    * What the parent's aggregation gate did afterwards, when this closed a
    * sub-issue.
@@ -33,8 +42,9 @@ export interface ConcludeIssueResult {
  * left running to notice that it is still open. `dispatchOrchestratorIfSubIssueReady`
  * then counts siblings against an issue that never closed.
  *
- * The escalation half is the same shape: a failed comment means the person named
- * in it is never told, while the agent is told they were.
+ * The close-requested half is the same shape, and worse now that it reports
+ * success: a failed comment means the person named in it is never asked to close
+ * anything, while the agent is told the issue is concluded and its session ends.
  *
  * Throwing reaches the agent as a tool error, which is the one moment it can
  * still act.
@@ -45,8 +55,13 @@ function mustSucceed(result: { code: number; stdout: string; stderr: string }, w
 }
 
 /**
- * Closes bot-authored sub-issues directly and asks a human to review
- * human-authored root issues.
+ * Concludes the issue: closes an agent-opened one, asks the author to close a
+ * person-opened one.
+ *
+ * Neither branch fails, and the caller ends the session on both. Who opened the
+ * issue is this function's question to ask, not its caller's to handle — see
+ * `domain/work/close-request.ts` for the reports that came out of answering it
+ * the other way.
  */
 export async function concludeIssue(issue: number, reason: string, summary: string): Promise<ConcludeIssueResult> {
   const repo = process.env.GITHUB_REPOSITORY ?? "";
@@ -72,12 +87,14 @@ export async function concludeIssue(issue: number, reason: string, summary: stri
   }
 
   if (!isBot) {
-    const notify = resolveNotify(repo, issue);
-    const mention = notify ? `@${notify} ` : "";
-    body = `${mention}${body}\n\nThis issue was opened directly by a human, so it will not be closed automatically. Please review and close it yourself if you agree, or comment with further instructions.`;
+    // The request goes above the reason and summary, not after them. It is the
+    // only sentence in the comment addressed to the person reading it.
+    body = closeRequestComment({ notify: resolveNotify(repo, issue), body });
     mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);
-    console.error(`escalated: issue=#${issue} (human-authored, not closed)`);
-    return { outcome: "escalated" };
+    // stderr, where the tool's own decisions belong. Putting it in the result is
+    // what put it in the agent's report.
+    console.error(`close requested: issue=#${issue} (opened by a person, left open for them)`);
+    return { outcome: "close-requested" };
   }
 
   mustSucceed(gh("issue", "comment", String(issue), "--repo", repo, "--body", body), `comment on issue #${issue}`);

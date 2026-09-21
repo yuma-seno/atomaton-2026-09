@@ -253,9 +253,13 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
  * that just completed.
  *
  * The one canonical "a sub-issue just closed -- is its parent ready?"
- * entry point, used identically by mcp/github.ts's closeIssue() and
+ * entry point, used identically by mcp/github.ts's closeIssueAndDispatch() and
  * concludeIssue's bot-authored-issue branch (previously both
  * spawned the now-removed dispatch_orchestrator_if_ready.ts script).
+ *
+ * Both callers reach it only on a close that actually happened. An issue whose
+ * author was merely asked to close it is still open, and asking this about it
+ * would be asking whether every sibling is closed while holding one that is not.
  */
 export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssueNum: number): Promise<DispatchGateResult> {
   // `adapters/github/parent-issue.ts`, the same reader `countOpenSiblings` now agrees with.

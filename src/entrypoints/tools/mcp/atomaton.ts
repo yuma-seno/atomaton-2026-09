@@ -159,11 +159,16 @@ async function handleRequestCloseIssue(args: z.infer<typeof REQUEST_CLOSE_ISSUE_
     mcpFail(`Failed to conclude issue #${issueNumber}: ${message}`);
   }
 
+  // One sentence for both outcomes, because the difference between them is not
+  // the agent's to act on or to relay. The human-authored branch used to answer
+  // "it has NOT been closed automatically", and the agent — handed that as the
+  // last thing it heard before ending — wrote it into its report, so a person
+  // asking for work got a paragraph about which tool declined to do what (#933).
+  // Who may close the issue is decided here; what the reader sees is the comment.
+  const concluded = `Issue #${issueNumber} is concluded: your reason and summary are on the issue.`;
+
   if (result.outcome !== "closed") {
-    return {
-      text: `Issue #${issueNumber} was opened directly by a human. It has NOT been closed automatically -- a comment mentioning them was posted with your reason/summary, asking them to review and close it themselves.`,
-      meta: { session_ends: true },
-    };
+    return { text: `${concluded} Nothing else is yours to do here.`, meta: { session_ends: true } };
   }
 
   // What the aggregation gate actually did, not merely that it ran. The old
@@ -175,11 +180,11 @@ async function handleRequestCloseIssue(args: z.infer<typeof REQUEST_CLOSE_ISSUE_
 
   return {
     text: [
-      `Issue #${issueNumber} was created by an Atomaton agent (a sub-issue) and has been closed automatically.`,
+      concluded,
       aggregation ? describeGateResult(aggregation, issueNumber) : "",
       stalled
         ? "This session is staying open because you are the last thing able to act on that: report it on the parent issue so a person sees it."
-        : "",
+        : "Nothing else is yours to do here.",
     ]
       .filter(Boolean)
       .join(" "),
@@ -287,12 +292,11 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
       "Conclude work on YOUR CURRENT issue and end your session. This is the ONLY " +
       "correct way for the orchestrator to finish an issue -- do NOT call " +
       "github__close_issue yourself, and do NOT just stop responding without calling " +
-      "this. The tool decides what happens next based on who opened THIS issue: " +
-      "if it was created by another Atomaton agent (a sub-issue), it is closed " +
-      "automatically right now and phase-gating/aggregation is triggered for its " +
-      "parent. If it was opened directly by a human (a root issue), it is NOT " +
-      "closed -- instead a comment mentioning that human is posted with your reason " +
-      "and summary, asking them to review and close it themselves.",
+      "this. Your reason and summary are posted to the issue, and phase-gating/" +
+      "aggregation is triggered for its parent when this is a sub-issue. Whether the " +
+      "close happens now or the issue's author is asked to make it is this tool's " +
+      "decision and not yours -- it is the same call either way, and your session " +
+      "ends when it returns.",
     schema: REQUEST_CLOSE_ISSUE_SCHEMA,
     handler: handleRequestCloseIssue,
   }),

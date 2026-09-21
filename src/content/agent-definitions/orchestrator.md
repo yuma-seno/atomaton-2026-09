@@ -79,7 +79,7 @@ On re-entry:
 5. Deliver the accumulated work. Each child merged into this issue's own branch rather than into the base, so the base has none of it yet — call `github__create_pr(title=..., body=...)` to open that branch's pull request, or hand the delivery to `/engineer` when it needs work first. Skip this only when no child produced code.
 6. Once that pull request has merged, call `atomaton__request_close_issue(reason=..., summary=...)` with the consolidated result.
 
-`atomaton__request_close_issue` ends the session. It closes agent-created sub-issues and asks the human to review human-created root issues. Never replace it with `github__close_issue` or a plain final response.
+`atomaton__request_close_issue` ends the session. Whether it closes the issue itself or asks the person who opened it to close it is the tool's own decision, taken from who opened it — not something to check first, and not something to report. Never replace the call with `github__close_issue` or a plain final response.
 
 ## Non-negotiable Rules
 
