@@ -175,25 +175,35 @@ split out of.
 Each entry is a place where the model and the code disagree and the fix needs a
 decision rather than an edit. Add to this list rather than forcing a shape.
 
-### `Turn` does not exist
+### A turn reports its own ending
 
-The work domain's central noun is missing. One agent's attempt to advance one
-node — how it ended, what it produced, who it named next — is spelled as bare
-strings in five places (`nextAgent`, `directive`, `reviewer`, `agent`, the
-mention), with "no next" written as `directive === ""`. `control-commands.ts`
-already describes the enum in prose — a stop "is the same terminal state as an
-agent that finished its turn, ran out of time, or hit the handoff limit" — and
-then has nowhere to put it.
+`domain/work/turn.ts` now names how a turn ended and who it hands to, and
+`DISPATCH_NEXT_GUARD` is gone with it. What remains is where those signals come
+from.
 
-Two consequences, both live: `DISPATCH_NEXT_GUARD` in `atomaton-runner.wac.ts`
-decides "does the chain continue" as an Actions expression, thirty lines below
-a step that asks the domain the same question with the same four inputs;
-and the only persisted history type is `RunRecord`, so *how long did this run
-take* is answerable and *how long did #42 take* is not.
+The core exits the same way whether a run reached its limit or a person stopped
+it, and the workflow tells the two apart by whether a stop file is on disk.
+So the ending is **inferred by a bystander** rather than reported by whatever
+ended, and one of the six endings rests on a file's existence. Fixing that is a
+change to the protocol with `atoma`, which is why it is here rather than done.
 
-Introducing the type is an atomaton-only change. Having the run report its own
-ending, rather than having bash infer it from an exit code and the presence of a
-stop file, is a change to the protocol with `atoma` and is not in scope here.
+### The ledger's unit is the run, not the node
+
+The only persisted history type is `RunRecord`, so *how long did this run take*
+is answerable and *how long did #42 take* is not. A turn has a name now; nothing
+keeps a list of them per node.
+
+This is the larger half of the same question, and it reaches the session store,
+the workspace branch and the metrics window. Not a refactor — a decision about
+where the authority for a node's history lives.
+
+### "No next" is still `""` in two places
+
+`pr-validation.ts` was the third, and is now `next?: NextTurn`.
+`unattended-pull-request.ts`'s `reviewer` and `completion-mention.ts`'s
+`directive` still carry the empty string, and in both the value arrives straight
+from a workflow input where `""` is what the wire actually holds. Normalising at
+the door is the fix; it is small, and it is listed so it is not lost.
 
 ### `issue-branch.ts` fuses a rule with a convention
 

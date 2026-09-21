@@ -14,7 +14,7 @@ describe("decideValidationOutcome", () => {
     const outcome = decide("success");
     expect(outcome.verdict).toBe("passed");
     expect(outcome.checks).toEqual([{ name: "check", conclusion: "success" }]);
-    expect(outcome.nextAgent).toBe("reviewer");
+    expect(outcome.next?.agent).toBe("reviewer");
   });
 
   // GitHub's own list of conclusions that satisfy a required check, so a job the
@@ -23,7 +23,7 @@ describe("decideValidationOutcome", () => {
     for (const conclusion of ["skipped", "neutral"]) {
       const outcome = decide(conclusion);
       expect(outcome.verdict, conclusion).toBe("passed");
-      expect(outcome.nextAgent, conclusion).toBe("reviewer");
+      expect(outcome.next?.agent, conclusion).toBe("reviewer");
       expect(outcome.checks[0]?.conclusion, conclusion).toBe("success");
     }
   });
@@ -32,13 +32,13 @@ describe("decideValidationOutcome", () => {
     const outcome = decide("failure");
     expect(outcome.verdict).toBe("failed");
     expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
-    expect(outcome.nextAgent).toBe("engineer");
+    expect(outcome.next?.agent).toBe("engineer");
     expect(outcome.summary).toContain("failure");
   });
 
   test("cancelled and timed_out return to the engineer too", () => {
     for (const conclusion of ["cancelled", "timed_out"]) {
-      expect(decide(conclusion).nextAgent, conclusion).toBe("engineer");
+      expect(decide(conclusion).next?.agent, conclusion).toBe("engineer");
     }
   });
 
@@ -49,7 +49,7 @@ describe("decideValidationOutcome", () => {
     const outcome = decide("");
     expect(outcome.verdict).toBe("no-conclusion");
     expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
-    expect(outcome.nextAgent).toBe("");
+    expect(outcome.next).toBeUndefined();
     expect(outcome.summary).toContain("human");
   });
 
@@ -64,7 +64,7 @@ describe("decideValidationOutcome", () => {
     const outcome = decide("success", []);
     expect(outcome.verdict).toBe("passed");
     expect(outcome.checks).toEqual([]);
-    expect(outcome.nextAgent).toBe("reviewer");
+    expect(outcome.next?.agent).toBe("reviewer");
   });
 
   // The reason `verdict` exists. `validate_pull_request.ts` used to ask
@@ -80,7 +80,7 @@ describe("decideValidationOutcome", () => {
   });
 
   test("conclusions are matched case- and space-insensitively", () => {
-    expect(decide("  SUCCESS ").nextAgent).toBe("reviewer");
+    expect(decide("  SUCCESS ").next?.agent).toBe("reviewer");
   });
 
   // The loop this bounds is the one `manage_dispatch_loop.ts` cannot see: the
@@ -89,14 +89,14 @@ describe("decideValidationOutcome", () => {
   describe("retry limit", () => {
     test("keeps returning to the engineer below the limit", () => {
       for (let prior = 0; prior < CI_RETRY_LIMIT; prior++) {
-        expect(decide("failure", contexts, prior).nextAgent, `prior=${prior}`).toBe("engineer");
+        expect(decide("failure", contexts, prior).next?.agent, `prior=${prior}`).toBe("engineer");
       }
     });
 
     test("stops dispatching at the limit and says why", () => {
       const outcome = decide("failure", contexts, CI_RETRY_LIMIT);
       expect(outcome.verdict).toBe("retries-exhausted");
-      expect(outcome.nextAgent).toBe("");
+      expect(outcome.next).toBeUndefined();
       expect(outcome.summary).toContain("human");
     });
 
@@ -110,7 +110,7 @@ describe("decideValidationOutcome", () => {
     test("a passing run is unaffected by earlier retries", () => {
       const outcome = decide("success", contexts, CI_RETRY_LIMIT + 5);
       expect(outcome.verdict).toBe("passed");
-      expect(outcome.nextAgent).toBe("reviewer");
+      expect(outcome.next?.agent).toBe("reviewer");
     });
   });
 });
@@ -139,7 +139,7 @@ describe("a deliverable that cannot start a run", () => {
     const outcome = decideWith(problems);
     expect(outcome.verdict).toBe("deliverable-invalid");
     expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
-    expect(outcome.nextAgent).toBe("engineer");
+    expect(outcome.next?.agent).toBe("engineer");
   });
 
   // The count belongs in the summary; the problems themselves travel in the
@@ -169,18 +169,18 @@ describe("a deliverable that cannot start a run", () => {
   // and what is broken is the machinery the NEXT run loads.
   test("a passing CI conclusion does not override it", () => {
     expect(decideWith(problems, "success").verdict).toBe("deliverable-invalid");
-    expect(decideWith(problems, "success").nextAgent).toBe("engineer");
+    expect(decideWith(problems, "success").next?.agent).toBe("engineer");
   });
 
   // The same bound as failing CI, and for the same reason: the engineer is
   // dispatched by a workflow, so nothing else stops the loop.
   test("the retry limit applies", () => {
     for (const prior of [0, CI_RETRY_LIMIT - 1]) {
-      expect(decideWith(problems, "", prior).nextAgent, `prior=${prior}`).toBe("engineer");
+      expect(decideWith(problems, "", prior).next?.agent, `prior=${prior}`).toBe("engineer");
     }
     const outcome = decideWith(problems, "", CI_RETRY_LIMIT);
     expect(outcome.verdict).toBe("retries-exhausted");
-    expect(outcome.nextAgent).toBe("");
+    expect(outcome.next).toBeUndefined();
     expect(outcome.summary).toContain("human");
     expect(outcome.checks).toEqual([{ name: "check", conclusion: "failure" }]);
   });
@@ -188,5 +188,37 @@ describe("a deliverable that cannot start a run", () => {
   test("an empty list is the normal case and changes nothing", () => {
     expect(decideWith([], "success").verdict).toBe("passed");
     expect(decideWith([], "failure").verdict).toBe("failed");
+  });
+});
+
+/**
+ * A role nobody is configured for.
+ *
+ * `nextAgent: string` could hold `""` and did at every hand-back, so a role left
+ * unnamed produced the same value as a deliberate stop — and the only thing
+ * separating them was a `!= ''` in the workflow. `next` being absent says it once,
+ * in the type, and the check it used to need is gone with it.
+ */
+describe("a role with nobody in it", () => {
+  test("hands off to nobody rather than to an agent called \"\"", () => {
+    const outcome = decideValidationOutcome({
+      conclusion: "success",
+      requiredContexts: ["check"],
+      reviewerAgent: "",
+      engineerAgent: "engineer",
+    });
+    expect(outcome.verdict).toBe("passed");
+    expect(outcome.next).toBeUndefined();
+  });
+
+  test("whitespace is not a name either", () => {
+    const outcome = decideValidationOutcome({
+      conclusion: "failure",
+      requiredContexts: ["check"],
+      reviewerAgent: "reviewer",
+      engineerAgent: "   ",
+    });
+    expect(outcome.verdict).toBe("failed");
+    expect(outcome.next).toBeUndefined();
   });
 });
