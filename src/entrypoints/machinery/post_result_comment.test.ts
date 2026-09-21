@@ -59,7 +59,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
       agent: "orchestrator",
       notify: "octocat",
       directive: "engineer",
-      stopRequested: "true",
+      endedBecause: "stopped",
       runUrl: "http://example.com/run/1",
       output: "Handing off.",
       usageLines: [],
@@ -68,12 +68,12 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).toContain("Stopped on request");
   });
 
-  test("and when a spent iteration budget cancelled it", () => {
+  test("and when a spent time budget cancelled it", () => {
     const body = buildCommentBody({
       agent: "orchestrator",
       notify: "octocat",
       directive: "engineer",
-      limitReached: "true",
+      endedBecause: "runtime",
       runUrl: "http://example.com/run/1",
       output: "Handing off.",
       usageLines: [],
@@ -93,7 +93,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
       agent: "engineer",
       notify: "octocat",
       wroteNothing: true,
-      stopRequested: "true",
+      endedBecause: "stopped",
       runUrl: "http://example.com/run/1",
       output: "_This run was stopped before it said anything._",
       usageLines: [],
@@ -117,7 +117,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
       agent: "engineer",
       notify: "octocat",
       wroteNothing: true,
-      stopRequested: "true",
+      endedBecause: "stopped",
       runUrl: "http://example.com/run/1",
       output: "_This run was stopped before it said anything._",
       usageLines: [],
@@ -127,16 +127,16 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).not.toContain("task completed");
   });
 
-  test("nor that one which ran out of iterations completed", () => {
+  test("nor that one which ran out of time completed", () => {
     const body = buildCommentBody({
       agent: "engineer",
       notify: "octocat",
-      limitReached: "true",
+      endedBecause: "runtime",
       runUrl: "http://example.com/run/1",
       output: "Got partway.",
       usageLines: [],
     });
-    expect(body).toContain("ran out of iterations before it finished");
+    expect(body).toContain("ran out of time before it finished");
     expect(body).not.toContain("task completed");
   });
 
@@ -205,15 +205,15 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).toContain("@octocat");
   });
 
-  test("appends the limit-reached warning", () => {
+  test("appends the ran-out warning", () => {
     const body = buildCommentBody({
       agent: "engineer",
-      limitReached: "true",
+      endedBecause: "runtime",
       runUrl: "http://example.com/run/1",
       output: "Still working.",
       usageLines: [],
     });
-    expect(body).toContain("The run reached its limit");
+    expect(body).toContain("The run ran out of time");
     expect(body).toContain("`/engineer`");
   });
   // The line has to say the session survived: that is the entire difference between
@@ -222,7 +222,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
   test("a stop says the session is saved and how to continue", () => {
     const body = buildCommentBody({
       agent: "engineer",
-      stopRequested: "true",
+      endedBecause: "stopped",
       runUrl: "http://example.com/run/1",
       output: "Halfway through.",
       usageLines: [],
@@ -232,19 +232,41 @@ describe("post_result_comment.ts buildCommentBody", () => {
     expect(body).toContain("`/resume`");
   });
 
-  // Both arrive as status 2 and the runner can set both wrong. Saying "reached its
-  // limit" to somebody who typed /stop is the confusing half, so the stop wins.
-  test("a stop and a limit together read as a stop", () => {
-    const body = buildCommentBody({
+  /**
+   * There used to be a test here for a stop and a limit arriving together, with a
+   * rule about which won. Both were booleans the runner set by guessing, and it
+   * could set both.
+   *
+   * It cannot now: the core records ONE word for how the run ended, and this reads
+   * it. The case the test covered is gone rather than handled, which is the better
+   * outcome and worth saying rather than leaving as a test that vanished.
+   */
+  test("the ceiling a run hit is named, and this runner only ever hits the clock", () => {
+    const outOfTime = buildCommentBody({
       agent: "engineer",
-      stopRequested: "true",
-      limitReached: "true",
+      endedBecause: "runtime",
+      notify: "alice",
       runUrl: "http://example.com/run/1",
       output: "Halfway through.",
       usageLines: [],
     });
-    expect(body).toContain("Stopped on request");
-    expect(body).not.toContain("reached its limit");
+    expect(outOfTime).toContain("ran out of time");
+    // The sentence this replaces. `--max-iterations` is never passed, so a run that
+    // hit a ceiling always hit the clock — and it was told it had run out of
+    // iterations every time.
+    expect(outOfTime).not.toContain("ran out of iterations");
+  });
+
+  test("an iteration ceiling, which a project can still set, is named as one", () => {
+    const body = buildCommentBody({
+      agent: "engineer",
+      endedBecause: "iterations",
+      notify: "alice",
+      runUrl: "http://example.com/run/1",
+      output: "Halfway through.",
+      usageLines: [],
+    });
+    expect(body).toContain("ran out of iterations");
   });
 });
 
@@ -297,7 +319,7 @@ describe("post_result_comment.ts main", () => {
         scriptPath("post_result_comment.ts"),
         [
           "--number", "831", "--type", "issue", "--agent", "engineer", "--notify", "octocat",
-          "--stop-requested", "true", "--run-url", "http://example.com/run/1",
+          "--ended-because", "stopped", "--run-url", "http://example.com/run/1",
           "--output", join(dir, "atomaton_output.txt"),
         ],
         { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api"], stdout: "{}" }] },

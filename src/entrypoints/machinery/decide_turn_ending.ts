@@ -34,7 +34,7 @@
  *
  * Usage:
  *   decide_turn_ending.ts --outcome success
- *     [--limit-reached true] [--stop-requested true] [--loop-limit-reached true]
+ *     [--ended-because runtime] [--loop-limit-reached true]
  *     [--chain-continues true] [--directive AGENT_NAME]
  */
 import { appendFileSync } from "node:fs";
@@ -44,8 +44,7 @@ import { defineScript } from "./lib/script-ref.ts";
 
 export interface DecideTurnEndingArgs {
   outcome: string;
-  "limit-reached"?: string;
-  "stop-requested"?: string;
+  "ended-because"?: string;
   "loop-limit-reached"?: string;
   "chain-continues"?: string;
   directive?: string;
@@ -62,8 +61,7 @@ function main(): void {
     args: Bun.argv.slice(2),
     options: {
       outcome: { type: "string" },
-      "limit-reached": { type: "string" },
-      "stop-requested": { type: "string" },
+      "ended-because": { type: "string" },
       "loop-limit-reached": { type: "string" },
       "chain-continues": { type: "string" },
       directive: { type: "string" },
@@ -75,8 +73,7 @@ function main(): void {
 
   const ending = endingOf({
     succeeded: values.outcome === "success",
-    limitReached: isTrue(values["limit-reached"]),
-    stopRequested: isTrue(values["stop-requested"]),
+    endedBecause: values["ended-because"] ?? "",
     loopLimitReached: isTrue(values["loop-limit-reached"]),
     chainContinues: isTrue(values["chain-continues"]),
     directive: values.directive ?? "",

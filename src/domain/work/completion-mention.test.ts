@@ -6,8 +6,7 @@ import { endingOf, type TurnSignals } from "./turn.ts";
 const ended = (overrides: Partial<TurnSignals> = {}) =>
   endingOf({
     succeeded: true,
-    limitReached: false,
-    stopRequested: false,
+    endedBecause: "completed",
     loopLimitReached: false,
     chainContinues: false,
     directive: "",
@@ -64,12 +63,12 @@ describe("shouldMentionOnCompletion", () => {
    * the mention as well, leaving nothing running and nobody told.
    */
   test("still mentions when a stop cancelled the handoff the agent named", () => {
-    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", stopRequested: true }) })).toBe(true);
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", endedBecause: "stopped" }) })).toBe(true);
   });
 
   /** A spent budget is the same: the turn ended, and what it planned did not happen. */
   test("still mentions when a spent budget cancelled the handoff", () => {
-    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", limitReached: true }) })).toBe(true);
+    expect(shouldMentionOnCompletion({ ...base, ending: ended({ directive: "reviewer", endedBecause: "runtime" }) })).toBe(true);
   });
 
   /**
@@ -78,13 +77,13 @@ describe("shouldMentionOnCompletion", () => {
    * mention would be claiming a halt that did not happen.
    */
   test("a stop does not un-silence a dispatch that already went out", () => {
-    expect(shouldMentionOnCompletion({ ...base, chainContinues: true, ending: ended({ stopRequested: true }) })).toBe(false);
+    expect(shouldMentionOnCompletion({ ...base, chainContinues: true, ending: ended({ endedBecause: "stopped" }) })).toBe(false);
   });
 
   /** Nor the parent hand-back: the sub-issue is closed, and closing it is the signal. */
   test("a stop does not un-silence a closed sub-issue's hand-back", () => {
     expect(
-      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, ending: ended({ stopRequested: true }) }),
+      shouldMentionOnCompletion({ ...base, isSubIssue: true, issueClosed: true, ending: ended({ endedBecause: "stopped" }) }),
     ).toBe(false);
   });
 });
