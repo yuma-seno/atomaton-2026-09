@@ -546,8 +546,15 @@ const buildContextStep = new TypedOutputsStep(
  * thread says nothing about why.
  *
  * So the agent gets the job's time minus that reserve, and stops on its own.
+ *
+ * Four hours, and the number is a ceiling rather than a target: a run that needs
+ * it is one doing real work -- a large refactor, a build from cold, a test suite
+ * that takes minutes per attempt -- and the alternative to a long ceiling is not
+ * a shorter run but a run killed mid-call with its session unsaved. GitHub's own
+ * maximum is six hours; this leaves room under it for the reserve and for the
+ * queueing that happens before the job starts.
  */
-const JOB_TIMEOUT_MINUTES = 60;
+const JOB_TIMEOUT_MINUTES = 240;
 const RESERVED_FOR_WHAT_FOLLOWS_SECS = 300;
 
 /**
