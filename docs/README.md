@@ -47,6 +47,7 @@ only: the reason behind a step is at the other end of that step's link.
 | [let a tool server reach something outside GitHub](tools/tasks/let-a-tool-server-reach-something-outside-github.md) | `tools.secrets`, then that server's own environment |
 | [let a tool run longer than a minute](tools/tasks/let-a-tool-run-longer-than-a-minute.md) | `request_timeout_secs`, on that server |
 | [change or remove web fetching and search](tools/tasks/change-or-remove-web-fetching-and-search.md) | the `research/web-search` skill |
+| [change what a delegate may reach](tools/tasks/change-what-a-delegate-may-reach.md) | the `servers:` block in its tools file |
 | [write a tool of your own](tools/tasks/write-a-tool.md) | a new MCP server |
 | [make a branch ruleset work with agents](github/tasks/make-a-branch-ruleset-work-with-agents.md) | a server-side setting on GitHub, declared by `.github/atomaton/rulesets/main.json` |
 | [move to a newer release](runtime/tasks/move-to-a-newer-release.md) | nothing — a vendoring procedure |
@@ -111,7 +112,8 @@ If you know the key and not the artifact,
 [How long a tool has to answer](tools/how-it-works/how-long-a-tool-has.md) ·
 [Searching your repository's issues](tools/how-it-works/searching-the-issues.md) ·
 [How the issue search ranks](tools/how-it-works/how-the-issue-search-ranks.md) ·
-[Reading the web](tools/how-it-works/reading-the-web.md)
+[Reading the web](tools/how-it-works/reading-the-web.md) ·
+[Delegating a piece of work](tools/how-it-works/delegating-a-piece-of-work.md)
 
 **`github/`** — the settings on GitHub itself, which nothing in `config.yaml` reaches.
 [What GitHub's own settings protect](github/boundaries.md) ·

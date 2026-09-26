@@ -946,6 +946,78 @@ describe("mcp/atomaton.ts", () => {
   });
 });
 
+/**
+ * The delegate server, which is one program behind two entries.
+ *
+ * What is checked here is the part that is a promise rather than an
+ * implementation detail: the tool exists, its arguments are the two the design
+ * settled on, and the server refuses to start when it is told to run with no
+ * servers — a sub-run with no tools looks like a confused delegate rather than a
+ * broken configuration, so it fails at startup where the log line names the cause.
+ *
+ * The sub-run itself is not started here. It needs an `atoma` binary and a
+ * provider key, neither of which a laptop running `bun test` has, and a test that
+ * skipped itself in the environment it runs in would be a test that never runs.
+ * What the sub-run does is covered by the design in issue #965 and by the
+ * `delegate.md`/`delegate_readonly.md` definitions, which the contract tests hold
+ * to the servers `tools.yaml` defines.
+ */
+describe("mcp/delegate.ts", () => {
+  test("initialize returns server info", async () => {
+    const r = await sendRequest("delegate.ts", INIT_REQUEST);
+    expect(r.result.serverInfo.name).toBe("atomaton-delegate-mcp");
+  });
+
+  test("advertises one tool, `run`, taking task and context", async () => {
+    const r = await sendRequest("delegate.ts", {
+      jsonrpc: "2.0", id: 2, method: "tools/list", params: {},
+    });
+    const names = r.result.tools.map((t: { name: string }) => t.name);
+    expect(names).toEqual(["run"]);
+    const tool = r.result.tools[0];
+    expect(tool.inputSchema.required).toEqual(["task"]);
+    expect(tool.inputSchema.properties).toHaveProperty("task");
+    expect(tool.inputSchema.properties).toHaveProperty("context");
+  });
+
+  /**
+   * The read-only entry says so in the description, because the description is
+   * what the model reads before deciding whether to ask for a change.
+   */
+  test("the read-only entry's description says it cannot change anything", async () => {
+    const r = await sendRequest(
+      "delegate.ts",
+      { jsonrpc: "2.0", id: 3, method: "tools/list", params: {} },
+      {},
+      process.cwd(),
+      ["--agent-def", "delegate_readonly.md"],
+    );
+    expect(r.result.tools[0].description).toContain("CANNOT change anything");
+  });
+
+  test("refuses to start when its tools file declares no servers", async () => {
+    // Spawned directly rather than through `sendRequest`: this process exits before
+    // it writes a response, so the harness would wait for a line that never comes
+    // and report a timeout instead of the refusal. What is being checked is the
+    // exit, and the message on stderr that names the cause.
+    const empty = join(mkdtempSync(join(tmpdir(), "atomaton-delegate-empty-")), "empty.tools.yaml");
+    writeFileSync(empty, "watch: {}\nservers: {}\n");
+    try {
+      const child = spawn("bun", ["run", `${SCRIPTS_DIR}/delegate.ts`, "--tools-file", empty], {
+        env: { ...hermeticEnv(), GITHUB_REPOSITORY: "owner/repo" },
+        cwd: process.cwd(),
+      });
+      let stderr = "";
+      child.stderr.on("data", (d) => (stderr += d.toString()));
+      const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
+      expect(code).toBe(2);
+      expect(stderr).toContain("declares no servers");
+    } finally {
+      removeTemp(dirname(empty));
+    }
+  });
+});
+
 // The two servers that had no round-trip test at all.
 //
 // Worth having on its own, and worth having now in particular: `serveMcpServer`

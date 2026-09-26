@@ -1,0 +1,30 @@
+# The tool servers a READ-ONLY delegated sub-run starts with.
+#
+# The same shape as `delegate.tools.yaml`, with `files_readonly` in place of `files`
+# and `shell`. It exists so that an agent holding `files_readonly` — the reviewer —
+# cannot reach a writing server by delegating to one: a sub-run's servers must be a
+# subset of its caller's, and that is a configuration fact rather than something a
+# runtime check can see.
+#
+# No `shell`, and that is the same rule rather than an omission: a shell is a way to
+# write.
+#
+# `files_readonly` is not a second implementation. It is `mcp/files.ts` — the same
+# program `files` runs — with the three tools that write withheld by the allowlist
+# below. See `domain/machinery/effective-tools.ts` for why that allowlist is the
+# whole of what makes it read-only, and `tests/contract/exact-tool-sets.test.ts` for
+# what holds it to that.
+watch: {}
+servers:
+  files_readonly:
+    command: bun
+    args:
+      - run
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/files.ts"
+    env: {}
+    hooks:
+      tool_allowlist:
+        - read
+        - grep
+        - glob
+        - list

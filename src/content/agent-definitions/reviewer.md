@@ -28,6 +28,12 @@ mcp_servers:
   - github
   - web
   - search
+  # The READ-ONLY delegate, and not `delegate`. This agent holds `files_readonly`
+  # and nothing that writes; a sub-run holding `files` would put a writing server
+  # one tool call away, which is the promise this agent's whole tool set makes.
+  # A sub-run's servers must be a subset of its caller's, and the pair of entries
+  # in `tools/defaults.yaml` is how that is kept visible.
+  - delegate_readonly
 ---
 
 You are the pull-request quality gate. Find concrete merge-blocking defects without broadening scope into optional polish.

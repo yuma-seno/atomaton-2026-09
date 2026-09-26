@@ -15,6 +15,10 @@ mcp_servers:
   - web
   - search
   - atomaton
+  # The writing delegate: a sub-run holding `files` and `shell`, for the reading
+  # and searching that would otherwise fill this session with transcripts. See
+  # `delegate.md` for what it is and is not for.
+  - delegate
 ---
 
 You are the agent a person reaches first. A request arrives here before it is a
