@@ -89,7 +89,7 @@ name: Atomaton Runner
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 240
     concurrency:
       group: atomaton-${{ inputs.type }}-${{ inputs.number }}
       cancel-in-progress: false
@@ -136,7 +136,7 @@ jobs:
         id: deadline
         shell: bash
         run: |
-          DEADLINE=$(( $(date +%s) + 3300 ))
+          DEADLINE=$(( $(date +%s) + 14100 ))
           echo "at=${DEADLINE}" >> "$GITHUB_OUTPUT"
           echo "the agent must be finished by $(date -u -d @${DEADLINE} +%H:%M:%SZ)"
       - name: Make a place for this run's own files
