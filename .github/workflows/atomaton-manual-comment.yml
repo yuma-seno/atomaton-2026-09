@@ -24,13 +24,13 @@ permissions:
 jobs:
   parse:
     runs-on: ubuntu-latest
-    if: (github.event.comment.user.type != 'Bot') || (github.event.comment.user.type == 'Bot' && contains(github.event.comment.body, 'atomaton:dispatch'))
     outputs:
       agent: ${{ steps.dispatch.outputs.agent }}
       session_mode: ${{ steps.command.outputs.session_mode }}
       number: ${{ steps.target.outputs.number }}
       type: ${{ steps.target.outputs.type }}
       notify: ${{ steps.target.outputs.notify }}
+    if: (github.event.comment.user.type != 'Bot') || ((github.event.comment.user.type == 'Bot') && (contains(github.event.comment.body, 'atomaton:dispatch')))
     steps:
       - uses: actions/checkout@v4
       - name: Setup Bun
@@ -39,19 +39,14 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Parse slash command
         id: command
-        if: |-
-          (github.event.comment.user.type == 'Bot' &&
-           contains(github.event.comment.body, 'atomaton:dispatch')) ||
-          (github.event.comment.user.type != 'Bot' &&
-           contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
         shell: bash
         env:
           ATOMATON_COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/parse_comment_command.ts"
+        if: ((github.event.comment.user.type == 'Bot') && (contains(github.event.comment.body, 'atomaton:dispatch'))) || ((github.event.comment.user.type != 'Bot') && (contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))
       - name: 'Guard: reject comment while atomaton/in-progress'
         id: guard
-        if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -60,9 +55,9 @@ jobs:
           COMMENTER: ${{ github.event.comment.user.login }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/guard_comment_during_run.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
+        if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop'
       - name: 'Guard: refuse a command on a closed issue or pull request'
         id: closed-guard
-        if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop' && (steps.command.outputs.agent != '' || steps.command.outputs.control != '') && steps.guard.outputs.blocked != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,6 +69,7 @@ jobs:
         run: |
           COMMAND="${FROM_COMMAND:-${FROM_CONTROL}}"
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/guard_command_on_closed.ts" --number "${NUMBER}" --commenter "${COMMENTER}" --command "/${COMMAND}"
+        if: (github.event.comment.user.type != 'Bot') && steps.command.outputs.control != 'stop' && (steps.command.outputs.agent != '' || steps.command.outputs.control != '') && steps.guard.outputs.blocked != 'true'
       - name: Resolve target context
         id: target
         shell: bash
@@ -90,7 +86,6 @@ jobs:
           fi
           echo "notify=${NOTIFY}" >> "$GITHUB_OUTPUT"
       - name: Request a stop
-        if: steps.command.outputs.control == 'stop'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -99,17 +94,17 @@ jobs:
           COMMENTER: ${{ github.event.comment.user.login }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/request_stop.ts" --number "${NUMBER}" --comment-id "${COMMENT_ID}" --commenter "${COMMENTER}"
+        if: steps.command.outputs.control == 'stop'
       - name: Resolve the agent to resume
         id: resume
-        if: steps.command.outputs.control == 'resume'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_resume_agent.ts" --number "${NUMBER}"
+        if: steps.command.outputs.control == 'resume'
       - name: Resume the work this issue was stopped with
-        if: steps.command.outputs.control == 'resume' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -118,6 +113,7 @@ jobs:
           NOTIFY: ${{ github.event.comment.user.login }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resume_subtree.ts" --number "${NUMBER}" --notify "${NOTIFY}"
+        if: steps.command.outputs.control == 'resume' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
       - name: Decide what to dispatch
         id: dispatch
         shell: bash
@@ -135,7 +131,6 @@ jobs:
           echo "agent=${AGENT}" >> "$GITHUB_OUTPUT"
           echo "dispatching: ${AGENT:-nothing}"
       - name: Report invalid slash command
-        if: steps.command.outputs.error != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -143,8 +138,8 @@ jobs:
           ERROR: ${{ steps.command.outputs.error }}
         run: |
           gh issue comment "${NUMBER}" --body "Atomaton command error: ${ERROR}"
+        if: steps.command.outputs.error != ''
       - name: Say the run is waiting for CI
-        if: steps.dispatch.outputs.agent != '' && steps.target.outputs.type == 'pr' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -153,8 +148,8 @@ jobs:
         run: |
           gh issue comment "$NUMBER" --body "<!-- atomaton:llm-context=exclude -->
           Atomaton: `${AGENT}` will start once CI finishes on this pull request."
-      - name: Hand the pull request to validation, which waits for CI
         if: steps.dispatch.outputs.agent != '' && steps.target.outputs.type == 'pr' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
+      - name: Hand the pull request to validation, which waits for CI
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -167,8 +162,9 @@ jobs:
             exit 1
           fi
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_pr_validation.ts" --repo "${REPO}" --number "${NUMBER}" --branch "${BRANCH}" --asked-by-person "true"
+        if: steps.dispatch.outputs.agent != '' && steps.target.outputs.type == 'pr' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
   run:
-    if: needs.parse.outputs.agent != '' && (steps.target.outputs.type != 'pr')
+    if: (needs.parse.outputs.agent != '') && (needs.parse.outputs.type != 'pr')
     uses: ./.github/workflows/atomaton-runner.yml
     with:
       agent: ${{ needs.parse.outputs.agent }}

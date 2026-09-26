@@ -74,9 +74,6 @@ jobs:
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/plan_deploy.ts" --ref "${ATOMATON_DEPLOY_REF}" --default-branch "${ATOMATON_DEFAULT_BRANCH}" --event "${ATOMATON_DEPLOY_EVENT}" --trigger "${ATOMATON_DEPLOY_TRIGGER}" --target "${ATOMATON_DEPLOY_TARGET_INPUT}" --repo "${ATOMATON_REPO}" --before "${ATOMATON_PUSH_BEFORE}"
   deploy:
     name: deploy (${{ matrix.name }})
-    needs:
-      - plan-deploy
-    if: ${{ needs.plan-deploy.outputs.jobs != '[]' }}
     runs-on: ${{ fromJSON(matrix.runs_on) }}
     timeout-minutes: 60
     permissions:
@@ -87,6 +84,9 @@ jobs:
       max-parallel: 1
       matrix:
         include: ${{ fromJSON(needs.plan-deploy.outputs.jobs) }}
+    if: needs.plan-deploy.outputs.jobs != '[]'
+    needs:
+      - plan-deploy
     steps:
       - name: Checkout the tree this deployment ships
         uses: actions/checkout@v4
@@ -147,15 +147,15 @@ jobs:
             echo "::endgroup::"
           done
   dispatch-new-tags:
-    needs:
-      - plan-deploy
-      - deploy
-    if: ${{ needs.plan-deploy.outputs.tags_before != '' && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
       actions: write
+    if: (needs.plan-deploy.outputs.tags_before != '') && (needs.deploy.result == 'success')
+    needs:
+      - plan-deploy
+      - deploy
     steps:
       - name: Checkout the default branch, for the script
         uses: actions/checkout@v4

@@ -17,6 +17,9 @@ mcp_servers:
   # other two tools withheld, so an engineer cannot close the issue it is working
   # on. Atomaton ships both entries; neither is in config.yaml.
   - atomaton_env
+  # The writing delegate, for the investigation that would otherwise fill this
+  # session: where a symbol is defined, what calls it, what a change would touch.
+  - delegate
 ---
 
 You implement one well-bounded leaf task and deliver it through a pull request.

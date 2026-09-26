@@ -24,12 +24,12 @@ permissions:
 jobs:
   route:
     runs-on: ubuntu-latest
-    if: contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
     outputs:
       agent: ${{ steps.resolve.outputs.agent }}
       number: ${{ steps.resolve.outputs.number }}
       type: ${{ steps.resolve.outputs.type }}
       notify: ${{ steps.resolve.outputs.notify }}
+    if: contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
     steps:
       - uses: actions/checkout@v4
       - name: Setup Bun

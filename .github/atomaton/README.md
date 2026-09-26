@@ -83,7 +83,7 @@ file.
 
 ## The tool servers a run starts with
 
-Eight, and they are not in `config.yaml`. They are in
+Ten, and they are not in `config.yaml`. They are in
 `.github/atomaton-runtime/tools/defaults.yaml`, in the same schema as `tools.servers`
 in your config, and that file is the one to read when you are about to override
 one. What it declares is written into the file `atoma` is handed at the start of
@@ -99,10 +99,18 @@ every run.
 | `search` | Ranked search over this repository's issues and code. |
 | `atomaton` | Atomaton's own operations: sub-issues, handoffs, stopping a run. |
 | `atomaton_env` | Rebuilding the run's environment, and nothing else. |
+| `delegate` | Runs one small piece of work in a sub-run and returns what it found. |
+| `delegate_readonly` | The same, with a sub-run that reads and searches and cannot change anything. |
 
 An agent gets the ones its own `mcp_servers` names, and only those. A server
 nobody names is never started, so there is nothing to gain by removing one — which
 is why there is no way to.
+
+`delegate` and `delegate_readonly` are one program started with a different
+definition and a different tools file, both under
+`atomaton-runtime/tools/delegates/`. They are not agent definitions: a delegate is
+started by the tool and never by a person, so it is deliberately outside
+`agent-definitions/`, which is the namespace `/<name>` dispatches from.
 
 **Why they are not in the file you edit.** Deleting one takes a capability from
 every agent that named it, and `atoma` stops the run before a single tool starts

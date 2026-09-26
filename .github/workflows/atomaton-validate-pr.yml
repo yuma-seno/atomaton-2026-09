@@ -100,7 +100,6 @@ jobs:
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/validate_pull_request.ts" --repo "${{ github.repository }}" --number "${{ inputs.number }}" --branch "${{ inputs.branch }}" --workflow "${{ steps.cfg.outputs.workflow }}" --def-dir "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton/agent-definitions" --asked-by-person "${{ inputs.asked_by_person }}" --deliverable-report "${RUNNER_TEMP}/atomaton-deliverable-problems.txt"
       - name: Dispatch the agent the result calls for
-        if: steps.validate.outputs.next_agent != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,8 +109,8 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_agent.ts" --agent "${AGENT}" --number "${NUMBER}" --type "pr" --repo "${REPO}" --context "validation of #${NUMBER} finished: ${SUMMARY}"
+        if: steps.validate.outputs.next_agent != ''
       - name: Tell a person nobody was dispatched
-        if: steps.validate.outputs.next_agent == ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,3 +119,4 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/notify_unattended.ts" --repo "${REPO}" --number "${NUMBER}" --summary "${SUMMARY}"
+        if: steps.validate.outputs.next_agent == ''
