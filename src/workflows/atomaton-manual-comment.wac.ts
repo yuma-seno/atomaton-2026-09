@@ -1,7 +1,7 @@
 import { Workflow } from "@github-actions-workflow-ts/lib";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { startJob, TypedOutputsStep } from "./actions/base.ts";
+import { JobCondition, startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
@@ -383,8 +383,19 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
     // validation, which runs CI and waits, and dispatches whoever the result calls
     // for -- see `prValidationStep`. Starting the runner directly would have the
     // agent read a CI result that does not exist yet.
+    //
+    // `JobCondition.isNot(parseJob.rawOutputs.type, "pr")` rather than a string. The
+    // condition used to be written out by hand, and it named `targetStep` -- a step
+    // reference in a job-level `if:`, which GitHub refuses as an unparseable file.
+    // A `JobCondition` can only be built from a job's own output, so the mistake is
+    // now a compile error.
     .then((parseJob) =>
-      dispatchToAtomaRunner(parseJob, "inherit", parseJob.outputs.session_mode, `${targetStep.rawOutputs.type} != 'pr'`),
+      dispatchToAtomaRunner(
+        parseJob,
+        "inherit",
+        parseJob.outputs.session_mode,
+        JobCondition.isNot(parseJob.rawOutputs.type, "pr"),
+      ),
     )
     .jobs(),
 );

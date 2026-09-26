@@ -1,7 +1,7 @@
 import { Workflow } from "@github-actions-workflow-ts/lib";
 import type { IssuesClosedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { DefinedJob, startJob, TypedOutputsStep } from "./actions/base.ts";
+import { DefinedJob, JobCondition, startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
@@ -118,7 +118,9 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
           "aggregate",
           {
             "runs-on": "ubuntu-latest",
-            if: `${checkJob.rawOutputs.is_sub_issue} == 'true' && ${checkJob.rawOutputs.closed_via_pr} != 'true'`,
+            if: JobCondition.is(checkJob.rawOutputs.is_sub_issue, "true").and(
+              JobCondition.isNot(checkJob.rawOutputs.closed_via_pr, "true"),
+            ),
           },
           [
             new ActionsCheckoutV4({}),

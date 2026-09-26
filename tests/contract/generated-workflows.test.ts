@@ -1373,4 +1373,47 @@ describe("generated workflows", () => {
       ).toBe(`${job} (\${{ matrix.name }})`);
     }
   });
+
+  /**
+   * A job-level `if:` has no `steps` context, and GitHub refuses the WHOLE FILE
+   * when one references it.
+   *
+   * The failure is the worst shape there is: the run fails in zero seconds with no
+   * jobs and no log, and the only thing that says why is a validation message on
+   * the run's page — "Unrecognized named-value: 'steps'". Nothing in this
+   * repository runs the workflow before it is pushed, so the first execution IS
+   * production, and this happened: `atomaton-manual-comment.wac.ts` passed
+   * `targetStep.rawOutputs.type` as the extra condition on the runner dispatch,
+   * which is a step reference in a job-level `if:`.
+   *
+   * The step's value is what the job publishes as its own output, so the two are
+   * the same fact — `needs.<job>.outputs.<name>` is the reachable spelling. This
+   * test is what makes the next one a red check instead of a dead workflow.
+   *
+   * Only `if:` is checked, and only at the job level. A step's own `if:` is exactly
+   * where `steps.` belongs, and `run:`/`env:`/`with:` are evaluated in a context
+   * that has it.
+   */
+  test("no job-level if: references steps., which a job cannot see", () => {
+    type WorkflowDocument = { jobs?: Record<string, { if?: unknown }> };
+    const offenders: string[] = [];
+    for (const name of readdirSync("dist/.github/workflows")) {
+      if (!name.endsWith(".yml")) continue;
+      const workflow = Bun.YAML.parse(
+        readFileSync(join("dist/.github/workflows", name), "utf8"),
+      ) as WorkflowDocument;
+      for (const [job, def] of Object.entries(workflow.jobs ?? {})) {
+        const condition = def?.if;
+        if (typeof condition === "string" && /\bsteps\./.test(condition)) {
+          offenders.push(`${name}: job "${job}" -> ${condition}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      "a job-level if: cannot read steps. GitHub refuses the whole workflow file, and the run " +
+        "fails in zero seconds with no jobs and no log. Read the job's own output instead: " +
+        "needs.<job>.outputs.<name>.",
+    ).toEqual([]);
+  });
 });

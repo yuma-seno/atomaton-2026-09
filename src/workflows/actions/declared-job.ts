@@ -104,7 +104,7 @@ export function matrixJob(
         ...(options.maxParallel === undefined ? {} : { "max-parallel": options.maxParallel }),
         matrix: { include: `\${{ fromJSON(needs.${planJobName}.outputs.jobs) }}` },
       },
-    } as unknown as GWT.NormalJob,
+    },
     steps as never[],
   );
 }

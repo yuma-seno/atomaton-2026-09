@@ -1,7 +1,7 @@
 import { Workflow, NormalJob } from "@github-actions-workflow-ts/lib";
 import type { GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { TypedOutputsStep, type DefinedJob } from "./actions/base.ts";
+import { TypedOutputsStep, type DefinedJob, type JobCondition } from "./actions/base.ts";
 import {
   ATOMA_DEFAULT_VERSION,
   ATOMA_VERSION_DESC,
@@ -2022,8 +2022,16 @@ export function dispatchToAtomaRunner<TOutputs extends Record<"agent" | "number"
    * CI has to finish first. That caller still resolves an agent name -- the waiting
    * comment names it -- so "an agent was named" is not enough to decide whether to
    * start one here.
+   *
+   * A `JobCondition`, not a string, and that is the whole of why this parameter is
+   * typed at all. It was a string, and the one caller passed
+   * `targetStep.rawOutputs.type` -- a STEP reference in a JOB-level `if:`. GitHub
+   * refuses the whole workflow file with "Unrecognized named-value: 'steps'", and
+   * the run fails in zero seconds with no jobs and no log. A `JobCondition` can
+   * only be built from a `JobOutputRef`, which only a `DefinedJob` makes, so the
+   * same mistake is now a compile error rather than a dead workflow.
    */
-  extraIf?: string,
+  extraIf?: JobCondition,
 ): ReturnType<typeof atomaRunnerWorkflow.call> {
   const condition = extraIf
     ? `${routeJob.rawOutputs.agent} != '' && (${extraIf})`
