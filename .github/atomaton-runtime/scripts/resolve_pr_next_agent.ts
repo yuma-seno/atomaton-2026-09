@@ -47,6 +47,7 @@ var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
 var SKILLS_DIR = `${USER_ROOT}/skills`;
 var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
 var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var DELEGATES_DIR = `${TOOLS_DIR}/delegates`;
 var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
 var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
 var RULESETS_DIR = `${USER_ROOT}/rulesets`;

@@ -6600,6 +6600,13 @@ var require_dist = __commonJS(function(exports, module) {
   exports.default = formatsPlugin;
 });
 
+// src/entrypoints/tools/mcp/delegate.ts
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
+import { parseArgs } from "util";
+
 // node_modules/zod/v3/helpers/util.js
 var util;
 (function(util) {
@@ -10410,16 +10417,6 @@ var optionalType = ZodOptional.create;
 var nullableType = ZodNullable.create;
 var preprocessType = ZodEffects.createWithPreprocess;
 var pipelineType = ZodPipeline.create;
-var coerce = {
-  string: (arg) => ZodString.create({ ...arg, coerce: true }),
-  number: (arg) => ZodNumber.create({ ...arg, coerce: true }),
-  boolean: (arg) => ZodBoolean.create({
-    ...arg,
-    coerce: true
-  }),
-  bigint: (arg) => ZodBigInt.create({ ...arg, coerce: true }),
-  date: (arg) => ZodDate.create({ ...arg, coerce: true })
-};
 // node_modules/zod-to-json-schema/dist/esm/Options.js
 var ignoreOverride = Symbol("Let zodToJsonSchema decide on which parser to use");
 var defaultOptions = {
@@ -17471,11 +17468,6 @@ var LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
 var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
-function withoutTags(text) {
-  const tags = EVERY_TAG_PATTERN.join("|");
-  const lineEnd = String.raw`(?:\r?\n|(?:\\r)?\\n)?`;
-  return text.replace(new RegExp(String.raw`(?:^[ \t]*)?(?:${tags})[ \t]*${lineEnd}`, "gm"), "");
-}
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/stdio.js
 import process2 from "process";
@@ -17569,9 +17561,6 @@ class StdioServerTransport {
 }
 
 // src/adapters/mcp/mcp-tool.ts
-function positiveInt(description) {
-  return coerce.number().int().positive().describe(description);
-}
 function normalizeResult(result) {
   return typeof result === "string" ? { text: result } : result;
 }
@@ -17597,15 +17586,6 @@ function defineMcpTool(spec) {
       }
       return normalizeResult(await spec.handler(result.data));
     }
-  };
-}
-function withoutBookkeeping(dispatch, tools) {
-  const strip = new Set(tools);
-  return async (name, args) => {
-    const payload = await dispatch(name, args);
-    if (!strip.has(name))
-      return payload;
-    return { ...payload, text: withoutTags(payload.text) };
   };
 }
 function buildMcpTools(specs) {
@@ -17651,533 +17631,6 @@ async function serveMcpServer(options) {
     });
   };
   await server.connect(new StdioServerTransport);
-}
-
-// src/shared/bm25.ts
-var CHUNK_LIMIT = 700;
-var MIN_CHUNK = 40;
-function splitBody(text, limit = CHUNK_LIMIT) {
-  return splitBodyWithOffsets(text, limit).map((piece) => piece.text);
-}
-function splitBodyWithOffsets(text, limit = CHUNK_LIMIT) {
-  let pieces = [{ text, start: 0 }];
-  pieces = pieces.flatMap((piece) => splitOn(piece, /\n(?=#{1,4}\s)/g));
-  pieces = pieces.flatMap((piece) => piece.text.length > limit ? splitOn(piece, /\n\n+/g) : [piece]);
-  return pieces.map(trimmed).flatMap((piece) => cutToWidth(piece, limit)).filter((piece) => piece.text.length >= MIN_CHUNK);
-}
-function splitOn(piece, separator) {
-  const out = [];
-  let at = 0;
-  separator.lastIndex = 0;
-  for (let match = separator.exec(piece.text);match; match = separator.exec(piece.text)) {
-    out.push({ text: piece.text.slice(at, match.index), start: piece.start + at });
-    at = match.index + match[0].length;
-  }
-  out.push({ text: piece.text.slice(at), start: piece.start + at });
-  return out;
-}
-function trimmed(piece) {
-  const lead = piece.text.length - piece.text.trimStart().length;
-  return { text: piece.text.trim(), start: piece.start + lead };
-}
-function cutToWidth(piece, limit) {
-  if (piece.text.length <= limit)
-    return [piece];
-  const chunks = [];
-  for (let at = 0;at < piece.text.length; at += limit) {
-    chunks.push(trimmed({ text: piece.text.slice(at, at + limit), start: piece.start + at }));
-  }
-  return chunks;
-}
-function lineAt(text, offset) {
-  let line = 1;
-  for (let i = 0;i < offset && i < text.length; i += 1)
-    if (text[i] === `
-`)
-      line += 1;
-  return line;
-}
-function tokenize(text) {
-  const compact = text.toLowerCase().replace(/[\s\u3001\u3002\uFF08\uFF09()\uFF1A:,.\n\r\t`*#|[\]{}<>/\\"'-]+/g, "");
-  const tokens = [];
-  for (let i = 0;i < compact.length - 1; i++)
-    tokens.push(compact.slice(i, i + 2));
-  for (const identifier of text.toLowerCase().match(/[a-z_][a-z0-9_]{2,}/g) ?? [])
-    tokens.push(identifier);
-  return tokens;
-}
-function buildIndex(documents) {
-  const frequencies = [];
-  const lengths = [];
-  const documentFrequency = {};
-  for (const document of documents) {
-    const tokens = tokenize(document);
-    const counts = {};
-    for (const token of tokens)
-      counts[token] = (counts[token] ?? 0) + 1;
-    for (const token of Object.keys(counts))
-      documentFrequency[token] = (documentFrequency[token] ?? 0) + 1;
-    frequencies.push(counts);
-    lengths.push(tokens.length);
-  }
-  const total = lengths.reduce((sum, length) => sum + length, 0);
-  return {
-    frequencies,
-    lengths,
-    documentFrequency,
-    averageLength: lengths.length > 0 ? total / lengths.length : 0
-  };
-}
-var K1 = 1.2;
-var B = 0.75;
-function score(index, query) {
-  const scores = new Float64Array(index.lengths.length);
-  const documentCount = index.lengths.length;
-  if (documentCount === 0)
-    return scores;
-  for (const token of new Set(tokenize(query))) {
-    const df = index.documentFrequency[token];
-    if (!df)
-      continue;
-    const idf = Math.log(1 + (documentCount - df + 0.5) / (df + 0.5));
-    for (let i = 0;i < documentCount; i++) {
-      const frequency = index.frequencies[i]?.[token];
-      if (!frequency)
-        continue;
-      const normalised = 1 - B + B * (index.lengths[i] ?? 0) / (index.averageLength || 1);
-      scores[i] = (scores[i] ?? 0) + idf * frequency * (K1 + 1) / (frequency + K1 * normalised);
-    }
-  }
-  return scores;
-}
-function rankIssues(chunks, scores, limit) {
-  const best = new Map;
-  for (let i = 0;i < chunks.length; i++) {
-    const issue = chunks[i]?.issue;
-    if (issue === undefined)
-      continue;
-    const value = scores[i] ?? 0;
-    if (value <= 0)
-      continue;
-    const previous = best.get(issue);
-    if (!previous || previous.score < value)
-      best.set(issue, { issue, chunk: i, score: value });
-  }
-  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
-}
-
-// src/domain/machinery/machinery-layout.ts
-var USER_ROOT = ".github/atomaton";
-var RUNTIME_ROOT = ".github/atomaton-runtime";
-var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
-var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
-var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
-var SKILLS_DIR = `${USER_ROOT}/skills`;
-var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
-var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
-var DELEGATES_DIR = `${TOOLS_DIR}/delegates`;
-var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
-var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
-var RULESETS_DIR = `${USER_ROOT}/rulesets`;
-var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
-var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
-
-// src/domain/machinery/code-corpus.ts
-var DEPLOYED_ROOTS = [USER_ROOT, RUNTIME_ROOT].map((root) => new RegExp(`^${root.replaceAll(".", String.raw`\.`)}/`));
-var INDEXED = /\.(ts|tsx|js|jsx|mjs|cjs|rs|py|go|rb|java|kt|swift|c|h|cc|cpp|hpp|cs|php|sh|bash|sql|md|mdx|yaml|yml|toml|json|jsonc)$/i;
-var EXCLUDED = [
-  ...DEPLOYED_ROOTS,
-  /^\.github\/workflows\/.*\.yml$/,
-  /(^|\/)(dist|build|out|coverage|vendor|node_modules|target|\.next|__pycache__)\//,
-  /(^|\/)(package-lock\.json|bun\.lock|bun\.lockb|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|poetry\.lock|Gemfile\.lock|composer\.lock)$/,
-  /(^|\/)__snapshots__\//
-];
-function shouldIndex(path) {
-  if (!INDEXED.test(path))
-    return false;
-  return !EXCLUDED.some((pattern) => pattern.test(path));
-}
-function corpusFrom(tracked) {
-  return tracked.map((line) => line.trim().replace(/\\/g, "/")).filter((path) => path.length > 0 && shouldIndex(path)).sort();
-}
-
-// src/shared/code-search.ts
-var CANDIDATES = 20;
-var MIN_QUERY_COVERAGE = 0.4;
-function queryCoverage(index, query) {
-  const tokens = [...new Set(tokenize(query))];
-  if (tokens.length === 0)
-    return 1;
-  const known = tokens.filter((token) => index.documentFrequency[token] !== undefined);
-  return known.length / tokens.length;
-}
-function unreachableQueryReason(coverage, limit = MIN_QUERY_COVERAGE) {
-  if (coverage >= limit)
-    return;
-  return `Only ${Math.round(coverage * 100)}% of the words in that question appear anywhere in this ` + "codebase, so the search cannot match it: the first stage scores near zero and the answer " + "never reaches the second. This is what happens when the question is in a different " + "language from the code and its comments, or is built from names that do not exist. Ask " + "again in the language the code is written in, using the words the code uses \u2014 read a file " + "first if you are not sure which that is.";
-}
-var NAME_LIKE = /\b(?=[A-Za-z_]*[A-Z_])[A-Za-z_][A-Za-z0-9_]{2,}\b/g;
-function unknownNames(index, query) {
-  const seen = new Set;
-  const out = [];
-  for (const name of query.match(NAME_LIKE) ?? []) {
-    const token = name.toLowerCase();
-    if (seen.has(token) || index.documentFrequency[token] !== undefined)
-      continue;
-    seen.add(token);
-    out.push(name);
-  }
-  return out;
-}
-function unknownNamesNotice(names) {
-  if (names.length === 0)
-    return;
-  const listed = names.map((name) => "`" + name + "`").join(", ");
-  const [subject, verb, appear, them] = names.length === 1 ? ["That name", "does", "appears", "it"] : ["Those names", "do", "appear", "them"];
-  return `Note: ${listed} ${appear} nowhere in the indexed code, so nothing below matches ${them} \u2014 ` + `the results are ranked on the rest of the question. ${subject} ${verb} not exist under ` + "that spelling; check it, or consider that the code may live in a file the index leaves " + "out (the .github/ tree, generated output, lock files), which a `grep` would still find.";
-}
-var DOCUMENT_BUDGET = 1000;
-function passagesOf(path, text) {
-  const body = text.includes(`\r
-`) ? text.split(`\r
-`).join(`
-`) : text;
-  const out = [];
-  for (const piece of splitBodyWithOffsets(body)) {
-    out.push({
-      path,
-      text: piece.text,
-      startLine: lineAt(body, piece.start),
-      endLine: lineAt(body, piece.start + piece.text.length)
-    });
-  }
-  out.push({
-    path,
-    text: `${path.replace(/[/_.-]/g, " ")} ${path}`,
-    startLine: 1,
-    endLine: 1
-  });
-  return out;
-}
-function rankFiles(passages, scores, limit) {
-  const best = new Map;
-  for (let i = 0;i < passages.length; i += 1) {
-    const score = scores[i] ?? 0;
-    if (score <= 0)
-      continue;
-    const path = passages[i].path;
-    const current = best.get(path);
-    if (!current || current.score < score)
-      best.set(path, { passage: i, score });
-  }
-  return [...best.values()].sort((a, b) => b.score - a.score).slice(0, limit);
-}
-function documentFor(passage) {
-  return `${passage.path}
-${passage.text}`.slice(0, DOCUMENT_BUDGET);
-}
-function resultsOf(passages, matches, excerptBudget) {
-  return matches.map((match) => {
-    const passage = passages[match.passage];
-    return {
-      path: passage.path,
-      lines: `${passage.startLine}-${passage.endLine}`,
-      excerpt: passage.text.slice(0, excerptBudget).trim()
-    };
-  });
-}
-
-// src/adapters/runner/config.ts
-import { readFileSync } from "fs";
-
-// src/domain/delivery/merge-readiness.ts
-var CI_WOULD_BE_WASTED = new Set([
-  "not-open",
-  "draft",
-  "conflicting",
-  "behind",
-  "mergeability-unknown",
-  "checks-pending",
-  "checks-failing"
-]);
-var PASSING = new Set(["success", "neutral", "skipped"]);
-
-// src/domain/delivery/declared-secrets.ts
-var RUN_CREDENTIALS = [
-  "OPENAI_API_KEY",
-  "OPENROUTER_API_KEY",
-  "ORCAROUTER_API_KEY",
-  "ANTHROPIC_API_KEY",
-  "ATOMA_COPILOT_TOKEN",
-  "GH_TOKEN"
-];
-var AGENT_ENV_NAMES = [
-  "HOME",
-  "PATH",
-  "AGENT",
-  MACHINERY_ROOT_VAR,
-  "GITHUB_REPOSITORY",
-  "BRANCH",
-  "ISSUE_NUMBER",
-  "ISSUE_NOTIFY",
-  "ATOMATON_RUN_TYPE",
-  "ATOMATON_RELOAD_COUNT",
-  "ATOMATON_OPS_LOG",
-  "XDG_CACHE_HOME",
-  "XDG_CONFIG_HOME",
-  "XDG_DATA_HOME",
-  "BUN_INSTALL_CACHE_DIR",
-  "npm_config_cache",
-  "PIP_CACHE_DIR",
-  "CARGO_HOME",
-  "OPENAI_BASE_URL",
-  "ATOMA_PROVIDER"
-];
-var RUN_STEP_NAMES = [
-  "GITHUB_RUN_ID",
-  "OPENROUTER_BASE_URL",
-  "ORCAROUTER_BASE_URL",
-  "ANTHROPIC_BASE_URL",
-  "COPILOT_BASE_URL",
-  "ATOMA_PROVIDER_IN",
-  "OPENAI_BASE_URL_IN"
-];
-var TOOL_SECRETS = {
-  field: "tools.secrets",
-  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
-};
-var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
-var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
-var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
-
-// src/domain/delivery/check-jobs.ts
-var CHECKS_FROM_PULL_REQUEST = {
-  where: "checks.from_pull_request",
-  secrets: {
-    refused: "These commands come from the pull request, which may rewrite them, so a credential " + "named beside them is one the change being judged can read. Move the check to " + "`checks.from_default_branch`, where the commands come from a branch a person approved."
-  }
-};
-var NO_PULL_REQUEST_CHECKS = "This check verified nothing: `checks.from_pull_request` in .github/atomaton/config.yaml is empty, " + "so a pull request satisfying it has not been tested. Add the commands that check this project, " + "or point `checks.your_workflow` at a workflow of your own.";
-
-// src/adapters/runner/machinery.ts
-function machineryRoot() {
-  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
-}
-function machineryPath(relative) {
-  const root = machineryRoot();
-  return root ? `${root}/${relative}` : relative;
-}
-
-// src/adapters/runner/config.ts
-function configPath() {
-  return machineryPath(CONFIG_FILE);
-}
-var cached2;
-function loadConfig() {
-  if (!cached2) {
-    cached2 = Bun.YAML.parse(readFileSync(configPath(), "utf8"));
-  }
-  return cached2;
-}
-var DEFAULT_RERANKER = "onnx-community/bge-reranker-v2-m3-ONNX";
-function getRerankerModel() {
-  const settings = loadConfig().tools?.servers?.search?.settings;
-  return settings?.reranker_model?.trim() || DEFAULT_RERANKER;
-}
-
-// src/domain/machinery/model-cache.ts
-var MODEL_CACHE_DIR = "atomaton-transformers";
-
-// src/entrypoints/tools/mcp/search.ts
-import { readFileSync as readFileSync2 } from "fs";
-
-// src/adapters/github/gh.ts
-function run(cmd) {
-  const proc = Bun.spawnSync({
-    cmd,
-    stdout: "pipe",
-    stderr: "pipe"
-  });
-  return {
-    code: proc.exitCode ?? 1,
-    stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "",
-    stderr: proc.stderr ? proc.stderr.toString("utf8").trim() : ""
-  };
-}
-function ghCommand() {
-  const fake = (process.env.ATOMATON_FAKE_GH ?? "").trim();
-  return fake ? [process.execPath, fake] : ["gh"];
-}
-function gh(...args) {
-  return run([...ghCommand(), ...args]);
-}
-function gitRun(...args) {
-  return run(["git", ...args]);
-}
-function splitConcatenatedJson(text) {
-  const results = [];
-  let depth = 0;
-  let start = -1;
-  let inString = false;
-  let escaped = false;
-  for (let i = 0;i < text.length; i++) {
-    const c = text[i];
-    if (inString) {
-      if (escaped)
-        escaped = false;
-      else if (c === "\\")
-        escaped = true;
-      else if (c === '"')
-        inString = false;
-      continue;
-    }
-    if (c === '"') {
-      inString = true;
-      continue;
-    }
-    if (c === "{" || c === "[") {
-      if (depth === 0)
-        start = i;
-      depth++;
-    } else if (c === "}" || c === "]") {
-      depth--;
-      if (depth === 0 && start !== -1) {
-        results.push(JSON.parse(text.slice(start, i + 1)));
-        start = -1;
-      }
-    }
-  }
-  return results;
-}
-function ghPaginated(...args) {
-  const { code, stdout, stderr } = gh(...args, "--paginate");
-  if (code !== 0) {
-    throw new Error(`gh ${args.join(" ")} --paginate: ${stderr || stdout}`);
-  }
-  if (!stdout.trim())
-    return [];
-  const flat = [];
-  for (const page of splitConcatenatedJson(stdout)) {
-    if (Array.isArray(page))
-      flat.push(...page);
-  }
-  return flat;
-}
-
-// src/adapters/github/issue-index.ts
-var INDEX_BRANCH = "atomaton-index";
-var INDEX_PATH = "issue-index.json";
-var INDEX_VERSION = 2;
-function log(message) {
-  console.error(`[atomaton-search] ${message}`);
-}
-var MAX_BODY = 6000;
-var MAX_COMMENT = 3000;
-var MAX_COMMENTS_PER_ISSUE = 40;
-function ghJsonPaged(path) {
-  try {
-    return ghPaginated("api", path);
-  } catch (error) {
-    log(`WARN could not read ${path}: ${error.message}`);
-    return [];
-  }
-}
-function fetchIssues(repo, since) {
-  const sinceParam = since ? `&since=${encodeURIComponent(since)}` : "";
-  const raw = ghJsonPaged(`repos/${repo}/issues?state=all&per_page=100${sinceParam}`);
-  const issues = raw.filter((issue) => issue.pull_request === undefined);
-  if (issues.length === 0)
-    return [];
-  const byIssue = since ? new Map(issues.map((issue) => [issue.number, commentsOf(repo, issue.number)])) : allComments(repo);
-  return issues.map((issue) => ({
-    number: issue.number,
-    title: issue.title,
-    body: (issue.body ?? "").slice(0, MAX_BODY),
-    state: issue.state,
-    updatedAt: issue.updated_at,
-    comments: byIssue.get(issue.number) ?? []
-  }));
-}
-function allComments(repo) {
-  const comments = ghJsonPaged(`repos/${repo}/issues/comments?per_page=100`);
-  const byIssue = new Map;
-  for (const comment of comments) {
-    const number = Number(comment.issue_url.split("/").pop());
-    if (!Number.isInteger(number) || !comment.body)
-      continue;
-    const list = byIssue.get(number) ?? [];
-    if (list.length < MAX_COMMENTS_PER_ISSUE)
-      list.push(comment.body.slice(0, MAX_COMMENT));
-    byIssue.set(number, list);
-  }
-  return byIssue;
-}
-function commentsOf(repo, issue) {
-  return ghJsonPaged(`repos/${repo}/issues/${issue}/comments?per_page=100`).filter((comment) => comment.body).slice(0, MAX_COMMENTS_PER_ISSUE).map((comment) => (comment.body ?? "").slice(0, MAX_COMMENT));
-}
-function mergeIssues(stored, fresh) {
-  const byNumber = new Map(stored.map((issue) => [issue.number, issue]));
-  for (const issue of fresh)
-    byNumber.set(issue.number, issue);
-  return [...byNumber.values()].sort((a, b) => b.number - a.number);
-}
-function chunksFor(issues) {
-  const chunks = [];
-  for (const issue of issues) {
-    chunks.push({ issue: issue.number, source: "title", text: issue.title });
-    for (const part of splitBody(issue.body)) {
-      chunks.push({ issue: issue.number, source: "body", text: part });
-    }
-    issue.comments.forEach((comment, i) => {
-      for (const part of splitBody(comment)) {
-        chunks.push({ issue: issue.number, source: i + 1, text: part });
-      }
-    });
-  }
-  return chunks;
-}
-function newestTimestamp(issues, fallback) {
-  let newest = fallback;
-  for (const issue of issues)
-    if (issue.updatedAt > newest)
-      newest = issue.updatedAt;
-  return newest;
-}
-function withDerived(index) {
-  const chunks = chunksFor(index.issues);
-  const titles = new Map(index.issues.map((issue) => [issue.number, issue.title]));
-  const documents = chunks.map((chunk) => chunk.source === "title" ? chunk.text : `${titles.get(chunk.issue) ?? ""}
-${chunk.text}`);
-  return { ...index, chunks, bm25: buildIndex(documents) };
-}
-
-// src/entrypoints/machinery/lib/atomaton-data.ts
-function gitPipe(input, ...args) {
-  const proc = Bun.spawnSync({ cmd: ["git", ...args], stdin: Buffer.from(input), stdout: "pipe", stderr: "pipe" });
-  return { code: proc.exitCode ?? 1, stdout: proc.stdout ? proc.stdout.toString("utf8").trim() : "" };
-}
-function restoreFromBranch(branch, targetPath) {
-  if (gitRun("fetch", "origin", branch, "--depth=1").code !== 0)
-    return;
-  if (gitRun("cat-file", "-e", `origin/${branch}:${targetPath}`).code !== 0)
-    return;
-  const shown = gitRun("show", `origin/${branch}:${targetPath}`);
-  return shown.code === 0 ? shown.stdout : undefined;
-}
-function saveAsOnlyCommit(branch, targetPath, content, commitMessage) {
-  gitRun("config", "user.email", "action@github.com");
-  gitRun("config", "user.name", "GitHub Actions");
-  const blob = gitPipe(content, "hash-object", "-w", "--stdin");
-  if (blob.code !== 0)
-    return false;
-  const tree = gitPipe(`100644 blob ${blob.stdout}	${targetPath}
-`, "mktree");
-  if (tree.code !== 0)
-    return false;
-  const commit = gitPipe(commitMessage, "commit-tree", tree.stdout);
-  if (commit.code !== 0)
-    return false;
-  return gitRun("push", "--force", "origin", `${commit.stdout}:refs/heads/${branch}`).code === 0;
 }
 
 // src/entrypoints/tools/lib/harden.ts
@@ -18248,253 +17701,308 @@ function hardenCredentialHolder(log) {
     log(`also removed ${unreadable.length} PATH entries this process cannot inspect`);
 }
 
-// src/entrypoints/tools/mcp/search.ts
-var REPO = process.env.GITHUB_REPOSITORY ?? "";
-var CANDIDATES2 = 20;
-var DOCUMENT_BUDGET2 = 1800;
-var EXCERPT_BUDGET = 700;
-var SEARCH_SCHEMA = objectType({
-  query: stringType().min(1).describe([
-    "A whole question, in the language the issues are written in.",
-    "",
-    "Phrasing is the single biggest factor in whether the right issue comes back \u2014 a question found the answer twice as often as the keywords from the same question. Ask what you actually want to know, in one sentence, including the words you would use when explaining it to a person:",
-    "",
-    "  good: why does a branch get created at the first commit rather than up front",
-    "  poor: branch creation",
-    "",
-    "  good: is it already known that the reviewer cannot approve its own pull request",
-    "  poor: reviewer approve",
-    "",
-    "  good: has anyone tried using an embedding model for this search before",
-    "  poor: embedding",
-    "",
-    "Write it in the language this repository's issues are written in, which is the language of the issue in front of you \u2014 not necessarily the language you are being instructed in. The first stage matches characters rather than meaning, so a question in the wrong language finds nothing at all."
-  ].join(`
-`)),
-  limit: positiveInt("How many issues to return. Defaults to 3, which held the answer for every question measured. " + "At most 20: the ranking pipeline considers that many candidates, so a larger number returns 20.").max(CANDIDATES2).optional()
-});
-function log2(message) {
-  console.error(`[atomaton-search] ${message}`);
-}
-hardenCredentialHolder(log2);
-function currentIssue() {
-  const parsed = Number((process.env.ISSUE_NUMBER ?? "").trim());
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
-}
-function loadIndex() {
-  const stored = restoreFromBranch(INDEX_BRANCH, INDEX_PATH);
-  let previous;
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      if (parsed.version === INDEX_VERSION)
-        previous = parsed;
-      else
-        log2(`index format ${parsed.version} is not ${INDEX_VERSION}; rebuilding it`);
-    } catch {
-      log2("the stored index was not valid JSON; rebuilding it");
-    }
-  }
-  const since = previous?.updatedThrough;
-  const fresh = fetchIssues(REPO, since);
-  if (previous && fresh.length === 0) {
-    log2(`index current: ${previous.issues.length} issues, nothing changed since ${since}`);
-    return previous.bm25 && previous.chunks ? previous : withDerived(previous);
-  }
-  const issues = mergeIssues(previous?.issues ?? [], fresh);
-  log2(`index: ${issues.length} issues (${fresh.length} fetched${since ? ` since ${since}` : " \u2014 full build"})`);
-  const index = withDerived({
-    version: INDEX_VERSION,
-    updatedThrough: newestTimestamp(fresh, since ?? "1970-01-01T00:00:00Z"),
-    issues
-  });
-  if (!saveAsOnlyCommit(INDEX_BRANCH, INDEX_PATH, JSON.stringify(index), `atomaton: issue search index (${issues.length} issues)`)) {
-    report("warning", "could not save the search index; every search from here rebuilds it");
-  }
-  return index;
-}
-var loading;
-function loadReranker() {
-  if (loading)
-    return loading;
-  loading = loadRerankerOnce();
-  loading.catch(() => {
-    loading = undefined;
-  });
-  return loading;
-}
-function cacheDirectory() {
-  const base = process.env.XDG_CACHE_HOME?.trim() || "/tmp";
-  return `${base}/${MODEL_CACHE_DIR}`;
-}
-async function loadRerankerOnce() {
-  const { AutoTokenizer, AutoModelForSequenceClassification, env: transformersEnv } = await import("@huggingface/transformers");
-  transformersEnv.cacheDir = cacheDirectory();
-  log2(`model cache: ${transformersEnv.cacheDir}`);
-  const model = getRerankerModel();
-  const started = Date.now();
-  const tokenizer = await AutoTokenizer.from_pretrained(model);
-  const cross = await AutoModelForSequenceClassification.from_pretrained(model, { dtype: "q8" });
-  log2(`reranker ${model} loaded in ${((Date.now() - started) / 1000).toFixed(1)}s`);
-  return {
-    async score(query, documents) {
-      const scores = [];
-      for (let i = 0;i < documents.length; i += 8) {
-        const batch = documents.slice(i, i + 8);
-        const inputs = tokenizer(batch.map(() => query), {
-          text_pair: batch,
-          padding: true,
-          truncation: true,
-          max_length: 512
-        });
-        const { logits } = await cross(inputs);
-        scores.push(...logits.tolist().map((row) => row[0] ?? 0));
-      }
-      return scores;
-    }
-  };
-}
-function documentFor2(issue, passage) {
-  const head = `${issue.title}
-${passage}`.slice(0, DOCUMENT_BUDGET2);
-  const remaining = DOCUMENT_BUDGET2 - head.length;
-  return remaining > 200 ? `${head}
-${issue.body.slice(0, remaining)}` : head;
-}
-async function searchIssues(a) {
-  if (!REPO)
-    return "GITHUB_REPOSITORY is unset, so there is no repository to search.";
-  const index = loadIndex();
-  const chunks = index.chunks;
-  const bm25 = index.bm25;
-  if (!chunks?.length || !bm25)
-    return "The issue index is empty; there is nothing to search yet.";
-  const candidates = rankIssues(chunks, score(bm25, a.query), CANDIDATES2).filter((match) => match.issue !== currentIssue());
-  if (candidates.length === 0)
-    return `Nothing matched "${a.query}".`;
-  const byNumber = new Map(index.issues.map((issue) => [issue.number, issue]));
-  const documents = candidates.map((match) => documentFor2(byNumber.get(match.issue), chunks[match.chunk]?.text ?? ""));
-  let ordered = candidates;
-  try {
-    const scores = await (await loadReranker()).score(a.query, documents);
-    ordered = candidates.map((match, i) => [match, scores[i] ?? 0]).sort((x, y) => y[1] - x[1]).map(([match]) => match);
-  } catch (error) {
-    report("warning", `reranking failed (${error.message}); these results are first-stage ordered, not reranked`);
-  }
-  const limit = a.limit ?? 3;
-  const results = ordered.slice(0, limit).map((match) => {
-    const issue = byNumber.get(match.issue);
-    const chunk = chunks[match.chunk];
-    return {
-      number: match.issue,
-      title: issue.title,
-      state: issue.state,
-      url: `https://github.com/${REPO}/issues/${match.issue}`,
-      matched_in: locationOf(chunk?.source),
-      comment: typeof chunk?.source === "number" ? chunk.source : undefined,
-      excerpt: (chunk?.text ?? "").slice(0, EXCERPT_BUDGET).trim()
-    };
-  });
-  log2(`query ${JSON.stringify(a.query.slice(0, 60))} -> ${results.map((r) => `#${r.number}(${r.matched_in})`).join(", ")}`);
-  return JSON.stringify(results, null, 2);
-}
-function locationOf(source) {
-  if (typeof source === "number")
-    return `comment ${source}`;
-  return source === "title" ? "title" : "body";
-}
-var CODE_SCHEMA = objectType({
-  query: stringType().min(1).describe([
-    "A whole question about what the code does, in one sentence.",
-    "",
-    "Phrasing decides whether the answer comes back at all. Measured against this repository: 30 questions asked as sentences put the right file in the top five 70% of the time and in the top twenty 93.3%; the 142 regex patterns agents actually searched with reached 41.5% and 64.8%. Same index, same corpus \u2014 only the query changed.",
-    "",
-    "  good: where is the atomaton/in-progress label added to and removed from an issue",
-    "  good: how does a run decide the base branch for a stacked pull request",
-    "  bad:  in_progress label",
-    "  bad:  createLabel|labels.create|ensureLabel",
-    "",
-    "The last one is the mistake worth naming, because it is the one that actually happens: listing synonyms because you do not know what the thing is called. Ask for the behaviour instead \u2014 the words in a doc comment are prose, and prose is what this matches.",
-    "",
-    "In the language the code and its comments are written in. The first stage matches character bigrams, so a question in another language shares none with them and scores near zero \u2014 the answer never reaches the second stage, which would have recognised it."
-  ].join(`
-`)),
-  limit: positiveInt("How many files to return. Defaults to 3. Each carries a line range, so three of them is three places to read rather than three files to open.").optional()
-});
-function codePassages() {
-  const listed = gitRun("ls-files", "-z");
-  if (listed.code !== 0) {
-    log2(`could not list the tracked files: ${listed.stderr || listed.stdout}`);
-    return [];
-  }
-  const paths = corpusFrom(listed.stdout.split("\x00"));
-  const passages = [];
-  for (const file of paths) {
-    let text;
-    try {
-      text = readFileSync2(file, "utf8");
-    } catch {
-      continue;
-    }
-    passages.push(...passagesOf(file, text));
-  }
-  log2(`code index: ${paths.length} files, ${passages.length} passages`);
-  return passages;
-}
-async function searchCode(a) {
-  const passages = codePassages();
-  if (passages.length === 0) {
-    return "No tracked source files were found, so there is nothing to search. Read files directly instead.";
-  }
-  const bm25 = buildIndex(passages.map((p) => p.text));
-  const coverage = queryCoverage(bm25, a.query);
-  const unreachable = unreachableQueryReason(coverage);
-  if (unreachable !== undefined) {
-    log2(`code query rejected: ${Math.round(coverage * 100)}% of its words are in the corpus`);
-    return unreachable;
-  }
-  const candidates = rankFiles(passages, score(bm25, a.query), CANDIDATES);
-  if (candidates.length === 0) {
-    return `Nothing matched "${a.query}". Try the behaviour you are looking for in a whole sentence, in the language the code is written in.`;
-  }
-  let ordered = candidates;
-  try {
-    const documents = candidates.map((match) => documentFor(passages[match.passage]));
-    const scores = await (await loadReranker()).score(a.query, documents);
-    ordered = candidates.map((match, i) => [match, scores[i] ?? 0]).sort((x, y) => y[1] - x[1]).map(([match]) => match);
-  } catch (error) {
-    report("warning", `reranking failed (${error.message}); these code results are first-stage ordered, not reranked`);
-  }
-  const results = resultsOf(passages, ordered.slice(0, a.limit ?? 3), EXCERPT_BUDGET);
-  log2(`code query ${JSON.stringify(a.query.slice(0, 60))} -> ${results.map((r) => `${r.path}:${r.lines}`).join(", ")}`);
-  const missing = unknownNames(bm25, a.query);
-  const notice = unknownNamesNotice(missing);
-  if (notice !== undefined)
-    log2(`code query names nothing known: ${missing.join(", ")}`);
-  return notice === undefined ? JSON.stringify(results, null, 2) : `${notice}
+// src/domain/machinery/machinery-layout.ts
+var USER_ROOT = ".github/atomaton";
+var RUNTIME_ROOT = ".github/atomaton-runtime";
+var CONFIG_FILE = `${USER_ROOT}/config.yaml`;
+var AGENT_DEFINITIONS_DIR = `${USER_ROOT}/agent-definitions`;
+var PROMPT_TEMPLATE = `${USER_ROOT}/prompt-template.md`;
+var SKILLS_DIR = `${USER_ROOT}/skills`;
+var TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
+var TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
+var DELEGATES_DIR = `${TOOLS_DIR}/delegates`;
+var TOOL_HOOKS_DIR = `${TOOLS_DIR}/hooks`;
+var TOOL_PACKAGES_FILE = `${TOOLS_DIR}/packages.json`;
+var RULESETS_DIR = `${USER_ROOT}/rulesets`;
+var SCRIPTS_DIR = `${RUNTIME_ROOT}/scripts`;
+var MACHINERY_ROOT_VAR = "ATOMATON_MACHINERY_ROOT";
 
-${JSON.stringify(results, null, 2)}`;
+// src/adapters/runner/machinery.ts
+function machineryRoot() {
+  return process.env[MACHINERY_ROOT_VAR]?.trim() || undefined;
 }
-var { tools, dispatch: rawDispatch } = buildMcpTools([
+function machineryPath(relative) {
+  const root = machineryRoot();
+  return root ? `${root}/${relative}` : relative;
+}
+
+// src/shared/tool-output.ts
+var TOOL_OUTPUT_BUDGET = 50000;
+var TOOL_OUTPUT_BACKSTOP = TOOL_OUTPUT_BUDGET * 2;
+function capText(text, budget = TOOL_OUTPUT_BUDGET, keep = "head") {
+  if (text.length <= budget)
+    return { text, dropped: 0 };
+  const note = (where, howMany) => `
+
+[${howMany} characters ${where}; ${budget} shown]
+
+`;
+  const room = budget - note("dropped from the middle", text.length).length;
+  const dropped = text.length - room;
+  if (room <= 0)
+    return { text: keep === "tail" ? text.slice(-budget) : text.slice(0, budget), dropped: text.length - budget };
+  if (keep === "tail") {
+    return { text: note("dropped from the start", dropped).trimStart() + text.slice(-room), dropped };
+  }
+  if (keep === "head") {
+    return { text: text.slice(0, room) + note("dropped from the end", dropped).trimEnd(), dropped };
+  }
+  const head = Math.floor(room / 4);
+  const tail = room - head;
+  return { text: text.slice(0, head) + note("dropped from the middle", dropped) + text.slice(-tail), dropped };
+}
+
+// src/domain/delivery/declared-secrets.ts
+var RUN_CREDENTIALS = [
+  "OPENAI_API_KEY",
+  "OPENROUTER_API_KEY",
+  "ORCAROUTER_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "ATOMA_COPILOT_TOKEN",
+  "GH_TOKEN"
+];
+var AGENT_ENV_NAMES = [
+  "HOME",
+  "PATH",
+  "AGENT",
+  MACHINERY_ROOT_VAR,
+  "GITHUB_REPOSITORY",
+  "BRANCH",
+  "ISSUE_NUMBER",
+  "ISSUE_NOTIFY",
+  "ATOMATON_RUN_TYPE",
+  "ATOMATON_RELOAD_COUNT",
+  "ATOMATON_OPS_LOG",
+  "XDG_CACHE_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "BUN_INSTALL_CACHE_DIR",
+  "npm_config_cache",
+  "PIP_CACHE_DIR",
+  "CARGO_HOME",
+  "OPENAI_BASE_URL",
+  "ATOMA_PROVIDER"
+];
+var RUN_STEP_NAMES = [
+  "GITHUB_RUN_ID",
+  "OPENROUTER_BASE_URL",
+  "ORCAROUTER_BASE_URL",
+  "ANTHROPIC_BASE_URL",
+  "COPILOT_BASE_URL",
+  "ATOMA_PROVIDER_IN",
+  "OPENAI_BASE_URL_IN"
+];
+var TOOL_SECRETS = {
+  field: "tools.secrets",
+  reserved: new Set([...RUN_CREDENTIALS, ...AGENT_ENV_NAMES, ...RUN_STEP_NAMES])
+};
+var JOB_ENV = ["ATOMATON_COMMANDS", "GH_TOKEN"];
+var CHECK_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_PR_TREE"]);
+var DEPLOY_JOB_RESERVED = new Set([...JOB_ENV, "ATOMATON_DEPLOY_TARGET"]);
+
+// src/shared/redaction.ts
+var PATTERNS = [
+  /\bsk-[A-Za-z0-9_-]{16,}/g,
+  /\bsk-ant-[A-Za-z0-9_-]{16,}/g,
+  /\bgh[pousr]_[A-Za-z0-9]{16,}/g,
+  /\bgithub_pat_[A-Za-z0-9_]{20,}/g,
+  /\bAKIA[0-9A-Z]{16}\b/g,
+  /\bASIA[0-9A-Z]{16}\b/g,
+  /\bxox[abposr]-[A-Za-z0-9-]{10,}/g,
+  /\bAIza[0-9A-Za-z_-]{35}\b/g,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/g
+];
+var REDACTED = "[redacted]";
+var MIN_LITERAL_LENGTH = 12;
+function literalsFrom(env, names) {
+  return names.map((name) => env[name] ?? "").filter((value) => value.length >= MIN_LITERAL_LENGTH).sort((a, b) => b.length - a.length);
+}
+function redact(text, literals = []) {
+  let out = text;
+  for (const literal of literals)
+    out = out.split(literal).join(REDACTED);
+  for (const pattern of PATTERNS)
+    out = out.replace(pattern, REDACTED);
+  return out;
+}
+
+// src/entrypoints/tools/mcp/delegate.ts
+function log(message) {
+  console.error(`[atomaton-delegate] ${message}`);
+}
+hardenCredentialHolder(log);
+function defaultDelegatesDir() {
+  return join(dirname(fileURLToPath(import.meta.url)), "..", "delegates");
+}
+function readToolsFile(path) {
+  let parsed;
+  try {
+    parsed = Bun.YAML.parse(readFileSync(path, "utf8"));
+  } catch (e) {
+    const message = e.message;
+    console.error(`[atomaton-delegate] could not read ${path}: ${message}`);
+    process.exit(2);
+  }
+  const out = {};
+  const watch = parsed.watch ?? {};
+  if (Object.keys(watch).length > 0)
+    out.hooks = watch;
+  for (const [name, server] of Object.entries(parsed.servers ?? {})) {
+    out[name] = { max_output_chars: TOOL_OUTPUT_BACKSTOP, ...server };
+  }
+  return out;
+}
+var { values } = parseArgs({
+  args: Bun.argv.slice(2),
+  options: {
+    "agent-def": { type: "string" },
+    "tools-file": { type: "string" },
+    "delegates-dir": { type: "string" }
+  }
+});
+var DELEGATES_DIR2 = values["delegates-dir"] ? resolve(machineryPath(values["delegates-dir"])) : defaultDelegatesDir();
+var AGENT_DEF_FILE = values["agent-def"] ?? "delegate.md";
+var TOOLS_FILE = values["tools-file"] ? resolve(machineryPath(values["tools-file"])) : join(DELEGATES_DIR2, `${AGENT_DEF_FILE.replace(/\.md$/, "")}.tools.yaml`);
+var SUB_RUN_TOOLS = readToolsFile(TOOLS_FILE);
+var SUB_RUN_SERVERS = Object.keys(SUB_RUN_TOOLS).filter((name) => name !== "hooks");
+if (SUB_RUN_SERVERS.length === 0) {
+  console.error(`[atomaton-delegate] ${TOOLS_FILE} declares no servers; refusing to start`);
+  process.exit(2);
+}
+var CAN_WRITE = SUB_RUN_SERVERS.includes("files");
+var SUB_RUN_MAX_RUNTIME_SECS = 600;
+var WRAPPER_TIMEOUT_MS = (SUB_RUN_MAX_RUNTIME_SECS + 60) * 1000;
+var PROVIDER_CREDENTIALS = RUN_CREDENTIALS.filter((name) => name !== "GH_TOKEN");
+var SECRET_LITERALS = literalsFrom(process.env, RUN_CREDENTIALS);
+var DELEGATE_RUN_SCHEMA = objectType({
+  task: stringType().min(1).describe("What to do, as an instruction to the delegate. One small piece of work: read and report, " + "search and report, make one change, run one command. It cannot reach GitHub, cannot open " + "an issue or a pull request, and cannot delegate further."),
+  context: stringType().optional().describe("Background the delegate needs and cannot find for itself: which files to look at, what is " + "already known, what has been ruled out. It starts with no memory of this conversation.")
+});
+function buildPrompt(task, context) {
+  const trimmed = (context ?? "").trim();
+  if (!trimmed)
+    return task.trim();
+  return `${task.trim()}
+
+## Context
+
+${trimmed}`;
+}
+function providerCredentials(env) {
+  const out = {};
+  for (const name of PROVIDER_CREDENTIALS) {
+    const value = env[name];
+    if (value)
+      out[name] = value;
+  }
+  return out;
+}
+function subRunEnv(env) {
+  const out = {};
+  for (const [name, value] of Object.entries(env)) {
+    if (value === undefined)
+      continue;
+    if (RUN_CREDENTIALS.includes(name))
+      continue;
+    out[name] = value;
+  }
+  return out;
+}
+function reportFrom(envelope) {
+  const response = (envelope.response ?? "").trim();
+  if (response)
+    return response;
+  const because = envelope.ended_because ?? "failed";
+  return `The delegate produced no report: the sub-run ended because of \`${because}\` ` + `after ${envelope.seconds ?? 0}s and ${envelope.iterations ?? 0} iteration(s). ` + "Nothing was returned to report. If the task needs longer than the sub-run's limit, " + "do the work here instead.";
+}
+async function handleDelegateRun(args) {
+  const credentials = providerCredentials(process.env);
+  if (Object.keys(credentials).length === 0) {
+    throw new Error("Cannot delegate: this run holds no provider credential, so the sub-run could not call a model. " + "Do the work here instead.");
+  }
+  const dir = mkdtempSync(join(tmpdir(), "atomaton-delegate-"));
+  const toolsFile = join(dir, "tools.yaml");
+  const credentialsFile = join(dir, "credentials.json");
+  try {
+    writeFileSync(toolsFile, Bun.YAML.stringify(SUB_RUN_TOOLS, null, 2));
+    writeFileSync(credentialsFile, JSON.stringify(credentials), { mode: 384 });
+    const agentDef = join(DELEGATES_DIR2, AGENT_DEF_FILE);
+    const prompt = buildPrompt(args.task, args.context);
+    log(`delegating: ${args.task.slice(0, 120).replace(/\s+/g, " ")}`);
+    const child = Bun.spawn([
+      "atoma",
+      "run",
+      "--agent-def",
+      agentDef,
+      "--credentials-file",
+      credentialsFile,
+      "--tools-file",
+      toolsFile,
+      "--max-runtime-secs",
+      String(SUB_RUN_MAX_RUNTIME_SECS),
+      "--output",
+      "json"
+    ], {
+      cwd: process.cwd(),
+      env: subRunEnv(process.env),
+      stdin: "pipe",
+      stdout: "pipe",
+      stderr: "pipe"
+    });
+    if (!child.stdin)
+      throw new Error("the sub-run's stdin is unavailable");
+    child.stdin.write(prompt);
+    child.stdin.end();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill();
+    }, WRAPPER_TIMEOUT_MS);
+    const [exitCode, stdout, stderr] = await Promise.all([
+      child.exited,
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text()
+    ]).finally(() => clearTimeout(timer));
+    const safeErr = redact(stderr, SECRET_LITERALS);
+    if (timedOut) {
+      log(`sub-run killed after ${WRAPPER_TIMEOUT_MS}ms`);
+      return `The delegate was stopped after ${Math.round(WRAPPER_TIMEOUT_MS / 1000)}s without finishing. ` + "Nothing was returned to report. If the task needs longer, do the work here instead.";
+    }
+    const lastLine = stdout.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).pop();
+    if (!lastLine) {
+      log(`sub-run exited ${exitCode} with no output`);
+      return `The delegate produced no output (exit ${exitCode}). ` + (safeErr.trim() ? `It reported: ${capText(safeErr.trim(), 2000, "tail").text}` : "It reported nothing.");
+    }
+    let envelope;
+    try {
+      envelope = JSON.parse(lastLine);
+    } catch {
+      log(`sub-run exited ${exitCode} with unparseable output`);
+      return capText(redact(stdout, SECRET_LITERALS).trim(), TOOL_OUTPUT_BUDGET, "both").text;
+    }
+    const report = reportFrom(envelope);
+    log(`sub-run ended: ${envelope.ended_because ?? "?"} in ${envelope.seconds ?? 0}s`);
+    return capText(report, TOOL_OUTPUT_BUDGET, "both").text;
+  } finally {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch (e) {
+      const message = e.message;
+      log(`could not remove ${dir}: ${message}`);
+    }
+  }
+}
+var { tools, dispatch } = buildMcpTools([
   defineMcpTool({
-    name: "search_issues",
-    description: "Search this repository's issues and their discussion by meaning, not by keyword. Ask a whole question \u2014 'why does a branch get created at the first commit rather than up front' \u2014 and the issues that answer it come back, most relevant first, with an excerpt. Use it to find why something is the way it is, whether a problem is already known, or whether the work has been attempted before; the comments are usually where the decision was argued, and they are searched too. Read `query` before calling: how the question is phrased, and what language it is in, decide whether the answer comes back at all. The issue this run is working on is excluded from the results, since you can read it directly \u2014 so a decision recorded there will not appear here.",
-    schema: SEARCH_SCHEMA,
-    handler: searchIssues
-  }),
-  defineMcpTool({
-    name: "search_code",
-    description: "Find the code that answers a question about what this project does, by meaning rather than by matching text. Ask a whole question \u2014 'how does a run decide the base branch for a stacked pull request' \u2014 and the files that answer it come back, most relevant first, each with the line range and an excerpt, so the next step is reading forty lines rather than a whole file. Use it when you do not know where something lives or what it is called; use a `grep` when you know the exact string and want every place it appears. Read `query` before calling: how the question is phrased decides whether the answer comes back at all, and listing synonyms because you do not know the name is the one phrasing that fails. The index is built from the tracked files at the moment you call, so a file this run has already edited is current.",
-    schema: CODE_SCHEMA,
-    handler: searchCode
+    name: "run",
+    description: "Do one small piece of work in a separate run and return what it found. Use it for reading, " + "searching and changing files, and for running one command to answer a question \u2014 the work " + "whose transcript you do not want in this session. " + "The delegate starts with NO memory of this conversation: put everything it needs in `task` " + "and `context`, including which files to look at. " + "It CANNOT reach GitHub \u2014 no issues, no pull requests, no comments \u2014 cannot dispatch anything, " + "and cannot delegate further. " + (CAN_WRITE ? "It works in the same tree, so a change it makes is a change you will commit. " : "It CANNOT change anything: it reads and searches only, and a change it was asked to make " + "comes back as a description rather than as an edit. ") + "It has a ten-minute limit and no session: it runs once and returns one report, and nothing " + "resumes it. If the task is larger than that, do it here instead.",
+    schema: DELEGATE_RUN_SCHEMA,
+    handler: handleDelegateRun
   })
 ]);
-var dispatch = withoutBookkeeping(rawDispatch, ["search_issues"]);
 async function main() {
-  loadReranker().catch((error) => {
-    report("warning", `could not preload the reranker (${error.message}); the first search will try again`);
-  });
-  await serveMcpServer({ name: "atomaton-search-mcp", version: "1.0.0", tools, dispatch, log: log2 });
+  log(`Starting atomaton-delegate-mcp-server (stdio transport): servers=${SUB_RUN_SERVERS.join(",")} def=${AGENT_DEF_FILE}`);
+  await serveMcpServer({ name: "atomaton-delegate-mcp", version: "1.0.0", tools, dispatch, log });
 }
 if (import.meta.main)
   main();

@@ -24,10 +24,10 @@ permissions:
 jobs:
   parse:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
     outputs:
       parent_issue: ${{ steps.parse-metadata.outputs.parent_number }}
       sub_issue: ${{ steps.parse-metadata.outputs.sub_number }}
+    if: github.event.pull_request.merged == true
     steps:
       - uses: actions/checkout@v4
       - name: Setup Bun
@@ -44,9 +44,9 @@ jobs:
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/parse_pr_metadata.ts"
   resolve-parent:
     runs-on: ubuntu-latest
-    if: needs.parse.outputs.sub_issue != ''
     outputs:
       parent_issue: ${{ steps.resolve.outputs.parent_issue }}
+    if: needs.parse.outputs.sub_issue != ''
     needs:
       - parse
     steps:
@@ -86,9 +86,9 @@ jobs:
             "PR #${PR_NUMBER} merged: ${PR_TITLE} (${PR_URL})"
   aggregate-sub-issues:
     runs-on: ubuntu-latest
-    if: needs.resolve-parent.outputs.parent_issue != ''
     env:
       GH_TOKEN: ${{ github.token }}
+    if: needs.resolve-parent.outputs.parent_issue != ''
     needs:
       - resolve-parent
       - parse

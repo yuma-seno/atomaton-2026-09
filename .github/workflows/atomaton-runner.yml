@@ -166,14 +166,13 @@ jobs:
         uses: oven-sh/setup-bun@v2
       - name: Resolve the issue's branch
         id: issue-branch
-        if: inputs.type == 'issue'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_issue_branch.ts" --repo "${{ github.repository }}" --issue "${{ inputs.number }}"
-      - name: Check out the branch this run starts from
         if: inputs.type == 'issue'
+      - name: Check out the branch this run starts from
         shell: bash
         env:
           BRANCH_NAME: ${{ steps.issue-branch.outputs.branch }}
@@ -186,16 +185,16 @@ jobs:
           fi
           git fetch origin "refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
           git checkout -B "${BRANCH_NAME}" "refs/remotes/origin/${BRANCH_NAME}"
+        if: inputs.type == 'issue'
       - name: Resolve the pull request's head branch
         id: pr-branch
-        if: inputs.type == 'pr'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/resolve_pr_branch.ts" --repo "${{ github.repository }}" --number "${{ inputs.number }}"
-      - name: Check out the pull request's head branch
         if: inputs.type == 'pr'
+      - name: Check out the pull request's head branch
         shell: bash
         env:
           BRANCH_NAME: ${{ steps.pr-branch.outputs.branch }}
@@ -228,6 +227,7 @@ jobs:
           fi
           echo "BRANCH=${BRANCH_NAME}" >> $GITHUB_ENV
           echo "on the pull request's head branch: ${BRANCH_NAME}"
+        if: inputs.type == 'pr'
       - name: Cache MCP server package downloads
         with:
           path: ~/.npm
@@ -497,15 +497,14 @@ jobs:
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/reconcile_github_session.ts" --events "${RUNNER_TEMP}/atomaton-run/events.json" --agent-name "${{ inputs.agent }}" --agent-def "${ATOMATON_MACHINERY_ROOT}/.github/atomaton/agent-definitions/${{ inputs.agent }}.md" --session "${RUNNER_TEMP}/atomaton-run/session.json" --out "${RUNNER_TEMP}/atomaton-run/session.json"
       - name: Add atomaton/in-progress label
-        if: steps.context.outputs.new_event_count != '0'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_in_progress_label.ts" --action "add" --number "${NUMBER}"
+        if: steps.context.outputs.new_event_count != '0'
       - name: Post agent-start comment
-        if: steps.context.outputs.new_event_count != '0' && inputs.type == 'pr'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -514,6 +513,7 @@ jobs:
         run: |
           gh issue comment "$NUMBER" --body "<!-- atomaton:llm-context=exclude -->
           Atomaton: ${AGENT} starting."
+        if: steps.context.outputs.new_event_count != '0' && inputs.type == 'pr'
       - name: Put the tool servers on a user without sudo
         shell: bash
         run: |
@@ -693,7 +693,6 @@ jobs:
           # supplies, and this step's own user keeps none of them afterwards.
           sudo chown atomaton-tools "$RUNNER_TEMP/atomaton-credentials/credentials.json"
       - name: Watch for a stop request
-        if: steps.context.outputs.new_event_count != '0'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -703,9 +702,9 @@ jobs:
           nohup bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/watch_for_stop.ts" --number "${NUMBER}" --stop-file "${RUNNER_TEMP}/atomaton-run/stop-requested" --since "${SINCE}" > "${RUNNER_TEMP}/atomaton-run/stop-watch.log" 2>&1 &
           echo $! > "${RUNNER_TEMP}/atomaton-run/stop-watch.pid"
           echo "watching #${NUMBER} for /stop since ${SINCE}"
+        if: steps.context.outputs.new_event_count != '0'
       - name: Run agent
         id: atoma
-        if: steps.context.outputs.new_event_count != '0'
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ steps.fetch.outputs.resolved_number }}
@@ -901,8 +900,8 @@ jobs:
             CHANGED=true
           fi
           echo "changed=${CHANGED}" >> "$GITHUB_OUTPUT"
+        if: steps.context.outputs.new_event_count != '0'
       - name: Write token usage summary
-        if: always()
         shell: bash
         run: |
           USAGE_LINE=$(grep -m1 "ATOMA_TOKEN_USAGE:" "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt" 2>/dev/null || true)
@@ -922,39 +921,39 @@ jobs:
             echo "|------------|--------|--------|------------|-------|"
             echo "| ${{ inputs.agent }} | ${PROMPT:-—} | ${CACHED:-—} | ${COMPLETION:-—} | ${TOTAL:-—} |"
           } >> "$GITHUB_STEP_SUMMARY"
+        if: always()
       - name: Post result comment
         id: post-result
-        if: steps.atoma.outcome == 'success' && steps.context.outputs.new_event_count != '0'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/post_result_comment.ts" --number "${{ inputs.number }}" --agent "${{ inputs.agent }}" --type "${{ inputs.type }}" --notify "${{ steps.notify.outputs.notify }}" --directive "${{ steps.atoma.outputs.directive }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --reported "${{ steps.atoma.outputs.reported }}" --messages-before "${{ steps.context.outputs.messages_before }}" --changed "${{ steps.atoma.outputs.changed }}" --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --session "${RUNNER_TEMP}/atomaton-run/session.json" --output "${RUNNER_TEMP}/atomaton-run/atomaton_output.txt" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
+        if: steps.atoma.outcome == 'success' && steps.context.outputs.new_event_count != '0'
       - name: Record run metadata
-        if: steps.atoma.outcome == 'success' && steps.post-result.outputs.comment_id != ''
         shell: bash
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/record_run_metadata.ts" --session "${RUNNER_TEMP}/atomaton-run/session.json" --comment-id "${{ steps.post-result.outputs.comment_id }}" --agent "${{ inputs.agent }}" --snapshot-hash "${{ steps.context.outputs.context_snapshot_hash }}" --event-count "${{ steps.context.outputs.context_event_count }}" --type "${{ steps.fetch.outputs.resolved_type }}" --resolved-number "${{ steps.fetch.outputs.resolved_number }}"
+        if: steps.atoma.outcome == 'success' && steps.post-result.outputs.comment_id != ''
       - name: Save session to atomaton-data branch
-        if: always() && steps.atoma.outcome != 'skipped'
         shell: bash
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/save_agent_session.ts" --session "${RUNNER_TEMP}/atomaton-run/session.json" --type "${{ steps.fetch.outputs.resolved_type }}" --number "${{ steps.fetch.outputs.resolved_number }}" --agent "${{ inputs.agent }}"
+        if: always() && steps.atoma.outcome != 'skipped'
       - name: Save the agent's workspace
-        if: steps.atoma.outcome == 'success'
         shell: bash
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/save_workspace.ts" --root-issue "${{ steps.workspace.outputs.root_issue }}" --source "/tmp/atomaton-workspace" --agent "${{ inputs.agent }}"
+        if: steps.atoma.outcome == 'success'
       - name: Write the metrics report
-        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/write_metrics_report.ts"
+        if: always()
       - name: Report failure
-        if: always() && job.status != 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -964,16 +963,16 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/report_run_failure.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --run-url "${RUN_URL}" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt"
+        if: always() && job.status != 'success'
       - name: Check for uncommitted changes
         id: dirty
-        if: steps.atoma.outcome == 'success'
         shell: bash
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
+        if: steps.atoma.outcome == 'success'
       - name: Report configuration findings atoma made
-        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -981,13 +980,13 @@ jobs:
         run: |
           AGENT=$(bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/get_config_value.ts" "agents.on_config_finding" "")
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/report_config_findings.ts" --repo "${REPO}" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt" --agent "${AGENT}"
+        if: always()
       - name: Inject uncommitted changes into session
-        if: steps.dirty.outputs.has_changes == 'true'
         shell: bash
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/inject_uncommitted_notice.ts" --session "${RUNNER_TEMP}/atomaton-run/session.json"
+        if: steps.dirty.outputs.has_changes == 'true'
       - name: Notify that the run reached its limit
-        if: steps.atoma.outputs.ended_because == 'runtime' || steps.atoma.outputs.ended_because == 'iterations'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -996,30 +995,30 @@ jobs:
           AGENT: ${{ inputs.agent }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/notify_limit_reached.ts" --number "${NUMBER}" --agent "${AGENT}" --notify "${NOTIFY}" --session "${RUNNER_TEMP}/atomaton-run/session.json"
+        if: steps.atoma.outputs.ended_because == 'runtime' || steps.atoma.outputs.ended_because == 'iterations'
       - name: Manage auto-dispatch loop control
         id: loop-control
-        if: steps.atoma.outcome == 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_dispatch_loop.ts" --number "${{ inputs.number }}"
+        if: steps.atoma.outcome == 'success'
       - name: Decide how this turn ended
         id: turn-ending
-        if: always()
         shell: bash
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/decide_turn_ending.ts" --outcome "${{ steps.atoma.outcome }}" --ended-because "${{ steps.atoma.outputs.ended_because }}" --loop-limit-reached "${{ steps.loop-control.outputs.loop_limit_reached }}" --chain-continues "${{ steps.atoma.outputs.chain_continues }}" --directive "${{ steps.atoma.outputs.directive }}" --reported "${{ steps.atoma.outputs.reported }}"
+        if: always()
       - name: Remove atomaton/in-progress label on completion
-        if: always() && steps.turn-ending.outputs.should_release == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_in_progress_label.ts" --action "remove" --number "${NUMBER}"
+        if: always() && steps.turn-ending.outputs.should_release == 'true'
       - name: Dispatch next agent
-        if: steps.turn-ending.outputs.dispatch_to != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1030,8 +1029,8 @@ jobs:
           NOTIFY: ${{ steps.notify.outputs.notify }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_agent.ts" --agent "${DIRECTIVE}" --number "${NUMBER}" --type "${TYPE}" --notify "${NOTIFY}" --context "the agent on ${TYPE} #${NUMBER} handed off to ${DIRECTIVE}"
+        if: steps.turn-ending.outputs.dispatch_to != ''
       - name: Comment on loop limit reached
-        if: steps.turn-ending.outputs.chain_over_to != ''
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -1058,3 +1057,4 @@ jobs:
             gh issue comment "$NUMBER" --body-file "$BD"
             rm -f "$BD"
           fi
+        if: steps.turn-ending.outputs.chain_over_to != ''

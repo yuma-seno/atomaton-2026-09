@@ -69,9 +69,6 @@ jobs:
           bun run "$PLANNER" --arm default-branch
   pull-request-checks:
     name: pull-request-checks (${{ matrix.name }})
-    needs:
-      - plan-pull-request-checks
-    if: ${{ needs.plan-pull-request-checks.outputs.jobs != '[]' }}
     runs-on: ${{ fromJSON(matrix.runs_on) }}
     timeout-minutes: 30
     permissions:
@@ -80,6 +77,9 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan-pull-request-checks.outputs.jobs) }}
+    if: needs.plan-pull-request-checks.outputs.jobs != '[]'
+    needs:
+      - plan-pull-request-checks
     steps:
       - name: Checkout the pull request
         uses: actions/checkout@v4
@@ -108,9 +108,6 @@ jobs:
           done
   default-branch-checks:
     name: default-branch-checks (${{ matrix.name }})
-    needs:
-      - plan-default-branch-checks
-    if: ${{ needs.plan-default-branch-checks.outputs.jobs != '[]' }}
     runs-on: ${{ fromJSON(matrix.runs_on) }}
     timeout-minutes: 30
     permissions:
@@ -119,6 +116,9 @@ jobs:
       fail-fast: false
       matrix:
         include: ${{ fromJSON(needs.plan-default-branch-checks.outputs.jobs) }}
+    if: needs.plan-default-branch-checks.outputs.jobs != '[]'
+    needs:
+      - plan-default-branch-checks
     steps:
       - name: Checkout the default branch, whose commands these are
         uses: actions/checkout@v4
@@ -218,15 +218,15 @@ jobs:
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/check_live_tools.ts"
   atomaton-check:
-    needs:
-      - pull-request-checks
-      - default-branch-checks
-      - atomaton-tools
-    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
+    if: always()
+    needs:
+      - pull-request-checks
+      - default-branch-checks
+      - atomaton-tools
     steps:
       - name: Report the verdict of every check job
         shell: bash
