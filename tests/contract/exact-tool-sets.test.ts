@@ -28,6 +28,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { EXACT_TOOL_SETS } from "../../src/domain/machinery/effective-tools.ts";
+import { DELEGATES_DIR } from "../../src/domain/machinery/machinery-layout.ts";
 
 interface ShippedServer {
   command?: string;
@@ -112,4 +113,50 @@ describe("the live check's expectation", () => {
         "here would make it agree with whatever the allowlist has become",
     ).toBe(false);
   });
+});
+
+/**
+ * The delegate's paths, held to the one rule that decides whether it starts.
+ *
+ * `mcp/delegate.ts` resolves `--delegates-dir` and `--tools-file` with
+ * `machineryPath()`, which is the single place that reads `ATOMATON_MACHINERY_ROOT`.
+ * A value in `defaults.yaml` that already carries the root is therefore prefixed
+ * twice — `<root>/<root>/.github/...` — and the server refuses to start, which is
+ * what happened on the release that first shipped these two entries.
+ *
+ * The script path in the same entry is the opposite case and is why this is a test
+ * rather than a rule about "no root in defaults.yaml": nothing resolves that one but
+ * the shell, so it must carry the root itself.
+ */
+describe("the delegate entries' paths", () => {
+  const DELEGATES = ["delegate", "delegate_readonly"];
+
+  /** The value that follows `flag` in an entry's `args`, or undefined. */
+  function argAfter(server: ShippedServer, flag: string): string | undefined {
+    const args = server.args ?? [];
+    const at = args.indexOf(flag);
+    return at === -1 ? undefined : args[at + 1];
+  }
+
+  for (const name of DELEGATES) {
+    test(`${name} passes --delegates-dir layout-relative, not root-prefixed`, () => {
+      const value = argAfter(servers[name] ?? {}, "--delegates-dir");
+      expect(value, `${name} no longer passes --delegates-dir`).toBeDefined();
+      expect(
+        value,
+        `${name}'s --delegates-dir is resolved by machineryPath() in mcp/delegate.ts, so it must be ` +
+          `the layout-relative path. A value carrying ATOMATON_MACHINERY_ROOT is prefixed twice and ` +
+          `the server will not start.`,
+      ).toBe(DELEGATES_DIR);
+    });
+
+    test(`${name}'s script path carries the root, because nothing else resolves it`, () => {
+      const script = (servers[name]?.args ?? [])[1] ?? "";
+      expect(
+        script,
+        `${name}'s script path is handed to the shell, which does not read ATOMATON_MACHINERY_ROOT; ` +
+          `it must carry the root itself.`,
+      ).toContain("${ATOMATON_MACHINERY_ROOT:-.}");
+    });
+  }
 });
