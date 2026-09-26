@@ -5,11 +5,11 @@ import { AGENT_TAG } from "../../adapters/github/tags.ts";
 const from = (agent: string) => `${AGENT_TAG.write(agent)}\nwork happened`;
 
 describe("resolve_resume_agent.ts", () => {
-  // An issue worked by an orchestrator and then an engineer must resume the
+  // An issue worked by an atomaton and then an engineer must resume the
   // engineer. Reading in chronological order would resume whoever went first, for
   // the whole life of the issue.
   test("takes the agent from the most recent comment that names one", () => {
-    expect(mostRecentAgent([from("orchestrator"), "a human comment", from("engineer")])).toBe("engineer");
+    expect(mostRecentAgent([from("atomaton"), "a human comment", from("engineer")])).toBe("engineer");
   });
 
   test("skips comments that name no agent", () => {

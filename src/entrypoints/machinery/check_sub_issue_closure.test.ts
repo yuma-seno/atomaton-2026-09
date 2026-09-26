@@ -58,7 +58,7 @@ describe("check_sub_issue_closure.ts", () => {
   /**
    * The distinction the old version could not make. It read the parent out of the
    * webhook payload, so "no tag" and "could not look" were the same answer — and the
-   * quiet one skipped the aggregation, leaving an orchestrator nothing would ever
+   * quiet one skipped the aggregation, leaving an atomaton nothing would ever
    * re-invoke.
    */
   test("a parent that could not be read fails rather than passing as 'not a sub-issue'", () => {

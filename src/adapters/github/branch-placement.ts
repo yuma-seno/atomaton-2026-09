@@ -116,7 +116,7 @@ export function resolveBranch(): string {
  * So they stack: each is cut from the parent's branch and merges back into it,
  * and the parent's branch reaches the base as one reviewed change. The parent's
  * branch is created here, empty, if the first child gets there first — an
- * orchestrator plans and dispatches without committing, so its branch would
+ * atomaton plans and dispatches without committing, so its branch would
  * otherwise not exist yet.
  *
  * Best-effort throughout. Every failure returns "" and the work is cut from the

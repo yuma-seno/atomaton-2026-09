@@ -54,6 +54,7 @@ import { ref as decideTurnEndingRef } from "../entrypoints/machinery/decide_turn
 import { ref as dispatchAgentRef } from "../entrypoints/machinery/dispatch_agent.ts";
 import { runCredentialEnv, secretNamesStep, secretSlotEnv } from "./actions/secret-slots.ts";
 import { ref as reportRunFailureRef } from "../entrypoints/machinery/report_run_failure.ts";
+import { ref as reportConfigFindingsRef } from "../entrypoints/machinery/report_config_findings.ts";
 import { ref as writeCredentialsFileRef } from "../entrypoints/machinery/write_credentials_file.ts";
 import { ref as watchForStopRef } from "../entrypoints/machinery/watch_for_stop.ts";
 import { AGENT_NAME_PATTERN } from "../domain/work/agent-name.ts";
@@ -864,7 +865,7 @@ ${scriptCommandWithArgs(extractDirectiveRef, { "output-file": `${RUN_DIR}/atomat
 
 # Detect whether a tool call already triggered an automatic follow-up
 # dispatch during this run (atomaton__launch_sub_agent, github__create_pr ->
-# reviewer, github__merge_pr -> orchestrator-or-re-invoked-agent), as
+# reviewer, github__merge_pr -> atomaton-or-re-invoked-agent), as
 # opposed to the agent genuinely finishing with nothing further happening.
 # Every dispatch site writes a structured \`{"op":"dispatch",...}\` entry to
 # the ops log (see lib/ops-log.ts's logDispatch()) -- checking for that one
@@ -936,7 +937,7 @@ const postResultCommentStep = new TypedOutputsStep(
     // final response as a comment when the run actually did something. Do
     // NOT gate the comment itself on `directive` being empty -- that shape
     // is indistinguishable from a normal "nothing more to do" completion
-    // AND from an important final summary (e.g. orchestrator aggregation),
+    // AND from an important final summary (e.g. atomaton aggregation),
     // so gating on it would silently drop real summaries/notifications
     // instead of just reducing noise. The "please review" notice inside
     // the comment is separately suppressed via `chain_continues` (set when
@@ -1084,6 +1085,42 @@ fi
   ["has_changes"] as const,
 );
 
+/**
+ * A defect atoma found in the tools file, opened as an issue with an agent on it.
+ *
+ * `atoma` checks the tools file before it starts any server and writes one
+ * machine-readable line per defect to the run log, then carries on -- stopping
+ * would not close a guard that has stopped guarding, it would only remove the
+ * agent's ability to repair the configuration. So the line has to be read
+ * afterwards, and this is where.
+ *
+ * `always()`, because the finding is written before the agent runs and a run that
+ * failed later still reported it. The step is idempotent: an OPEN issue carrying
+ * the finding's own hash is left alone, so a defect that persists across runs is
+ * one issue rather than one per run.
+ *
+ * The agent comes from `agents.on_config_finding`, which is required -- a workflow
+ * reacting to a condition has no thread to read a name from, so there is nothing to
+ * fall back to. `configProblems` reports a missing key on the pull request that
+ * would ship it.
+ */
+const configFindingsStep = new TypedOutputsStep({
+  name: "Report configuration findings atoma made",
+  if: "always()",
+  shell: "bash",
+  env: {
+    GH_TOKEN: "${{ github.token }}",
+    REPO: "${{ github.repository }}",
+  },
+  run: `AGENT=$(${scriptCommand(getConfigValueRef, configValueArgv("agents.on_config_finding", ""))})
+${scriptCommandWithArgs(reportConfigFindingsRef, {
+  repo: "\${REPO}",
+  "logs-file": `${RUN_DIR}/atomaton_logs.txt`,
+  agent: "\${AGENT}",
+})}
+`,
+});
+
 const loopControlStep = new TypedOutputsStep(
   {
     name: "Manage auto-dispatch loop control",
@@ -1230,24 +1267,29 @@ fi
 `,
 });
 
-// Traceability + visibility: post an explicit "review starting" marker on
-// the PR as soon as the reviewer is about to run, regardless of what
-// dispatched it (github__create_pr's own dispatch, the pull_request auto-
-// trigger workflows, or a manual /reviewer comment) -- one single place
-// covering every path, rather than duplicating this in each dispatcher.
+// Traceability + visibility: post an explicit "starting" marker on the PR as
+// soon as an agent is about to run on it, regardless of what dispatched it
+// (github__create_pr's own dispatch, a manual /<agent> comment) -- one single
+// place covering every path, rather than duplicating this in each dispatcher.
 // The atomaton/in-progress label (added just above, before this step) already
 // gives ongoing at-a-glance status; this comment gives a concrete, timestamped
-// entry in the PR's own history of a review actually starting.
-const reviewerStartCommentStep = new TypedOutputsStep({
-  name: "Post reviewer-start comment",
-  if: `${buildContextStep.rawOutputs.new_event_count} != '0' && inputs.agent == 'reviewer' && inputs.type == 'pr'`,
+// entry in the PR's own history of a run actually starting.
+//
+// The agent's name is interpolated rather than compared against a literal. It
+// used to be `inputs.agent == 'reviewer'`, so a project that renamed its reviewer
+// silently lost this comment -- and the name is right there in the input, so
+// there was never anything to compare.
+const agentStartCommentStep = new TypedOutputsStep({
+  name: "Post agent-start comment",
+  if: `${buildContextStep.rawOutputs.new_event_count} != '0' && inputs.type == 'pr'`,
   shell: "bash",
   env: {
     GH_TOKEN: "${{ github.token }}",
     NUMBER: "${{ inputs.number }}",
+    AGENT: "${{ inputs.agent }}",
   },
   run: `gh issue comment "$NUMBER" --body "${LLM_CONTEXT_TAG.write("exclude")}
-Atomaton: reviewer starting review."
+Atomaton: \${AGENT} starting."
 `,
 });
 
@@ -1618,7 +1660,7 @@ git config user.email "atomaton-\${{ inputs.agent }}@users.noreply.github.com"
     run: `${scriptCommandWithArgs(manageInProgressLabelRef, { action: "add", number: "\${NUMBER}" })}
 `,
   }),
-  reviewerStartCommentStep,
+  agentStartCommentStep,
   // Put every tool server on one OS user that cannot become root.
   //
   // AFTER environment setup, because that is what installs the toolchain this
@@ -1826,6 +1868,7 @@ echo "tool servers will run as ${TOOL_USER} (no sudo), caches in ${TOOL_CACHE}"
   }),
   reportFailureStep,
   dirtyStep,
+  configFindingsStep,
   new TypedOutputsStep({
     name: "Inject uncommitted changes into session",
     if: `${dirtyStep.rawOutputs.has_changes} == 'true'`,
@@ -1945,10 +1988,23 @@ export function dispatchToAtomaRunner<TOutputs extends Record<"agent" | "number"
   routeJob: DefinedJob<TOutputs>,
   secrets?: "inherit" | Record<string, string>,
   sessionMode = "continue",
+  /**
+   * An extra condition on top of "an agent was named".
+   *
+   * One caller needs it: a command on a pull request goes through validation rather
+   * than straight to the runner, because the run is a judgement about a commit and
+   * CI has to finish first. That caller still resolves an agent name -- the waiting
+   * comment names it -- so "an agent was named" is not enough to decide whether to
+   * start one here.
+   */
+  extraIf?: string,
 ): ReturnType<typeof atomaRunnerWorkflow.call> {
+  const condition = extraIf
+    ? `${routeJob.rawOutputs.agent} != '' && (${extraIf})`
+    : `${routeJob.rawOutputs.agent} != ''`;
   return atomaRunnerWorkflow.call("run", {
     needs: [routeJob],
-    if: `${routeJob.rawOutputs.agent} != ''`,
+    if: condition,
     with: {
       agent: routeJob.outputs.agent,
       number: routeJob.outputs.number,

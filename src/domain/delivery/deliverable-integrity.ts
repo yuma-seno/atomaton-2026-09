@@ -68,6 +68,16 @@ interface Section {
 }
 
 /**
+ * The `agents` keys every config.yaml must set.
+ *
+ * One list, read by both the schema above and the check below, so a key added to
+ * one cannot be missing from the other. Each is a workflow that reacts to a
+ * condition rather than to a request, which is why it has no thread to read a name
+ * from -- see `AtomaConfig.agents`.
+ */
+const REQUIRED_AGENT_KEYS = ["on_config_finding"] as const;
+
+/**
  * config.yaml's recognised keys.
  *
  * `AtomaConfig` in `domain/delivery/declared-config.ts` is the definition; this is the runtime mirror,
@@ -116,6 +126,11 @@ const CONFIG_SCHEMA: Section = {
         labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null },
       },
     },
+    // The agents a workflow starts when no thread can name one. Enumerated rather
+    // than `anyName`, because each key is a specific workflow's decision and a
+    // misspelled one would silently start nobody -- the failure this whole module
+    // is about. `REQUIRED_AGENT_KEYS` below is what makes an absent one a problem.
+    agents: { children: { on_config_finding: null } },
     // `servers` is not enumerated: every key inside a server entry is passed to the
     // core verbatim, so listing them here would refuse a setting the core accepts --
     // `url` and `headers` for a remote server, and whatever a later release adds.
@@ -313,6 +328,35 @@ export function configProblems(facts: DeliverableFacts): string[] {
   // one problem that matters under noise.
   if (agentNames.length === 0) {
     problems.push("No agent definitions were found. `.github/atomaton/agent-definitions/*.md` is empty or missing.");
+  }
+
+  // ── the agents a workflow starts with no thread to read ───────────────────
+  //
+  // Required rather than defaulted, and the reason is the whole point of the
+  // section: a default here would be this file naming an agent, which is the
+  // hardcoding `agents` exists to remove. A project that renamed its engineer
+  // would get a run for an agent that does not exist -- and it would get it from
+  // a workflow reacting to a condition, which is the one place nobody is watching.
+  //
+  // Checked against `agentNames` as well as for presence, because a name that
+  // resolves to no definition is the same failure one step later.
+  const agents = isRecord(config.agents) ? config.agents : {};
+  for (const key of REQUIRED_AGENT_KEYS) {
+    const value = agents[key];
+    if (typeof value !== "string" || value.trim() === "") {
+      problems.push(
+        `\`agents.${key}\` is required in config.yaml. It names the agent a workflow starts when no ` +
+          `issue or pull request can name one, so there is nothing to fall back to.`,
+      );
+      continue;
+    }
+    // Only when the definitions were found; otherwise the message above already
+    // says the directory is missing and every name would be reported as unknown.
+    if (agentNames.length > 0 && !agentNames.includes(value.trim())) {
+      problems.push(
+        `\`agents.${key}\` names '${value.trim()}', which has no agent-definitions/${value.trim()}.md.`,
+      );
+    }
   }
 
   // ── the two workflows a dispatch names ────────────────────────────────────

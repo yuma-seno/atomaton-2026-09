@@ -132,7 +132,7 @@ The cause and what to do about it are on the page, once.
 | `atomaton/in-progress` label remains | [When a run does not start, or does not stop](work/when-it-breaks.md) |
 | Repeated handoffs stop automatically | [When a run does not start, or does not stop](work/when-it-breaks.md) |
 | Agent repeatedly reproduces stale or invalid tool behaviour | [When a run does not start, or does not stop](work/when-it-breaks.md) |
-| Parent orchestrator not re-invoked after sub-issue completion | [When a run does not start, or does not stop](work/when-it-breaks.md) |
+| Parent atomaton not re-invoked after sub-issue completion | [When a run does not start, or does not stop](work/when-it-breaks.md) |
 | A handoff names the next agent but no run starts | [When a run does not start, or does not stop](work/when-it-breaks.md) |
 | Agent exits immediately with a provider error | [When an agent will not start](agents/when-it-breaks.md) |
 | `More than one provider credential is set` | [When an agent will not start](agents/when-it-breaks.md) |

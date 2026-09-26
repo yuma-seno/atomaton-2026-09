@@ -124,7 +124,7 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
             new ActionsCheckoutV4({}),
             new SetupBunAction({ name: "Setup Bun" }),
             new TypedOutputsStep({
-              name: "Check siblings and re-trigger orchestrator",
+              name: "Check siblings and re-trigger atomaton",
               shell: "bash",
               env: {
                 GH_TOKEN: "${{ github.token }}",

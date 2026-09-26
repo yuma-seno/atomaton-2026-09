@@ -38,7 +38,7 @@ describe("mayStartWorkOn", () => {
 
 describe("recoveryAdvice", () => {
   test("a closed issue is reopened", () => {
-    expect(recoveryAdvice(CLOSED, 803, "/orchestrator")).toContain("Reopen #803");
+    expect(recoveryAdvice(CLOSED, 803, "/atomaton")).toContain("Reopen #803");
   });
 
   /**
@@ -62,7 +62,7 @@ describe("recoveryAdvice", () => {
   });
 
   test("an issue dropped rather than finished is reopened too", () => {
-    expect(recoveryAdvice(DROPPED, 803, "/orchestrator")).toContain("Reopen #803");
+    expect(recoveryAdvice(DROPPED, 803, "/atomaton")).toContain("Reopen #803");
   });
 });
 
@@ -154,9 +154,9 @@ describe("commandOnClosedNotice", () => {
 
 describe("dispatchRefusedNotice", () => {
   const notice = dispatchRefusedNotice({
-    agent: "orchestrator",
+    agent: "atomaton",
     number: 803,
-    context: "all sub-issues of #803 are complete, so its orchestrator was to be re-invoked",
+    context: "all sub-issues of #803 are complete, so its atomaton was to be re-invoked",
     state: CLOSED,
     notify: "alice",
   });
@@ -180,12 +180,12 @@ describe("dispatchRefusedNotice", () => {
 
   test("says how to start it by hand", () => {
     expect(notice).toContain("Reopen #803");
-    expect(notice).toContain("/orchestrator");
+    expect(notice).toContain("/atomaton");
   });
 
   test("an unreadable state does not claim the target is closed", () => {
     const unknown = dispatchRefusedNotice({
-      agent: "orchestrator",
+      agent: "atomaton",
       number: 803,
       context: "x",
       state: UNKNOWN,

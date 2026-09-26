@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
  * aggregate_sub_issues.ts — Called after a PR merges and its linked
- * sub-issue's orchestrator parent is known. If any sibling sub-issues are
+ * sub-issue's atomaton parent is known. If any sibling sub-issues are
  * still open, just posts a progress comment. Once all siblings are done,
- * aggregates their results into the orchestrator's session (stored on the
- * orphan `atomaton-data` branch) and re-dispatches the orchestrator.
+ * aggregates their results into the atomaton's session (stored on the
+ * orphan `atomaton-data` branch) and re-dispatches the atomaton.
  *
  * Thin CLI wrapper around lib/aggregation.ts's shared dispatch gate -- see that
  * module's doc comment for the other two callers of the same gate and for the
@@ -20,6 +20,7 @@ import { describeGateResult, dispatchOrchestratorIfReady, needsAttention } from 
 import { gatherSubResults, injectSummary } from "../../adapters/atoma/inject-sub-results.ts";
 import type { Session } from "../../domain/work/session.ts";
 import { issueLinks } from "../../adapters/github/issue-links.ts";
+import { mostRecentAgentOn } from "../../adapters/github/agent-on-issue.ts";
 import { restoreSession, saveSession, sessionTargetPath } from "./lib/atomaton-data.ts";
 
 export interface AggregateSubIssuesArgs {
@@ -38,11 +39,11 @@ export const ref = defineScript<AggregateSubIssuesArgs>(import.meta.url);
  * re-check each hit with `PARENT_TAG.read`, because GitHub's issue search tokenizes
  * and returned `atomaton:parent=50` for a query of `5` — a prefilter that needed a
  * predicate behind it, and before that predicate existed this collected every
- * sub-issue of a numeric range and fed their results into the wrong orchestrator's
+ * sub-issue of a numeric range and fed their results into the wrong atomaton's
  * session. A link has no such failure mode: it is an edge, not a string.
  *
  * Throws when the links could not be read. Aggregation injects these results into
- * the orchestrator's session, and an empty list read as "no sub-issues" would
+ * the atomaton's session, and an empty list read as "no sub-issues" would
  * re-invoke it with none of the work it is supposed to be summarising.
  */
 function linkedSubIssues(repo: string, parent: number): number[] {
@@ -54,8 +55,8 @@ function linkedSubIssues(repo: string, parent: number): number[] {
 }
 
 /**
- * Injects every linked sub-issue's result into the orchestrator's persisted
- * session on the `atomaton-data` branch.
+ * Injects every linked sub-issue's result into the parent's persisted session on
+ * the `atomaton-data` branch.
  *
  * Reads and writes through lib/atomaton-data.ts rather than driving git here. That
  * module's `saveSession` already owns the part that is easy to get wrong -- it
@@ -65,12 +66,18 @@ function linkedSubIssues(repo: string, parent: number): number[] {
  * to reimplement that with `git checkout -B atomaton-data` in the main checkout
  * (and `git rm -rf .` on the branch-missing path), which worked only because
  * nothing in this job reads a file afterwards.
+ *
+ * `agent` is the one that was working on the parent, read from the parent's own
+ * thread. It was the literal `"atomaton"`, which meant a project that renamed
+ * its atomaton injected the results into a session file nothing would ever
+ * restore -- the aggregation ran, reported success, and the re-invoked agent
+ * started with none of the work it was supposed to summarise.
  */
-function injectResultsIntoOrchestratorSession(repo: string, parent: number): void {
+function injectResultsIntoParentSession(repo: string, parent: number, agent: string): void {
   const subIssues = linkedSubIssues(repo, parent);
   console.error(`Sub-issues of #${parent}: ${subIssues.join(", ") || "(none)"}`);
 
-  const sessionPath = sessionTargetPath("issue", parent, "orchestrator");
+  const sessionPath = sessionTargetPath("issue", parent, agent);
   const existing = restoreSession(sessionPath);
   const session: Session = existing ? (JSON.parse(existing) as Session) : { messages: [] };
 
@@ -113,7 +120,11 @@ async function main(): Promise<void> {
     // its first (and normally only) run instead of depending on that timing.
     exclude: true,
     progressMessage: (remaining) => `Atomaton: Sub-task #${closedNum} completed. ${remaining} sub-task(s) still in progress.`,
-    beforeDispatch: () => injectResultsIntoOrchestratorSession(repo, Number(parent)),
+    // The agent that was on the parent, read from the parent's own thread. The
+    // gate reads the same name for its dispatch; this is the session file that
+    // dispatch will restore, so the two have to agree -- and both come from the
+    // thread rather than from a literal.
+    beforeDispatch: () => injectResultsIntoParentSession(repo, Number(parent), mostRecentAgentOn(repo, Number(parent))),
   });
 
   console.error(describeGateResult(result, Number(closedNum), Number(parent)));

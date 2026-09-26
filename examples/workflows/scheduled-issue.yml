@@ -116,7 +116,7 @@ jobs:
       # not a new mechanism.
       #
       # Choose the agent deliberately. `engineer` investigates and opens pull
-      # requests; `orchestrator` splits the work into sub-issues first, which is
+      # requests; `atomaton` splits the work into sub-issues first, which is
       # worth it when the task is genuinely several tasks and wasteful when it is
       # not.
       - name: Hand it to an agent

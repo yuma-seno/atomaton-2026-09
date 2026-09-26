@@ -103,7 +103,7 @@ function log(message: string): void {
  *
  * `metadata.github_context.agent`, written by `reconcile_github_session.ts` and
  * `record_run_metadata.ts` and declared on `SessionGithubContext`. This used to regex
- * the FILENAME instead — `(?:^|-)(orchestrator|engineer|reviewer)$` over the stem,
+ * the FILENAME instead — `(?:^|-)(atomaton|engineer|reviewer)$` over the stem,
  * with the `(?:^|-)` there to straddle two path layouts (`issue-7-engineer.json` and
  * `issue-7/engineer.json`, both of which really do exist on the data branch) and the
  * allowlist there to tell an agent's name from an issue number in the flat one.

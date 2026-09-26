@@ -39,10 +39,10 @@ export interface CountOpenSiblingsOptions {
  * Only counts siblings that have actually been dispatched (labeled
  * "launched"). Sub-issues created but not yet launched (e.g. a later phase
  * in a dependency-ordered plan) must NOT block re-invocation of the
- * orchestrator, otherwise the count can never reach zero.
+ * atomaton, otherwise the count can never reach zero.
  *
  * Throws when the children could not be read, and that is the point: this number
- * decides whether the orchestrator is re-invoked, and a list nobody could read
+ * decides whether the atomaton is re-invoked, and a list nobody could read
  * counted as zero would dispatch it while its children are still working.
  */
 export function countOpenSiblings(opts: CountOpenSiblingsOptions): number {

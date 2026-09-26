@@ -11,7 +11,7 @@ describe("resolve_entry_agent.ts", () => {
     const dir = mkdtempSync(join(tmpdir(), "atomaton-test-"));
     const eventFile = join(dir, "event.json");
     const outputFile = join(dir, "out");
-    writeFileSync(eventFile, JSON.stringify({ issue: { body: "/orchestrator\n\nDo the thing." } }));
+    writeFileSync(eventFile, JSON.stringify({ issue: { body: "/atomaton\n\nDo the thing." } }));
     writeFileSync(outputFile, "");
     spawnSync("bun", ["run", `${SCRIPTS_DIR}/resolve_entry_agent.ts`], {
       encoding: "utf8",
@@ -24,7 +24,7 @@ describe("resolve_entry_agent.ts", () => {
       },
     });
     const out = parseGithubOutput(await Bun.file(outputFile).text());
-    expect(out.agent).toBe("orchestrator");
+    expect(out.agent).toBe("atomaton");
     expect(out.number).toBe("123");
     expect(out.type).toBe("issue");
     expect(out.notify).toBe("octocat");

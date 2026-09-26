@@ -1,5 +1,35 @@
 # Where work branches from, and when a chain stops
 
+## `agents.on_config_finding`
+
+```yaml
+agents:
+  on_config_finding: engineer
+```
+
+The agent started on the issue opened for an `ATOMA_CONFIG_FINDING` line.
+
+`atoma` checks the tools file it is handed before it starts any server, and a
+defect it finds — a guard pattern matching none of its server's tools, two servers
+claiming one tool name — is written to the run log as one machine-readable line
+and the run carries on. Stopping would not close a guard that has stopped
+guarding; it would only remove the agent's ability to repair the configuration.
+So something has to read that line, open an issue about it, and put an agent on
+that issue. This key names that agent.
+
+**It is required, and it is the only required key in `config.yaml`.** Every other
+run is started by something that already knows who it wants — a person types
+`/<agent>`, an agent writes a handoff, a pull request carries the agent that
+opened it, a parent issue carries the agent that was working on it — and those are
+read from the thread at run time. This one has no thread to read: it is a workflow
+reacting to a condition. A default here would be the deliverable naming an agent,
+which is the hardcoding this section exists to remove, and a project that renamed
+its engineer would get a run for an agent that does not exist. A missing key fails
+the pull request's own check.
+
+Nothing else belongs in this section. A name that a thread can answer is answered
+from the thread.
+
 ## `base_branch`
 
 Where agent branches start from and where their pull requests target. Empty means

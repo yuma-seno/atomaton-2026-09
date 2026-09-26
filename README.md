@@ -35,7 +35,7 @@ run needs a repository setting and a credential, and will not start without them
 With those done, open an issue whose first non-blank line names an agent:
 
 ```text
-/orchestrator
+/atomaton
 
 Build a plan to split this task into sub-issues.
 ```

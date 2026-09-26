@@ -33,7 +33,7 @@ console.log(result.kind);
   }
 }
 
-/** Did the gate start the orchestrator? That is a `workflow run` dispatch. */
+/** Did the gate start the atomaton? That is a `workflow run` dispatch. */
 const dispatched = (calls: string[][]) => calls.some((c) => c.includes("workflow") && c.includes("run"));
 
 /** Did it claim the completion by writing the idempotency marker? */
@@ -71,7 +71,7 @@ const NO_MARKER: FakeGhRule = { match: ["issue", "view"], stdout: "some unrelate
 // The fake `gh` exits 1 for any call no rule matches, which is the right
 // default -- a test should not accidentally succeed through a call it never
 // described. These two are the calls the happy path makes after the checks:
-// claiming the completion, and starting the orchestrator.
+// claiming the completion, and starting the atomaton.
 const MARKER_WRITES: FakeGhRule = { match: ["issue", "comment"], code: 0 };
 const DISPATCH_WORKS: FakeGhRule = { match: ["workflow", "run"], code: 0 };
 // Two calls read the parent through this endpoint, and only one of them is
@@ -91,7 +91,7 @@ describe("aggregation.ts dispatch gate", () => {
 
   /**
    * The case this gate walked into on #803: the last sibling lands, and the parent
-   * somebody closed in the meantime is not something to start an orchestrator on.
+   * somebody closed in the meantime is not something to start an atomaton on.
    *
    * The marker is already written by then, so nothing else will pick this up -- which
    * is why the answer has to be its own kind rather than `dispatch-failed`. Nothing
@@ -133,7 +133,7 @@ describe("aggregation.ts dispatch gate", () => {
   // The defect this issue was filed for. The marker IS the idempotency claim, so
   // failing to write it and dispatching anyway means the other racer -- which by
   // construction is running right now -- finds no marker, decides it is first,
-  // and dispatches the orchestrator a second time. A missed aggregation is
+  // and dispatches the atomaton a second time. A missed aggregation is
   // recoverable by that racer; a double dispatch is not.
   test("a failed marker write stops the dispatch rather than racing on", () => {
     const { kind, ghCalls, stderr } = runGate([

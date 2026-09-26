@@ -39,7 +39,7 @@ describe("dispatch_agent.ts", () => {
   });
 
   /**
-   * #827: an orchestrator was dispatched onto an issue closed eighteen seconds
+   * #827: an atomaton was dispatched onto an issue closed eighteen seconds
    * earlier, ran for five minutes and opened a pull request nobody was waiting for.
    * The step this replaces would still do that.
    */

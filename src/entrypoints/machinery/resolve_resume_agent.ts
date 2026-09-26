@@ -21,7 +21,8 @@
 import { appendFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { gh } from "../../adapters/github/gh.ts";
-import { AGENT_TAG, LLM_CONTEXT_TAG } from "../../adapters/github/tags.ts";
+import { LLM_CONTEXT_TAG } from "../../adapters/github/tags.ts";
+import { mostRecentAgent, mostRecentAgentOn } from "../../adapters/github/agent-on-issue.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ResolveResumeAgentArgs {
@@ -30,40 +31,12 @@ export interface ResolveResumeAgentArgs {
 
 export const ref = defineScript<ResolveResumeAgentArgs>(import.meta.url);
 
-/**
- * The agent named by the most recent comment that names one.
- *
- * Newest first, because an issue worked by an orchestrator and then an engineer must
- * resume the engineer. Taking the first match in chronological order would resume
- * whoever went first, every time, for the whole life of the issue.
- */
-export function mostRecentAgent(bodies: string[]): string {
-  for (let i = bodies.length - 1; i >= 0; i--) {
-    const agent = AGENT_TAG.read(bodies[i] ?? "");
-    if (agent) return agent;
-  }
-  return "";
-}
-
-/**
- * The same question, asked about another node.
- *
- * Exported because `/resume` reaches a whole subtree now, and every node in it needs
- * the agent that ran there — a chain is not resumed by starting one agent on every
- * issue. The reader stays here rather than being copied, so "which agent ran on this
- * node" has one answer wherever it is asked.
- */
-export function mostRecentAgentOn(repo: string, number: number): string {
-  const { code, stdout } = gh(
-    "api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]",
-  );
-  if (code !== 0) return "";
-  try {
-    return mostRecentAgent(JSON.parse(stdout || "[]") as string[]);
-  } catch {
-    return "";
-  }
-}
+// `mostRecentAgent` and `mostRecentAgentOn` were defined here and are now in
+// `adapters/github/agent-on-issue.ts`. The aggregation gate needed the same
+// question answered -- "who was working on this node" -- and `app/` may not import
+// from `entrypoints/`, so the reader moved to the layer both can reach. Re-exported
+// because this module's own tests and `resume_subtree.ts` import them from here.
+export { mostRecentAgent, mostRecentAgentOn };
 
 function main(): void {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { number: { type: "string" } } });

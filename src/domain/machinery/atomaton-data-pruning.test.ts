@@ -16,7 +16,7 @@ describe("issueNumberOf", () => {
   test("never reads an issue out of a session path", () => {
     expect(issueNumberOf("sessions/issue-10-engineer.json")).toBeUndefined();
     expect(issueNumberOf("sessions/issue-7/engineer.json")).toBeUndefined();
-    expect(issueNumberOf("sessions/issue-182/archive/orchestrator-1.json")).toBeUndefined();
+    expect(issueNumberOf("sessions/issue-182/archive/atomaton-1.json")).toBeUndefined();
   });
 
   /**

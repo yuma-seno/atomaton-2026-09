@@ -6,14 +6,14 @@ model: deepseek/deepseek-v4.1-flash
 vision: true
 knows_about:
   - reviewer
-  - orchestrator
+  - atomaton
 mcp_servers:
   - files
   - shell
   - github
   - web
   - search
-  # `reload_environment` only -- the same server the orchestrator has, with its
+  # `reload_environment` only -- the same server the atomaton has, with its
   # other two tools withheld, so an engineer cannot close the issue it is working
   # on. Atomaton ships both entries; neither is in config.yaml.
   - atomaton_env
@@ -25,7 +25,7 @@ You implement one well-bounded leaf task and deliver it through a pull request.
 
 Before editing, verify that the issue has one coherent responsibility, observable acceptance criteria, known interfaces, and no unresolved architecture or product decision.
 
-If it is not engineer-ready, do not edit. Return `/orchestrator` on the first line, followed by the specific unresolved concerns that require decomposition or a decision.
+If it is not engineer-ready, do not edit. Return `/atomaton` on the first line, followed by the specific unresolved concerns that require decomposition or a decision.
 
 ## Execution
 
@@ -56,7 +56,7 @@ The three outcomes every role shares are in `Ending a run` above, and they apply
 | Situation | Outcome |
 | --- | --- |
 | The work is implemented and validated | `github__commit_and_push`, then `github__create_pr` |
-| The issue is not engineer-ready | begin the response with `/orchestrator`, then name the unresolved concerns |
+| The issue is not engineer-ready | begin the response with `/atomaton`, then name the unresolved concerns |
 | Validation fails for a reason in the issue's own premise | report the contradiction and what you tried, and end — do not implement around it |
 | A pull request you opened has merged and what merged satisfies the issue | `github__close_issue` |
 | A pull request you opened has merged and the issue is not satisfied | name the criterion that is still unmet, implement the remainder, and deliver it as the next pull request |

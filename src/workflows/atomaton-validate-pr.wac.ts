@@ -3,13 +3,15 @@ import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
 import { startJob, TypedOutputsStep } from "./actions/base.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { DEFAULT_CI_WORKFLOW } from "../domain/delivery/shipped-workflows.ts";
-import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
+import { AGENT_DEFINITIONS_DIR } from "../domain/machinery/machinery-layout.ts";
+import { MACHINERY_ROOT, scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { SetupBunAction } from "./actions/third-party.ts";
 import { ATOMA_DEFAULT_VERSION, installAtomaCliStep } from "./actions/atoma-cli.ts";
 import { ref as validatePullRequestRef } from "../entrypoints/machinery/validate_pull_request.ts";
 import { ref as validateDeliverableRef } from "../entrypoints/machinery/validate_deliverable.ts";
 import { buildArgv as configValueArgv, ref as getConfigValueRef } from "../entrypoints/machinery/get_config_value.ts";
 import { ref as dispatchAgentRef } from "../entrypoints/machinery/dispatch_agent.ts";
+import { ref as notifyUnattendedRef } from "../entrypoints/machinery/notify_unattended.ts";
 
 // Runs CI against an agent's pull request and decides who works next.
 //
@@ -114,8 +116,12 @@ const validateStep = new TypedOutputsStep(
       number: "${{ inputs.number }}",
       branch: "${{ inputs.branch }}",
       workflow: configStep.outputs.workflow,
-      reviewer: "${{ inputs.reviewer }}",
-      engineer: "${{ inputs.engineer }}",
+      // The definitions the pull request's own `/<agent>` line is resolved against.
+      // The machinery's, not the pull request's: a name is checked against what
+      // this repository can actually dispatch, and a pull request that renamed an
+      // agent in its own tree has not renamed it here yet.
+      "def-dir": `${MACHINERY_ROOT}/${AGENT_DEFINITIONS_DIR}`,
+      "asked-by-person": "${{ inputs.asked_by_person }}",
       "deliverable-report": DELIVERABLE_REPORT,
     })}\n`,
   },
@@ -132,17 +138,16 @@ export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
       inputs: {
         number: { description: "Pull request number", required: true, type: "string" },
         branch: { description: "Head branch of the pull request", required: true, type: "string" },
-        reviewer: {
-          description: "Agent to dispatch when CI passes",
+        // No `reviewer` and no `engineer`. Both names are read from the pull
+        // request itself -- the `/<agent>` line in its body, and the
+        // `atomaton:origin-agent` tag naming whoever opened it -- so a dispatch
+        // argument would be a second answer that goes stale the moment the pull
+        // request is validated again. See `validate_pull_request.ts`.
+        asked_by_person: {
+          description: "Whether a person asked for this run, which decides who a failed check goes back to",
           required: false,
           type: "string",
-          default: "reviewer",
-        },
-        engineer: {
-          description: "Agent to dispatch when CI fails",
-          required: false,
-          type: "string",
-          default: "engineer",
+          default: "false",
         },
       },
     },
@@ -213,6 +218,31 @@ export const atomaValidatePr = new Workflow("atomaton-validate-pr", {
           type: "pr",
           repo: "\${REPO}",
           context: "validation of #\${NUMBER} finished: \${SUMMARY}",
+        })}
+`,
+      }),
+      // Nobody was named, so a person is told rather than left to notice.
+      //
+      // Two ways to arrive here, and both are silent without this step: the pull
+      // request names no agent and mentions nobody, or a person asked for the run
+      // and CI failed -- which goes back to them by design, because an agent
+      // working from a request it did not make is the machinery deciding on their
+      // behalf. Either way the check is written and the work waits, and the one
+      // thing that must not happen is that it waits unannounced.
+      new TypedOutputsStep({
+        name: "Tell a person nobody was dispatched",
+        if: `${validateStep.rawOutputs.next_agent} == ''`,
+        shell: "bash",
+        env: {
+          GH_TOKEN: "${{ github.token }}",
+          NUMBER: "${{ inputs.number }}",
+          SUMMARY: validateStep.outputs.summary,
+          REPO: "${{ github.repository }}",
+        },
+        run: `${scriptCommandWithArgs(notifyUnattendedRef, {
+          repo: "\${REPO}",
+          number: "\${NUMBER}",
+          summary: "\${SUMMARY}",
         })}
 `,
       }),

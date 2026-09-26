@@ -18,7 +18,7 @@ function pr(number: number, parent: number, extra: Partial<WorkNode> = {}): Work
 }
 
 /**
- * The tree this project actually builds: an orchestrator's issue, the sub-issues it
+ * The tree this project actually builds: an atomaton's issue, the sub-issues it
  * filed, and the pull request one of them opened.
  */
 const TREE = [

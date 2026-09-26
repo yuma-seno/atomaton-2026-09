@@ -18,7 +18,7 @@ import { ref as parsePrMetadataRef } from "../entrypoints/machinery/parse_pr_met
 // fires when the merge auto-closes the linked issue is handled by
 // atomaton-sub-issue-closed.wac.ts, which explicitly skips issues closed via a
 // merged PR (see its "Check if closed via a merged PR" step) to avoid
-// dispatching the orchestrator twice for the same completion.
+// dispatching the atomaton twice for the same completion.
 //
 // Job graph:
 //   parse --> resolve-parent --> notify-parent
@@ -53,7 +53,7 @@ const parseJob = new DefinedJob(
 
 const resolveStep = new TypedOutputsStep(
   {
-    name: "Resolve orchestrator parent via GraphQL parent field",
+    name: "Resolve atomaton parent via GraphQL parent field",
     id: "resolve",
     shell: "bash",
     env: {

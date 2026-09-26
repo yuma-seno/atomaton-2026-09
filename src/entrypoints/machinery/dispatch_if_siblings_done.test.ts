@@ -28,7 +28,7 @@ const subIssues = (...numbers: number[]): FakeGhRule => ({
 });
 
 describe("dispatch_if_siblings_done.ts", () => {
-  test("dispatches the orchestrator once all siblings are done", () => {
+  test("dispatches the atomaton once all siblings are done", () => {
     const configDir = makeConfigDir({});
     try {
       const r = runWithFakeGh(

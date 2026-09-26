@@ -22,7 +22,7 @@ Two paths reach that count. The merged pull request is the primary one — a chi
 delivery landing is what makes the question worth asking — and a person closing the
 sub-issue by hand is the fallback, which skips itself when the closure already came
 from a merge. Both write a marker tag on the parent before dispatching, so two
-paths racing on the same child cannot start the orchestrator twice.
+paths racing on the same child cannot start the atomaton twice.
 
 If the parent has been closed meanwhile, nothing starts, and the notice says so
 rather than retrying —

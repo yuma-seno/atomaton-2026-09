@@ -54,36 +54,35 @@ function log(message: string): void {
 }
 
 /**
- * Run CI on a pull request, and hand it to `reviewer` afterwards if one is named.
+ * Run CI on a pull request, and hand it to whoever the pull request names.
  *
  * Validation rather than a reviewer directly: the reviewer used to be dispatched
  * from here and arrived before CI had a verdict, so it either reported that it
  * would wait -- with nothing able to wake it -- or merged without one. Validation
- * runs CI first and dispatches what the result calls for: the reviewer when it
- * passes, the engineer when it does not. See `scripts/validate_pull_request.ts`.
+ * runs CI first and dispatches what the result calls for: the agent the pull
+ * request names when it passes, the agent that opened it when it does not. See
+ * `scripts/validate_pull_request.ts`.
  *
  * Returns whether the dispatch was sent. `create_pr` ends the engineer's session
  * on success, so nothing is left running to notice a failure here: the pull request
  * would sit with no CI, no required check and no agent scheduled, while the tool
  * reported success. The caller keeps the session open instead.
  *
- * The name is a parameter now. It used to come from
- * `getTriggerAgent("pull_request.opened", "reviewer")` -- reading which agent an
- * `auto_triggers` entry routed that event to (that setting is gone), and falling back to the literal
- * `"reviewer"`.
+ * ## No agent names are passed
  *
- * That coupling was invisible from either end. The trigger fired only for a
- * HUMAN's pull request, because GitHub starts no workflow run for an event its own
- * token caused, so an agent's pull request reached its reviewer through THIS call
- * while a person's reached it through the trigger. Two halves of one behaviour,
- * each looking like the whole. Removing the trigger would silently have
- * moved every adopter who renamed their reviewer onto the literal fallback.
- *
- * An empty name means nothing is dispatched after CI, which the validate workflow
- * already handled: `next_agent` empty, the failing or passing check stands, and a
- * person picks it up. `create_pr` makes sure they are told.
+ * It used to send `reviewer=<the caller's argument>` and `engineer=engineer`, and
+ * the second was a literal -- so a project that renamed its engineer got a CI
+ * failure handed to an agent with no definition, from a workflow nobody was
+ * watching. Both names are now read from the pull request itself: the agent it
+ * names for review, and the `atomaton:origin-agent` tag naming whoever opened it.
+ * A pull request that names neither is left for a person, and told so.
  */
-export function dispatchPrValidation(repo: string, prNumber: number, branch: string, reviewer: string): boolean {
+export function dispatchPrValidation(
+  repo: string,
+  prNumber: number,
+  branch: string,
+  options: { askedByPerson?: boolean } = {},
+): boolean {
   return dispatchWorkflow(
     `dispatchPrValidation: validating PR #${prNumber}`,
     "atomaton-validate-pr.yml",
@@ -91,8 +90,7 @@ export function dispatchPrValidation(repo: string, prNumber: number, branch: str
       "--repo", repo,
       "-f", `number=${prNumber}`,
       "-f", `branch=${branch}`,
-      "-f", `reviewer=${reviewer}`,
-      "-f", "engineer=engineer",
+      "-f", `asked_by_person=${options.askedByPerson === true ? "true" : "false"}`,
     ],
     log,
   );

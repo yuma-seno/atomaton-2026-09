@@ -13,6 +13,8 @@ import { ref as guardCommandOnClosedRef } from "../entrypoints/machinery/guard_c
 import { ref as requestStopRef } from "../entrypoints/machinery/request_stop.ts";
 import { ref as resolveResumeAgentRef } from "../entrypoints/machinery/resolve_resume_agent.ts";
 import { ref as resumeSubtreeRef } from "../entrypoints/machinery/resume_subtree.ts";
+import { ref as dispatchPrValidationRef } from "../entrypoints/machinery/dispatch_pr_validation.ts";
+import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 
 // Invoke agents via /agent-name slash command in issue/PR comments.
 // Slash-command DISPATCH is restricted to OWNER/MEMBER/COLLABORATOR (see
@@ -261,6 +263,79 @@ const commandErrorStep = new TypedOutputsStep({
 `,
 });
 
+/**
+ * A command on a pull request goes through validation, not straight to the agent.
+ *
+ * The run a person is asking for is a judgement about a commit, and starting it
+ * immediately means it reads a CI result that does not exist yet -- so it either
+ * waits with nothing able to wake it, or reviews a commit whose checks have not
+ * run. Validation is the thing that runs CI and waits, and it already dispatches
+ * whoever the result calls for.
+ *
+ * So this is the same path an agent's handoff takes, and the same one a push takes.
+ * One place knows how to wait, and every agent start on a pull request goes through
+ * it.
+ *
+ * `asked-by-person` is what makes the failure route differ: an agent that broke its
+ * own pull request fixes it, and a person who asked for a run is owed the answer
+ * themselves. See `ValidationInput.askedByPerson`.
+ *
+ * The branch is read here rather than passed in, because the comment carries only
+ * the number and the validation needs the head branch to run CI against.
+ */
+const prValidationStep = new TypedOutputsStep({
+  name: "Hand the pull request to validation, which waits for CI",
+  if:
+    `${dispatchStep.rawOutputs.agent} != '' && ${targetStep.rawOutputs.type} == 'pr' && ` +
+    `${guardStep.rawOutputs.blocked} != 'true' && ${closedGuardStep.rawOutputs.blocked} != 'true'`,
+  shell: "bash",
+  env: {
+    GH_TOKEN: "${{ github.token }}",
+    REPO: "${{ github.repository }}",
+    NUMBER: targetStep.outputs.number,
+  },
+  run: `BRANCH=$(gh pr view "$NUMBER" --repo "$REPO" --json headRefName --jq .headRefName)
+if [ -z "$BRANCH" ]; then
+  echo "::error::could not read the head branch of PR #$NUMBER; nothing was dispatched"
+  exit 1
+fi
+${scriptCommandWithArgs(dispatchPrValidationRef, {
+  repo: "\${REPO}",
+  number: "\${NUMBER}",
+  branch: "\${BRANCH}",
+  "asked-by-person": "true",
+})}
+`,
+});
+
+/**
+ * The comment that says a run is waiting on CI.
+ *
+ * Posted immediately, because the wait is minutes long and a person who typed a
+ * command and saw nothing happen has no way to tell a queued run from a broken
+ * workflow. It is the same reason the runner posts a start marker: the label says
+ * something is happening, and this says what.
+ *
+ * Tagged out of the model's context. It is addressed to the person who typed the
+ * command, and the agent that eventually runs is told the same thing by its own
+ * dispatch.
+ */
+const prWaitingStep = new TypedOutputsStep({
+  name: "Say the run is waiting for CI",
+  if:
+    `${dispatchStep.rawOutputs.agent} != '' && ${targetStep.rawOutputs.type} == 'pr' && ` +
+    `${guardStep.rawOutputs.blocked} != 'true' && ${closedGuardStep.rawOutputs.blocked} != 'true'`,
+  shell: "bash",
+  env: {
+    GH_TOKEN: "${{ github.token }}",
+    NUMBER: targetStep.outputs.number,
+    AGENT: dispatchStep.outputs.agent,
+  },
+  run: `gh issue comment "$NUMBER" --body "${LLM_CONTEXT_TAG.write("exclude")}
+Atomaton: \`\${AGENT}\` will start once CI finishes on this pull request."
+`,
+});
+
 export const atomaManualComment = new Workflow("atomaton-manual-comment", {
   name: "Atomaton Manual Comment",
   on: {
@@ -300,8 +375,16 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
       resumeSubtreeStep,
       dispatchStep,
       commandErrorStep,
+      prWaitingStep,
+      prValidationStep,
     ],
   )
-    .then((parseJob) => dispatchToAtomaRunner(parseJob, "inherit", parseJob.outputs.session_mode))
+    // A pull request's command does NOT start the runner here. It goes through
+    // validation, which runs CI and waits, and dispatches whoever the result calls
+    // for -- see `prValidationStep`. Starting the runner directly would have the
+    // agent read a CI result that does not exist yet.
+    .then((parseJob) =>
+      dispatchToAtomaRunner(parseJob, "inherit", parseJob.outputs.session_mode, `${targetStep.rawOutputs.type} != 'pr'`),
+    )
     .jobs(),
 );

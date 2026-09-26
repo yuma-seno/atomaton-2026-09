@@ -45,6 +45,6 @@ in [the README](../README.md).
    newer release](runtime/tasks/move-to-a-newer-release.md).
 
 7. **Open the first issue.** Its first visible line is a bare agent name, and
-   the request goes on the lines below. `orchestrator`, `engineer` and
+   the request goes on the lines below. `atomaton`, `engineer` and
    `reviewer` ship. [How to ask, and what happens
    next](work/how-it-works/what-starts-a-run.md#how-to-ask).

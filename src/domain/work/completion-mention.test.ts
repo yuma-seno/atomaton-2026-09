@@ -91,7 +91,7 @@ describe("shouldMentionOnCompletion", () => {
   /**
    * The one that silence DOES un-silence, and the reason this function changed.
    *
-   * The sub-issue rule holds because the parent's orchestrator is woken to aggregate
+   * The sub-issue rule holds because the parent's atomaton is woken to aggregate
    * what its children found. A child that wrote nothing gives it nothing to aggregate,
    * and the parent cannot go and read the saved session. So the premise fails here,
    * and the mention is the only thing left that reaches somebody who can.

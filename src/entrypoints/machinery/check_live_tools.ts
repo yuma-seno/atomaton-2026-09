@@ -310,7 +310,7 @@ export async function main(): Promise<void> {
 
   // Installed to /usr/local/bin by the workflow step above this one.
   const atoma = "atoma";
-  // Every definition, rather than a chosen one: a server only the orchestrator names
+  // Every definition, rather than a chosen one: a server only the atomaton names
   // is still a server this repository's agents are handed. One failure does not stop
   // the loop, so a single run reports everything that is wrong.
   let failed = 0;

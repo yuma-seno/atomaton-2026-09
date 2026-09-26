@@ -94,7 +94,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   /**
    * The narrowness is deliberate and predates this change: a sub-issue nobody has
    * dispatched yet -- a later phase in a dependency-ordered plan -- must not block the
-   * orchestrator, or the count never reaches zero.
+   * atomaton, or the count never reaches zero.
    */
   test("a sub-issue that was never launched does not block the count", () => {
     expect(count(`{ repo: "owner/repo", parent: 5 }`, links(child(10, "OPEN", ["atomaton/sub-issue"])))).toBe("0");
@@ -105,7 +105,7 @@ describe("sibling-check.ts countOpenSiblings", () => {
   });
 
   /**
-   * This number decides whether the orchestrator is re-invoked. A list nobody could
+   * This number decides whether the atomaton is re-invoked. A list nobody could
    * read counted as zero would dispatch it while its children are still working.
    */
   test("links that could not be read throw rather than counting zero", () => {
@@ -146,7 +146,7 @@ describe("inject-sub-results.ts injectSummary", () => {
     expect(updated.messages?.map((m) => m.content)).toEqual(["go", "launched", "working", "the summary"]);
   });
 
-  // The orchestrator has to see the results somewhere. A session with no tool
+  // The atomaton has to see the results somewhere. A session with no tool
   // message is not a reason to drop them.
   test("appends a user message when the session has no tool message", () => {
     const session: Session = { messages: [{ role: "user", content: "go" }] };
@@ -162,7 +162,7 @@ describe("inject-sub-results.ts injectSummary", () => {
 describe("agent-name.ts", () => {
   test("accepts a bare lowercase name and rejects everything a shell would reinterpret", async () => {
     const { isAgentName } = await import("../domain/work/agent-name.ts");
-    for (const valid of ["engineer", "orchestrator", "e", "code-reviewer", "agent2"]) {
+    for (const valid of ["engineer", "atomaton", "e", "code-reviewer", "agent2"]) {
       expect(isAgentName(valid), valid).toBe(true);
     }
     for (const invalid of [

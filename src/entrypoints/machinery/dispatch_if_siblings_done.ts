@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * dispatch_if_siblings_done.ts — FALLBACK path for a manually-closed
- * sub-issue: if no open siblings remain, dispatch the orchestrator.
+ * sub-issue: if no open siblings remain, dispatch the atomaton.
  *
  * Thin CLI wrapper around lib/aggregation.ts's shared dispatch gate -- see that
  * module's doc comment for the other two callers of the same gate (the PR-merge

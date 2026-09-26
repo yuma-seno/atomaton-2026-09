@@ -1,9 +1,9 @@
 /**
  * dispatch.ts — start an agent run by dispatching the runner workflow.
  *
- * Four places hand work to another agent: an orchestrator launching sub-agents,
+ * Four places hand work to another agent: an atomaton launching sub-agents,
  * a created PR summoning its reviewer, a merged PR re-invoking the agent that
- * opened it, and the aggregation gate re-invoking an orchestrator once its
+ * opened it, and the aggregation gate re-invoking an atomaton once its
  * sub-issues are done. Each had built its own `gh workflow run` call, and the
  * copies had diverged in the two ways that matter.
  *
@@ -24,7 +24,7 @@
  *
  * The same argument put the closed-target guard here. #803 was closed by hand while
  * its sub-issues were finishing, and eighteen seconds later the aggregation gate
- * dispatched an orchestrator onto it -- which ran for five minutes and opened a pull
+ * dispatched an atomaton onto it -- which ran for five minutes and opened a pull
  * request nobody was waiting for. None of the four call sites looked at the state of
  * the number it was dispatching onto, and a guard that each of them has to remember is
  * one the fifth will not have. See #827.
