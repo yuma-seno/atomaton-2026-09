@@ -34,6 +34,30 @@ path and does not care which. This is where to put one when you have no reason t
 prefer somewhere else, and the reason to prefer this one is that it sits beside
 the file that names it.
 
+## The agents and skills that ship
+
+**Both are a template, not a fixed set.** An agent exists exactly when a
+definition for it does, and a skill exists exactly when a file for it does.
+Nothing counts them, and nothing names them outside the files themselves.
+
+| Agent | What it is for |
+| --- | --- |
+| `atomaton` | The agent a person reaches first: answers what it is asked, decomposes work into sub-issues, does the work when it is one leaf, and aggregates what its children deliver. |
+| `engineer` | Implements one engineer-ready leaf task, validates it, and opens a pull request. |
+| `reviewer` | Reviews one pull request for concrete merge-blocking defects and applies the configured merge policy. |
+
+| Skill | When an agent loads it |
+| --- | --- |
+| `delivery/pipeline-setup` | `checks` is empty, a pull request comes back with no required check, or nothing deploys on merge. |
+| `engineering/environment` | Something needed is not installed, an install fails, or the work tree is broken. |
+| `research/web-search` | The answer is not in this repository. |
+
+`skills/project/` is yours outright — the template ships nothing there and an
+upgrade will not fight you for it. The three above are defaults the template also
+expects you to tune. Adding an agent or a skill is a new file; the paths and the
+frontmatter are in
+[the documentation](https://github.com/yuma-seno/atomaton/blob/main/docs/agents/overview.md).
+
 ## What is not here
 
 `.github/atomaton-runtime/` is the other half, and it is **not yours**: it is what

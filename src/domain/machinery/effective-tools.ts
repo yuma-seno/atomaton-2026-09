@@ -97,7 +97,7 @@ export const EXACT_TOOL_SETS: readonly ExactToolSet[] = [
     tools: ["read", "grep", "glob", "list"],
     promise:
       "files_readonly is the same program as files, and only its tool_allowlist keeps edit and write " +
-      "away from the agents that must not change the tree — the reviewer and the atomaton.",
+      "away from the agents that must not change the tree — the reviewer.",
   },
   {
     server: "atomaton_env",

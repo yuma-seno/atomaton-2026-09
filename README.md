@@ -7,6 +7,11 @@ An agent only ever starts because a repository member asked for it — by name, 
 issue or a comment. Nothing starts from a GitHub event on its own, so a pull request
 from outside cannot spend your model budget.
 
+**`atomaton` is the one to ask.** It is the agent a person reaches first: describe
+what you want in an issue and it decides what that is — a question to answer, one
+leaf to do, or work to split into sub-issues and dispatch. `engineer` and `reviewer`
+are the agents it and each other hand work to; you rarely name them yourself.
+
 ## What you get
 
 After adoption, naming an agent on an issue or pull request starts a run that:

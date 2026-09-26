@@ -60,6 +60,38 @@ definitions use it for OpenRouter's provider routing; pinning an endpoint is in
 There is no `tools:` block in the shipped definitions, and
 [that is deliberate](boundaries.md#why-there-is-no-provider-side-tool-block).
 
+## `mcp_servers`
+
+The tool servers this agent gets, and only these:
+
+```yaml
+mcp_servers:
+  - files
+  - github
+```
+
+Each name must resolve to a server the run would write — the ones Atomaton ships,
+plus whatever `tools.servers` adds. A name that resolves to nothing stops the run
+before a single tool starts, and the pull request's own check catches it first.
+[What an agent can reach](../tools/overview.md) is the set of servers and what
+each is for.
+
+## `knows_about`
+
+The other agents this one may hand work to:
+
+```yaml
+knows_about:
+  - engineer
+  - reviewer
+```
+
+Each name must have a definition beside this one. Listing an agent here is what
+puts it in the colleague list the prompt renders, which is the list a handoff
+line is written from — so an agent absent from here is one this agent cannot
+name. It is not a permission: invocation happens in the calling automation, and
+nothing enforces this field beyond the definition existing.
+
 ## Repository variables
 
 Two repository **variables** — not secrets — both for reaching a provider

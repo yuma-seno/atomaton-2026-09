@@ -22,7 +22,7 @@ before a single tool starts.
 `files` replaces `@modelcontextprotocol/server-filesystem`, which has no line
 range and no content search. Measured over two runs of these agents, 202 tool
 calls: 37 of the 63 shell calls were `sed -n A,Bp` and `grep -rn`, rebuilding
-both by hand. The atomaton has no shell and could not — it read one
+both by hand. The reviewer, which has no shell, could not — it read one
 1,700-line file four times with `head` and `tail`, which never reach the middle,
 and 43% of everything it read came back truncated.
 

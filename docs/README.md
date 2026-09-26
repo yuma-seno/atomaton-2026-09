@@ -26,6 +26,8 @@ only: the reason behind a step is at the other end of that step's link.
 | You want to | What you change |
 | --- | --- |
 | [run an agent on a different model](agents/tasks/run-an-agent-on-a-different-model.md) | `model`, in an agent definition |
+| [add an agent of your own](agents/tasks/add-an-agent-of-your-own.md) | a new file under `agent-definitions/` |
+| [write a skill](agents/tasks/write-a-skill.md) | a new file under `skills/` |
 | [have a screenshot reach an agent as a picture](agents/tasks/have-a-screenshot-reach-an-agent-as-a-picture.md) | `vision`, in an agent definition |
 | [switch between the Chat Completions and Responses APIs](agents/tasks/switch-between-the-chat-completions-and-responses-apis.md) | `provider`, in an agent definition |
 | [reach a provider the table does not list](agents/tasks/reach-a-provider-the-table-does-not-list.md) | the `OPENAI_BASE_URL` repository variable |
@@ -159,9 +161,9 @@ The tree has room for an `overview.md`, a `reference.md`, a `when-it-breaks.md` 
 `boundaries.md` under each artifact, and only `agents/` and `tools/` have all four.
 `work/` and `pull-requests/` have no `overview.md`; `pipeline/` has no `when-it-breaks.md`;
 `config/`, `environment/`, `github/`, `records/` and `runtime/` are each two or three
-short. There is no `skills/` directory at all — what a skill is, and which of them are
-yours, is `.github/atomaton/README.md`, which ships with the deliverable and is already
-in your tree.
+short. There is no `skills/` directory of its own — what a skill is, which of them are
+yours, and how to write one is [write a skill](agents/tasks/write-a-skill.md), and
+`.github/atomaton/README.md` says which directories the template ships.
 
 A page here is written when somebody needs it, not to fill a slot. An empty page answers
 a question nobody asked and then goes stale unread, and a slot is not a question: an
