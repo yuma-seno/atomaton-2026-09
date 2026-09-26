@@ -149,3 +149,26 @@ server from the others is Linux-only top to bottom: `useradd` for the user with
 no sudo, `setfacl` for the ACLs, `prctl(PR_SET_DUMPABLE)`, `/proc/<pid>/environ`
 being the thing closed. Making that configurable would mean an agent's shell
 running with every one of those protections silently absent.
+
+## The three facts the arrangement rests on
+
+Each was measured on the runner rather than reasoned about, and each is why one of
+the alternatives was not taken. They are stated here because the design depends on
+them and nothing else says so.
+
+**`PR_SET_DUMPABLE(0)` does not survive `execve`.** A process can make its own
+`/proc/<pid>/environ` unreadable to the same user, but the flag is cleared when it
+execs something else. So nothing can set it on another program's behalf — the
+program has to call it in its own process. That is why the servers this project
+ships call it themselves, and why a third-party server cannot be made to.
+
+**`LD_PRELOAD` would have closed both holes and does not work here.** A shared
+library's constructor runs after `exec`, inside the new process, so the flag would
+stick — and `LD_PRELOAD` is itself an environment variable, so every descendant
+would inherit it. It fails on `gh`, which is written in Go and statically linked: a
+static binary ignores `LD_PRELOAD` entirely. The `github` server runs `gh` with
+`GH_TOKEN` in its environment, so the child-process hole would have stayed open.
+
+**A different uid closes the environ hole outright.** That is the mechanism taken,
+and it is why there is a user rather than a container: the container answered the
+same question with `--user 1234:0`, which is the same problem without the container.

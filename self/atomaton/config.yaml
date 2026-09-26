@@ -85,9 +85,6 @@ merge:
   policy: auto              # this repository lets agents merge
   governed_paths:             # changes here are a person's to merge
     - ".github/**"
-    # What `scripts/**` used to cover. That directory is gone: its release half
-    # is under `self/` below, and its probes are here.
-    - "probes/**"
     # This repository's own overlay onto .github/. Everything here BECOMES a
     # governed path at the next self-deploy -- this list included -- so leaving
     # it out let a change reach .github/** without meeting the rule that guards

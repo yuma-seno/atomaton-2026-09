@@ -98,10 +98,22 @@ job, and this deliberately does not duplicate it.
 `command`, so a check that started the servers a pull request declares would
 execute that pull request inside the job that decides whether it may merge. This
 one reads the pull request's `.github/atomaton/` as data and runs nothing under
-`--root`. The half that needs live servers — whether an allowlist pattern still
-names a tool that exists, whether two `unprefixed` servers claim one name, whether
-a server starts at all — belongs on the other end of the pipeline, in a release,
-and [nothing there runs it for you](../pipeline/boundaries.md#nothing-checks-that-your-tool-servers-still-start).
+`--root`.
+
+**A second check does start them, and that is deliberate.** `atomaton-tools` is a
+job of its own in `atomaton-check.yml`, and it starts every server the pull
+request's definitions name to ask what each one advertises — whether an allowlist
+pattern still names a tool that exists, whether two `unprefixed` servers claim one
+name, whether a server starts at all. None of that is answerable from a file.
+
+It is safe to run there for the same reason `checks.from_pull_request` is: the job
+holds no repository secret. It declares `contents: read`, and the servers are
+started with `GH_TOKEN` removed from the environment. A pull request may rewrite
+any command in `checks.from_pull_request` too, so starting what it declares is the
+same trust level as running its tests — and with no credential in reach, there is
+nothing to take. What the two jobs differ on is what they are given, not what they
+may do: `validate_deliverable.ts` reads the pull request as data, and this one runs
+it, and neither can be handed a secret.
 
 **Why this exists.**
 [A name that is not a server](../tools/when-it-breaks.md#a-name-that-is-not-a-server)
