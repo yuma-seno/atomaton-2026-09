@@ -42,7 +42,7 @@ const parseJob = new DefinedJob(
   "parse",
   {
     "runs-on": "ubuntu-latest",
-    if: `${githubEventRaw<PullRequestClosedEvent>((e) => e.pull_request.merged)} == true`,
+    if: JobCondition.is(githubEventRaw<PullRequestClosedEvent>((e) => e.pull_request.merged), true),
     outputs: {
       parent_issue: parseMetadataStep.outputs.parent_number,
       sub_issue: parseMetadataStep.outputs.sub_number,
@@ -73,12 +73,12 @@ const resolveParentJob = new DefinedJob(
   {
     "runs-on": "ubuntu-latest",
     if: JobCondition.isNot(parseJob.rawOutputs.sub_issue, ""),
+    needs: [parseJob],
     outputs: {
       parent_issue: resolveStep.outputs.parent_issue,
     },
   },
   [new ActionsCheckoutV4({}), new SetupBunAction({ name: "Setup Bun" }), resolveStep],
-  [parseJob],
 );
 
 // Both terminal jobs below depend on the exact same pair -- resolve-parent
@@ -100,6 +100,7 @@ export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
     {
       "runs-on": "ubuntu-latest",
       if: JobCondition.isNot(resolveParentJob.rawOutputs.parent_issue, ""),
+      needs: NOTIFY_AND_AGGREGATE_NEEDS,
     },
     [
       new TypedOutputsStep({
@@ -118,13 +119,13 @@ export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
 `,
       }),
     ],
-    NOTIFY_AND_AGGREGATE_NEEDS,
   ),
   new DefinedJob(
     "aggregate-sub-issues",
     {
       "runs-on": "ubuntu-latest",
       if: JobCondition.isNot(resolveParentJob.rawOutputs.parent_issue, ""),
+      needs: NOTIFY_AND_AGGREGATE_NEEDS,
       env: {
         GH_TOKEN: "${{ github.token }}",
       },
@@ -148,6 +149,5 @@ export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
 `,
       }),
     ],
-    NOTIFY_AND_AGGREGATE_NEEDS,
   ),
 ]);

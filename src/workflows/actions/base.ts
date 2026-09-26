@@ -25,7 +25,20 @@
 import { NormalJob, ReusableWorkflowCallJob, Step } from "@github-actions-workflow-ts/lib";
 import type { GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 
-export type StepBaseProps = Pick<GWT.Step, "id" | "name" | "if" | "env" | "timeout-minutes">;
+/**
+ * The props a step accepts.
+ *
+ * `if:` accepts a `StepCondition` as well as the library's plain string, unlike
+ * `DefinedJobProps.if`, which is a `JobCondition` and nothing else.
+ *
+ * The asymmetry is the point. A job-level `if:` reading `steps.` makes GitHub
+ * refuse the whole file, so there the type has to be the only way in. A
+ * step-level `if:` may read `steps.` freely, so a string is not a hazard — and
+ * most step conditions here are `always()` or `inputs.type == 'issue'`, which
+ * read no reference at all and gain nothing from being built. Where a step
+ * condition does read a reference, `Condition` is available and typo-checked.
+ */
+export type StepBaseProps = Omit<GWT.Step, "if"> & { if?: StepCondition | string };
 
 /**
  * Base for any step (plain `run:` script or `uses:` action) that wants
@@ -41,7 +54,7 @@ export type StepBaseProps = Pick<GWT.Step, "id" | "name" | "if" | "env" | "timeo
  */
 export class TypedOutputsStep<TOutputs extends string = never> extends Step {
   readonly outputs: Record<TOutputs, string>;
-  readonly rawOutputs: Record<TOutputs, string>;
+  readonly rawOutputs: Record<TOutputs, StepOutputRef>;
   /**
    * This step's `outcome`, in the same two forms as its outputs.
    *
@@ -62,79 +75,221 @@ export class TypedOutputsStep<TOutputs extends string = never> extends Step {
    * visibly wrong where a plausible-looking `steps.undefined.outcome` is not.
    */
   readonly outcome: string;
-  readonly rawOutcome: string;
+  readonly rawOutcome: StepOutputRef;
 
-  constructor(stepProps: GWT.Step, outputNames: readonly TOutputs[] = []) {
-    super(stepProps);
+  constructor(stepProps: StepBaseProps, outputNames: readonly TOutputs[] = []) {
+    // `if:` is normalised here for the same reason `DefinedJob` does it: the
+    // library types the field as `string | number | boolean`, and a `StepCondition`
+    // is a class. A plain string passes through unchanged.
+    const { if: condition, ...rest } = stepProps;
+    super({ ...rest, ...(condition === undefined ? {} : { if: condition.toString() }) } as GWT.Step);
     this.outputs = {} as Record<TOutputs, string>;
-    this.rawOutputs = {} as Record<TOutputs, string>;
+    this.rawOutputs = {} as Record<TOutputs, StepOutputRef>;
     for (const name of outputNames) {
       const ref = this.id ? `steps.${this.id}.outputs.${name}` : "";
       this.outputs[name] = ref ? `\${{ ${ref} }}` : "";
-      this.rawOutputs[name] = ref;
+      this.rawOutputs[name] = new StepOutputRef(ref);
     }
-    this.rawOutcome = this.id ? `steps.${this.id}.outcome` : "";
-    this.outcome = this.rawOutcome ? `\${{ ${this.rawOutcome} }}` : "";
+    this.rawOutcome = new StepOutputRef(this.id ? `steps.${this.id}.outcome` : "");
+    this.outcome = this.id ? `\${{ steps.${this.id}.outcome }}` : "";
   }
 }
 
 /**
- * A reference to a job's own published output, bare — `needs.<job>.outputs.<name>`.
+ * A reference GitHub resolves at run time.
  *
- * A distinct type from the string it holds, because the string is not the point:
- * what matters is that a JOB can resolve this reference. `DefinedJob` is the only
- * thing that makes one, so a reference to a step — which a job cannot see — has no
- * way to become one.
- *
- * `toString()` is what keeps every existing `${job.rawOutputs.foo}` working: a
- * template literal calls it, so the type is invisible wherever the text is all
- * that is wanted, and present wherever a condition is being built.
+ * The text is what reaches the YAML; the type is what says WHERE the text may be
+ * read. `steps.<id>.outputs.<name>` is resolved inside a job, so a job-level `if:`
+ * cannot read it — and GitHub does not report that as a wrong answer, it refuses
+ * the whole file with "Unrecognized named-value: 'steps'". See `Condition`.
  */
-export class JobOutputRef {
-  constructor(private readonly ref: string) {}
+export abstract class Ref {
+  constructor(private readonly text: string) {}
 
   toString(): string {
-    return this.ref;
+    return this.text;
   }
 }
 
+/** `steps.<id>.outputs.<name>` — a step's own output. Readable in a step's `if:` only. */
+export class StepOutputRef extends Ref {}
+
+/** `needs.<job>.outputs.<name>` — a job's published output. Readable in both. */
+export class JobOutputRef extends Ref {}
+
 /**
- * A condition on a job's `if:`.
+ * `needs.<job>.result` — a job's outcome, which GitHub sets rather than the job.
  *
- * GitHub evaluates a job-level `if:` in a context with `needs` and `github` but
- * NOT `steps` — a step belongs to a job, so a job cannot read one. A reference to
- * `steps.` there is not a wrong answer, it is an unparseable file: GitHub refuses
- * the whole workflow with "Unrecognized named-value: 'steps'", and the run fails
- * in zero seconds with no jobs and no log.
- *
- * This class is what makes that unrepresentable. It is built from a
- * `JobOutputRef` and there is no other way to make one, so a step reference — the
- * same shape of text and a different thing — cannot reach a job-level `if:`
- * through this type. The constructor is private for the same reason: the only
- * doors are the comparisons below.
+ * Not a `$GITHUB_OUTPUT` value, but referenced by job name exactly like one, so it
+ * belongs to the same problem `JobOutputRef` solves: `needs.deploy.result` spelled
+ * as a literal is a name renaming the job does not update, and GitHub resolves an
+ * unknown job reference to the empty string — `'' == 'success'` is false, and the
+ * job guarded that way silently does not run.
  */
-export class JobCondition {
-  private constructor(private readonly text: string) {}
+export class JobResultRef extends Ref {}
+
+/** `github.event.<path>` — the event payload. Readable in both. */
+export class EventRef extends Ref {}
+
+/** What a JOB-level `if:` may read. */
+export type JobRef = JobOutputRef | JobResultRef | EventRef;
+
+/** What a STEP-level `if:` may read. */
+export type StepRef = StepOutputRef | JobRef;
+
+/**
+ * A comparison value, as GitHub Actions writes it.
+ *
+ * A string is quoted and a boolean is not, and the difference is not cosmetic:
+ * `github.event.pull_request.merged` is a boolean, so `== true` is the test and
+ * `== 'true'` is always false — a condition that silently never fires. Taking
+ * `string | boolean` here is what lets the caller write the value it means.
+ */
+function literal(value: string | boolean): string {
+  return typeof value === "boolean" ? String(value) : `'${value}'`;
+}
+
+/**
+ * A condition, and the context it is valid in.
+ *
+ * `R` is the set of references the condition reads, and it is what makes the
+ * context check work. A job-level `if:` takes `JobCondition`; a step-level one
+ * takes `StepCondition`. `JobRef` is a subset of `StepRef`, so a job condition is
+ * valid in both places and a step condition is valid in one — which is exactly the
+ * rule GitHub enforces, and the reason a `steps.` reference in a job-level `if:` is
+ * now a compile error rather than a workflow file GitHub refuses to parse.
+ *
+ * `Condition<never>` reads nothing, so it is valid everywhere: that is what
+ * `always()` and `of()` produce.
+ */
+export class Condition<R extends Ref = never> {
+  /**
+   * A phantom field, never assigned and erased at compile time.
+   *
+   * It exists so `R` is part of the class's structure: without it,
+   * `Condition<EventRef>` and `Condition<StepRef>` would be structurally
+   * identical and freely assignable to each other, which is the one thing this
+   * type is here to prevent.
+   */
+  declare private readonly reads: R;
+
+  protected constructor(private readonly text: string) {}
 
   toString(): string {
     return this.text;
   }
 
-  /** `needs.<job>.outputs.<name> == '<value>'` */
-  static is(output: JobOutputRef, value: string): JobCondition {
-    return new JobCondition(`${output} == '${value}'`);
+  /** `<ref> == <value>` — a string is quoted, a boolean is not. */
+  static is<R extends Ref>(ref: R, value: string | boolean): Condition<R> {
+    return new Condition(`${ref} == ${literal(value)}`);
   }
 
-  /** `needs.<job>.outputs.<name> != '<value>'` */
-  static isNot(output: JobOutputRef, value: string): JobCondition {
-    return new JobCondition(`${output} != '${value}'`);
+  /** `<ref> != <value>` — a string is quoted, a boolean is not. */
+  static isNot<R extends Ref>(ref: R, value: string | boolean): Condition<R> {
+    return new Condition(`${ref} != ${literal(value)}`);
+  }
+
+  /** `always()` — true whatever the dependencies did. */
+  static always(): Condition<never> {
+    return new Condition("always()");
+  }
+
+  /**
+   * A condition from text this module cannot build.
+   *
+   * The escape hatch, and it is deliberately narrow: the text must read no
+   * `steps.`, because a job-level `if:` cannot and GitHub refuses the file. The
+   * check is at run time because the text is a string — which is the whole reason
+   * the typed factories above exist.
+   */
+  static of(text: string): Condition<never> {
+    if (/\bsteps\./.test(text)) {
+      throw new Error(
+        `Condition.of: ${JSON.stringify(text)} reads steps., which a job-level if: cannot. ` +
+          "Build it from a JobOutputRef or an EventRef instead.",
+      );
+    }
+    return new Condition(text);
+  }
+
+  /** Both, joined with `&&`. */
+  and<R2 extends Ref>(other: Condition<R2>): Condition<R | R2> {
+    return new Condition(`(${this.text}) && (${other.text})`);
+  }
+
+  /** Either, joined with `||`. */
+  or<R2 extends Ref>(other: Condition<R2>): Condition<R | R2> {
+    return new Condition(`(${this.text}) || (${other.text})`);
+  }
+}
+
+/**
+ * A condition on a job's `if:`. Cannot read `steps.`.
+ *
+ * A class rather than a type alias, so it is both the type a `DefinedJob` takes
+ * and the value a call site builds with — `JobCondition.isNot(...)`. An alias
+ * would have made every call site import `Condition` as well, which is the same
+ * name written twice for no gain.
+ *
+ * It does NOT extend `Condition`, and that is deliberate. A subclass's static side
+ * has to be assignable to its base's, and narrowing `is` from `Condition<R>` to
+ * `JobCondition` is not — the base promises to return whatever `R` the caller
+ * named, and this one always returns a job condition. Composition says the same
+ * thing without the lie: this holds a `Condition<JobRef>` and narrows what may be
+ * built, which is the whole of what it adds.
+ */
+export class JobCondition {
+  private constructor(private readonly condition: Condition<JobRef>) {}
+
+  toString(): string {
+    return this.condition.toString();
+  }
+
+  /** `<ref> == <value>` — a string is quoted, a boolean is not. */
+  static is<R extends JobRef>(ref: R, value: string | boolean): JobCondition {
+    return new JobCondition(Condition.is(ref, value));
+  }
+
+  /** `<ref> != <value>` — a string is quoted, a boolean is not. */
+  static isNot<R extends JobRef>(ref: R, value: string | boolean): JobCondition {
+    return new JobCondition(Condition.isNot(ref, value));
+  }
+
+  /** `always()` — true whatever the dependencies did. */
+  static always(): JobCondition {
+    return new JobCondition(Condition.always());
+  }
+
+  /** A condition from text this module cannot build. Refuses `steps.`. */
+  static of(text: string): JobCondition {
+    return new JobCondition(Condition.of(text));
+  }
+
+  /**
+   * A job condition from one built for a wider context.
+   *
+   * `Condition<EventRef>` is valid in both contexts — the event payload is readable
+   * from a job's `if:` and from a step's — so narrowing it to a job condition is
+   * sound. This is the one direction that is: a `Condition<StepRef>` may read
+   * `steps.`, and there is deliberately no way to make a job condition from one.
+   */
+  static from(condition: Condition<EventRef>): JobCondition {
+    return new JobCondition(condition);
   }
 
   /** Both, joined with `&&`. */
   and(other: JobCondition): JobCondition {
-    return new JobCondition(`(${this.text}) && (${other.text})`);
+    return new JobCondition(this.condition.and(other.condition));
+  }
+
+  /** Either, joined with `||`. */
+  or(other: JobCondition): JobCondition {
+    return new JobCondition(this.condition.or(other.condition));
   }
 }
+
+/** A condition on a step's `if:`. May read `steps.` and `needs.`. */
+export type StepCondition = Condition<StepRef>;
 
 /**
  * A `NormalJob` whose `outputs:` map doubles as the single source of truth
@@ -178,36 +333,63 @@ export class JobCondition {
  * from the library's own `NormalJob` is `if:` — and a second spelling of that
  * difference is how the three would stop agreeing.
  */
-export type DefinedJobProps<TOutputsMap extends Record<string, string>> = Omit<GWT.NormalJob, "outputs" | "if"> & {
+export type DefinedJobProps<TOutputsMap extends Record<string, string>> = Omit<
+  GWT.NormalJob,
+  "outputs" | "if" | "needs"
+> & {
   outputs?: TOutputsMap;
   /**
-   * The job's condition, as a `JobCondition` or as text.
+   * The job's condition.
    *
-   * A `JobCondition` is the way to write one that reads a job's own output, and it
-   * is the only way to write one that CANNOT read a step's — see that class. Plain
-   * text stays accepted for the conditions that read `github` or `inputs`, which no
-   * type here can build.
+   * A `JobCondition`, and nothing else. It was `string | JobCondition`, and the
+   * string half was the hole: a job-level `if:` cannot read `steps.`, and text
+   * pasted in from a step is exactly how that happened. `JobCondition.of` is the
+   * escape hatch for the conditions this module cannot build, and it refuses the
+   * one thing that must not appear.
    */
-  if?: string | JobCondition;
+  if?: JobCondition;
+  /**
+   * The jobs this one depends on.
+   *
+   * `DefinedJob`s, not names. A `needs:` entry that names nothing is not an error
+   * to GitHub — it is a dependency that does not exist, so the job runs
+   * immediately and reads empty outputs from a job that never ran. Taking the job
+   * itself is what makes a typo a compile error, and it is the same argument
+   * `JobOutputRef` makes about reading an output.
+   */
+  needs?: DefinedJob[];
 };
 
 export class DefinedJob<TOutputsMap extends Record<string, string> = Record<never, string>> extends NormalJob {
   readonly outputs: Record<keyof TOutputsMap & string, string>;
   readonly rawOutputs: Record<keyof TOutputsMap & string, JobOutputRef>;
+  /**
+   * This job's `result`, as a reference a `JobCondition` can be built from.
+   *
+   * `needs.<job>.result` is `success` / `failure` / `cancelled` / `skipped`, and
+   * GitHub sets it — but it is referenced by job name exactly like an output, so
+   * it is the same hazard: a literal `needs.deploy.result` is a name renaming the
+   * job does not update, and an unknown job reference resolves to the empty
+   * string, which is not `success`.
+   */
+  readonly rawResult: JobResultRef;
 
   constructor(
     name: string,
     jobProps: DefinedJobProps<TOutputsMap>,
     steps: Step[] = [],
-    needs: (NormalJob | ReusableWorkflowCallJob)[] = [],
   ) {
     // `if:` is normalised here rather than at every call site, so a `JobCondition`
     // can be passed straight in and read as what it is. The library types the field
     // as `string | number | boolean`, which a class is not — and widening the
     // parameter is the one place that difference has to be reconciled.
-    const { if: condition, ...rest } = jobProps;
+    //
+    // `needs:` is taken out for the same reason in the other direction: the library
+    // wants names, and this class takes the jobs themselves. `this.needs()` is what
+    // turns them back into names, from the jobs' own `name`.
+    const { if: condition, needs: dependencies, ...rest } = jobProps;
     super(name, { ...rest, ...(condition === undefined ? {} : { if: condition.toString() }) } as GWT.NormalJob);
-    if (needs.length > 0) this.needs(needs);
+    if (dependencies && dependencies.length > 0) this.needs(dependencies);
     if (steps.length > 0) this.addSteps(steps);
 
     this.outputs = {} as Record<keyof TOutputsMap & string, string>;
@@ -217,6 +399,7 @@ export class DefinedJob<TOutputsMap extends Record<string, string> = Record<neve
       this.outputs[key] = `\${{ ${ref} }}`;
       this.rawOutputs[key] = new JobOutputRef(ref);
     }
+    this.rawResult = new JobResultRef(`needs.${name}.result`);
   }
 }
 

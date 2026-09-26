@@ -25,6 +25,8 @@
  *   githubEventRaw<IssuesOpenedEvent>((e) => e.issue.number)
  *     // 'github.event.issue.number' (bare, for `if:`)
  */
+import { Condition, EventRef } from "./base.ts";
+
 function pathProxy(path: string[]): unknown {
   return new Proxy(
     {},
@@ -55,9 +57,14 @@ export function githubEvent<T>(selector: (event: T) => unknown): string {
  * `${{ }}` produces unpredictable results, so `if:` must stay either fully
  * bare or fully wrapped, matching the `.rawOutputs` convention used
  * elsewhere in this codebase (see `actions/base.ts`).
+ *
+ * An `EventRef`, not a string, so it can be handed to `JobCondition.is` and
+ * friends. The event payload is readable from a job-level `if:` and from a
+ * step-level one, which is why the type is in `JobRef` rather than in
+ * `StepRef` alone.
  */
-export function githubEventRaw<T>(selector: (event: T) => unknown): string {
-  return `github.event.${resolvePath(selector)}`;
+export function githubEventRaw<T>(selector: (event: T) => unknown): EventRef {
+  return new EventRef(`github.event.${resolvePath(selector)}`);
 }
 
 /**
@@ -70,8 +77,8 @@ export function githubEventRaw<T>(selector: (event: T) => unknown): string {
 const MEMBER_ASSOCIATIONS = ["OWNER", "MEMBER", "COLLABORATOR"] as const;
 
 /**
- * Bare `if:` fragment asserting that the actor behind an event is a repository
- * member, for gating agent runs on the trigger being someone trusted.
+ * A condition asserting that the actor behind an event is a repository member,
+ * for gating agent runs on the trigger being someone trusted.
  *
  * This is the whole trust boundary for event-driven entry points, and it is
  * sufficient because it is the only way an untrusted actor can reach one. Every
@@ -83,9 +90,18 @@ const MEMBER_ASSOCIATIONS = ["OWNER", "MEMBER", "COLLABORATOR"] as const;
  * So an outside contributor may open issues, comment and raise pull requests
  * freely; none of it starts an agent. A member acts, or nothing happens.
  *
+ * Takes an `EventRef` rather than a string, so the association it reads is one the
+ * event actually carries. It was a string, and the argument is the whole of what
+ * this function is: a caller that passed the wrong path got a condition that was
+ * false for everyone, which reads as "no member acted" rather than as a mistake.
+ *
+ * Returns `Condition<EventRef>` rather than a `JobCondition`, because it is used
+ * in both contexts — a job's `if:` and a step's — and the event payload is
+ * readable from either. A `JobCondition` would have been narrower than the truth.
+ *
  * @example
  *   isRepositoryMember(githubEventRaw<IssuesOpenedEvent>((e) => e.issue.author_association))
  */
-export function isRepositoryMember(associationExpr: string): string {
-  return `contains(fromJson('${JSON.stringify(MEMBER_ASSOCIATIONS)}'), ${associationExpr})`;
+export function isRepositoryMember(association: EventRef): Condition<EventRef> {
+  return Condition.of(`contains(fromJson('${JSON.stringify(MEMBER_ASSOCIATIONS)}'), ${association})`);
 }

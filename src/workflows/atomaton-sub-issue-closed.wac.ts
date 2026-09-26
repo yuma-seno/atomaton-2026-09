@@ -103,7 +103,7 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
     {
       "runs-on": "ubuntu-latest",
       // Only a repository member closing an issue triggers parent aggregation.
-      if: isRepositoryMember(githubEventRaw<IssuesClosedEvent>((e) => e.issue.author_association)),
+      if: JobCondition.from(isRepositoryMember(githubEventRaw<IssuesClosedEvent>((e) => e.issue.author_association))),
       outputs: {
         is_sub_issue: checkStep.outputs.is_sub_issue,
         parent_number: checkStep.outputs.parent_number,
@@ -121,6 +121,7 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
             if: JobCondition.is(checkJob.rawOutputs.is_sub_issue, "true").and(
               JobCondition.isNot(checkJob.rawOutputs.closed_via_pr, "true"),
             ),
+            needs: [checkJob],
           },
           [
             new ActionsCheckoutV4({}),
@@ -139,7 +140,6 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
 `,
             }),
           ],
-          [checkJob],
         ),
     )
     .jobs()
@@ -148,7 +148,7 @@ export const atomaSubIssueClosed = new Workflow("atomaton-sub-issue-closed", {
         "stop-run",
         {
           "runs-on": "ubuntu-latest",
-          if: `${githubEventRaw<IssuesClosedEvent>((e) => e.sender.type)} != 'Bot'`,
+          if: JobCondition.isNot(githubEventRaw<IssuesClosedEvent>((e) => e.sender.type), "Bot"),
         },
         [new ActionsCheckoutV4({}), new SetupBunAction({ name: "Setup Bun" }), stopOnCloseStep],
       ),

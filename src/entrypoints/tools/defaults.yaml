@@ -154,8 +154,6 @@ servers:
     args:
       - run
       - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
-      - --servers
-      - files,shell
       - --agent-def
       - delegate.md
       - --delegates-dir
@@ -182,8 +180,6 @@ servers:
     args:
       - run
       - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
-      - --servers
-      - files_readonly
       - --agent-def
       - delegate_readonly.md
       - --delegates-dir
