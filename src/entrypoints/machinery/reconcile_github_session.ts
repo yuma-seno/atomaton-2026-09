@@ -21,7 +21,7 @@
  *      to $GITHUB_OUTPUT.
  *
  * Usage:
- *   reconcile_github_session.ts --events events.json --agent-name orchestrator \
+ *   reconcile_github_session.ts --events events.json --agent-name atomaton \
  *     --session session.json --out session.json
  *
  * It took a `--config` too, for a per-agent `agents.<name>.shared_context` filter.

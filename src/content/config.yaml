@@ -119,6 +119,25 @@ chain:
     launched: atomaton/launched
 
 
+# The agents a workflow starts when no issue or pull request can name one.
+#
+# Almost every run is started by something that already knows who it wants: a
+# person types `/<agent>`, an agent writes a handoff, a pull request carries the
+# agent that opened it, a parent issue carries the agent that was working on it.
+# Those are read from the thread at run time, and naming one here would be a
+# second answer to a question the thread already answers.
+#
+# What is left is the runs with no thread to read -- a workflow reacting to a
+# condition rather than to a request. Every key is REQUIRED: a default would be
+# this file naming an agent, and a project that renamed its engineer would get a
+# run for an agent that does not exist. A missing key fails the pull request's
+# own check.
+agents:
+  # Started on the issue opened for an `ATOMA_CONFIG_FINDING` line -- atoma's
+  # report that the tools file it was handed has a defect it carried on past.
+  on_config_finding: engineer
+
+
 # What an agent can reach, and under what watch.
 #
 # The machinery's own configuration. This project owns the runtime it uses, so it

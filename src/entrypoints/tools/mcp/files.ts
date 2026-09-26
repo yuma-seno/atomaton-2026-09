@@ -6,7 +6,7 @@
  *
  * The official server has no line range and no content search. Measured across two runs
  * of this project's own agents, 202 tool calls: 37 of the 63 shell calls were
- * `sed -n A,Bp` and `grep -rn`, the agent rebuilding both by hand. The orchestrator,
+ * `sed -n A,Bp` and `grep -rn`, the agent rebuilding both by hand. The reviewer,
  * which has no shell, could not — it read one 1,700-line file four times with `head`
  * and `tail`, which never reach the middle, and 43% of everything it read came back
  * truncated.

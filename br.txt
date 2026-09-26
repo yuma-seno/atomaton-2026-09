@@ -1,0 +1,2 @@
+﻿atomaton/dynamic-agent-dispatch
+09ecf5eb feat: no agent name is hardcoded, and a config finding opens an issue

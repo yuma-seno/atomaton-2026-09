@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { WORKSPACE_PATH } from "../../src/domain/work/workspace.ts";
 
 describe("agent prompt contracts", () => {
-  test("uses orchestrator-first delegation with an explicit engineer leaf gate", () => {
-    const orchestrator = readFileSync("src/content/agent-definitions/orchestrator.md", "utf8");
-    expect(orchestrator).toContain("assign them to `orchestrator` by default");
-    expect(orchestrator).toContain("only when it satisfies every leaf condition");
-    expect(orchestrator).toContain("File count and apparent effort do not determine leaf status");
+  test("uses decompose-first delegation with an explicit engineer leaf gate", () => {
+    const atomaton = readFileSync("src/content/agent-definitions/atomaton.md", "utf8");
+    expect(atomaton).toContain("assign them to `atomaton` by default");
+    expect(atomaton).toContain("only when it satisfies every leaf condition");
+    expect(atomaton).toContain("File count and apparent effort do not determine leaf status");
   });
 
   /**
@@ -45,7 +45,7 @@ describe("agent prompt contracts", () => {
     // The role contracts must not answer it a second time in their own words. Three
     // vocabularies for one exit is what put the reviewer's outcomes under a heading
     // the other two do not have, and left the orchestrator's table a row short.
-    for (const role of ["engineer", "orchestrator", "reviewer"]) {
+    for (const role of ["engineer", "atomaton", "reviewer"]) {
       const text = readFileSync(`src/content/agent-definitions/${role}.md`, "utf8");
       expect(text, `${role}.md must point at the shared exits rather than restating them`).toContain(
         "The three outcomes every role shares are in `Ending a run` above",
@@ -56,7 +56,7 @@ describe("agent prompt contracts", () => {
   test("prevents engineers from implementing unresolved non-leaf work", () => {
     const engineer = readFileSync("src/content/agent-definitions/engineer.md", "utf8");
     expect(engineer).toContain("If it is not engineer-ready, do not edit");
-    expect(engineer).toContain("Return `/orchestrator` on the first line");
+    expect(engineer).toContain("Return `/atomaton` on the first line");
   });
 
   /**
@@ -114,7 +114,7 @@ describe("agent prompt contracts", () => {
    */
   test("the template describes the directive line without supplying a placeholder to copy", () => {
     const prompt = readFileSync("src/content/prompt-template.md", "utf8");
-    const orchestrator = readFileSync("src/content/agent-definitions/orchestrator.md", "utf8");
+    const atomaton = readFileSync("src/content/agent-definitions/atomaton.md", "utf8");
     expect(prompt, "a placeholder in the prompt is a string a run can post verbatim").not.toContain(
       "/agent-name",
     );
@@ -124,7 +124,7 @@ describe("agent prompt contracts", () => {
     const colleagues = prompt.indexOf("{{COLLEAGUES_LIST}}");
     expect(colleagues, "the colleague list must be rendered").toBeGreaterThan(-1);
     expect(colleagues, "the names belong at the point of use, not in a block above").toBeGreaterThan(directive);
-    expect(orchestrator).toContain("Return `/engineer` on its own line");
+    expect(atomaton).toContain("Return `/engineer` on its own line");
   });
 
   /**

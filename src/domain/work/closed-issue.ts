@@ -5,7 +5,7 @@
  * silently: a person closing an issue did not stop the run working on it, a slash
  * command on a closed issue started an agent, and the machinery's own handoff
  * dispatched onto a closed number. The last one is not hypothetical — #803 was closed
- * by hand and eighteen seconds later the aggregation gate re-invoked its orchestrator,
+ * by hand and eighteen seconds later the aggregation gate re-invoked its atomaton,
  * which went on to open a pull request. See #827.
  *
  * The rule this module encodes is one sentence: **a closed target is an answer, not an

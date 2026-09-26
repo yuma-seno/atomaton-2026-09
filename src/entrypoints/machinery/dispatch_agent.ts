@@ -11,7 +11,7 @@
  * > a guard that each of them has to remember is one the fifth will not have.
  *
  * Those two were the fifth and the sixth. Neither refused a closed target (#827: an
- * orchestrator dispatched onto an issue closed eighteen seconds earlier, ran for five
+ * atomaton dispatched onto an issue closed eighteen seconds earlier, ran for five
  * minutes and opened a pull request nobody was waiting for), neither wrote the
  * ops-log dispatch entry that `chain_continues` and `shouldReleaseGuard` read, and
  * neither sent `reload_count`, which `dispatchRunner` documents as "always sent, so

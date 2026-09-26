@@ -9,7 +9,7 @@
 | `atomaton/in-progress` label remains | The chain is still continuing, or the step that releases the guard was skipped by an upstream failure | Read the `Decide how this turn ended` step's output, fix the failure above it, and rerun |
 | Repeated handoffs stop automatically | One of the two chain limits fired — [what bounds a chain of runs](boundaries.md#what-bounds-a-chain-of-runs) | Read `stop_reason`, which says which one. Then comment the next agent's name to carry on |
 | Agent repeatedly reproduces stale or invalid tool behaviour | [The session it restores](../records/how-it-works.md) is no longer worth restoring | [Start it again from a clean session](tasks/start-an-agent-again-from-a-clean-session.md) |
-| Parent orchestrator not re-invoked after sub-issue completion | A sibling is still open, or another path already aggregated | Check the siblings' labels and the parent's comments for the marker. A sibling counts only while it carries both `atomaton/sub-issue` and `atomaton/launched` — [how a parent learns its children are done](how-it-works/the-labels-atomaton-applies.md#how-a-parent-learns-its-children-are-done) |
+| Parent atomaton not re-invoked after sub-issue completion | A sibling is still open, or another path already aggregated | Check the siblings' labels and the parent's comments for the marker. A sibling counts only while it carries both `atomaton/sub-issue` and `atomaton/launched` — [how a parent learns its children are done](how-it-works/the-labels-atomaton-applies.md#how-a-parent-learns-its-children-are-done) |
 | A handoff names the next agent but no run starts | The target issue or pull request is closed, and a merged pull request counts as closed | Read the notice on that target, then reopen it and comment the agent's name — or open an issue instead, when the target is a merged pull request. See below |
 
 ## Commands and dispatches on something already closed
@@ -28,7 +28,7 @@ can close its own issue and keep working, so a closed issue can still have a run
 it.
 
 **Atomaton's own handoffs are refused the same way**, and this is the case that
-costs something. When an orchestrator's last sub-issue lands, its parent is
+costs something. When an atomaton's last sub-issue lands, its parent is
 re-invoked — and if somebody closed that parent meanwhile, nothing starts. The
 notice says what was about to happen, that nothing will retry it, and how to run it
 by hand. It mentions whoever asked for the run in the first place, which is the

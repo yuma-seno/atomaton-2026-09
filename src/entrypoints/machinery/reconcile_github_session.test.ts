@@ -192,7 +192,7 @@ describe("reconcile_github_session.ts", () => {
         {
           role: "assistant",
           content: "done",
-          atoma_metadata: { github_comment_id: 101, agent: "orchestrator" },
+          atoma_metadata: { github_comment_id: 101, agent: "atomaton" },
         },
       ],
     };
@@ -200,7 +200,7 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 101,
         event_type: "issue_comment",
-        content: "<!-- atomaton:agent=orchestrator -->\n/orchestrator handled",
+        content: "<!-- atomaton:agent=atomaton -->\n/atomaton handled",
         author: "github-actions[bot]",
         created_at: "2026-05-27T10:00:00Z",
       },
@@ -214,13 +214,13 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 103,
         event_type: "issue_comment",
-        content: "<!-- atomaton:sub-result:#7 -->\n/orchestrator sub-task #7 completed.",
+        content: "<!-- atomaton:sub-result:#7 -->\n/atomaton sub-task #7 completed.",
         author: "github-actions[bot]",
         created_at: "2026-05-27T10:02:00Z",
       },
     ];
 
-    const { mergedSession, changedCount } = reconcileGithubSession(session, events, "orchestrator");
+    const { mergedSession, changedCount } = reconcileGithubSession(session, events, "atomaton");
 
     const keptIds = mergedSession.messages
       ?.filter((message) => message.atoma_metadata?.source === "github")
@@ -253,13 +253,13 @@ describe("reconcile_github_session.ts", () => {
       {
         id: 301,
         event_type: "issue_comment",
-        content: "<!-- atomaton:agent=orchestrator -->\nComment copied by a human",
+        content: "<!-- atomaton:agent=atomaton -->\nComment copied by a human",
         author: "alice",
         created_at: "2026-05-27T12:00:00Z",
       },
     ];
 
-    const { mergedSession, eventCount } = reconcileGithubSession({ messages: [] }, events, "orchestrator");
+    const { mergedSession, eventCount } = reconcileGithubSession({ messages: [] }, events, "atomaton");
 
     expect(eventCount).toBe(1);
     expect(mergedSession.messages?.[0]?.atoma_metadata?.id).toBe(301);

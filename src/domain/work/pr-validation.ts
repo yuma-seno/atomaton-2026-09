@@ -79,14 +79,39 @@ export interface ValidationOutcome {
  * `engineerAgent` are adjacent, same-typed, and mean opposite things: swapping
  * them type-checks, passes nothing, and inverts every routing decision this
  * function makes.
+ *
+ * ## Where the two names come from
+ *
+ * Neither is a setting and neither is a literal. `reviewerAgent` is what the pull
+ * request asks for -- the `/<agent>` line in its own body, which is the same line a
+ * person would type. `engineerAgent` is who opened it, from the
+ * `atomaton:origin-agent` tag. Both are read from the pull request, so a project
+ * that renames an agent gets the new name everywhere without touching this file.
+ *
+ * Either may be empty, and empty is a real answer: nobody was asked. The verdict
+ * then dispatches nobody and the caller tells a person, which is the one outcome
+ * that cannot be silently wrong.
  */
 export interface ValidationInput {
   /** GitHub's own conclusion for the dispatched run. Empty means it never reached one. */
   conclusion: string;
-  /** Agent to dispatch when CI passes. */
+  /** Agent to dispatch when CI passes, from the pull request's own `/<agent>` line. */
   reviewerAgent: string;
-  /** Agent to dispatch when CI fails and retries remain. */
+  /** Agent to dispatch when CI fails and retries remain, from `atomaton:origin-agent`. */
   engineerAgent: string;
+  /**
+   * Whether the run being judged was asked for by a person rather than by an agent.
+   *
+   * It decides who a FAILED check goes back to, and the two answers are different
+   * on purpose. An agent that opened a pull request and broke CI is the one that
+   * should fix it -- it has the context and it is already in the loop. A person who
+   * asked for a run and got a red check is owed the answer themselves: handing
+   * their request to an agent would be the machinery deciding on their behalf, and
+   * the agent would be working from a request it did not make.
+   *
+   * So a person's failed run dispatches nobody, and the caller mentions them.
+   */
+  askedByPerson?: boolean;
   /** How many times this pull request has already been handed back. */
   priorRetries?: number;
   /**
@@ -147,7 +172,7 @@ function handTo(agent: string): { next?: NextTurn } {
  * the pull request and decides.
  */
 export function decideValidationOutcome(input: ValidationInput): ValidationOutcome {
-  const { conclusion, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
+  const { conclusion, reviewerAgent, engineerAgent, askedByPerson = false, priorRetries = 0 } = input;
 
   // Judged first, and treated exactly as a red CI run: failing checks so the
   // merge is blocked, a comment so the engineer knows what to fix, and the same
@@ -197,6 +222,16 @@ export function decideValidationOutcome(input: ValidationInput): ValidationOutco
       summary:
         `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` +
         `Stopping rather than dispatching the engineer again; a human should look.`,
+    };
+  }
+
+  // A person's failed run goes back to the person. See `askedByPerson`: an agent
+  // that broke its own pull request is the one to fix it, and a person who asked
+  // for a run is owed the answer rather than a run they did not ask for.
+  if (askedByPerson) {
+    return {
+      verdict: "failed",
+      summary: `CI concluded ${normalised}. This run was asked for by a person, so nobody was dispatched.`,
     };
   }
 

@@ -23,7 +23,7 @@ export interface ConcludeIssueResult {
    * sub-issue.
    *
    * Carried out rather than discarded. `request_close_issue` ends the
-   * orchestrator's session, so if the gate could not read what it needed and
+   * atomaton's session, so if the gate could not read what it needed and
    * refused to dispatch, nothing else is left to notice -- the parent simply
    * waits for a re-invocation that will never come.
    */
@@ -36,7 +36,7 @@ export interface ConcludeIssueResult {
  * The author lookup below already checks its exit code, with a comment
  * explaining that picking an answer on a failed read "asserts something this did
  * not determine". Both mutations then ignored theirs entirely, which asserts
- * something rather worse: `request_close_issue` is the orchestrator's designated
+ * something rather worse: `request_close_issue` is the atomaton's designated
  * terminal action, so it returns `outcome: "closed"`, tells the agent the issue
  * "has been closed automatically", and ends the session — after which nothing is
  * left running to notice that it is still open. `dispatchOrchestratorIfSubIssueReady`
@@ -81,7 +81,7 @@ export async function concludeIssue(issue: number, reason: string, summary: stri
   // the pair: it hands the decision to someone rather than taking it.
   const isBot = authorInfo.author?.is_bot ?? false;
 
-  let body = `Atomaton: orchestrator considers work on this issue complete.\n\n**Reason:** ${reason}`;
+  let body = `Atomaton: the agent on this issue considers its work complete.\n\n**Reason:** ${reason}`;
   if (summary) {
     body += `\n\n${summary}`;
   }

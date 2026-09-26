@@ -3,7 +3,7 @@
  * check_sub_issue_closure.ts — Determine whether a just-closed issue is an
  * Atomaton sub-issue and, if so, whether it was already closed via a merged PR
  * (in which case atomaton-pr-merged.wac.ts already handled aggregation, and this
- * fallback path must skip to avoid dispatching the orchestrator twice).
+ * fallback path must skip to avoid dispatching the atomaton twice).
  *
  * ## Why it asks GitHub rather than reading the event
  *
@@ -65,7 +65,7 @@ function main(): void {
   //   own credentials, so the auto-close DOES fire this workflow while
   //   atomaton-pr-merged is already handling the same completion.
   //
-  // The second case is why the check exists: without it the orchestrator gets
+  // The second case is why the check exists: without it the atomaton gets
   // dispatched twice. lib/aggregation.ts's `atomaton:aggregated` marker would
   // catch the duplicate anyway, but only after a second run has started.
   let closedViaPr = false;

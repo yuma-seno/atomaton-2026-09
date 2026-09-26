@@ -1,7 +1,7 @@
 /**
  * aggregation.ts — the ONE canonical implementation of "check whether all
  * sub-issues of an orchestrated parent are done, and if so, dispatch the
- * orchestrator for re-invocation".
+ * atomaton for re-invocation".
  *
  * Three call sites need this exact gate, previously reimplemented
  * independently with subtly different retry/exclude/idempotency behavior:
@@ -10,7 +10,7 @@
  *   whenever an agent closes a sub-issue (atomaton-side, post-close).
  * - dispatch_if_siblings_done.ts (workflow-side, manual-close fallback).
  * - aggregate_sub_issues.ts (workflow-side, PR-merge primary path -- which
- *   additionally injects sub-issue results into the orchestrator's session
+ *   additionally injects sub-issue results into the atomaton's session
  *   before dispatching, via `beforeDispatch` below).
  *
  * Idempotency: two of the three can race for the SAME completion -- a PR merge
@@ -25,9 +25,32 @@ import { dispatchRunner } from "../adapters/actions/dispatch.ts";
 import { resolveNotify } from "../adapters/github/notify.ts";
 import { AGGREGATED_TAG, LLM_CONTEXT_TAG, SUB_RESULT_TAG } from "../adapters/github/tags.ts";
 import { parentIssueOf } from "../adapters/github/parent-issue.ts";
+import { mostRecentAgentOn } from "../adapters/github/agent-on-issue.ts";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * The agent that was working on the parent issue, read from its own thread.
+ *
+ * This was the literal `"atomaton"`, and that is the defect the whole
+ * `agents` section of config.yaml exists to remove: a project that renamed its
+ * atomaton got an aggregation that dispatched an agent with no definition,
+ * from a workflow nobody was watching. The name is in the thread already --
+ * every result comment carries `atomaton:agent` -- so it is read rather than
+ * remembered.
+ *
+ * The same reader `/resume` uses, deliberately: "which agent ran on this node" is
+ * one question, and two answers to it would be two things to keep in step.
+ *
+ * Empty when nothing ran there, which `dispatchRunner` refuses rather than
+ * dispatching an agent called "". The gate's caller reports that as
+ * `dispatch-failed`, which is what it is: the work is done and nobody was
+ * started to aggregate it.
+ */
+function parentAgent(repo: string, parent: number): string {
+  return mostRecentAgentOn(repo, parent);
 }
 
 export interface DispatchGateOptions {
@@ -50,7 +73,7 @@ export interface DispatchGateOptions {
   exclude?: boolean;
   /** Progress-comment text posted when siblings remain. Omit to post nothing in that case (matches the manual-close fallback's original silent behavior). */
   progressMessage?: (remaining: number) => string;
-  /** Run just before posting the "all done" comment + dispatching -- aggregate_sub_issues.ts uses this to inject sub-issue results into the orchestrator's persisted session first. */
+  /** Run just before posting the "all done" comment + dispatching -- aggregate_sub_issues.ts uses this to inject sub-issue results into the atomaton's persisted session first. */
   beforeDispatch?: () => Promise<void> | void;
 }
 
@@ -76,12 +99,12 @@ export type DispatchGateResult =
   | { kind: "waiting"; remaining: number }
   /** Another caller reached this completion first. The normal race, and harmless. */
   | { kind: "already-aggregated" }
-  /** The orchestrator is running. */
+  /** The atomaton is running. */
   | { kind: "dispatched" }
   /** Everything was ready and the dispatch itself failed. Nothing will retry. */
   | { kind: "dispatch-failed" }
   /**
-   * Everything was ready and the parent is closed, so no orchestrator was started.
+   * Everything was ready and the parent is closed, so no atomaton was started.
    *
    * Distinct from `dispatch-failed` because nothing malfunctioned: somebody closed the
    * parent while its children were finishing. Work is still left undone, so this needs
@@ -98,7 +121,7 @@ export type DispatchGateResult =
    */
   | { kind: "undetermined"; why: string };
 
-/** True when the orchestrator was not started and something is left undone. */
+/** True when the atomaton was not started and something is left undone. */
 export function needsAttention(result: DispatchGateResult): boolean {
   return result.kind === "dispatch-failed" || result.kind === "undetermined" || result.kind === "parent-closed";
 }
@@ -126,18 +149,18 @@ export function describeGateResult(result: DispatchGateResult, closedNum: number
     case "already-aggregated":
       return `Another caller already aggregated #${closedNum}. Nothing to do -- this is the normal race.`;
     case "dispatched":
-      return `All sub-tasks of ${which} complete. Orchestrator re-invoked.`;
+      return `All sub-tasks of ${which} complete. The parent's agent was re-invoked.`;
     case "dispatch-failed":
       return (
-        `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` +
+        `All sub-tasks of ${which} complete, but the dispatch FAILED. ` +
         `The aggregation marker is already written, so no other caller will retry: ` +
-        `re-run the orchestrator by hand.`
+        `re-run the parent's agent by hand.`
       );
     case "parent-closed":
       return (
-        `All sub-tasks of ${which} complete, but ${which} is closed, so no orchestrator was started. ` +
+        `All sub-tasks of ${which} complete, but ${which} is closed, so no agent was started. ` +
         `The aggregation marker is already written, so no other caller will retry: ` +
-        `reopen it and run the orchestrator by hand. Whoever asked for the run has been told on the issue.`
+        `reopen it and run the parent's agent by hand. Whoever asked for the run has been told on the issue.`
       );
     case "undetermined":
       return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
@@ -207,7 +230,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   // applies to writing it, and was not applied. A rate limit or a transient 5xx
   // on this one comment leaves no marker -- and the other racer, which by
   // construction is running at this same moment, then finds none, decides it is
-  // first, and dispatches the orchestrator a second time. Two runs aggregate the
+  // first, and dispatches the atomaton a second time. Two runs aggregate the
   // same completion, post two final reports, and hold the in-progress guard with
   // two `chain_continues` signals.
   //
@@ -215,7 +238,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   // not, and that asymmetry is exactly what the read already relies on.
   const marker = gh(
     "issue", "comment", String(opts.parent), "--repo", opts.repo,
-    "--body", `${AGGREGATED_TAG.write(opts.closedNum)}\nAtomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`,
+    "--body", `${AGGREGATED_TAG.write(opts.closedNum)}\nAtomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking the parent's agent for aggregation.`,
   );
   if (marker.code !== 0) {
     const why =
@@ -225,8 +248,8 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
   }
 
   const outcome = dispatchRunner({
-    context: `all sub-issues of #${opts.parent} are complete, so its orchestrator was to be re-invoked`,
-    agent: "orchestrator",
+    context: `all sub-issues of #${opts.parent} are complete, so the agent that was on it was to be re-invoked`,
+    agent: parentAgent(opts.repo, opts.parent),
     type: "issue",
     number: opts.parent,
     notify: resolveNotify(opts.repo, opts.parent),
@@ -244,7 +267,7 @@ export async function dispatchOrchestratorIfReady(opts: DispatchGateOptions): Pr
 }
 
 /**
- * Resolves `subIssueNum`'s orchestrator parent from GitHub's own sub-issue link,
+ * Resolves `subIssueNum`'s atomaton parent from GitHub's own sub-issue link,
  * then runs the dispatch gate on it with retry enabled (the sub-issue we just closed
  * a moment ago may still be reported as open for a second or two).
  * Returns `not-tracked` when `subIssueNum` is under nothing (not every closed issue
@@ -275,7 +298,7 @@ export async function dispatchOrchestratorIfSubIssueReady(repo: string, subIssue
   // A parent that could not be READ is not an issue without one. Reported as itself,
   // because the two lead to opposite places: no parent means this issue is untracked
   // and there is nothing to do, while an unread one means a tracked sub-issue may
-  // have just completed and the orchestrator is never told.
+  // have just completed and the atomaton is never told.
   if (!found.known) {
     const why = `could not read the parent of #${subIssueNum}: ${found.why}`;
     console.error(why);

@@ -15,8 +15,8 @@ in [the README](../README.md).
 
 3. **Add the repository secret `ORCAROUTER_API_KEY`.** **Settings > Secrets and
    variables > Actions > New repository secret**, under that name. It is the one
-   credential the shipped configuration needs: all three agent definitions read
-   `provider: orcarouter-responses`. [Why that
+   credential the shipped configuration needs: every shipped agent definition
+   reads `provider: orcarouter-responses`. [Why that
    provider](agents/overview.md#why-the-shipped-provider-is-a-recommendation),
    and [how to run on another
    one](agents/tasks/move-to-a-different-provider.md).
@@ -45,6 +45,10 @@ in [the README](../README.md).
    newer release](runtime/tasks/move-to-a-newer-release.md).
 
 7. **Open the first issue.** Its first visible line is a bare agent name, and
-   the request goes on the lines below. `orchestrator`, `engineer` and
-   `reviewer` ship. [How to ask, and what happens
+   the request goes on the lines below. **Start with `atomaton`** — it is the
+   agent a person reaches first, and it decides whether what you described is a
+   question to answer, one leaf to do, or work to split into sub-issues. The
+   three that ship — `atomaton`, `engineer` and `reviewer` — are a template
+   rather than a fixed set: [what an agent definition
+   is](agents/overview.md), and how to add one of your own. [How to ask, and what happens
    next](work/how-it-works/what-starts-a-run.md#how-to-ask).

@@ -1,6 +1,6 @@
 # Work is a tree of issues
 
-An orchestrator files sub-issues under the issue it was given; an engineer opens a
+An atomaton files sub-issues under the issue it was given; an engineer opens a
 pull request under the issue it delivers. Each of those is a node, each has at most
 one parent, and a pull request is a leaf.
 

@@ -22,7 +22,7 @@ extra_headers:
   X-OrcaRouter-Session-Id: atomaton-reviewer
 knows_about:
   - engineer
-  - orchestrator
+  - atomaton
 mcp_servers:
   - files_readonly
   - github

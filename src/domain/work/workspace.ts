@@ -88,7 +88,7 @@ export interface WorkspaceScope {
  * Resolve the workspace's owner from a parent chain.
  *
  * The scope is the ROOT issue rather than the run's own target, because a
- * decomposed issue is one piece of work: the orchestrator's plan, the engineer's
+ * decomposed issue is one piece of work: the atomaton's plan, the engineer's
  * analysis and the reviewer reading both belong in one place. A pull request shares
  * its issue's workspace for the same reason -- an agent starts on the issue and
  * continues on the pull request, and a workspace tied to the GitHub object would

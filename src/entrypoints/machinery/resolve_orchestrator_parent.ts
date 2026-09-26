@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * resolve_orchestrator_parent.ts — print a sub-issue's orchestrator parent, for
+ * resolve_orchestrator_parent.ts — print a sub-issue's atomaton parent, for
  * a workflow step that needs the number in bash.
  *
  * The rule itself is `adapters/github/parent-issue.ts`. It used to be written out here as

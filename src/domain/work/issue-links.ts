@@ -125,7 +125,7 @@ export function claimsToClose(body: string, issue: number): boolean {
  * injector that decides whether to ADD such a line (case-insensitive, so it added
  * nothing) and did not match the parser, so `sub_number` came out empty and every job
  * gated on it was skipped: the parent was never notified and the sub-issue's results
- * never reached the orchestrator's session. Green, and silent.
+ * never reached the atomaton's session. Green, and silent.
  */
 export function closedIssueNumber(body: string): number | undefined {
   const match = new RegExp(`\\b(?:${CLOSING_KEYWORDS})\\s*:?\\s+#(\\d+)\\b`, "i").exec(body);

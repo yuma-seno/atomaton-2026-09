@@ -45,7 +45,7 @@ export interface CompletionSignals {
  * - A tool call already dispatched the next run — `create_pr` starting the
  *   reviewer, `launch_sub_agent` starting the children.
  * - A closed sub-issue. Closing one is what wakes its parent: the aggregation
- *   gate re-invokes the parent's orchestrator once the last sibling lands, and
+ *   gate re-invokes the parent's atomaton once the last sibling lands, and
  *   until then the parent is what is waiting, not a person. The dispatch happens
  *   in a later workflow run, so `chainContinues` — which only sees this run —
  *   cannot know about it.
@@ -74,7 +74,7 @@ export interface CompletionSignals {
  *
  * Overriding that one is the point rather than an oversight. The sub-issue rule says
  * the parent is what is waiting, not a person — and that holds because the parent's
- * orchestrator is woken to aggregate what its children found. A child that wrote
+ * atomaton is woken to aggregate what its children found. A child that wrote
  * nothing hands it nothing to aggregate, and the one thing the parent cannot do is
  * go and find out what happened: the work is in a saved session, where no agent
  * looks. So the premise of the silence fails exactly here, and the notification is

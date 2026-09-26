@@ -22,7 +22,7 @@ before a single tool starts.
 `files` replaces `@modelcontextprotocol/server-filesystem`, which has no line
 range and no content search. Measured over two runs of these agents, 202 tool
 calls: 37 of the 63 shell calls were `sed -n A,Bp` and `grep -rn`, rebuilding
-both by hand. The orchestrator has no shell and could not — it read one
+both by hand. The reviewer, which has no shell, could not — it read one
 1,700-line file four times with `head` and `tail`, which never reach the middle,
 and 43% of everything it read came back truncated.
 
@@ -38,8 +38,8 @@ withheld: `files_readonly` is `files` without the three that write, and
 
 The second case is why the pattern exists. `reload_environment` is for whoever is
 doing the work — the engineer, which is the agent that finds a dependency
-missing. The other tools on that server are the orchestrator's:
-`request_close_issue` calls itself "the ONLY correct way for the orchestrator to
+missing. The other tools on that server are the atomaton's:
+`request_close_issue` calls itself "the ONLY correct way for the atomaton to
 finish an issue", and an engineer that could call it could end an issue without a
 review. So the server cannot simply be handed over.
 

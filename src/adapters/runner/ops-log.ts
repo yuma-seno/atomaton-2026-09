@@ -34,7 +34,7 @@ export function logOp(op: string, payload: Record<string, unknown> = {}): void {
  * a tool call during this run: `launch_sub_agent` (once per sub-issue),
  * `create_pr`'s automatic reviewer dispatch, `merge_pr`'s re-invocation of
  * the PR's origin agent (or, once that confirms and closes, the
- * orchestrator), and a sub-issue closure's orchestrator dispatch (see
+ * atomaton), and a sub-issue closure's atomaton dispatch (see
  * lib/aggregation.ts). This is the ONE canonical "a chain continues"
  * signal every dispatch site writes.
  */

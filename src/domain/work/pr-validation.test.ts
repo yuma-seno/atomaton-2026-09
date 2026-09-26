@@ -209,3 +209,51 @@ describe("a role with nobody in it", () => {
     expect(outcome.next).toBeUndefined();
   });
 });
+
+/**
+ * Who a failed check goes back to, which depends on who asked for the run.
+ *
+ * An agent that opened a pull request and broke CI is the one that should fix it:
+ * it has the context and it is already in the loop. A person who asked for a run
+ * and got a red check is owed the answer themselves -- handing their request to an
+ * agent would be the machinery deciding on their behalf, and the agent would be
+ * working from a request it did not make.
+ *
+ * So a person's failed run dispatches nobody, and the caller mentions them. The
+ * check is still written, so the merge is still blocked.
+ */
+describe("a run a person asked for", () => {
+  const decideForPerson = (conclusion: string, priorRetries = 0) =>
+    decideValidationOutcome({ conclusion, ...agents, askedByPerson: true, priorRetries });
+
+  test("a failed check goes back to the person, not to an agent", () => {
+    const outcome = decideForPerson("failure");
+    expect(outcome.verdict).toBe("failed");
+    expect(outcome.next).toBeUndefined();
+    expect(outcome.summary).toContain("person");
+  });
+
+  // The check is what blocks the merge, and it is written from the verdict -- so a
+  // person's failed run must still be a failing verdict rather than a new one.
+  test("the check is still written as failing", () => {
+    expect(contextsPassed(decideForPerson("failure").verdict)).toBe(false);
+  });
+
+  // A passing run is unaffected: the agent the pull request names is the one that
+  // should look at it, whoever asked for the run.
+  test("a passing run still hands to the agent the pull request names", () => {
+    expect(decideForPerson("success").next?.agent).toBe("reviewer");
+  });
+
+  // The retry bound is about the engineer/CI loop, which a person's run is not in.
+  // Reaching it must not change the answer, or a person's third red check would
+  // suddenly dispatch an agent.
+  test("the retry limit does not turn it into an agent dispatch", () => {
+    expect(decideForPerson("failure", CI_RETRY_LIMIT).next).toBeUndefined();
+  });
+
+  // An agent's run is unchanged, which is the half that must not regress.
+  test("an agent's failed run still returns to the engineer", () => {
+    expect(decide("failure").next?.agent).toBe("engineer");
+  });
+});

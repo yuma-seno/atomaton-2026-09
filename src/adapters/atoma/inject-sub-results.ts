@@ -1,6 +1,6 @@
 /**
  * inject-sub-results.ts — Replace the last tool message in a session with
- * aggregated sub-issue completion results, so the orchestrator sees a
+ * aggregated sub-issue completion results, so the atomaton sees a
  * summary of what happened when it's re-invoked for final aggregation.
  * The one canonical implementation (was inject_sub_results.ts), called
  * directly by aggregate_sub_issues.ts -- no more subprocess spawn.
@@ -28,7 +28,7 @@ export function gatherSubResults(repo: string, subIssues: number[]): string {
 
   for (const num of subIssues) {
     let title = "Unknown";
-    // Not "closed". This block feeds the orchestrator's final report, whose whole
+    // Not "closed". This block feeds the atomaton's final report, whose whole
     // job is to state what happened, and a sub-issue whose state could not be
     // read is exactly the one thing that report must not assert. One rate-limited
     // lookup used to turn into "Status: closed" for work still in progress.
@@ -85,7 +85,7 @@ export function gatherSubResults(repo: string, subIssues: number[]): string {
 }
 
 /**
- * Put `summary` where the orchestrator will read it: over the last tool message,
+ * Put `summary` where the atomaton will read it: over the last tool message,
  * or appended as a user message when the session has none.
  *
  * Takes the text rather than fetching it. The doc comment here used to say

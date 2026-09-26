@@ -21,11 +21,10 @@ function shippedConfig(): AtomaConfig & Record<string, unknown> {
 describe("config.yaml", () => {
   test("is valid and matches expected shape", () => {
     const c = shippedConfig();
-    // Asserted absent, not merely unused: a run is bounded by its time now, and the
-    // runner reads that from the job it is inside rather than from here. A key that
-    // nothing reads and that the schema no longer recognises would be reported to an
-    // adopter as a typo the moment they touched their config.
-    expect(c.agents).toBeUndefined();
+    // Required, not merely present: a workflow that reacts to a condition has no
+    // thread to read a name from, so an absent key is a run for nobody. The
+    // template ships one so an adopter has a working example to rename.
+    expect(c.agents?.on_config_finding).toBe("engineer");
     expect(c.merge?.policy).toBe("manual");
     expect(c.chain?.labels).toBeDefined();
   });

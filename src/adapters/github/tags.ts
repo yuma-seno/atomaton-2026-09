@@ -155,7 +155,7 @@ export const AGENT_TAG = stringTag("agent", AGENT_NAME_PATTERN);
 export const CHANGED_TAG = stringTag("changed", "yes|no");
 /** Marks a GitHub comment as human-visible operational audit only; excluded from future LLM context reconciliation. */
 export const LLM_CONTEXT_TAG = stringTag("llm-context", "include|exclude");
-/** Idempotency marker: orchestrator dispatch was already triggered for a given closed sub-issue's completion (see lib/aggregation.ts). Fresh tag with no pre-existing data, written as plain `N`. */
+/** Idempotency marker: atomaton dispatch was already triggered for a given closed sub-issue's completion (see lib/aggregation.ts). Fresh tag with no pre-existing data, written as plain `N`. */
 export const AGGREGATED_TAG = numericTag("aggregated");
 /** Progress marker: which sub-issue's completion a progress comment reports on. Write-only (nothing parses it back); written as plain `N`. */
 export const SUB_RESULT_TAG = numericTag("sub-result");

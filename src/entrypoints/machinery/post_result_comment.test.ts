@@ -9,16 +9,16 @@ import { runWithFakeGh, scriptPath } from "./testing/harness.ts";
 describe("post_result_comment.ts buildCommentBody", () => {
   test("mentions notify when there is no directive and the chain does not continue", () => {
     const body = buildCommentBody({
-      agent: "orchestrator",
+      agent: "atomaton",
       notify: "octocat",
       runUrl: "http://example.com/run/1",
       output: "All done.",
       usageLines: [],
     });
-    expect(body).toContain("<!-- atomaton:agent=orchestrator -->");
+    expect(body).toContain("<!-- atomaton:agent=atomaton -->");
     expect(body).toContain("All done.");
     expect(body).toContain("@octocat");
-    expect(body).toContain("_run by [orchestrator](http://example.com/run/1)_");
+    expect(body).toContain("_run by [atomaton](http://example.com/run/1)_");
   });
 
   /**
@@ -56,7 +56,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
    */
   test("keeps the mention when a stop cancelled the directive's handoff", () => {
     const body = buildCommentBody({
-      agent: "orchestrator",
+      agent: "atomaton",
       notify: "octocat",
       directive: "engineer",
       endedBecause: "stopped",
@@ -70,7 +70,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
 
   test("and when a spent time budget cancelled it", () => {
     const body = buildCommentBody({
-      agent: "orchestrator",
+      agent: "atomaton",
       notify: "octocat",
       directive: "engineer",
       endedBecause: "runtime",
@@ -193,7 +193,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
 
   test("omits the mention when a directive is present", () => {
     const body = buildCommentBody({
-      agent: "orchestrator",
+      agent: "atomaton",
       notify: "octocat",
       directive: "engineer",
       runUrl: "http://example.com/run/1",
@@ -205,7 +205,7 @@ describe("post_result_comment.ts buildCommentBody", () => {
 
   test("omits the mention when the chain already continues", () => {
     const body = buildCommentBody({
-      agent: "orchestrator",
+      agent: "atomaton",
       notify: "octocat",
       chainContinues: "true",
       runUrl: "http://example.com/run/1",
@@ -448,7 +448,7 @@ describe("post_result_comment.ts main", () => {
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
+        ["--number", "5", "--agent", "atomaton", "--notify", "octocat", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, rules: [{ match: ["api", "comments"] }] },
       );
       expect(r.status).toBe(0);
@@ -464,7 +464,7 @@ describe("post_result_comment.ts main", () => {
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
+        ["--number", "5", "--agent", "atomaton", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, rules: [{ match: ["api", "comments"] }] },
       );
       expect(r.status).toBe(0);
@@ -480,7 +480,7 @@ describe("post_result_comment.ts main", () => {
     try {
       const r = runWithFakeGh(
         scriptPath("post_result_comment.ts"),
-        ["--number", "5", "--agent", "orchestrator", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
+        ["--number", "5", "--agent", "atomaton", "--run-url", "http://example.com/run/1", "--output", join(dir, "atomaton_output.txt")],
         { cwd: dir, env: { GITHUB_REPOSITORY: "owner/repo" }, rules: [{ match: ["api", "comments"], stdout: "42" }] },
       );
       expect(r.status).toBe(0);

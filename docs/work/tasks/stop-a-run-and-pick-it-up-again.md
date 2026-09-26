@@ -40,7 +40,7 @@ To continue:
 remember. It takes no instruction of its own — the ordinary agent command already
 does that, and having two ways to say it would only make one of them wrong.
 
-**On a parent issue.** It reaches the work underneath. An orchestrator's sub-issues
+**On a parent issue.** It reaches the work underneath. An atomaton's sub-issues
 and the pull requests opened for them are all under the issue you named, so one
 `/stop` holds the whole chain, and the reply lists what it reached. `/resume` on the
 same issue brings all of it back.

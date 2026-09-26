@@ -16,6 +16,7 @@ everything else about the runner. This table is the one place that knows both.
 
 | Key | Its entry |
 | --- | --- |
+| `agents.on_config_finding` | [work](../work/reference.md#agentson_config_finding) |
 | `base_branch` | [work](../work/reference.md#base_branch) |
 | `chain.after_handoffs` | [work](../work/reference.md#chainafter_handoffs) |
 | `chain.after_runs_without_change` | [work](../work/reference.md#chainafter_runs_without_change) |

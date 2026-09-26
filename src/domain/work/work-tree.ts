@@ -4,7 +4,7 @@
  *
  * ## The model
  *
- * **Work in this project is a tree of issues.** An orchestrator files sub-issues under
+ * **Work in this project is a tree of issues.** An atomaton files sub-issues under
  * the one it was given; an engineer opens a pull request under the issue it delivers.
  * Every one of those is a node, and every node has at most one parent.
  *
@@ -18,7 +18,7 @@
  *
  * ## Why not "you cannot stop a parent"
  *
- * That was the other candidate, and it confuses position with state. An orchestrator
+ * That was the other candidate, and it confuses position with state. An atomaton
  * runs ON the parent — at the start, and again when its children are all in — so a
  * parent has runs of its own. A `/stop` aimed at a parent misses today not because it
  * is a parent but because nothing happens to be executing on it at that moment, and

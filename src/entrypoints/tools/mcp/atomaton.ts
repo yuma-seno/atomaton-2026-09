@@ -6,7 +6,7 @@
  *
  * Tools:
  *   - launch_sub_agent: Launch Atomaton agents on sub-issues and end the
- *     orchestrator session.
+ *     atomaton session.
  *   - request_close_issue: Conclude work on the current issue.
  *   - reload_environment: Re-run the project's setup as a workflow step and start
  *     a new run, for the things an agent cannot do to its own environment.
@@ -52,7 +52,7 @@ const LAUNCH_SUB_AGENT_SCHEMA = z.object({
         // `positiveInt`, not a bare `z.number()`. This was the only numeric
         // argument in the tool tree skipping the helper whose docstring records
         // the production failures that motivated it — models sending `"185"` for
-        // 185. Once per orchestrator run is where an avoidable rejection costs
+        // 185. Once per atomaton run is where an avoidable rejection costs
         // the most, since the whole plan is in that one call.
         issue: positiveInt("The sub-issue number."),
         agent: z.string().min(1).describe("The agent to dispatch (e.g., 'engineer')."),
@@ -65,7 +65,7 @@ const LAUNCH_SUB_AGENT_SCHEMA = z.object({
    *
    * Four calls end a session. `create_pr` carries the report in `body`,
    * `request_close_issue` in `summary`, `reload_environment` in `reason` -- and
-   * this one carried nothing, while being the orchestrator's most frequent exit.
+   * this one carried nothing, while being the atomaton's most frequent exit.
    * The session stops the moment it returns, so there is no later turn to write
    * in: a run that meant to report after dispatching never reports at all, and
    * the comment this tool already posted is tagged to be excluded from the next
@@ -102,7 +102,7 @@ function handleLaunchSubAgent(args: z.infer<typeof LAUNCH_SUB_AGENT_SCHEMA>): Mc
 
   log(`Dispatching ${validTasks.length} sub-issue(s): ${JSON.stringify(validTasks)}`);
 
-  // The orchestrator's OWN current issue (the parent, from the sub-issues'
+  // The atomaton's OWN current issue (the parent, from the sub-issues'
   // point of view).
   const parentIssue = (process.env.ISSUE_NUMBER ?? "").trim();
   const notify = process.env.ISSUE_NOTIFY ?? "";
@@ -150,9 +150,9 @@ function handleLaunchSubAgent(args: z.infer<typeof LAUNCH_SUB_AGENT_SCHEMA>): Mc
   // The session ends only when every task was dispatched.
   //
   // A partial failure used to end it too, mentioning the failures in prose. By
-  // this tool's own contract the orchestrator is re-invoked when ALL sub-issues
+  // this tool's own contract the atomaton is re-invoked when ALL sub-issues
   // are closed — and a sub-issue nobody was dispatched onto is never closed, so
-  // the parent waited forever. The orchestrator is the one caller that can still
+  // the parent waited forever. The atomaton is the one caller that can still
   // fix a partial dispatch, and it was the one being told to stop.
   const complete = errors.length === 0;
 
@@ -319,12 +319,12 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
   defineMcpTool({
     name: "launch_sub_agent",
     description:
-      "Dispatch Atomaton agents onto sub-issues and immediately end the orchestrator session. " +
+      "Dispatch Atomaton agents onto sub-issues and immediately end the atomaton session. " +
       "Call this ONCE after creating all sub-issues via GitHub MCP. " +
       "Each sub-issue can be assigned a different agent. " +
-      "Put your report in `summary`: the orchestrator session ends immediately after this call " +
+      "Put your report in `summary`: the atomaton session ends immediately after this call " +
       "returns, so there is no turn afterwards in which to write one. " +
-      "The orchestrator will be automatically re-invoked when ALL sub-issues are closed.",
+      "The atomaton will be automatically re-invoked when ALL sub-issues are closed.",
     schema: LAUNCH_SUB_AGENT_SCHEMA,
     handler: handleLaunchSubAgent,
   }),
@@ -332,7 +332,7 @@ const { tools: TOOLS, dispatch } = buildMcpTools([
     name: "request_close_issue",
     description:
       "Conclude work on YOUR CURRENT issue and end your session. This is the ONLY " +
-      "correct way for the orchestrator to finish an issue -- do NOT call " +
+      "correct way for the atomaton to finish an issue -- do NOT call " +
       "github__close_issue yourself, and do NOT just stop responding without calling " +
       "this. Your reason and summary are posted to the issue, and phase-gating/" +
       "aggregation is triggered for its parent when this is a sub-issue. Whether the " +

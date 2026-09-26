@@ -24,12 +24,13 @@ const SOUND = {
   deploy: { on_merge: [], on_tag: [], on_demand: [] },
   merge: { policy: "auto" },
   chain: { labels: { in_progress: "atomaton/in-progress" } },
+  agents: { on_config_finding: "engineer" },
   tools: { secrets: [] },
 };
 
 const facts = (config: unknown) => ({
   config,
-  agentNames: ["engineer", "orchestrator", "reviewer"],
+  agentNames: ["engineer", "atomaton", "reviewer"],
   workflowFiles: [DEFAULT_CI_WORKFLOW, DEFAULT_CD_WORKFLOW, "atomaton-runner.yml"],
 });
 
@@ -42,8 +43,14 @@ describe("a sound deliverable", () => {
 
   // The shipped file sets almost nothing. Absent is not the same as invalid, and a
   // check that could not tell them apart would fail every fresh adoption.
-  test("an almost-empty config is sound", () => {
-    expect(problemsFor({})).toEqual([]);
+  //
+  // `agents` is the exception, and it is the one section that is required: a
+  // workflow reacting to a condition has no thread to read a name from, so an
+  // absent key is a run for nobody. Everything else may be absent.
+  test("an almost-empty config is sound apart from the required agents section", () => {
+    const problems = problemsFor({});
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("`agents.on_config_finding`");
   });
 });
 
@@ -205,11 +212,30 @@ describe("names that have to resolve to a file", () => {
 
   // The key an adopter is most likely to still have: it configured a per-agent
   // iteration budget, and nothing has read it since a run stopped being bounded by
-  // turns. Reported as unrecognised, which is what it now is.
+  // turns. `agents` is a real section now, so the misspelled inner key is what is
+  // reported rather than the section itself.
   test("a per-agent iteration budget is reported as a key nothing reads", () => {
-    const problems = problemsFor({ ...SOUND, agents: { engineer: { max_iterations: 200 } } });
+    const problems = problemsFor({ ...SOUND, agents: { on_config_finding: "engineer", engineer: { max_iterations: 200 } } });
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain("`agents`");
+    expect(problems[0]).toContain("`agents.engineer`");
+  });
+
+  // Required, and the reason is the whole point of the section: a default would be
+  // this file naming an agent, which is the hardcoding `agents` exists to remove.
+  test("a missing required agent key is reported", () => {
+    const problems = problemsFor({ ...SOUND, agents: {} });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("`agents.on_config_finding`");
+    expect(problems[0]).toContain("required");
+  });
+
+  // A name that resolves to no definition is the same failure one step later, and
+  // it would surface on a workflow reacting to a condition -- the one place nobody
+  // is watching.
+  test("a required agent key naming no definition is reported", () => {
+    const problems = problemsFor({ ...SOUND, agents: { on_config_finding: "nobody" } });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain("agent-definitions/nobody.md");
   });
 
   // The inverse of every other rule here: not a name that resolves to nothing, but

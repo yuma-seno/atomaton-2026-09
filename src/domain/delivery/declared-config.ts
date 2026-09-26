@@ -102,6 +102,37 @@ export interface AtomaConfig {
   };
 
   /**
+   * The agents a workflow starts when no issue or pull request can name one.
+   *
+   * ## Why this exists, and what does not belong in it
+   *
+   * Almost every run is started by something that already knows who it wants: a
+   * person types `/<agent>`, an agent writes a handoff, a pull request carries the
+   * agent that opened it, a parent issue carries the agent that was working on it.
+   * Those are resolved from the thread at run time, and naming one here would be a
+   * second answer to a question the thread already answers -- the kind that goes
+   * stale the moment somebody renames an agent.
+   *
+   * What is left is the handful of runs with no thread to read: a workflow that
+   * reacts to a condition rather than to a request. `on_config_finding` is the one
+   * that exists today -- `atoma` reports a defect in the tools file it was handed
+   * as an `ATOMA_CONFIG_FINDING` line and carries on, and something has to open an
+   * issue about it and put an agent on that issue.
+   *
+   * ## Required, not defaulted
+   *
+   * Every key here is required. A default would be this file naming an agent, which
+   * is the hardcoding this section exists to remove -- and a project that renamed
+   * its engineer would get a run for an agent that does not exist. `configProblems`
+   * reports a missing key, so the pull request that would ship it fails its check
+   * instead of the run failing later.
+   */
+  agents?: {
+    /** The agent to start on an issue opened for an `ATOMA_CONFIG_FINDING`. */
+    on_config_finding?: string;
+  };
+
+  /**
    * What an agent can reach beyond what Atomaton ships, and under what extra watch.
    *
    * Additive. The eight servers a run starts with and the hooks that watch all of

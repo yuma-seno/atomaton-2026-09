@@ -86,7 +86,8 @@ import { parseArgs } from "node:util";
 import { contextsPassed, decideValidationOutcome } from "../../domain/work/pr-validation.ts";
 import { dispatchWorkflow, gh } from "../../adapters/github/gh.ts";
 import { readBranchRules } from "../../adapters/github/branch-rules.ts";
-import { CI_RETRY_TAG, LLM_CONTEXT_TAG } from "../../adapters/github/tags.ts";
+import { CI_RETRY_TAG, LLM_CONTEXT_TAG, ORIGIN_AGENT_TAG } from "../../adapters/github/tags.ts";
+import { extractDirective } from "./extract_directive.ts";
 import { defineScript } from "./lib/script-ref.ts";
 
 export interface ValidatePullRequestArgs {
@@ -94,8 +95,16 @@ export interface ValidatePullRequestArgs {
   number: string;
   branch: string;
   workflow: string;
-  reviewer: string;
-  engineer: string;
+  /**
+   * Directory holding `agent-definitions/*.md`, for resolving the `/<agent>` line
+   * the pull request's body carries.
+   *
+   * A name is only accepted when a definition exists for it, which is the same
+   * check an agent's handoff goes through -- so a body that mentions `/engineer`
+   * in prose dispatches nobody, and a name with no definition cannot reach
+   * `gh workflow run`, where there would be nowhere left to report it.
+   */
+  "def-dir": string;
   /**
    * File `validate_deliverable.ts` wrote, one problem per line and empty when
    * there are none.
@@ -106,6 +115,14 @@ export interface ValidatePullRequestArgs {
    * reported as one that passed. Same reasoning as `required.known` below.
    */
   "deliverable-report": string;
+  /**
+   * Whether a person asked for this run, rather than an agent.
+   *
+   * It decides who a failed check goes back to, and the two answers differ on
+   * purpose: an agent that broke its own pull request fixes it, and a person who
+   * asked for a run is owed the answer themselves. See `ValidationInput.askedByPerson`.
+   */
+  "asked-by-person"?: string;
   /** Defaults to 1800. The job's own `timeout-minutes` is deliberately longer,
    *  so a stall is reported as "no conclusion" here rather than killed there
    *  with nothing written. */
@@ -261,9 +278,9 @@ function main(): void {
       number: { type: "string" },
       branch: { type: "string" },
       workflow: { type: "string" },
-      reviewer: { type: "string" },
-      engineer: { type: "string" },
+      "def-dir": { type: "string" },
       "deliverable-report": { type: "string" },
+      "asked-by-person": { type: "string" },
       "timeout-seconds": { type: "string" },
     },
   });
@@ -271,8 +288,9 @@ function main(): void {
   const repo = values.repo ?? "";
   const branch = values.branch ?? "";
   const workflow = values.workflow ?? "";
-  if (!repo || !branch || !workflow) {
-    console.error("usage: validate_pull_request.ts --repo owner/name --number N --branch B --workflow W");
+  const defDir = values["def-dir"] ?? "";
+  if (!repo || !branch || !workflow || !defDir) {
+    console.error("usage: validate_pull_request.ts --repo owner/name --number N --branch B --workflow W --def-dir DIR");
     process.exit(1);
   }
 
@@ -357,10 +375,20 @@ function main(): void {
   // needs no state of its own.
   const priorRetries = countPriorRetries(repo, values.number ?? "");
 
+  // Both names read from the pull request, neither passed in. The body carries the
+  // `/<agent>` line the pull request asks for -- written by `create_pr` when an
+  // agent named one, or by a person typing it -- and the `atomaton:origin-agent`
+  // tag carries whoever opened it. A dispatch argument would be gone by the second
+  // validation; these survive every one.
+  const prBody = gh("api", `repos/${repo}/pulls/${values.number}`, "--jq", ".body").stdout ?? "";
+  const reviewerAgent = extractDirective(prBody, defDir);
+  const engineerAgent = ORIGIN_AGENT_TAG.read(prBody) ?? "";
+
   const outcome = decideValidationOutcome({
     conclusion,
-    reviewerAgent: values.reviewer ?? "",
-    engineerAgent: values.engineer ?? "",
+    reviewerAgent,
+    engineerAgent,
+    askedByPerson: (values["asked-by-person"] ?? "") === "true",
     priorRetries,
     deliverableProblems,
   });

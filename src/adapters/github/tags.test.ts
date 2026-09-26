@@ -5,7 +5,7 @@ import { AGGREGATED_TAG, AGENT_TAG, CHANGED_TAG, LLM_CONTEXT_TAG, NOTIFY_TAG, PA
  * These markers carry state between workflow runs through GitHub, so they live in the
  * very text that becomes an agent's context — issue bodies, pull request bodies,
  * comments. Nothing removed them on the way in, and a real session carried
- * `agent=orchestrator`, `changed=yes`, `notify=hws-yuma-seno`, `origin-agent=engineer`
+ * `agent=atomaton`, `changed=yes`, `notify=hws-yuma-seno`, `origin-agent=engineer`
  * and `parent-issue=766` into the prompt.
  */
 describe("withoutTags", () => {

@@ -623,7 +623,7 @@ async function closeIssueAndDispatch(a: z.infer<typeof ISSUE_NUMBER_ARG_SCHEMA>)
 
   // The aggregation outcome is part of what happened, so it goes in the result.
   // This used to be awaited and discarded, and `{ok: true}` was returned whether
-  // the parent's orchestrator had been re-invoked, had been left waiting, or had
+  // the parent's atomaton had been re-invoked, had been left waiting, or had
   // been skipped because something could not be read. The last of those leaves a
   // parent that nothing will ever come back to -- and the agent that closed the
   // issue is the last thing in a position to notice.
@@ -685,11 +685,16 @@ function withCheckedMentions(body: string): string {
   return notice === undefined ? checked.text : `${checked.text}\n\n${notice}`;
 }
 
-function injectParentIssue(body: string): string {
+function injectParentIssue(body: string, reviewer: string): string {
   const parent = (process.env.ISSUE_NUMBER ?? "").trim();
   refuseClosingKeywords(body, "pull request body");
   body = notifyTagPrefix(body, "PR") + withCheckedMentions(body);
-  if (!parent) return body;
+  // The reviewer, as the same line a person would type. Written before the tags so
+  // it is the first visible line of the body, which is where a directive is read
+  // from -- see `resolve_pr_next_agent.ts`. An empty name writes nothing, and the
+  // pull request is then left for a person, who is told so below.
+  const reviewerLine = reviewer ? `/${reviewer}\n\n` : "";
+  if (!parent) return `${reviewerLine}${body}`;
   if (PARENT_ISSUE_TAG.has(body)) {
     mcpFail("PR body already contains a parent-issue tag; refusing to add another");
   }
@@ -700,7 +705,7 @@ function injectParentIssue(body: string): string {
   const closesLine = `Closes #${parent}\n`;
   const originAgent = (process.env.AGENT ?? "").trim();
   const originLine = originAgent ? `${ORIGIN_AGENT_TAG.write(originAgent)}\n` : "";
-  return `${PARENT_ISSUE_TAG.write(Number(parent))}\n${originLine}${closesLine}${body}`;
+  return `${reviewerLine}${PARENT_ISSUE_TAG.write(Number(parent))}\n${originLine}${closesLine}${body}`;
 }
 
 function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
@@ -715,7 +720,8 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
   // every agent PR aimed at the default branch. With none set, `gh` targets the
   // default branch.
   const base = a.base ?? stackedPrBase(REPO) ?? getBaseBranch();
-  body = injectParentIssue(body);
+  const reviewer = (a.reviewer ?? "").trim();
+  body = injectParentIssue(body, reviewer);
   log(`createPr: title=${JSON.stringify(title)}, base=${JSON.stringify(base)}, REPO=${JSON.stringify(REPO)}`);
 
   const branch = resolveBranch();
@@ -753,19 +759,22 @@ function createPr(a: z.infer<typeof CREATE_PR_SCHEMA>): McpToolResult {
   if (!Number.isFinite(num)) mcpFail(`gh pr create: unexpected output: ${stdout.slice(0, 300)}`);
 
   logOp("create_pr", { number: num, title });
-  // The reviewer is named by the caller now, not by an `auto_triggers` entry.
-  // Opening a pull request used to start one through `pull_request.opened`, which
-  // fired only for a HUMAN's pull request -- GitHub starts no workflow for an
-  // event its own token caused -- so the trigger and this call were two halves of
-  // one behaviour that looked like one half each. The trigger was removed and
-  // asking became explicit.
+  // The reviewer is named by the caller, and the name goes in the BODY rather than
+  // into this dispatch. Two reasons, and the second is the one that matters.
   //
-  // An empty name is a legitimate answer, and `atomaton-validate-pr` already handles
-  // it: CI still runs, and nothing is dispatched afterwards. What it did not
-  // handle is a person finding out, which is what `noticeNobodyIsComing` below is
-  // for.
-  const reviewer = (a.reviewer ?? "").trim();
-  const validationDispatched = dispatchPrValidation(REPO, num, branch, reviewer);
+  // The body is where the name survives. A dispatch argument is gone the moment the
+  // run ends, so a re-validation -- a push, a second CI round -- had nothing to read
+  // and fell back to a literal. The body is read every time, by the same reader that
+  // resolves a person's `/reviewer` comment.
+  //
+  // And it makes one mechanism out of two. An agent naming a reviewer and a person
+  // typing `/reviewer` are the same request, so they are written the same way and
+  // resolved by the same code. `injectParentIssue` below puts the line in.
+  //
+  // An empty name is a legitimate answer: CI still runs, and nothing is dispatched
+  // afterwards. What it did not handle is a person finding out, which is what
+  // `noticeNobodyIsComing` below is for.
+  const validationDispatched = dispatchPrValidation(REPO, num, branch);
 
   // Traceability: the reviewer dispatch above is fire-and-forget, and (since
   // this call now ends the session immediately, see the returned
@@ -907,15 +916,17 @@ function commitAndPush(a: z.infer<typeof COMMIT_AND_PUSH_SCHEMA>): string {
   if (moved && !open.code) {
     try {
       const [pr] = JSON.parse(open.stdout || "[]") as { number: number }[];
-      // No reviewer. This dispatch exists to refresh the required check on the new
-      // head commit, which is about whether the pull request CAN merge -- a
-      // different question from whether anyone should look at it.
+      // No reviewer argument. This dispatch exists to refresh the required check on
+      // the new head commit, which is about whether the pull request CAN merge -- a
+      // different question from whether anyone should look at it. The name is read
+      // from the pull request's own body by the validation, so a push does not have
+      // to carry it.
       //
       // `pull_request.synchronize` used to start a reviewer here, and only for a
       // person's push. It was removed: nothing starts unless someone asks. An
       // agent that pushed a fix and wants it reviewed hands off by naming the
       // reviewer as its directive, which is the path the handoff limit covers.
-      if (pr) dispatchPrValidation(REPO, pr.number, branch, "");
+      if (pr) dispatchPrValidation(REPO, pr.number, branch);
     } catch {
       // This call's result is `{ok: true}` and validation was not started. An
       // agent that pushed and expects CI to run would be waiting for something
