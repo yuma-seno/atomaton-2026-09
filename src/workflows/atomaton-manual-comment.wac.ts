@@ -383,8 +383,15 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
     // validation, which runs CI and waits, and dispatches whoever the result calls
     // for -- see `prValidationStep`. Starting the runner directly would have the
     // agent read a CI result that does not exist yet.
+    //
+    // The condition reads `parseJob.rawOutputs.type`, NOT `targetStep.rawOutputs.type`.
+    // A job-level `if:` has no `steps` context -- GitHub refuses the whole workflow
+    // file with "Unrecognized named-value: 'steps'", and the run fails in zero
+    // seconds with no jobs and no log. The step's value is what the job publishes as
+    // its own output, so the two are the same fact; only one of them is reachable
+    // from here.
     .then((parseJob) =>
-      dispatchToAtomaRunner(parseJob, "inherit", parseJob.outputs.session_mode, `${targetStep.rawOutputs.type} != 'pr'`),
+      dispatchToAtomaRunner(parseJob, "inherit", parseJob.outputs.session_mode, `${parseJob.rawOutputs.type} != 'pr'`),
     )
     .jobs(),
 );
