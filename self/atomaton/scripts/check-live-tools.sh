@@ -131,6 +131,61 @@ if [ ! -d "$DEFS_DIR" ]; then
   exit 1
 fi
 
+# ── the layout a RUN has, not the one this checkout has ───────────────────────
+#
+# `dist/` sits in the work tree, beside `node_modules`, so a server started from it
+# resolves its imports by walking up into the project's own tree. A run has neither:
+# the runner copies the machinery to `${RUNNER_TEMP}/atomaton-machinery` and installs
+# the libraries at `${RUNNER_TEMP}/node_modules`, beside it rather than above it.
+#
+# That difference is not academic. Moving the machinery out of the work tree once put
+# `node_modules` out of reach of the module-resolution walk, and the search server
+# could not start at all -- atoma treats a server that will not initialise as fatal,
+# so one unresolvable import took every run down. Checking `dist/` in place would
+# have passed, because in place the walk finds the libraries.
+#
+# So the tree is copied to where a run puts it, and the libraries are installed
+# beside it, before anything is started. `runner-layout.test.ts` holds the runner to
+# the same two facts, so this cannot quietly stop reproducing the arrangement a run
+# actually has.
+RUN_ROOT="$WORK/run-layout"
+rm -rf "$RUN_ROOT"
+mkdir -p "$RUN_ROOT"
+cp -r "$MACHINERY" "$RUN_ROOT/atomaton-machinery"
+MACHINERY="$RUN_ROOT/atomaton-machinery"
+RUNTIME_TOOLS="$MACHINERY/.github/atomaton-runtime/tools"
+DEFS_DIR="$MACHINERY/.github/atomaton/agent-definitions"
+
+# The libraries, at the sibling the runner installs them to. The runner reads
+# `tools.packages` and runs `bun add --no-save` from `${RUNNER_TEMP}`, with a
+# manifest of its own so `bun add` has a directory to own rather than reading the
+# project's. Reproduced here from the same file, so what is installed is what a run
+# would install rather than whatever this checkout happens to have.
+#
+# `--no-save` and a manifest of its own, exactly as the runner does it: the point is
+# that the libraries are REACHABLE from the machinery, not that a particular set is
+# recorded anywhere.
+PACKAGES_FILE="$RUNTIME_TOOLS/packages.json"
+BUN_PKGS=""
+if [ -f "$PACKAGES_FILE" ]; then
+  BUN_PKGS="$(jq -r '.bun[]? // empty' "$PACKAGES_FILE" 2>/dev/null || true)"
+fi
+if [ -n "$BUN_PKGS" ]; then
+  if [ ! -f "$RUN_ROOT/package.json" ]; then
+    echo '{"name":"atomaton-mcp-libraries","private":true}' > "$RUN_ROOT/package.json"
+  fi
+  # shellcheck disable=SC2086 -- the runner passes the list unquoted too, and the
+  # names come from a file this repository ships rather than from a pull request.
+  ( cd "$RUN_ROOT" && bun add --no-save $BUN_PKGS >/dev/null 2>&1 ) || {
+    echo "::error::could not install the MCP libraries beside the machinery at $RUN_ROOT, so the layout a run has could not be reproduced."
+    exit 1
+  }
+  echo "MCP libraries installed at $RUN_ROOT/node_modules, beside the machinery"
+else
+  echo "No bun libraries declared in $PACKAGES_FILE; the machinery is checked with none beside it"
+fi
+echo "Checking the layout a run has: $MACHINERY"
+
 # Written the way a run writes it, from the config of the tree being checked, by
 # the writer that ships in that same tree. There is no tools file to read: it
 # stopped shipping when it became a per-run artifact, and one left behind would

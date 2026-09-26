@@ -121,10 +121,10 @@ Nothing writes to main, so none of this needs a ruleset bypass.
 and creating the release. That script starts every tool server the artifact would
 ship and asks `atoma validate --with-live-tools` what each server actually
 advertises — which is what says whether a `tool_allowlist` pattern still names a
-tool that exists, and whether any server has stopped starting. Nothing else here
-asks either question: `probe-tool-servers.ts` reads the tool list out of the
-model's request, which proves a server registered something but not that a pattern
-still matches it.
+tool that exists, and whether any server has stopped starting. The same question is
+asked earlier, on every pull request, by `atomaton-tools` in `atomaton-check.yml`;
+this is the last place it can withhold something, because `dist/` is the tree about
+to be published.
 
 It runs here, on the default branch and against `dist/`, and deliberately not on
 the pull request: it starts processes, and `tools.servers` lets a pull request name

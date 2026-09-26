@@ -182,22 +182,16 @@ decides whether every `tool_allowlist` / `tool_denylist` pattern still names a t
 that exists, whether two `unprefixed` servers claim one name, and whether a server
 starts at all.
 
-It runs there — on the default branch, against `dist/` — and never on a pull
-request, for one reason: it starts processes, and
-[the check on a pull request starts nothing](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
-What it costs is that a guard which stopped guarding is found after the merge that
-broke it rather than as a red check on its pull request. Both scripts are this
-repository's own and neither ships, so nothing here is a property of an adopted
-repository's release —
-[what nothing checks for them](../pipeline/boundaries.md#nothing-checks-that-your-tool-servers-still-start)
+It runs there — on the default branch, against `dist/` — because that is the tree
+about to be published, and it is the last place a disagreement can withhold
+something. The same question is asked earlier, on every pull request, by
+`atomaton-tools` in `atomaton-check.yml`: that job starts the servers the pull
+request declares, holds no repository secret, and is what turns a guard that has
+stopped guarding into a red check rather than a discovery after the merge. Both
+scripts here are this repository's own and neither ships, so nothing in this
+section is a property of an adopted repository's release —
+[what a pull request is checked against](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against)
 is the adopter-facing half.
-
-`probes/` is neither. A probe measures something no unit test can reach — whether
-`PR_SET_DUMPABLE(0)` survives `execve`, whether a server's complaint about itself
-reaches the model — and its answer is why a design went the way it did. Probes
-are not shipped and are not part of an adopter's environment. They are in
-`merge.governed_paths`, which they inherited from the `scripts/**` they were
-split out of.
 
 ## Open questions
 

@@ -93,9 +93,20 @@ commands.
 `deploy` ships empty, so nothing verifies that the tool servers a run would start
 actually start — that an allowlist pattern still names a tool that exists, that two
 `unprefixed` servers do not claim one name, that a server runs at all. Answering any
-of those means executing the configuration, and
-[the check on a pull request will not do that](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against).
+of those means executing the configuration.
 
-It belongs in a release, where the configuration being started has already been
-reviewed. Until you put it there, nothing runs it, and a guard that stopped guarding
-is found by the run that needed it rather than by a red check.
+**Atomaton's own check does it, on every pull request.** `atomaton-tools` is a job
+of its own in `atomaton-check.yml`, and it starts every server the pull request's
+definitions name. It is not yours to configure and not part of `checks`: it runs
+whether or not you declared anything, and it holds no repository secret — which is
+what makes starting a pull request's servers safe there.
+[What a pull request is checked against](../pull-requests/boundaries.md#what-a-pull-request-is-checked-against)
+is the whole of it.
+
+What is left for you is the other half: a server that starts and advertises the
+right tools can still fail on a *call*, and nothing here calls one. A package a
+server needs only in order to answer is not installed by this check, and a
+credential it needs only in order to answer is not routed to it. Those are found by
+the run that needed them, which is why
+[what a tool can and cannot be protected from](../tools/boundaries.md#what-a-tool-can-and-cannot-be-protected-from)
+is worth reading before adding a server of your own.

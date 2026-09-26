@@ -185,6 +185,32 @@ const TOOL_DEFAULTS_PATH = TOOL_DEFAULTS_FILE;
  * it leaves exposed. The short version: the provider API key is never in a tool
  * server, the servers this project ships protect their own credentials, and a
  * credential routed to a third-party server is readable by the shell.
+ *
+ * ## The three facts this arrangement rests on
+ *
+ * Each was measured on this runner rather than reasoned about, and each is why one
+ * of the alternatives below was not taken. They are here because the code depends
+ * on them and nothing else states them.
+ *
+ * **`PR_SET_DUMPABLE(0)` does not survive `execve`.** A process can make its own
+ * `/proc/<pid>/environ` unreadable to the same user, but the flag is cleared when
+ * it execs something else. So atoma cannot set it on a server's behalf, and a
+ * wrapper cannot set it for a program: the program has to call it in its own
+ * process. That is why the servers this project ships call it themselves, and why
+ * a third-party server cannot be made to.
+ *
+ * **`LD_PRELOAD` would have closed both holes and does not work here.** A shared
+ * library's constructor runs after `exec`, inside the new process, so the flag
+ * would stick -- and `LD_PRELOAD` is itself an environment variable, so every
+ * descendant would inherit it. It fails on `gh`, which is written in Go and
+ * statically linked: a static binary ignores `LD_PRELOAD` entirely. `github` runs
+ * `gh` with `GH_TOKEN` in its environment, so the child-process hole would have
+ * stayed open.
+ *
+ * **A different uid closes the environ hole outright.** That is the mechanism
+ * taken, and it is why this user exists rather than a container: the container
+ * answered the same question with `--user 1234:0`, which is the same problem
+ * without the container.
  */
 const TOOL_USER = "atomaton-tools";
 
@@ -1686,10 +1712,10 @@ git config user.email "atomaton-\${{ inputs.agent }}@users.noreply.github.com"
   // Three mechanics, each measured on this runner before being written here:
   //
   //   The user. `-M` no home, nologin: it is never logged into, only `sudo -u`'d
-  //   into. `-U` gives it a group of its own -- the probe used `-N`, which falls
-  //   back to the shared `users` group, and a shared group is a way to inherit
-  //   permissions nobody intended. That is the one flag here not measured as
-  //   written; every other property was.
+  //   into. `-U` gives it a group of its own -- `-N` falls back to the shared
+  //   `users` group, and a shared group is a way to inherit permissions nobody
+  //   intended. That is the one flag here not measured as written; every other
+  //   property was.
   //
   //   Reaching the work tree. It lives under the runner's HOME, which is 750, so
   //   the user cannot get to it by mode alone. An ACL grants `x` -- traverse
