@@ -7671,9 +7671,32 @@ function dispatchRunner(d) {
   return "dispatched";
 }
 
+// src/adapters/github/agent-on-issue.ts
+function mostRecentAgent(bodies) {
+  for (let i = bodies.length - 1;i >= 0; i--) {
+    const agent = AGENT_TAG.read(bodies[i] ?? "");
+    if (agent)
+      return agent;
+  }
+  return "";
+}
+function mostRecentAgentOn(repo, number) {
+  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]");
+  if (code !== 0)
+    return "";
+  try {
+    return mostRecentAgent(JSON.parse(stdout || "[]"));
+  } catch {
+    return "";
+  }
+}
+
 // src/app/aggregation.ts
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function parentAgent(repo, parent) {
+  return mostRecentAgentOn(repo, parent);
 }
 function needsAttention(result) {
   return result.kind === "dispatch-failed" || result.kind === "undetermined" || result.kind === "parent-closed";
@@ -7688,11 +7711,11 @@ function describeGateResult(result, closedNum, parent) {
     case "already-aggregated":
       return `Another caller already aggregated #${closedNum}. Nothing to do -- this is the normal race.`;
     case "dispatched":
-      return `All sub-tasks of ${which} complete. Orchestrator re-invoked.`;
+      return `All sub-tasks of ${which} complete. The parent's agent was re-invoked.`;
     case "dispatch-failed":
-      return `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the orchestrator by hand.`;
+      return `All sub-tasks of ${which} complete, but the dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the parent's agent by hand.`;
     case "parent-closed":
-      return `All sub-tasks of ${which} complete, but ${which} is closed, so no orchestrator was started. ` + `The aggregation marker is already written, so no other caller will retry: ` + `reopen it and run the orchestrator by hand. Whoever asked for the run has been told on the issue.`;
+      return `All sub-tasks of ${which} complete, but ${which} is closed, so no agent was started. ` + `The aggregation marker is already written, so no other caller will retry: ` + `reopen it and run the parent's agent by hand. Whoever asked for the run has been told on the issue.`;
     case "undetermined":
       return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
   }
@@ -7734,15 +7757,15 @@ ${opts.progressMessage(remaining)}`);
   if (opts.beforeDispatch)
     await opts.beforeDispatch();
   const marker = gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${AGGREGATED_TAG.write(opts.closedNum)}
-Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
+Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking the parent's agent for aggregation.`);
   if (marker.code !== 0) {
     const why = `could not write the aggregation marker on #${opts.parent}: ${marker.stderr.trim() || marker.stdout.trim()}`;
     console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
     return { kind: "undetermined", why };
   }
   const outcome = dispatchRunner({
-    context: `all sub-issues of #${opts.parent} are complete, so its orchestrator was to be re-invoked`,
-    agent: "orchestrator",
+    context: `all sub-issues of #${opts.parent} are complete, so the agent that was on it was to be re-invoked`,
+    agent: parentAgent(opts.repo, opts.parent),
     type: "issue",
     number: opts.parent,
     notify: resolveNotify(opts.repo, opts.parent),
@@ -19190,7 +19213,7 @@ var DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";
 function log5(message) {
   console.error(`[atomaton-github] ${message}`);
 }
-function dispatchPrValidation(repo, prNumber, branch, reviewer) {
+function dispatchPrValidation(repo, prNumber, branch, options = {}) {
   return dispatchWorkflow(`dispatchPrValidation: validating PR #${prNumber}`, "atomaton-validate-pr.yml", [
     "--repo",
     repo,
@@ -19199,9 +19222,7 @@ function dispatchPrValidation(repo, prNumber, branch, reviewer) {
     "-f",
     `branch=${branch}`,
     "-f",
-    `reviewer=${reviewer}`,
-    "-f",
-    "engineer=engineer"
+    `asked_by_person=${options.askedByPerson === true ? "true" : "false"}`
   ], log5);
 }
 function dispatchPostMergeAgent(repo, subIssueNum, agent) {
@@ -19782,12 +19803,15 @@ function withCheckedMentions(body) {
 
 ${notice}`;
 }
-function injectParentIssue(body) {
+function injectParentIssue(body, reviewer) {
   const parent = (process.env.ISSUE_NUMBER ?? "").trim();
   refuseClosingKeywords(body, "pull request body");
   body = notifyTagPrefix(body, "PR") + withCheckedMentions(body);
+  const reviewerLine = reviewer ? `/${reviewer}
+
+` : "";
   if (!parent)
-    return body;
+    return `${reviewerLine}${body}`;
   if (PARENT_ISSUE_TAG.has(body)) {
     mcpFail("PR body already contains a parent-issue tag; refusing to add another");
   }
@@ -19796,14 +19820,15 @@ function injectParentIssue(body) {
   const originAgent = (process.env.AGENT ?? "").trim();
   const originLine = originAgent ? `${ORIGIN_AGENT_TAG.write(originAgent)}
 ` : "";
-  return `${PARENT_ISSUE_TAG.write(Number(parent))}
+  return `${reviewerLine}${PARENT_ISSUE_TAG.write(Number(parent))}
 ${originLine}${closesLine}${body}`;
 }
 function createPr(a) {
   const title = a.title;
   let body = a.body ?? "";
   const base = a.base ?? stackedPrBase(REPO) ?? getBaseBranch();
-  body = injectParentIssue(body);
+  const reviewer = (a.reviewer ?? "").trim();
+  body = injectParentIssue(body, reviewer);
   log7(`createPr: title=${JSON.stringify(title)}, base=${JSON.stringify(base)}, REPO=${JSON.stringify(REPO)}`);
   const branch = resolveBranch();
   log7(`createPr: resolved branch=${JSON.stringify(branch)}`);
@@ -19840,8 +19865,7 @@ function createPr(a) {
   if (!Number.isFinite(num))
     mcpFail(`gh pr create: unexpected output: ${stdout.slice(0, 300)}`);
   logOp("create_pr", { number: num, title });
-  const reviewer = (a.reviewer ?? "").trim();
-  const validationDispatched = dispatchPrValidation(REPO, num, branch, reviewer);
+  const validationDispatched = dispatchPrValidation(REPO, num, branch);
   const currentIssue = (process.env.ISSUE_NUMBER ?? "").trim();
   if (currentIssue) {
     const next = !validationDispatched ? "CI could NOT be started, so no required check will appear and no agent is scheduled. See the run log." : reviewer ? `Running CI; \`${reviewer}\` follows if it passes.` : "Running CI. No reviewer was named, so nothing is scheduled afterwards.";
@@ -19900,7 +19924,7 @@ function commitAndPush(a) {
     try {
       const [pr] = JSON.parse(open.stdout || "[]");
       if (pr)
-        dispatchPrValidation(REPO, pr.number, branch, "");
+        dispatchPrValidation(REPO, pr.number, branch);
     } catch {
       report("warning", "could not read the open pull request list, so CI validation was NOT dispatched for this push");
     }

@@ -504,15 +504,16 @@ jobs:
           NUMBER: ${{ inputs.number }}
         run: |
           bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/manage_in_progress_label.ts" --action "add" --number "${NUMBER}"
-      - name: Post reviewer-start comment
-        if: steps.context.outputs.new_event_count != '0' && inputs.agent == 'reviewer' && inputs.type == 'pr'
+      - name: Post agent-start comment
+        if: steps.context.outputs.new_event_count != '0' && inputs.type == 'pr'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           NUMBER: ${{ inputs.number }}
+          AGENT: ${{ inputs.agent }}
         run: |
           gh issue comment "$NUMBER" --body "<!-- atomaton:llm-context=exclude -->
-          Atomaton: reviewer starting review."
+          Atomaton: ${AGENT} starting."
       - name: Put the tool servers on a user without sudo
         shell: bash
         run: |
@@ -872,7 +873,7 @@ jobs:
 
           # Detect whether a tool call already triggered an automatic follow-up
           # dispatch during this run (atomaton__launch_sub_agent, github__create_pr ->
-          # reviewer, github__merge_pr -> orchestrator-or-re-invoked-agent), as
+          # reviewer, github__merge_pr -> atomaton-or-re-invoked-agent), as
           # opposed to the agent genuinely finishing with nothing further happening.
           # Every dispatch site writes a structured `{"op":"dispatch",...}` entry to
           # the ops log (see lib/ops-log.ts's logDispatch()) -- checking for that one
@@ -971,6 +972,15 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
+      - name: Report configuration findings atoma made
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          AGENT=$(bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/get_config_value.ts" "agents.on_config_finding" "")
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/report_config_findings.ts" --repo "${REPO}" --logs-file "${RUNNER_TEMP}/atomaton-run/atomaton_logs.txt" --agent "${AGENT}"
       - name: Inject uncommitted changes into session
         if: steps.dirty.outputs.has_changes == 'true'
         shell: bash

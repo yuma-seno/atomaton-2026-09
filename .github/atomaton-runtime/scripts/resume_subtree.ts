@@ -618,15 +618,7 @@ function lastEnding(repo, number) {
   return;
 }
 
-// src/entrypoints/machinery/lib/script-ref.ts
-import { basename } from "path";
-import { fileURLToPath } from "url";
-function defineScript(importMetaUrl) {
-  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
-}
-
-// src/entrypoints/machinery/resolve_resume_agent.ts
-var ref = defineScript(import.meta.url);
+// src/adapters/github/agent-on-issue.ts
 function mostRecentAgent(bodies) {
   for (let i = bodies.length - 1;i >= 0; i--) {
     const agent = AGENT_TAG.read(bodies[i] ?? "");
@@ -645,6 +637,16 @@ function mostRecentAgentOn(repo, number) {
     return "";
   }
 }
+
+// src/entrypoints/machinery/lib/script-ref.ts
+import { basename } from "path";
+import { fileURLToPath } from "url";
+function defineScript(importMetaUrl) {
+  return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
+}
+
+// src/entrypoints/machinery/resolve_resume_agent.ts
+var ref = defineScript(import.meta.url);
 if (false)
   ;
 

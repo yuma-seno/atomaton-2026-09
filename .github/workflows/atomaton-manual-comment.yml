@@ -143,8 +143,32 @@ jobs:
           ERROR: ${{ steps.command.outputs.error }}
         run: |
           gh issue comment "${NUMBER}" --body "Atomaton command error: ${ERROR}"
+      - name: Say the run is waiting for CI
+        if: steps.dispatch.outputs.agent != '' && steps.target.outputs.type == 'pr' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ steps.target.outputs.number }}
+          AGENT: ${{ steps.dispatch.outputs.agent }}
+        run: |
+          gh issue comment "$NUMBER" --body "<!-- atomaton:llm-context=exclude -->
+          Atomaton: `${AGENT}` will start once CI finishes on this pull request."
+      - name: Hand the pull request to validation, which waits for CI
+        if: steps.dispatch.outputs.agent != '' && steps.target.outputs.type == 'pr' && steps.guard.outputs.blocked != 'true' && steps.closed-guard.outputs.blocked != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ steps.target.outputs.number }}
+        run: |
+          BRANCH=$(gh pr view "$NUMBER" --repo "$REPO" --json headRefName --jq .headRefName)
+          if [ -z "$BRANCH" ]; then
+            echo "::error::could not read the head branch of PR #$NUMBER; nothing was dispatched"
+            exit 1
+          fi
+          bun run "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/scripts/dispatch_pr_validation.ts" --repo "${REPO}" --number "${NUMBER}" --branch "${BRANCH}" --asked-by-person "true"
   run:
-    if: needs.parse.outputs.agent != ''
+    if: needs.parse.outputs.agent != '' && (steps.target.outputs.type != 'pr')
     uses: ./.github/workflows/atomaton-runner.yml
     with:
       agent: ${{ needs.parse.outputs.agent }}
