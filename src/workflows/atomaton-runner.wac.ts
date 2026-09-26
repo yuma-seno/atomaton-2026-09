@@ -1,7 +1,7 @@
 import { Workflow, NormalJob } from "@github-actions-workflow-ts/lib";
 import type { GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { TypedOutputsStep, type DefinedJob, type JobCondition } from "./actions/base.ts";
+import { JobCondition, TypedOutputsStep, type DefinedJob } from "./actions/base.ts";
 import {
   ATOMA_DEFAULT_VERSION,
   ATOMA_VERSION_DESC,
@@ -2033,12 +2033,10 @@ export function dispatchToAtomaRunner<TOutputs extends Record<"agent" | "number"
    */
   extraIf?: JobCondition,
 ): ReturnType<typeof atomaRunnerWorkflow.call> {
-  const condition = extraIf
-    ? `${routeJob.rawOutputs.agent} != '' && (${extraIf})`
-    : `${routeJob.rawOutputs.agent} != ''`;
+  const condition = JobCondition.isNot(routeJob.rawOutputs.agent, "");
   return atomaRunnerWorkflow.call("run", {
     needs: [routeJob],
-    if: condition,
+    if: extraIf ? condition.and(extraIf) : condition,
     with: {
       agent: routeJob.outputs.agent,
       number: routeJob.outputs.number,

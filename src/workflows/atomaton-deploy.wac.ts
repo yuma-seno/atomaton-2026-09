@@ -1,6 +1,6 @@
 import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
+import { DefinedJob, JobCondition, TypedOutputsStep } from "./actions/base.ts";
 import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
 import { MACHINERY_ROOT, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { renameSecretSlots } from "./actions/secret-slots.ts";
@@ -171,7 +171,7 @@ const runStep = new TypedOutputsStep({
 
 const deployJob = matrixJob(
   DEPLOY_JOB,
-  PLAN_JOB,
+  planJob,
   {
     timeoutMinutes: 60,
     // One deployment at a time, in declared order, stopping at the first failure --
@@ -229,8 +229,10 @@ const deployJob = matrixJob(
 const dispatchNewTagsJob = new DefinedJob(
   DISPATCH_TAGS_JOB,
   {
-    needs: [PLAN_JOB, DEPLOY_JOB],
-    if: `\${{ needs.${PLAN_JOB}.outputs.tags_before != '' && needs.${DEPLOY_JOB}.result == 'success' }}`,
+    needs: [planJob, deployJob],
+    if: JobCondition.isNot(planJob.rawOutputs.tags_before, "").and(
+      JobCondition.is(deployJob.rawResult, "success"),
+    ),
     "runs-on": "ubuntu-latest",
     "timeout-minutes": 5,
     // The one job here that may start a workflow, and it runs nothing a project

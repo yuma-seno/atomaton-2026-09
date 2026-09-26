@@ -1,6 +1,6 @@
 import { Workflow, type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
+import { DefinedJob, JobCondition, TypedOutputsStep } from "./actions/base.ts";
 import { COMMANDS_VAR, matrixJob, matrixSecretEnv, RUN_DECLARED_COMMANDS } from "./actions/declared-job.ts";
 import { MACHINERY_ROOT, scriptCommandWithArgs } from "./actions/script-call.ts";
 import { scriptCommand } from "./actions/script-call.ts";
@@ -192,14 +192,14 @@ function runCredentialledChecks() {
 /** One check's problem should not hide another's, so neither arm stops at the first. */
 const CHECK_MATRIX = { timeoutMinutes: 30, failFast: false, permissions: { contents: "read" } } as const;
 
-const pullRequestChecksJob = matrixJob(PULL_REQUEST_JOB_NAME, PLAN_PULL_REQUEST_JOB, CHECK_MATRIX, [
+const pullRequestChecksJob = matrixJob(PULL_REQUEST_JOB_NAME, planPullRequestChecksJob, CHECK_MATRIX, [
   new ActionsCheckoutV4({ name: "Checkout the pull request" }),
   new SetupBunAction({ name: "Setup Bun" }),
   environmentSetupStep(),
   runPullRequestChecks(),
 ]);
 
-const defaultBranchChecksJob = matrixJob(DEFAULT_BRANCH_JOB_NAME, PLAN_DEFAULT_BRANCH_JOB, CHECK_MATRIX, [
+const defaultBranchChecksJob = matrixJob(DEFAULT_BRANCH_JOB_NAME, planDefaultBranchChecksJob, CHECK_MATRIX, [
   new ActionsCheckoutV4({
     name: "Checkout the default branch, whose commands these are",
     with: { ref: "${{ github.event.repository.default_branch }}" },
@@ -261,8 +261,8 @@ const toolsJob = new DefinedJob(
 export const checkResultJob = new DefinedJob(
   CHECK_JOB_NAME,
   {
-    needs: [PULL_REQUEST_JOB_NAME, DEFAULT_BRANCH_JOB_NAME, TOOLS_JOB_NAME],
-    if: "always()",
+    needs: [pullRequestChecksJob, defaultBranchChecksJob, toolsJob],
+    if: JobCondition.always(),
     "runs-on": "ubuntu-latest",
     "timeout-minutes": 5,
     permissions: { contents: "read" },

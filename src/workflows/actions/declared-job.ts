@@ -14,7 +14,7 @@
  * validator uses.
  */
 import { type GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
-import { DefinedJob } from "./base.ts";
+import { DefinedJob, JobCondition } from "./base.ts";
 import { SECRET_NAMES_VAR, SECRET_SLOT_PREFIX, SECRET_SLOTS } from "../../domain/delivery/declared-secrets.ts";
 
 /** The entry's commands, as JSON, for the loop below to run in order. */
@@ -69,10 +69,17 @@ export function matrixSecretEnv(): Record<string, string> {
  * `if: … != '[]'`, because a matrix over an empty list is an error rather than an
  * empty job. A project that declared none of these publishes an empty list, and
  * whatever reads the outcome treats `skipped` as "there was nothing to do".
+ *
+ * `planJob` is the job itself, not its name. It was a name, and a name is a string
+ * that nothing checks: a `needs:` entry naming nothing is not an error to GitHub,
+ * it is a dependency that does not exist, so the matrix job would run immediately
+ * and read `jobs` from a job that never ran. Taking the job is what makes the
+ * typo a compile error, and it is the same argument `JobOutputRef` makes about
+ * reading an output.
  */
 export function matrixJob(
   jobName: string,
-  planJobName: string,
+  planJob: DefinedJob<{ jobs: string }>,
   options: {
     readonly timeoutMinutes: number;
     readonly failFast: boolean;
@@ -94,15 +101,15 @@ export function matrixJob(
       // failing job reports itself as, so it is the whole of what somebody sees when
       // they are looking for which one went wrong.
       name: `${jobName} (\${{ matrix.name }})`,
-      needs: [planJobName],
-      if: `\${{ needs.${planJobName}.outputs.jobs != '[]' }}`,
+      needs: [planJob],
+      if: JobCondition.isNot(planJob.rawOutputs.jobs, "[]"),
       "runs-on": "${{ fromJSON(matrix.runs_on) }}" as unknown as string,
       "timeout-minutes": options.timeoutMinutes,
       permissions: options.permissions,
       strategy: {
         "fail-fast": options.failFast,
         ...(options.maxParallel === undefined ? {} : { "max-parallel": options.maxParallel }),
-        matrix: { include: `\${{ fromJSON(needs.${planJobName}.outputs.jobs) }}` },
+        matrix: { include: `\${{ fromJSON(${planJob.rawOutputs.jobs}) }}` },
       },
     },
     steps as never[],

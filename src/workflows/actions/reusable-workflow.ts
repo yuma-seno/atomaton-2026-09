@@ -23,14 +23,21 @@
  */
 import { ReusableWorkflowCallJob, type NormalJob, type Workflow } from "@github-actions-workflow-ts/lib";
 import type { GeneratedWorkflowTypes as GWT } from "@github-actions-workflow-ts/lib";
+import type { JobCondition } from "./base.ts";
 
 type JobRef = NormalJob | ReusableWorkflowCallJob;
 
 export interface CallableWorkflowOptions<TInputs extends object> {
   /** Jobs this call depends on (becomes the job's `needs:`). */
   needs: JobRef[];
-  /** Bare (non-`${{ }}`-wrapped) `if:` condition gating this call. */
-  if?: string;
+  /**
+   * The condition gating this call.
+   *
+   * A `JobCondition`, not a string. A reusable-workflow call IS a job, so its `if:`
+   * is evaluated in the job context — which has no `steps.` — and a string here was
+   * the same hole `dispatchToAtomaRunner` had. See `actions/base.ts`.
+   */
+  if?: JobCondition;
   /** Inputs passed to the reusable workflow, type-checked against `TInputs`. */
   with: TInputs;
   /** Secrets forwarded to the reusable workflow. Omit to pass none. */
@@ -52,7 +59,7 @@ export function defineCallableWorkflow<TInputs extends object>(workflow: Workflo
   return {
     call(jobName, options) {
       return new ReusableWorkflowCallJob(jobName, {
-        ...(options.if !== undefined ? { if: options.if } : {}),
+        ...(options.if !== undefined ? { if: options.if.toString() } : {}),
         uses,
         with: options.with as unknown as GWT.ReusableWorkflowCallJob["with"],
         ...(options.secrets !== undefined ? { secrets: options.secrets } : {}),

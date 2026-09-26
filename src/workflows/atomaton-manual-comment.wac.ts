@@ -1,7 +1,7 @@
 import { Workflow } from "@github-actions-workflow-ts/lib";
 import type { IssueCommentCreatedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { JobCondition, startJob, TypedOutputsStep } from "./actions/base.ts";
+import { Condition, JobCondition, startJob, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw, isRepositoryMember } from "./actions/github-context.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
@@ -29,7 +29,9 @@ import { LLM_CONTEXT_TAG } from "../adapters/github/tags.ts";
 // Bot comments are never guarded (Atomaton's own comments, e.g. dispatch
 // confirmations, must never be self-deleted) -- only ever relevant for a
 // human-authored comment.
-const IS_HUMAN_COMMENT = `${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} != 'Bot'`;
+const COMMENT_USER_TYPE = githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type);
+const COMMENT_BODY = githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body);
+const IS_HUMAN_COMMENT = JobCondition.isNot(COMMENT_USER_TYPE, "Bot");
 
 
 // A slash command dispatches only for a repository member, or for Atomaton's own
@@ -39,11 +41,17 @@ const IS_HUMAN_COMMENT = `${githubEventRaw<IssueCommentCreatedEvent>((e) => e.co
 //
 // The job itself still runs for non-qualifying humans, but only so guardStep can
 // do its job; this step refuses to parse or dispatch for them.
-const PARSE_ALLOWED =
-  `(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' &&\n` +
-  ` contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch')) ||\n` +
-  `(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} != 'Bot' &&\n` +
-  ` ${isRepositoryMember(githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.author_association))})`;
+//
+// A `StepCondition`, because this one is a STEP's `if:` -- see `parseCommandStep`.
+// The distinction is the whole point of the two types: a step may read `steps.`,
+// and this condition is built from event references, which both contexts allow.
+const PARSE_ALLOWED = Condition.is(COMMENT_USER_TYPE, "Bot")
+  .and(Condition.of(`contains(${COMMENT_BODY}, 'atomaton:dispatch')`))
+  .or(
+    Condition.isNot(COMMENT_USER_TYPE, "Bot").and(
+      isRepositoryMember(githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.author_association)),
+    ),
+  );
 
 const parseCommandStep = new TypedOutputsStep(
   {
@@ -352,7 +360,11 @@ export const atomaManualComment = new Workflow("atomaton-manual-comment", {
       // can reject it while atomaton/in-progress is active -- actual
       // parsing/dispatch stays restricted to PARSE_ALLOWED via
       // parseCommandStep's own `if:` above.
-      if: `(${IS_HUMAN_COMMENT}) || (${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.user.type)} == 'Bot' && contains(${githubEventRaw<IssueCommentCreatedEvent>((e) => e.comment.body)}, 'atomaton:dispatch'))`,
+      if: IS_HUMAN_COMMENT.or(
+        JobCondition.is(COMMENT_USER_TYPE, "Bot").and(
+          JobCondition.of(`contains(${COMMENT_BODY}, 'atomaton:dispatch')`),
+        ),
+      ),
       outputs: {
         agent: dispatchStep.outputs.agent,
         session_mode: parseCommandStep.outputs.session_mode,
