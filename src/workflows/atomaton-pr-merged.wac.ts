@@ -1,7 +1,7 @@
 import { Workflow } from "@github-actions-workflow-ts/lib";
 import type { PullRequestClosedEvent } from "@octokit/webhooks-types";
 import { ActionsCheckoutV4 } from "@github-actions-workflow-ts/actions";
-import { DefinedJob, TypedOutputsStep } from "./actions/base.ts";
+import { DefinedJob, JobCondition, TypedOutputsStep } from "./actions/base.ts";
 import { githubEvent, githubEventRaw } from "./actions/github-context.ts";
 import { ATOMATON_WORKFLOW_PERMISSIONS } from "./actions/permissions.ts";
 import { scriptCommand, scriptCommandWithArgs } from "./actions/script-call.ts";
@@ -72,7 +72,7 @@ const resolveParentJob = new DefinedJob(
   "resolve-parent",
   {
     "runs-on": "ubuntu-latest",
-    if: `${parseJob.rawOutputs.sub_issue} != ''`,
+    if: JobCondition.isNot(parseJob.rawOutputs.sub_issue, ""),
     outputs: {
       parent_issue: resolveStep.outputs.parent_issue,
     },
@@ -99,7 +99,7 @@ export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
     "notify-parent",
     {
       "runs-on": "ubuntu-latest",
-      if: `${resolveParentJob.rawOutputs.parent_issue} != ''`,
+      if: JobCondition.isNot(resolveParentJob.rawOutputs.parent_issue, ""),
     },
     [
       new TypedOutputsStep({
@@ -124,7 +124,7 @@ export const atomaPrMerged = new Workflow("atomaton-pr-merged", {
     "aggregate-sub-issues",
     {
       "runs-on": "ubuntu-latest",
-      if: `${resolveParentJob.rawOutputs.parent_issue} != ''`,
+      if: JobCondition.isNot(resolveParentJob.rawOutputs.parent_issue, ""),
       env: {
         GH_TOKEN: "${{ github.token }}",
       },

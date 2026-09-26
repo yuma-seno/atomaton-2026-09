@@ -79,6 +79,64 @@ export class TypedOutputsStep<TOutputs extends string = never> extends Step {
 }
 
 /**
+ * A reference to a job's own published output, bare — `needs.<job>.outputs.<name>`.
+ *
+ * A distinct type from the string it holds, because the string is not the point:
+ * what matters is that a JOB can resolve this reference. `DefinedJob` is the only
+ * thing that makes one, so a reference to a step — which a job cannot see — has no
+ * way to become one.
+ *
+ * `toString()` is what keeps every existing `${job.rawOutputs.foo}` working: a
+ * template literal calls it, so the type is invisible wherever the text is all
+ * that is wanted, and present wherever a condition is being built.
+ */
+export class JobOutputRef {
+  constructor(private readonly ref: string) {}
+
+  toString(): string {
+    return this.ref;
+  }
+}
+
+/**
+ * A condition on a job's `if:`.
+ *
+ * GitHub evaluates a job-level `if:` in a context with `needs` and `github` but
+ * NOT `steps` — a step belongs to a job, so a job cannot read one. A reference to
+ * `steps.` there is not a wrong answer, it is an unparseable file: GitHub refuses
+ * the whole workflow with "Unrecognized named-value: 'steps'", and the run fails
+ * in zero seconds with no jobs and no log.
+ *
+ * This class is what makes that unrepresentable. It is built from a
+ * `JobOutputRef` and there is no other way to make one, so a step reference — the
+ * same shape of text and a different thing — cannot reach a job-level `if:`
+ * through this type. The constructor is private for the same reason: the only
+ * doors are the comparisons below.
+ */
+export class JobCondition {
+  private constructor(private readonly text: string) {}
+
+  toString(): string {
+    return this.text;
+  }
+
+  /** `needs.<job>.outputs.<name> == '<value>'` */
+  static is(output: JobOutputRef, value: string): JobCondition {
+    return new JobCondition(`${output} == '${value}'`);
+  }
+
+  /** `needs.<job>.outputs.<name> != '<value>'` */
+  static isNot(output: JobOutputRef, value: string): JobCondition {
+    return new JobCondition(`${output} != '${value}'`);
+  }
+
+  /** Both, joined with `&&`. */
+  and(other: JobCondition): JobCondition {
+    return new JobCondition(`(${this.text}) && (${other.text})`);
+  }
+}
+
+/**
  * A `NormalJob` whose `outputs:` map doubles as the single source of truth
  * for typo-checked, refactor-safe `needs.<job>.outputs.<name>` references --
  * the job-level counterpart to `TypedOutputsStep`'s
@@ -105,27 +163,59 @@ export class TypedOutputsStep<TOutputs extends string = never> extends Step {
  * `.rawOutputs` (bare, for `if:`) split as `TypedOutputsStep`, for the same
  * reason (GitHub Actions `if:` conditions must stay fully bare or fully
  * `${{ }}`-wrapped, never mixed).
+ *
+ * `.rawOutputs` is a `JobOutputRef` rather than a string, and that is the one
+ * asymmetry with `TypedOutputsStep`. A step reference is only ever used in a
+ * step-level `if:`, where `steps.` is correct and there is nothing to compose;
+ * a job reference is what a `JobCondition` is built from, and the type is what
+ * keeps a step reference out of one.
  */
+/**
+ * The props a `DefinedJob` accepts.
+ *
+ * Named rather than written out at each of the three places that take them
+ * (`DefinedJob`, `JobChain.start`, `startJob`), because the one thing that differs
+ * from the library's own `NormalJob` is `if:` — and a second spelling of that
+ * difference is how the three would stop agreeing.
+ */
+export type DefinedJobProps<TOutputsMap extends Record<string, string>> = Omit<GWT.NormalJob, "outputs" | "if"> & {
+  outputs?: TOutputsMap;
+  /**
+   * The job's condition, as a `JobCondition` or as text.
+   *
+   * A `JobCondition` is the way to write one that reads a job's own output, and it
+   * is the only way to write one that CANNOT read a step's — see that class. Plain
+   * text stays accepted for the conditions that read `github` or `inputs`, which no
+   * type here can build.
+   */
+  if?: string | JobCondition;
+};
+
 export class DefinedJob<TOutputsMap extends Record<string, string> = Record<never, string>> extends NormalJob {
   readonly outputs: Record<keyof TOutputsMap & string, string>;
-  readonly rawOutputs: Record<keyof TOutputsMap & string, string>;
+  readonly rawOutputs: Record<keyof TOutputsMap & string, JobOutputRef>;
 
   constructor(
     name: string,
-    jobProps: Omit<GWT.NormalJob, "outputs"> & { outputs?: TOutputsMap },
+    jobProps: DefinedJobProps<TOutputsMap>,
     steps: Step[] = [],
     needs: (NormalJob | ReusableWorkflowCallJob)[] = [],
   ) {
-    super(name, jobProps as GWT.NormalJob);
+    // `if:` is normalised here rather than at every call site, so a `JobCondition`
+    // can be passed straight in and read as what it is. The library types the field
+    // as `string | number | boolean`, which a class is not — and widening the
+    // parameter is the one place that difference has to be reconciled.
+    const { if: condition, ...rest } = jobProps;
+    super(name, { ...rest, ...(condition === undefined ? {} : { if: condition.toString() }) } as GWT.NormalJob);
     if (needs.length > 0) this.needs(needs);
     if (steps.length > 0) this.addSteps(steps);
 
     this.outputs = {} as Record<keyof TOutputsMap & string, string>;
-    this.rawOutputs = {} as Record<keyof TOutputsMap & string, string>;
+    this.rawOutputs = {} as Record<keyof TOutputsMap & string, JobOutputRef>;
     for (const key of Object.keys(jobProps.outputs ?? {}) as (keyof TOutputsMap & string)[]) {
       const ref = `needs.${name}.outputs.${key}`;
       this.outputs[key] = `\${{ ${ref} }}`;
-      this.rawOutputs[key] = ref;
+      this.rawOutputs[key] = new JobOutputRef(ref);
     }
   }
 }
@@ -176,7 +266,7 @@ export class JobChain<TCurrent extends NormalJob | ReusableWorkflowCallJob> {
   /** Start a chain with a freshly-defined job. */
   static start<TOutputsMap extends Record<string, string> = Record<never, string>>(
     name: string,
-    jobProps: Omit<GWT.NormalJob, "outputs"> & { outputs?: TOutputsMap },
+    jobProps: DefinedJobProps<TOutputsMap>,
     steps: Step[] = [],
   ): JobChain<DefinedJob<TOutputsMap>> {
     const job = new DefinedJob(name, jobProps, steps);
@@ -198,7 +288,7 @@ export class JobChain<TCurrent extends NormalJob | ReusableWorkflowCallJob> {
 /** Start a `JobChain` -- see `JobChain`'s own doc comment for the full rationale. */
 export function startJob<TOutputsMap extends Record<string, string> = Record<never, string>>(
   name: string,
-  jobProps: Omit<GWT.NormalJob, "outputs"> & { outputs?: TOutputsMap },
+  jobProps: DefinedJobProps<TOutputsMap>,
   steps: Step[] = [],
 ): JobChain<DefinedJob<TOutputsMap>> {
   return JobChain.start(name, jobProps, steps);
