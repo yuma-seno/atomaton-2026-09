@@ -136,3 +136,63 @@ servers:
     hooks:
       tool_allowlist:
         - atomaton_env__reload_environment
+  # The one server that starts another `atoma`. It holds the provider keys because
+  # a tool server receives a credential only through its `env:` block, and it hands
+  # them to the sub-run through `--credentials-file` rather than the environment --
+  # see `mcp/delegate.ts` for why that distinction is the whole of the arrangement.
+  #
+  # `GH_TOKEN` is deliberately absent: the sub-run is given `files` and `shell` and
+  # no `github`, so a token it cannot use is a token that can only leak.
+  #
+  # `ATOMA_PROVIDER` is deliberately absent too, and for the opposite reason: it is
+  # not a credential, so it is inherited rather than stripped, and writing it here
+  # would expand it against the credentials (where it is not) to an empty string and
+  # overwrite the inherited value.
+  delegate:
+    description: "Runs one small piece of work in a sub-run and returns what it found."
+    command: bun
+    args:
+      - run
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
+      - --servers
+      - files,shell
+      - --agent-def
+      - delegate.md
+      - --delegates-dir
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/delegates"
+    env:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      ORCAROUTER_API_KEY: "${ORCAROUTER_API_KEY}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      ATOMA_COPILOT_TOKEN: "${ATOMA_COPILOT_TOKEN}"
+    # Above the sub-run's own ten-minute limit, so the sub-run stops itself and
+    # reports why rather than being killed mid-inference with nothing to say.
+    request_timeout_secs: 660
+    hooks: {}
+  # The same program, with a sub-run that cannot write. It exists so that an agent
+  # holding `files_readonly` — the reviewer — cannot reach a writing server by
+  # delegating to one: a sub-run's servers must be a subset of its caller's, and
+  # that is a configuration fact rather than something a runtime check can see.
+  #
+  # `files_readonly` and no `shell`, because a shell is a way to write.
+  delegate_readonly:
+    description: "Runs one small piece of reading or searching in a sub-run and returns what it found, changing nothing."
+    command: bun
+    args:
+      - run
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
+      - --servers
+      - files_readonly
+      - --agent-def
+      - delegate_readonly.md
+      - --delegates-dir
+      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/delegates"
+    env:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      ORCAROUTER_API_KEY: "${ORCAROUTER_API_KEY}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      ATOMA_COPILOT_TOKEN: "${ATOMA_COPILOT_TOKEN}"
+    request_timeout_secs: 660
+    hooks: {}

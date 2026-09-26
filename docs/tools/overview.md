@@ -52,3 +52,14 @@ The same shape is available to you: an entry under `tools.servers` naming a
 shipped server and a narrower `hooks` block
 [replaces that server's](reference.md#toolsservers), which is the direction an
 allowlist has to compose in.
+
+`delegate` and `delegate_readonly` are the same pattern applied to a different
+question. They are one program started with a different definition and a different
+tools file, and what differs is what the SUB-RUN may reach rather than what the
+caller may call. The pair exists because a sub-run's servers must be a subset of
+its caller's: the reviewer holds `files_readonly`, and a delegate that could write
+would put a writing server one tool call away from an agent whose whole tool set
+says it cannot change anything. Their definitions live under the runtime root
+rather than in `agent-definitions/`, because that directory is the namespace a
+person dispatches from and a delegate is started by a tool. See
+[delegating a piece of work](how-it-works/delegating-a-piece-of-work.md).

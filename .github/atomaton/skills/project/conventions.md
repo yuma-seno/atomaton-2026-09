@@ -89,6 +89,27 @@ A new non-code file under `src/content/` must also be added to `build-dist.ts`'s
 verbatim-copy list, or it never reaches `dist/` at all.
 `tests/contract/deployment-contract.test.ts` enforces this.
 
+## `atoma validate` is on the CLI
+
+The `atoma` binary is on the agent's PATH — the runner installs it at
+`/usr/local/bin/atoma` — and it has a `validate` subcommand that checks an agent
+definition against a tools file without starting a run:
+
+```bash
+atoma validate --agent-def .github/atomaton/agent-definitions/engineer.md \
+               --tools-file /tmp/tools.yaml
+```
+
+It resolves every name in the definition's `mcp_servers` against the tools file,
+checks the template's placeholders, and reports what it finds. `atomaton-validate-pr`
+runs it on every pull request that touches an agent definition, so a definition
+that names a server `tools.yaml` does not define is a red check rather than a run
+that aborts before a single tool starts.
+
+There is no MCP tool for it, and that is deliberate: it is a check a person or a
+workflow runs, not something an agent needs mid-run. Use it from the shell when
+you are changing a definition and want the same answer CI will give.
+
 ## `.github/` is an adoption, not a mirror
 
 Nothing regenerates `.github/` automatically. It is this repository's deliberate

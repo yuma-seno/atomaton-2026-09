@@ -24,7 +24,7 @@
  * key scan, not a parse — and if the two ever disagree, the core is right.
  */
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { toolDefaults } from "../../src/domain/machinery/shipped-servers.ts";
 
@@ -60,14 +60,26 @@ function declaredServers(): Set<string> {
 
 /** `mcp_servers` entries from one agent definition's YAML frontmatter. */
 function requestedServers(agentFile: string): string[] {
-  const lines = readFileSync(join(AGENT_DIR, agentFile), "utf8").split(/\r?\n/);
+  return requestedServersIn(join(AGENT_DIR, agentFile));
+}
+
+/** The same, for a definition at an arbitrary path — the delegate's live elsewhere. */
+function requestedServersIn(path: string): string[] {
+  const lines = readFileSync(path, "utf8").split(/\r?\n/);
   const start = lines.indexOf("mcp_servers:");
   if (start === -1) return [];
 
   const servers: string[] = [];
   for (const line of lines.slice(start + 1)) {
+    // A comment or a blank line is not the end of the block. It used to be: the
+    // loop broke on the first line that was not a list item, so a comment between
+    // two entries silently truncated the list — `engineer.md`'s `atomaton_env` and
+    // `delegate` were never checked, and a definition whose list began with a
+    // comment checked nothing at all. The core parses this as YAML and skips both,
+    // so the approximation has to as well.
+    if (/^\s*#/.test(line) || line.trim() === "") continue;
     const match = /^\s+-\s+(\S+)\s*$/.exec(line);
-    if (!match?.[1]) break; // first non-list line ends the block
+    if (!match?.[1]) break; // first non-list, non-comment line ends the block
     servers.push(match[1]);
   }
   return servers;
@@ -92,6 +104,67 @@ describe("agent definitions", () => {
         `${agentFile} lists mcp_servers "${server}", which tools.servers does not define. ` +
           `Atoma aborts the run on this. Available: ${[...available].sort().join(", ")}`,
       ).toBe(true);
+    }
+  });
+});
+
+/**
+ * The delegate's definitions are NOT agent definitions, and this is the file that
+ * says so.
+ *
+ * `agent-definitions/` is the namespace a PERSON dispatches from. A `.md` file
+ * there is four things at once: a `/<name>` a person can type on an issue, an entry
+ * in every agent's `{{COLLEAGUES_LIST}}`, a name `extract_directive.ts` accepts as a
+ * handoff, and a valid value for `agents.on_config_finding`. A delegate is none of
+ * them — it is started by `mcp/delegate.ts` and by nothing else, and it has no
+ * `task` argument a person could supply.
+ *
+ * So they live under the runtime root, beside the server that reads them, and this
+ * test is what keeps them there. It is a test rather than a comment because the
+ * failure is silent in both directions: a definition moved back would start
+ * appearing in colleague lists and as a dispatchable name, and nothing else in the
+ * repository would report it.
+ */
+describe("the delegate's definitions are not in the agent namespace", () => {
+  const DELEGATES_DIR = join(process.cwd(), "src/entrypoints/tools/delegates");
+
+  test("no delegate definition is under agent-definitions/", () => {
+    const strays = agentFiles.filter((f) => f.startsWith("delegate"));
+    expect(
+      strays,
+      "a delegate definition under agent-definitions/ becomes a /<name> a person can dispatch, " +
+        "an entry in every colleague list, and a valid agents.on_config_finding value. " +
+        "Move it to src/entrypoints/tools/delegates/.",
+    ).toEqual([]);
+  });
+
+  test("each delegate definition is beside the tools file its sub-run is handed", () => {
+    const defs = readdirSync(DELEGATES_DIR).filter((f) => f.endsWith(".md"));
+    expect(defs.length, "the delegate definitions must exist").toBeGreaterThan(0);
+    for (const def of defs) {
+      const tools = join(DELEGATES_DIR, `${def.replace(/\.md$/, "")}.tools.yaml`);
+      expect(
+        existsSync(tools),
+        `${def} has no ${def.replace(/\.md$/, "")}.tools.yaml beside it. ` +
+          "mcp/delegate.ts derives the tools file from the definition's name, so a missing one " +
+          "is a sub-run that refuses to start.",
+      ).toBe(true);
+    }
+  });
+
+  test("a delegate's mcp_servers are the servers its tools file declares", () => {
+    for (const def of readdirSync(DELEGATES_DIR).filter((f) => f.endsWith(".md"))) {
+      const requested = requestedServersIn(join(DELEGATES_DIR, def));
+      const tools = Bun.YAML.parse(
+        readFileSync(join(DELEGATES_DIR, `${def.replace(/\.md$/, "")}.tools.yaml`), "utf8"),
+      ) as { servers?: Record<string, unknown> };
+      const declared = Object.keys(tools.servers ?? {});
+      expect(
+        [...requested].sort(),
+        `${def} and its tools file disagree. Atoma resolves the definition's mcp_servers against ` +
+          "the tools file the sub-run is handed, and a name in one that is not in the other is a " +
+          "server that does not start.",
+      ).toEqual([...declared].sort());
     }
   });
 });

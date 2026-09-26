@@ -185,6 +185,15 @@ function copyStaticAtomatonContent(): void {
   for (const file of ["defaults.yaml", "packages.json"]) {
     cpSync(join(srcRuntimeTools, file), join(distRuntimeTools, file));
   }
+  // The delegate's own files: the agent definitions and the tools files its
+  // sub-runs are handed. Copied rather than bundled, because they are data the
+  // server reads at run time.
+  //
+  // They are here and NOT under `.github/atomaton/agent-definitions/`, which is the
+  // namespace a person dispatches from. A definition there is a `/<name>` a person
+  // can type, an entry in every agent's colleague list, and a valid value for
+  // `agents.on_config_finding` — none of which a delegate is. See `mcp/delegate.ts`.
+  copyDirectoryFresh(join(srcRuntimeTools, "delegates"), join(distRuntimeTools, "delegates"));
   // The tools file is NOT built here and does NOT ship. `write_tools_file.ts` writes
   // it per run, from the config, into the runner's temp directory.
   //

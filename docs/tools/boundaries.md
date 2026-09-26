@@ -54,9 +54,18 @@ documented limit rather than a guarantee.
 makes itself unreadable to processes of the same user, so no tool can reach it.
 
 **Credentials in the servers this project ships** — `github`, `web`, `search`,
-`atoma`. Each makes itself unreadable at startup and removes world-writable
-directories from its own PATH, so neither reading its environment nor planting a
-binary it would run works.
+`atoma`, `delegate`. Each makes itself unreadable at startup and removes
+world-writable directories from its own PATH, so neither reading its environment
+nor planting a binary it would run works.
+
+**The provider key in a delegated sub-run.** `delegate` holds the provider keys,
+because a tool server receives a credential only through its `env:` block. It
+hands them to the sub-run through `--credentials-file` rather than the
+environment, and spawns the sub-run with every credential name removed — so the
+key is never in the sub-run's environment block, and `atoma` deletes the file
+before starting any tool server. The sub-run's own `files`/`shell` servers
+therefore hold no credential, exactly as they do in the outer run. See
+[delegating a piece of work](how-it-works/delegating-a-piece-of-work.md).
 
 ### Not protected, deliberately
 

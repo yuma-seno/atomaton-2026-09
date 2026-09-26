@@ -208,7 +208,7 @@ describe("tools.yaml is valid YAML with the shape atoma expects", () => {
    * however long someone felt generous.
    */
   test("only the servers that need a longer timeout have one", () => {
-    const allowed = new Set(["shell", "search"]);
+    const allowed = new Set(["shell", "search", "delegate", "delegate_readonly"]);
     for (const [name, entry] of Object.entries(parse(SOURCE))) {
       if (entry.request_timeout_secs === undefined) continue;
       expect(

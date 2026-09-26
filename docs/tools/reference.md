@@ -16,6 +16,8 @@ already starts with.
 | `search` | Ranked search over your repository's issues and code. | the run's GitHub token |
 | `atomaton` | Atomaton's own operations: sub-issues, handoffs, stopping a run. | the run's GitHub token |
 | `atomaton_env` | Rebuilding the run's environment, and nothing else. | the run's GitHub token |
+| `delegate` | Runs one small piece of work in a sub-run and returns what it found. | the run's provider key |
+| `delegate_readonly` | The same, with a sub-run that reads and searches and cannot change anything. | the run's provider key |
 
 Why four of them declare a credential rather than inheriting one, and why the
 other four cannot see it, is
@@ -24,6 +26,18 @@ other four cannot see it, is
 `files_readonly` and `atomaton_env` are not separate implementations. Each is a
 second entry for a server above with tools withheld — an allowlist, and
 [a pattern with a reason](overview.md#one-server-two-entries).
+
+`delegate` and `delegate_readonly` are the same arrangement for a different
+reason. They are one program, `mcp/delegate.ts`, started with a different
+definition and a different tools file. What differs is what the sub-run may reach:
+`delegate` gives it `files` and `shell`, `delegate_readonly` gives it
+`files_readonly` and nothing else. The pair exists because a sub-run's servers must
+be a subset of its caller's — the reviewer holds `files_readonly`, and a delegate
+that could write would put a writing server one tool call away from an agent whose
+whole tool set says it cannot change anything. Their definitions and tools files
+live under `.github/atomaton-runtime/tools/delegates/`, **not** under
+`agent-definitions/`, which is the namespace a person dispatches from. See
+[delegating a piece of work](how-it-works/delegating-a-piece-of-work.md).
 
 What each server's tools do in a run is in
 [searching your repository's issues](how-it-works/searching-the-issues.md) and
