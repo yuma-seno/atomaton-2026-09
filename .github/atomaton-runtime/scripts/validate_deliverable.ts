@@ -483,6 +483,7 @@ var DEFAULT_CI_WORKFLOW = "atomaton-check.yml";
 var DEFAULT_CD_WORKFLOW = "atomaton-deploy.yml";
 
 // src/domain/delivery/deliverable-integrity.ts
+var REQUIRED_AGENT_KEYS = ["on_config_finding"];
 var CONFIG_SCHEMA = {
   children: {
     base_branch: null,
@@ -510,6 +511,7 @@ var CONFIG_SCHEMA = {
         labels: { children: { in_progress: null, sub_issue: null, launched: null }, anyName: null }
       }
     },
+    agents: { children: { on_config_finding: null } },
     tools: {
       children: {
         secrets: null,
@@ -582,6 +584,17 @@ function configProblems(facts) {
   }
   if (agentNames.length === 0) {
     problems.push("No agent definitions were found. `.github/atomaton/agent-definitions/*.md` is empty or missing.");
+  }
+  const agents = isRecord4(config.agents) ? config.agents : {};
+  for (const key of REQUIRED_AGENT_KEYS) {
+    const value = agents[key];
+    if (typeof value !== "string" || value.trim() === "") {
+      problems.push(`\`agents.${key}\` is required in config.yaml. It names the agent a workflow starts when no ` + `issue or pull request can name one, so there is nothing to fall back to.`);
+      continue;
+    }
+    if (agentNames.length > 0 && !agentNames.includes(value.trim())) {
+      problems.push(`\`agents.${key}\` names '${value.trim()}', which has no agent-definitions/${value.trim()}.md.`);
+    }
   }
   if (workflowFiles.length > 0) {
     const present = new Set(workflowFiles);

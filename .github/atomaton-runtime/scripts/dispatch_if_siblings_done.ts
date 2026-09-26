@@ -540,9 +540,32 @@ function resolveNotify(repo, number) {
   return owner;
 }
 
+// src/adapters/github/agent-on-issue.ts
+function mostRecentAgent(bodies) {
+  for (let i = bodies.length - 1;i >= 0; i--) {
+    const agent = AGENT_TAG.read(bodies[i] ?? "");
+    if (agent)
+      return agent;
+  }
+  return "";
+}
+function mostRecentAgentOn(repo, number) {
+  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]");
+  if (code !== 0)
+    return "";
+  try {
+    return mostRecentAgent(JSON.parse(stdout || "[]"));
+  } catch {
+    return "";
+  }
+}
+
 // src/app/aggregation.ts
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function parentAgent(repo, parent) {
+  return mostRecentAgentOn(repo, parent);
 }
 function needsAttention(result) {
   return result.kind === "dispatch-failed" || result.kind === "undetermined" || result.kind === "parent-closed";
@@ -557,11 +580,11 @@ function describeGateResult(result, closedNum, parent) {
     case "already-aggregated":
       return `Another caller already aggregated #${closedNum}. Nothing to do -- this is the normal race.`;
     case "dispatched":
-      return `All sub-tasks of ${which} complete. Orchestrator re-invoked.`;
+      return `All sub-tasks of ${which} complete. The parent's agent was re-invoked.`;
     case "dispatch-failed":
-      return `All sub-tasks of ${which} complete, but the orchestrator dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the orchestrator by hand.`;
+      return `All sub-tasks of ${which} complete, but the dispatch FAILED. ` + `The aggregation marker is already written, so no other caller will retry: ` + `re-run the parent's agent by hand.`;
     case "parent-closed":
-      return `All sub-tasks of ${which} complete, but ${which} is closed, so no orchestrator was started. ` + `The aggregation marker is already written, so no other caller will retry: ` + `reopen it and run the orchestrator by hand. Whoever asked for the run has been told on the issue.`;
+      return `All sub-tasks of ${which} complete, but ${which} is closed, so no agent was started. ` + `The aggregation marker is already written, so no other caller will retry: ` + `reopen it and run the parent's agent by hand. Whoever asked for the run has been told on the issue.`;
     case "undetermined":
       return `Did not aggregate #${closedNum}: ${result.why}. Nothing was dispatched, and nothing will retry.`;
   }
@@ -603,15 +626,15 @@ ${opts.progressMessage(remaining)}`);
   if (opts.beforeDispatch)
     await opts.beforeDispatch();
   const marker = gh("issue", "comment", String(opts.parent), "--repo", opts.repo, "--body", `${AGGREGATED_TAG.write(opts.closedNum)}
-Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking orchestrator for aggregation.`);
+Atomaton: All sub-tasks completed (last: #${opts.closedNum}). Re-invoking the parent's agent for aggregation.`);
   if (marker.code !== 0) {
     const why = `could not write the aggregation marker on #${opts.parent}: ${marker.stderr.trim() || marker.stdout.trim()}`;
     console.error(`${why}; not dispatching, because without the marker a second caller would dispatch too`);
     return { kind: "undetermined", why };
   }
   const outcome = dispatchRunner({
-    context: `all sub-issues of #${opts.parent} are complete, so its orchestrator was to be re-invoked`,
-    agent: "orchestrator",
+    context: `all sub-issues of #${opts.parent} are complete, so the agent that was on it was to be re-invoked`,
+    agent: parentAgent(opts.repo, opts.parent),
     type: "issue",
     number: opts.parent,
     notify: resolveNotify(opts.repo, opts.parent),

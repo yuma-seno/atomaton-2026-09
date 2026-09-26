@@ -2,7 +2,7 @@
 // @bun
 
 // src/entrypoints/machinery/validate_pull_request.ts
-import { appendFileSync, existsSync, readFileSync } from "fs";
+import { appendFileSync as appendFileSync2, existsSync as existsSync2, readFileSync as readFileSync2 } from "fs";
 import { parseArgs } from "util";
 
 // src/domain/work/pr-validation.ts
@@ -16,7 +16,7 @@ function handTo(agent) {
   return named === "" ? {} : { next: { agent: named } };
 }
 function decideValidationOutcome(input) {
-  const { conclusion, reviewerAgent, engineerAgent, priorRetries = 0 } = input;
+  const { conclusion, reviewerAgent, engineerAgent, askedByPerson = false, priorRetries = 0 } = input;
   const deliverableProblems = input.deliverableProblems ?? [];
   if (deliverableProblems.length > 0) {
     const count = `${deliverableProblems.length} problem${deliverableProblems.length === 1 ? "" : "s"}`;
@@ -47,6 +47,12 @@ function decideValidationOutcome(input) {
     return {
       verdict: "retries-exhausted",
       summary: `CI concluded ${normalised} after ${priorRetries} attempts at fixing it. ` + `Stopping rather than dispatching the engineer again; a human should look.`
+    };
+  }
+  if (askedByPerson) {
+    return {
+      verdict: "failed",
+      summary: `CI concluded ${normalised}. This run was asked for by a person, so nobody was dispatched.`
     };
   }
   return {
@@ -157,6 +163,10 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
+// src/entrypoints/machinery/extract_directive.ts
+import { existsSync, readFileSync, appendFileSync } from "fs";
+import { join } from "path";
+
 // src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
@@ -180,8 +190,42 @@ function defineScript(importMetaUrl) {
   return { runtimePath: `${SCRIPTS_DIR}/${basename(fileURLToPath(importMetaUrl))}` };
 }
 
-// src/entrypoints/machinery/validate_pull_request.ts
+// src/entrypoints/machinery/extract_directive.ts
 var ref = defineScript(import.meta.url);
+var COMMAND_RE = new RegExp(`^\\/(${AGENT_NAME_PATTERN})$`);
+function candidates(rawLine) {
+  let line = rawLine.trim();
+  if (!line)
+    return [];
+  line = line.replace(/^(?:[-*+]\s+|>\s*)+/, "");
+  const variants = [line];
+  if (line.startsWith("`") && line.endsWith("`") && line.length > 2) {
+    variants.push(line.slice(1, -1).trim());
+  }
+  if (line.startsWith("/`") && line.endsWith("`") && line.length > 3) {
+    variants.push("/" + line.slice(2, -1).trim());
+  }
+  return variants;
+}
+function extractDirective(output, defDir) {
+  for (const rawLine of output.split(`
+`)) {
+    for (const candidate of candidates(rawLine)) {
+      const match = COMMAND_RE.exec(candidate);
+      if (match) {
+        const agent = match[1];
+        if (existsSync(join(defDir, `${agent}.md`)))
+          return agent;
+      }
+    }
+  }
+  return "";
+}
+if (false)
+  ;
+
+// src/entrypoints/machinery/validate_pull_request.ts
+var ref2 = defineScript(import.meta.url);
 function log(message) {
   console.error(`[atomaton-validate-pr] ${message}`);
 }
@@ -245,17 +289,18 @@ function main() {
       number: { type: "string" },
       branch: { type: "string" },
       workflow: { type: "string" },
-      reviewer: { type: "string" },
-      engineer: { type: "string" },
+      "def-dir": { type: "string" },
       "deliverable-report": { type: "string" },
+      "asked-by-person": { type: "string" },
       "timeout-seconds": { type: "string" }
     }
   });
   const repo = values.repo ?? "";
   const branch = values.branch ?? "";
   const workflow = values.workflow ?? "";
-  if (!repo || !branch || !workflow) {
-    console.error("usage: validate_pull_request.ts --repo owner/name --number N --branch B --workflow W");
+  const defDir = values["def-dir"] ?? "";
+  if (!repo || !branch || !workflow || !defDir) {
+    console.error("usage: validate_pull_request.ts --repo owner/name --number N --branch B --workflow W --def-dir DIR");
     process.exit(1);
   }
   const reportPath = values["deliverable-report"] ?? "";
@@ -263,18 +308,18 @@ function main() {
     console.error("usage: validate_pull_request.ts ... --deliverable-report FILE");
     process.exit(1);
   }
-  if (!existsSync(reportPath)) {
+  if (!existsSync2(reportPath)) {
     log(`cannot validate: no deliverable report at ${reportPath}`);
     process.exit(1);
   }
-  const deliverableProblems = readFileSync(reportPath, "utf8").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const deliverableProblems = readFileSync2(reportPath, "utf8").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (deliverableProblems.length > 0) {
     log(`the deliverable is inconsistent (${deliverableProblems.length} problem(s)); CI will not be dispatched`);
   }
   const githubOutput = process.env.GITHUB_OUTPUT;
   const write = (line) => {
     if (githubOutput)
-      appendFileSync(githubOutput, `${line}
+      appendFileSync2(githubOutput, `${line}
 `);
   };
   const prJson = gh("api", `repos/${repo}/pulls/${values.number}`).stdout;
@@ -299,10 +344,14 @@ function main() {
   }
   const { conclusion, runUrl } = deliverableProblems.length > 0 ? { conclusion: "", runUrl: "" } : runCiAndWait(repo, workflow, branch, headSha, Number(values["timeout-seconds"] ?? "1800"));
   const priorRetries = countPriorRetries(repo, values.number ?? "");
+  const prBody = gh("api", `repos/${repo}/pulls/${values.number}`, "--jq", ".body").stdout ?? "";
+  const reviewerAgent = extractDirective(prBody, defDir);
+  const engineerAgent = ORIGIN_AGENT_TAG.read(prBody) ?? "";
   const outcome = decideValidationOutcome({
     conclusion,
-    reviewerAgent: values.reviewer ?? "",
-    engineerAgent: values.engineer ?? "",
+    reviewerAgent,
+    engineerAgent,
+    askedByPerson: (values["asked-by-person"] ?? "") === "true",
     priorRetries,
     deliverableProblems
   });
@@ -325,5 +374,5 @@ if (import.meta.main)
   main();
 export {
   pickDispatchedRun,
-  ref
+  ref2 as ref
 };

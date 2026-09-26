@@ -66,6 +66,26 @@ var AGGREGATED_TAG = numericTag("aggregated");
 var SUB_RESULT_TAG = numericTag("sub-result");
 var CI_RETRY_TAG = numericTag("ci-retry");
 
+// src/adapters/github/agent-on-issue.ts
+function mostRecentAgent(bodies) {
+  for (let i = bodies.length - 1;i >= 0; i--) {
+    const agent = AGENT_TAG.read(bodies[i] ?? "");
+    if (agent)
+      return agent;
+  }
+  return "";
+}
+function mostRecentAgentOn(repo, number) {
+  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]");
+  if (code !== 0)
+    return "";
+  try {
+    return mostRecentAgent(JSON.parse(stdout || "[]"));
+  } catch {
+    return "";
+  }
+}
+
 // src/entrypoints/machinery/lib/script-ref.ts
 import { basename } from "path";
 import { fileURLToPath } from "url";
@@ -91,24 +111,6 @@ function defineScript(importMetaUrl) {
 
 // src/entrypoints/machinery/resolve_resume_agent.ts
 var ref = defineScript(import.meta.url);
-function mostRecentAgent(bodies) {
-  for (let i = bodies.length - 1;i >= 0; i--) {
-    const agent = AGENT_TAG.read(bodies[i] ?? "");
-    if (agent)
-      return agent;
-  }
-  return "";
-}
-function mostRecentAgentOn(repo, number) {
-  const { code, stdout } = gh("api", `repos/${repo}/issues/${number}/comments`, "--paginate", "--jq", "[.[].body]");
-  if (code !== 0)
-    return "";
-  try {
-    return mostRecentAgent(JSON.parse(stdout || "[]"));
-  } catch {
-    return "";
-  }
-}
 function main() {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { number: { type: "string" } } });
   if (!values.number) {

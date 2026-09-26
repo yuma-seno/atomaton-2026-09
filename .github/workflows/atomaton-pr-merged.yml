@@ -55,7 +55,7 @@ jobs:
         with:
           bun-version: latest
         uses: oven-sh/setup-bun@v2
-      - name: Resolve orchestrator parent via GraphQL parent field
+      - name: Resolve atomaton parent via GraphQL parent field
         id: resolve
         shell: bash
         env:
