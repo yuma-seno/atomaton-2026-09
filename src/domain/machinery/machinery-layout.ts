@@ -126,6 +126,22 @@ export const TOOLS_DIR = `${RUNTIME_ROOT}/tools`;
 export const TOOL_DEFAULTS_FILE = `${TOOLS_DIR}/defaults.yaml`;
 
 /**
+ * The delegate definitions and their tools files.
+ *
+ * Under [`TOOLS_DIR`] rather than [`AGENT_DEFINITIONS_DIR`], and that is the whole
+ * point of the directory: `agent-definitions/` is the namespace a PERSON dispatches
+ * from, so a delegate sitting there became a `/delegate` command that would fail on
+ * its first turn, an entry in every agent's colleague list, and a legal value for
+ * `agents.on_config_finding`. A delegate is started by `mcp/delegate.ts` and by
+ * nothing else, so it lives beside the server that reads it.
+ *
+ * `mcp/delegate.ts` resolves `--delegates-dir` against this layout with
+ * `machineryPath()`, so the value in `defaults.yaml` is this constant and not a
+ * root-prefixed path — prefixing it there as well produced `<root>/<root>/...`.
+ */
+export const DELEGATES_DIR = `${TOOLS_DIR}/delegates`;
+
+/**
  * Hook scripts.
  *
  * Not passed to the core: it resolves a hook path against the tools file's own

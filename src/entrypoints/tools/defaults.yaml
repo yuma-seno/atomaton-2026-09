@@ -156,8 +156,14 @@ servers:
       - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
       - --agent-def
       - delegate.md
+      # Layout-relative, NOT root-prefixed. `delegate.ts` resolves this with
+      # `machineryPath()`, which is the one place that reads
+      # `ATOMATON_MACHINERY_ROOT`; prefixing it here as well produced
+      # `<root>/<root>/.github/...` and the server refused to start. The script
+      # path above is the opposite case -- nothing resolves it but the shell, so
+      # it carries the root itself.
       - --delegates-dir
-      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/delegates"
+      - ".github/atomaton-runtime/tools/delegates"
     env:
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
@@ -182,8 +188,9 @@ servers:
       - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/mcp/delegate.ts"
       - --agent-def
       - delegate_readonly.md
+      # Layout-relative, for the same reason as `delegate` above.
       - --delegates-dir
-      - "${ATOMATON_MACHINERY_ROOT:-.}/.github/atomaton-runtime/tools/delegates"
+      - ".github/atomaton-runtime/tools/delegates"
     env:
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
